@@ -25,6 +25,12 @@ mod tests {
     }
 
     #[test]
+    fn check_empty_dimensionality() {
+        let zeros = Matrix::empty(0, (4, 3));
+        assert_eq!((4, 3), zeros.size());
+    }
+
+    #[test]
     fn check_iterators() {
         let matrix = Matrix::from(vec![vec![1, 2], vec![3, 4], vec![5, 6]]);
         println!("{:?}", matrix);
@@ -36,6 +42,20 @@ mod tests {
         assert_eq!(iterator.next(), Some(1));
         assert_eq!(iterator.next(), Some(3));
         assert_eq!(iterator.next(), Some(5));
+        assert_eq!(iterator.next(), None);
+    }
+
+    #[test]
+    fn check_column_major_iterator() {
+        let matrix = Matrix::from(vec![vec![1, 4], vec![2, 5], vec![3, 6]]);
+        println!("{:?}", matrix);
+        let mut iterator = matrix.column_major_iter();
+        assert_eq!(iterator.next(), Some(1));
+        assert_eq!(iterator.next(), Some(2));
+        assert_eq!(iterator.next(), Some(3));
+        assert_eq!(iterator.next(), Some(4));
+        assert_eq!(iterator.next(), Some(5));
+        assert_eq!(iterator.next(), Some(6));
         assert_eq!(iterator.next(), None);
     }
 
@@ -52,5 +72,33 @@ mod tests {
     fn check_matrix_multiplication_wrong_size() {
         let matrix1 = Matrix::from(vec![vec![1, 2], vec![3, 4], vec![5, 6]]);
         println!("{:?}", &matrix1 * &matrix1);
+    }
+
+    #[test]
+    fn check_matrix_addition() {
+        let matrix1 = Matrix::from(vec![vec![-1, 2], vec![-3, 4], vec![5, -6]]);
+        let matrix2 = Matrix::from(vec![vec![0, 0], vec![-3, 1], vec![3, -2]]);
+        assert_eq!(matrix1 + matrix2, Matrix::from(vec![vec![-1, 2], vec![-6, 5], vec![8, -8]]));
+    }
+
+    #[test]
+    #[should_panic]
+    fn check_matrix_addition_wrong_size() {
+        let matrix1 = Matrix::from(vec![vec![-1, 2], vec![-3, 4], vec![5, -6]]);
+        let matrix2 = Matrix::from(vec![vec![0], vec![-3], vec![3]]);
+        println!("{:?}", &matrix1 + &matrix2);
+    }
+
+    #[test]
+    fn check_matrix_subtraction() {
+        let matrix1 = Matrix::from(vec![vec![-1, 2], vec![-3, 4], vec![5, -6]]);
+        let matrix2 = Matrix::from(vec![vec![0, 0], vec![-3, 1], vec![3, -2]]);
+        assert_eq!(matrix1 - matrix2, Matrix::from(vec![vec![-1, 2], vec![0, 3], vec![2, -4]]));
+    }
+
+    #[test]
+    fn check_matrix_negation() {
+        let matrix1 = Matrix::from(vec![vec![-1, 2], vec![1, -2]]);
+        assert_eq!(- matrix1, Matrix::from(vec![vec![1, -2], vec![-1, 2]]));
     }
 }

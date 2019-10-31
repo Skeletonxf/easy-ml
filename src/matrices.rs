@@ -13,6 +13,9 @@ use std::marker::Sized;
  */
 pub trait Numeric: Add + Sub + Mul + Div + Neg + Sum + PartialOrd + Sized + Clone {}
 
+// TODO: Want to express that Numeric types should also have &T operators but can't work out
+// the syntax for this. Once work out the syntax can remove a lot of unneccessary copies.
+
 /**
  * Anything which implements all the super traits will automatically implement this trait too.
  * This covers primitives such as f32, f64.
@@ -98,6 +101,24 @@ impl <T> Matrix<T> {
     pub fn columns(&self) -> Column {
         self.data[0].len()
     }
+
+    /**
+     * Gets a reference to the value at this row and column. Rows and Columns are 0 indexed.
+     */
+    pub fn get_reference(&self, row: Row, column: Column) -> &T {
+        assert!(row < self.rows(), "Row out of index");
+        assert!(column < self.columns(), "Column out of index");
+        &self.data[row][column]
+    }
+
+    /**
+     * Sets a new value to this row and column. Rows and Columns are 0 indexed.
+     */
+    pub fn set(&mut self, row: Row, column: Column, value: T) {
+        assert!(row < self.rows(), "Row out of index");
+        assert!(column < self.columns(), "Column out of index");
+        self.data[row][column] = value;
+    }
 }
 
 /**
@@ -107,20 +128,26 @@ pub struct ColumnIterator<'a, T: Clone> {
     matrix: &'a Matrix<T>,
     column: Column,
     counter: usize,
+    finished: bool,
 }
 
 impl <'a, T: Clone> Iterator for ColumnIterator<'a, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // TODO: bounds checking for counter == usize
+        if self.finished {
+            return None
+        }
+
+        let value = Some(self.matrix.get(self.counter, self.column).clone());
+
+        if self.counter == self.matrix.rows() - 1 {
+            self.finished = true;
+        }
+
         self.counter += 1;
 
-        if self.counter > self.matrix.rows() {
-            None
-        } else {
-            Some(self.matrix.data[self.counter - 1][self.column].clone())
-        }
+        value
     }
 }
 
@@ -131,36 +158,79 @@ pub struct RowIterator<'a, T: Clone> {
     matrix: &'a Matrix<T>,
     row: Row,
     counter: usize,
+    finished: bool,
 }
 
 impl <'a, T: Clone> Iterator for RowIterator<'a, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // TODO: bounds checking for counter == usize
+        if self.finished {
+            return None
+        }
+
+        let value = Some(self.matrix.get(self.row, self.counter).clone());
+
+        if self.counter == self.matrix.columns() - 1 {
+            self.finished = true;
+        }
+
         self.counter += 1;
 
-        if self.counter > self.matrix.columns() {
-            None
-        } else {
-            Some(self.matrix.data[self.row][self.counter - 1].clone())
-        }
+        value
     }
 }
 
 /**
- * Methods for matrices with types that can be copied.
+ * An column major iterator all values in a matrix.
+ */
+pub struct ColumnMajorIterator<'a, T: Clone> {
+    matrix: &'a Matrix<T>,
+    column_counter: Column,
+    row_counter: Row,
+    finished: bool,
+}
+
+impl <'a, T: Clone> Iterator for ColumnMajorIterator<'a, T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None
+        }
+
+        let value = Some(self.matrix.get(self.row_counter, self.column_counter).clone());
+
+        if self.row_counter == self.matrix.rows() - 1 && self.column_counter == self.matrix.columns() -1 {
+            // reached end of matrix for next iteration
+            self.finished = true;
+        }
+
+        if self.row_counter == self.matrix.rows() - 1 {
+            // reached end of a column, need to reset to first element in next column
+            self.row_counter = 0;
+            self.column_counter += 1;
+        } else {
+            // keep incrementing through this column
+            self.row_counter += 1;
+        }
+
+        value
+    }
+}
+
+/**
+ * Methods for matrices with types that can be copied, but still not neccessarily numerical.
  */
 impl <T: Clone> Matrix<T> {
     /**
      * Computes and returns the transpose of this matrix
      */
     pub fn transpose(&self) -> Matrix<T> {
-        let mut result = Matrix { data: Vec::new() };
+        let mut result = Matrix::empty(self.get(0, 0), (self.columns(), self.rows()));
         for i in 0..self.columns() {
-            result.data.push(Vec::new());
             for j in 0..self.rows() {
-                result.data[i].push(self.data[j][i].clone());
+                result.set(i, j, self.data[j][i].clone());
             }
         }
         result
@@ -174,6 +244,7 @@ impl <T: Clone> Matrix<T> {
             matrix: &self,
             column,
             counter: 0,
+            finished: false,
         }
     }
 
@@ -185,7 +256,69 @@ impl <T: Clone> Matrix<T> {
             matrix: &self,
             row,
             counter: 0,
+            finished: false,
         }
+    }
+
+    /**
+     * Returns a column major iterator over all values in this matrix, proceeding through each
+     * column in order.
+     */
+    pub fn column_major_iter(&self) -> ColumnMajorIterator<T> {
+        ColumnMajorIterator {
+            matrix: &self,
+            column_counter: 0,
+            row_counter: 0,
+            finished: false,
+        }
+    }
+
+    /**
+     * Creates a matrix of the provided size with all elements initialised to the provided value
+     */
+    pub fn empty(value: T, size: (Row, Column)) -> Matrix<T> {
+        Matrix {
+            data: vec![vec![value.clone(); size.1]; size.0]
+        }
+    }
+
+    /**
+     * Gets a copy of the value at this row and column. Rows and Columns are 0 indexed.
+     */
+    pub fn get(&self, row: Row, column: Column) -> T {
+        assert!(row < self.rows(), "Row out of index");
+        assert!(column < self.columns(), "Column out of index");
+        self.data[row][column].clone()
+    }
+
+    /**
+     * Applies a function to all values in the matrix, modifying
+     * the matrix.
+     */
+    pub fn map_mut(&mut self, mapping_function: impl Fn(T) -> T) {
+        for i in 0..self.rows() {
+            for j in 0..self.columns() {
+                self.set(i, j, mapping_function(self.get(i, j).clone()));
+            }
+        }
+    }
+
+    /**
+     * Creates and returns a new matrix with all values from the original with the
+     * function applied to each.
+     */
+    pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Matrix<U>
+            where U: Clone {
+        // compute the first mapped value so we have a value of type U
+        // to initialise the mapped matrix with
+        let first_value: U = mapping_function(self.get(0, 0).clone());
+        let mut mapped = Matrix::empty(first_value, self.size());
+        for i in 0..self.rows() {
+            for j in 0..self.columns() {
+                mapped.set(i, j, mapping_function(self.get(i, j).clone()));
+            }
+        }
+        mapped
     }
 }
 
@@ -217,6 +350,15 @@ impl <T: Numeric> PartialEq for Matrix<T> {
 
 /**
  * Matrix multiplication for two referenced matrices.
+ *
+ * This is matrix multiplication such that a matrix of dimensionality (LxM) multiplied with
+ * a matrix of dimensionality (MxN) yields a new matrix of dimensionality (LxN) with each element
+ * corresponding to the sum of products of the ith row in the first matrix and the jth column in
+ * the second matrix.
+ *
+ * Matrices of the wrong sizes will result in a panic. No broadcasting is performed, ie you cannot
+ * multiply a (NxM) matrix by a (Nx1) column vector, you must transpose one of the arguments so
+ * that the operation is valid.
  */
 impl <T: Numeric> Mul for &Matrix<T> where T: Mul<Output = T> {
     // Tell the compiler our output type is another matrix of type T
@@ -224,15 +366,14 @@ impl <T: Numeric> Mul for &Matrix<T> where T: Mul<Output = T> {
 
     fn mul(self, rhs: Self) -> Self::Output {
         // LxM * MxN -> LxN
-
         assert!(self.columns() == rhs.rows(), "Mismatched Matrices");
 
-        let mut result = Matrix { data: Vec::new() };
+        let mut result = Matrix::empty(self.get(0, 0), (self.rows(), rhs.columns()));
         for i in 0..self.rows() {
-            result.data.push(Vec::new());
             for j in 0..rhs.columns() {
                 // compute dot product for each element in the new matrix
-                result.data[i].push(self.row_iter(i)
+                result.set(i, j,
+                    self.row_iter(i)
                     .zip(rhs.column_iter(j))
                     .map(|(x, y)| x * y)
                     .sum());
@@ -269,5 +410,134 @@ impl <T: Numeric> Mul<Matrix<T>> for &Matrix<T> where T: Mul<Output = T> {
     type Output = Matrix<T>;
     fn mul(self, rhs: Matrix<T>) -> Self::Output {
         self * &rhs
+    }
+}
+
+
+/**
+ * Elementwise addition for two referenced matrices.
+ */
+impl <T: Numeric> Add for &Matrix<T> where T: Add<Output = T> {
+    // Tell the compiler our output type is another matrix of type T
+    type Output = Matrix<T>;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        // LxM + LxM -> LxM
+        assert!(self.size() == rhs.size(), "Mismatched Matrices");
+
+        let mut result = Matrix::empty(self.get(0, 0), self.size());
+        for i in 0..self.rows() {
+            for j in 0..self.columns() {
+                // compute dot product for each element in the new matrix
+                result.set(i, j, self.get(i, j) + rhs.get(i, j));
+            }
+        }
+        result
+    }
+}
+
+/**
+ * Elementwise addition for two matrices.
+ */
+impl <T: Numeric> Add for Matrix<T> where T: Add<Output = T> {
+    type Output = Matrix<T>;
+    fn add(self, rhs: Self) -> Self::Output {
+        &self + &rhs
+    }
+}
+
+/**
+ * Elementwise addition for two matrices with one referenced.
+ */
+impl <T: Numeric> Add<&Matrix<T>> for Matrix<T> where T: Add<Output = T> {
+    type Output = Matrix<T>;
+    fn add(self, rhs: &Self) -> Self::Output {
+        &self + rhs
+    }
+}
+
+/**
+ * Elementwise addition for two matrices with one referenced.
+ */
+impl <T: Numeric> Add<Matrix<T>> for &Matrix<T> where T: Add<Output = T> {
+    type Output = Matrix<T>;
+    fn add(self, rhs: Matrix<T>) -> Self::Output {
+        self + &rhs
+    }
+}
+
+/**
+ * Elementwise subtraction for two referenced matrices.
+ */
+impl <T: Numeric> Sub for &Matrix<T> where T: Sub<Output = T> {
+    // Tell the compiler our output type is another matrix of type T
+    type Output = Matrix<T>;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        // LxM - LxM -> LxM
+        assert!(self.size() == rhs.size(), "Mismatched Matrices");
+
+        let mut result = Matrix::empty(self.get(0, 0), self.size());
+        for i in 0..self.rows() {
+            for j in 0..self.columns() {
+                // compute dot product for each element in the new matrix
+                result.set(i, j, self.get(i, j) - rhs.get(i, j));
+            }
+        }
+        result
+    }
+}
+
+/**
+ * Elementwise subtraction for two matrices.
+ */
+impl <T: Numeric> Sub for Matrix<T> where T: Sub<Output = T> {
+    type Output = Matrix<T>;
+    fn sub(self, rhs: Self) -> Self::Output {
+        &self - &rhs
+    }
+}
+
+/**
+ * Elementwise subtraction for two matrices with one referenced.
+ */
+impl <T: Numeric> Sub<&Matrix<T>> for Matrix<T> where T: Sub<Output = T> {
+    type Output = Matrix<T>;
+    fn sub(self, rhs: &Self) -> Self::Output {
+        &self - rhs
+    }
+}
+
+/**
+ * Elementwise subtraction for two matrices with one referenced.
+ */
+impl <T: Numeric> Sub<Matrix<T>> for &Matrix<T> where T: Sub<Output = T> {
+    type Output = Matrix<T>;
+    fn sub(self, rhs: Matrix<T>) -> Self::Output {
+        self - &rhs
+    }
+}
+
+/**
+ * Elementwise negation for a referenced matrix.
+ */
+impl <T: Numeric> Neg for &Matrix<T> where T: Neg<Output = T> {
+    // Tell the compiler our output type is another matrix of type T
+    type Output = Matrix<T>;
+
+    fn neg(self) -> Self::Output {
+        self.map(|v| -v)
+    }
+}
+
+/**
+ * Elementwise negation for a matrix.
+ */
+impl <T: Numeric> Neg for Matrix<T> where T: Neg<Output = T> {
+    // Tell the compiler our output type is another matrix of type T
+    type Output = Matrix<T>;
+
+    fn neg(self) -> Self::Output {
+        - &self
     }
 }
