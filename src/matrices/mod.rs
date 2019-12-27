@@ -8,6 +8,7 @@ use std::cmp::PartialOrd;
 use std::marker::Sized;
 
 pub mod iterators;
+mod linear_algebra;
 
 use crate::matrices::iterators::{ColumnIterator, RowIterator, ColumnMajorIterator};
 
