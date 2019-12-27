@@ -1,34 +1,24 @@
+/*!
+ * Generic matrix type
+ */
+
 use std::ops::Add;
 use std::ops::Sub;
 use std::ops::Mul;
-use std::ops::Div;
 use std::ops::Neg;
-use std::iter::Sum;
-use std::cmp::PartialOrd;
-use std::marker::Sized;
 
 pub mod iterators;
-mod linear_algebra;
 
 use crate::matrices::iterators::{ColumnIterator, RowIterator, ColumnMajorIterator};
+use crate::numeric::Numeric;
 
 /**
- * A general purpose numeric trait that defines all the behaviour numerical matrices need
- * their types to support for math operations.
- */
-pub trait Numeric: Add + Sub + Mul + Div + Neg + Sum + PartialOrd + Sized + Clone {}
-
-// TODO: Want to express that Numeric types should also have &T operators but can't work out
-// the syntax for this. Once work out the syntax can remove a lot of unneccessary copies.
-
-/**
- * Anything which implements all the super traits will automatically implement this trait too.
- * This covers primitives such as f32, f64.
- */
-impl<T: Add + Sub + Mul + Div + Neg + Sum + PartialOrd + Sized + Clone> Numeric for T {}
-
-/**
- * A general purpose matrix of some type.
+ * A general purpose matrix of some type. This type may implement
+ * no traits, in which case the matrix will be rather useless. If the
+ * type implements [`Clone`](https://doc.rust-lang.org/std/clone/trait.Clone.html)
+ * most storage and accessor methods are defined and if the type implements
+ * [`Numeric`](../numeric/trait.Numeric.html) then the matrix can be used in
+ * a mathematical way.
  */
 #[derive(Debug)]
 pub struct Matrix<T> {

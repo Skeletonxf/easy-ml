@@ -1,4 +1,5 @@
-use crate::matrices::{Matrix, Row, Column, Numeric};
+use crate::matrices::{Matrix, Row, Column};
+use crate::numeric::Numeric;
 
 /**
  * Computes the inverse of a matrix
