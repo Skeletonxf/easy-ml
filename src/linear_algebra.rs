@@ -1,7 +1,8 @@
 /*!
  * Linear algebra algorithms on numbers and matrices.
  *
- * Note that these functions are also exposed as corresponding methods on the Matrix type.
+ * Note that these functions are also exposed as corresponding methods on the Matrix type,
+ * but in depth documentation is only presented here.
  */
 
 use std::ops::Add;
@@ -32,15 +33,15 @@ use crate::numeric::Numeric;
  *
  * This function will return the determinant only if it exists. Non square matrices
  * do not have a determinant. A determinant is a scalar value computed from the
- * elements of a square matrix and often correspond to matrices with special properties.
+ * elements of a square matrix and often corresponds to matrices with special properties.
  *
  * This function computes the determinant using the same type as that of the Matrix,
- * hence if the input type is unsigned the value computed is likely to be unreliable
- * because a determinant may be negative.
+ * hence if the input type is unsigned (such as Wrapping&lt;u8&gt;) the value computed
+ * is likely to not make any sense because a determinant may be negative.
  *
  * [https://en.wikipedia.org/wiki/Determinant](https://en.wikipedia.org/wiki/Determinant)
  */
-pub fn determinant<T: Numeric + std::fmt::Debug>(matrix: &Matrix<T>) -> Option<T>
+pub fn determinant<T: Numeric>(matrix: &Matrix<T>) -> Option<T>
 where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
     if matrix.columns() != matrix.rows() {
         return None;
@@ -63,14 +64,11 @@ where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
         } else {
             T::zero() - T::one()
         };
-        println!("signature {:?}", signature);
         let mut product = T::one();
         for (n, i) in permutation.iter().enumerate() {
             // Get the element at the index corresponding to n and the n'th
             // element in the permutation list.
-            println!("indices {:?},{:?}", n, permutation[n]);
             let element = matrix.get(n, *i);
-            println!("element {:?}", element);
             product = product * element;
         }
         // copying the sum to prevent a move that stops us from returning it
@@ -88,7 +86,7 @@ where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
  * eg for an input of 5 computes 1 * 2 * 3 * 4 * 5
  * which is equal to 120
  */
-#[allow(dead_code)]
+#[allow(dead_code)] // used in testing
 fn factorial(n: usize) -> usize {
     (1..=n).product()
 }
@@ -126,7 +124,7 @@ where F: FnMut(&mut Vec<T>) {
  * sublist one swap different from the last and correspondingly alternating
  * in even and odd swaps required to obtain the reordering.
  */
-#[allow(dead_code)]
+#[allow(dead_code)] // used in testing
 fn generate_permutations<T: Clone>(list: &mut Vec<T>) -> Vec<(Vec<T>, bool)> {
     let mut permutations = Vec::with_capacity(factorial(list.len()));
     let mut even_swaps = true;

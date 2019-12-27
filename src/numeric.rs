@@ -10,6 +10,7 @@ use std::ops::Neg;
 use std::iter::Sum;
 use std::cmp::PartialOrd;
 use std::marker::Sized;
+use core::num::Wrapping;
 
 /**
  * A general purpose numeric trait that defines all the behaviour numerical matrices need
@@ -51,6 +52,17 @@ macro_rules! zero_one_integral {
     };
 }
 
+macro_rules! zero_one_wrapping_integral {
+    ($T:ty) => {
+        impl ZeroOne for $T {
+            #[inline]
+            fn zero() -> $T { Wrapping(0) }
+            #[inline]
+            fn one() -> $T { Wrapping(1) }
+        }
+    };
+}
+
 macro_rules! zero_one_float {
     ($T:ty) => {
         impl ZeroOne for $T {
@@ -72,6 +84,16 @@ zero_one_integral!(u64);
 zero_one_integral!(i64);
 zero_one_integral!(u128);
 zero_one_integral!(i128);
+zero_one_wrapping_integral!(Wrapping<u8>);
+zero_one_wrapping_integral!(Wrapping<i8>);
+zero_one_wrapping_integral!(Wrapping<u16>);
+zero_one_wrapping_integral!(Wrapping<i16>);
+zero_one_wrapping_integral!(Wrapping<u32>);
+zero_one_wrapping_integral!(Wrapping<i32>);
+zero_one_wrapping_integral!(Wrapping<u64>);
+zero_one_wrapping_integral!(Wrapping<i64>);
+zero_one_wrapping_integral!(Wrapping<u128>);
+zero_one_wrapping_integral!(Wrapping<i128>);
 zero_one_float!(f32);
 zero_one_float!(f64);
 zero_one_integral!(usize);

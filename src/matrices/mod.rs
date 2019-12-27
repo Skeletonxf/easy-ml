@@ -11,6 +11,7 @@ pub mod iterators;
 
 use crate::matrices::iterators::{ColumnIterator, RowIterator, ColumnMajorIterator};
 use crate::numeric::Numeric;
+use crate::linear_algebra;
 
 /**
  * A general purpose matrix of some type. This type may implement
@@ -205,9 +206,48 @@ impl <T: Clone> Matrix<T> {
 }
 
 /**
- * Methods for matrices with numerical types, such as f32 or f64
+ * Methods for matrices with numerical types, such as f32 or f64.
+ *
+ * Note that unsigned integers are not Numeric because they do not
+ * implement [Neg](https://doc.rust-lang.org/std/ops/trait.Neg.html). You must first
+ * wrap unsigned integers via [Wrapping](https://doc.rust-lang.org/std/num/struct.Wrapping.html).
+ *
+ * While these will all be defined on signed integer types as well, such as i16 or i32,
+ * in many cases integers cannot be used sensibly in these computations. If you
+ * have a matrix of type i8 for example, you should consider mapping it into a floating
+ * type before doing heavy linear algebra maths on it.
+ *
+ * Determinants can be computed without loss of precision using sufficiently large signed
+ * integers because the only operations performed on the elements are addition, subtraction
+ * and mulitplication.
+ *
+ * ```
+ * use easy_ml::matrices::Matrix;
+ * use std::num::Wrapping;
+ *
+ * let matrix: Matrix<u8> = Matrix::from(vec![
+ *     vec![ 2, 3 ],
+ *     vec![ 6, 0 ]
+ * ]);
+ * // determinant is not defined on this matrix because u8 is not Numeric
+ * // println!("{:?}", matrix.determinant()); // won't compile
+ * // however Wrapping<u8> is numeric
+ * let matrix = matrix.map(|element| Wrapping(element));
+ * println!("{:?}", matrix.determinant()); // -> 238 (overflow)
+ * println!("{:?}", matrix.map(|element| element.0 as i16).determinant()); // -> -18
+ * println!("{:?}", matrix.map(|element| element.0 as f32).determinant()); // -> -18.0
+ * ```
  */
 impl <T: Numeric> Matrix<T> {
+
+    /**
+     * Returns the determinant of this square matrix, or None if the matrix
+     * does not have a determinant. See [`linear_algebra`](../linear_algebra/fn.determinant.html)
+     */
+    pub fn determinant(&self) -> Option<T>
+    where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
+        linear_algebra::determinant(self)
+    }
 }
 
 /**
@@ -294,7 +334,6 @@ impl <T: Numeric> Mul<Matrix<T>> for &Matrix<T> where T: Mul<Output = T> {
         self * &rhs
     }
 }
-
 
 /**
  * Elementwise addition for two referenced matrices.
