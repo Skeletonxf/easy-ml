@@ -7,6 +7,10 @@ use std::iter::Sum;
 use std::cmp::PartialOrd;
 use std::marker::Sized;
 
+pub mod iterators;
+
+use crate::matrices::iterators::{ColumnIterator, RowIterator, ColumnMajorIterator};
+
 /**
  * A general purpose numeric trait that defines all the behaviour numerical matrices need
  * their types to support for math operations.
@@ -122,104 +126,6 @@ impl <T> Matrix<T> {
 }
 
 /**
- * An iterator over a column in a matrix.
- */
-pub struct ColumnIterator<'a, T: Clone> {
-    matrix: &'a Matrix<T>,
-    column: Column,
-    counter: usize,
-    finished: bool,
-}
-
-impl <'a, T: Clone> Iterator for ColumnIterator<'a, T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None
-        }
-
-        let value = Some(self.matrix.get(self.counter, self.column).clone());
-
-        if self.counter == self.matrix.rows() - 1 {
-            self.finished = true;
-        }
-
-        self.counter += 1;
-
-        value
-    }
-}
-
-/**
- * An iterator over a row in a matrix.
- */
-pub struct RowIterator<'a, T: Clone> {
-    matrix: &'a Matrix<T>,
-    row: Row,
-    counter: usize,
-    finished: bool,
-}
-
-impl <'a, T: Clone> Iterator for RowIterator<'a, T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None
-        }
-
-        let value = Some(self.matrix.get(self.row, self.counter).clone());
-
-        if self.counter == self.matrix.columns() - 1 {
-            self.finished = true;
-        }
-
-        self.counter += 1;
-
-        value
-    }
-}
-
-/**
- * An column major iterator all values in a matrix.
- */
-pub struct ColumnMajorIterator<'a, T: Clone> {
-    matrix: &'a Matrix<T>,
-    column_counter: Column,
-    row_counter: Row,
-    finished: bool,
-}
-
-impl <'a, T: Clone> Iterator for ColumnMajorIterator<'a, T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None
-        }
-
-        let value = Some(self.matrix.get(self.row_counter, self.column_counter).clone());
-
-        if self.row_counter == self.matrix.rows() - 1 && self.column_counter == self.matrix.columns() -1 {
-            // reached end of matrix for next iteration
-            self.finished = true;
-        }
-
-        if self.row_counter == self.matrix.rows() - 1 {
-            // reached end of a column, need to reset to first element in next column
-            self.row_counter = 0;
-            self.column_counter += 1;
-        } else {
-            // keep incrementing through this column
-            self.row_counter += 1;
-        }
-
-        value
-    }
-}
-
-/**
  * Methods for matrices with types that can be copied, but still not neccessarily numerical.
  */
 impl <T: Clone> Matrix<T> {
@@ -240,24 +146,14 @@ impl <T: Clone> Matrix<T> {
      * Returns an iterator over a column vector in this matrix. Columns are 0 indexed.
      */
     pub fn column_iter(&self, column: Column) -> ColumnIterator<T> {
-        ColumnIterator {
-            matrix: &self,
-            column,
-            counter: 0,
-            finished: false,
-        }
+        ColumnIterator::new(self, column)
     }
 
     /**
      * Returns an iterator over a row vector in this matrix. Rows are 0 indexed.
      */
     pub fn row_iter(&self, row: Row) -> RowIterator<T> {
-        RowIterator {
-            matrix: &self,
-            row,
-            counter: 0,
-            finished: false,
-        }
+        RowIterator::new(self, row)
     }
 
     /**
@@ -265,12 +161,7 @@ impl <T: Clone> Matrix<T> {
      * column in order.
      */
     pub fn column_major_iter(&self) -> ColumnMajorIterator<T> {
-        ColumnMajorIterator {
-            matrix: &self,
-            column_counter: 0,
-            row_counter: 0,
-            finished: false,
-        }
+        ColumnMajorIterator::new(self)
     }
 
     /**
@@ -278,7 +169,7 @@ impl <T: Clone> Matrix<T> {
      */
     pub fn empty(value: T, size: (Row, Column)) -> Matrix<T> {
         Matrix {
-            data: vec![vec![value.clone(); size.1]; size.0]
+            data: vec![vec![value; size.1]; size.0]
         }
     }
 
@@ -311,7 +202,7 @@ impl <T: Clone> Matrix<T> {
             where U: Clone {
         // compute the first mapped value so we have a value of type U
         // to initialise the mapped matrix with
-        let first_value: U = mapping_function(self.get(0, 0).clone());
+        let first_value: U = mapping_function(self.get(0, 0));
         let mut mapped = Matrix::empty(first_value, self.size());
         for i in 0..self.rows() {
             for j in 0..self.columns() {
