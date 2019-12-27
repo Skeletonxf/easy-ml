@@ -51,36 +51,34 @@ where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
         return None;
     }
 
-    // generate all permutations of the numbers in the range from 0 to N - 1
-    // which we will use for indexing
-    let all_permutations = generate_permutations(&mut (0..length).collect());
     let mut sum = T::zero();
 
-    // Perform the method described by https://en.wikipedia.org/wiki/Determinant#n_%C3%97_n_matrices
-    // We generate all permutations of 0 to N - 1, and for each we sum up the products of the
-    // elements at the indexes in the matrix according to the n'th n'th element in the permuted
-    // list.
-    for (permutation, even_swaps) in all_permutations {
-        println!("permutation {:?}", permutation);
+    // iterate through all permutations of the numbers in the range from 0 to N - 1
+    // which we will use for indexing
+    with_each_permutation(&mut (0..length).collect(), &mut |permutation, even_swap| {
         // Compute the signature for this permutation, such that we
         // have +1 for an even number and -1 for an odd number of swaps
-        let signature = if even_swaps {
+        let signature = if even_swap {
             T::one()
         } else {
             T::zero() - T::one()
         };
         println!("signature {:?}", signature);
         let mut product = T::one();
-        for n in 0..(length - 1) {
+        for (n, i) in permutation.iter().enumerate() {
             // Get the element at the index corresponding to n and the n'th
             // element in the permutation list.
             println!("indices {:?},{:?}", n, permutation[n]);
-            let element = matrix.get(n, permutation[n]);
+            let element = matrix.get(n, *i);
             println!("element {:?}", element);
             product = product * element;
         }
-        sum = sum + (signature * product);
-    }
+        // copying the sum to prevent a move that stops us from returning it
+        // still massively reduces the amount of copies compared to using
+        // generate_permutations which would instead require copying the
+        // permutation list N! times though allow to not copy the sum.
+        sum = sum.clone() + (signature * product);
+    });
 
     Some(sum)
 }
@@ -90,6 +88,7 @@ where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
  * eg for an input of 5 computes 1 * 2 * 3 * 4 * 5
  * which is equal to 120
  */
+#[allow(dead_code)]
 fn factorial(n: usize) -> usize {
     (1..=n).product()
 }
@@ -127,6 +126,7 @@ where F: FnMut(&mut Vec<T>) {
  * sublist one swap different from the last and correspondingly alternating
  * in even and odd swaps required to obtain the reordering.
  */
+#[allow(dead_code)]
 fn generate_permutations<T: Clone>(list: &mut Vec<T>) -> Vec<(Vec<T>, bool)> {
     let mut permutations = Vec::with_capacity(factorial(list.len()));
     let mut even_swaps = true;
@@ -135,6 +135,20 @@ fn generate_permutations<T: Clone>(list: &mut Vec<T>) -> Vec<(Vec<T>, bool)> {
         even_swaps = !even_swaps;
     });
     permutations
+}
+
+/*
+ * Inplace version of generate_permutations which calls the consumer on
+ * each permuted list without performing any copies (ie each permuted list)
+ * is the same list before and after permutation.
+ */
+fn with_each_permutation<T: Clone, F>(list: &mut Vec<T>, consumer: &mut F)
+where F: FnMut(&mut Vec<T>, bool) {
+    let mut even_swaps = true;
+    heaps_permutations(list.len(), list, &mut |permuted| {
+        consumer(permuted, even_swaps);
+        even_swaps = !even_swaps;
+    });
 }
 
 #[test]
