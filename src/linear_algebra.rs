@@ -1,32 +1,88 @@
-use crate::matrices::{Matrix, Row, Column};
+/*!
+ * Linear algebra algorithms on numbers and matrices.
+ *
+ * Note that these functions are also exposed as corresponding methods on the Matrix type.
+ */
+
+use std::ops::Add;
+use std::ops::Mul;
+use std::ops::Sub;
+
+use crate::matrices::{Matrix};
 use crate::numeric::Numeric;
 
-/**
- * Computes the inverse of a matrix
- * https://en.wikipedia.org/wiki/Invertible_matrix#Analytic_solution
- */
-pub fn inverse<T: Numeric>(matrix: &Matrix<T>) -> Option<Matrix<T>> {
-    // TODO
-    None
-}
+// /**
+//  * Computes the inverse of a matrix
+//  * https://en.wikipedia.org/wiki/Invertible_matrix#Analytic_solution
+//  */
+// fn inverse<T: Numeric>(matrix: &Matrix<T>) -> Option<Matrix<T>> {
+//     // TODO
+//     None
+// }
 
 /**
- * Computes the determinant of a matrix
- * https://en.wikipedia.org/wiki/Determinant#n_%C3%97_n_matrices
+ * Computes the determinant of a square matrix. For a 2 x 2 matrix this is given by
+ * `ad - bc` for:
+ * ```ignore
+ * [
+ *   a, b
+ *   c, d
+ * ]
+ * ```
+ *
+ * This function will return the determinant only if it exists. Non square matrices
+ * do not have a determinant. A determinant is a scalar value computed from the
+ * elements of a square matrix and often correspond to matrices with special properties.
+ *
+ * This function computes the determinant using the same type as that of the Matrix,
+ * hence if the input type is unsigned the value computed is likely to be unreliable
+ * because a determinant may be negative.
+ *
+ * [https://en.wikipedia.org/wiki/Determinant](https://en.wikipedia.org/wiki/Determinant)
  */
-pub fn determinant<T: Numeric>(matrix: &Matrix<T>) -> Option<T> {
+pub fn determinant<T: Numeric + std::fmt::Debug>(matrix: &Matrix<T>) -> Option<T>
+where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
     if matrix.columns() != matrix.rows() {
         return None;
     }
     let length = matrix.columns();
 
-    // TODO: need to check that these permutations are even and odd successively
-    // for use in computing the signature of the each permutation set
-    let all_permutations = permutations((1..=length).collect());
-    let sum = 0; // TODO need trait to define zero value for the type
+    if length == 0 {
+        return None;
+    }
 
-    // TODO
-    None
+    // generate all permutations of the numbers in the range from 0 to N - 1
+    // which we will use for indexing
+    let all_permutations = generate_permutations(&mut (0..length).collect());
+    let mut sum = T::zero();
+
+    // Perform the method described by https://en.wikipedia.org/wiki/Determinant#n_%C3%97_n_matrices
+    // We generate all permutations of 0 to N - 1, and for each we sum up the products of the
+    // elements at the indexes in the matrix according to the n'th n'th element in the permuted
+    // list.
+    for (permutation, even_swaps) in all_permutations {
+        println!("permutation {:?}", permutation);
+        // Compute the signature for this permutation, such that we
+        // have +1 for an even number and -1 for an odd number of swaps
+        let signature = if even_swaps {
+            T::one()
+        } else {
+            T::zero() - T::one()
+        };
+        println!("signature {:?}", signature);
+        let mut product = T::one();
+        for n in 0..(length - 1) {
+            // Get the element at the index corresponding to n and the n'th
+            // element in the permutation list.
+            println!("indices {:?},{:?}", n, permutation[n]);
+            let element = matrix.get(n, permutation[n]);
+            println!("element {:?}", element);
+            product = product * element;
+        }
+        sum = sum + (signature * product);
+    }
+
+    Some(sum)
 }
 
 /*
@@ -38,28 +94,75 @@ fn factorial(n: usize) -> usize {
     (1..=n).product()
 }
 
-/*
- * Recursive computation of all permutations of a list
- * the standard library method isn't stable yet
- * https://doc.rust-lang.org/1.1.0/collections/slice/struct.Permutations.html
+/**
+ * Performs repeated swaps on the provided mutable reference to a list, swapping
+ * exactly 1 pair each time before calling the consumer as defined by Heap's Algorithm
+ * https://en.wikipedia.org/wiki/Heap%27s_algorithm
  */
-fn permutations<T: Clone>(list: Vec<T>) -> Vec<Vec<T>> {
-    if list.is_empty() {
-        return vec![];
+fn heaps_permutations<T: Clone, F>(k: usize, list: &mut Vec<T>, consumer: &mut F)
+where F: FnMut(&mut Vec<T>) {
+    if k == 1 {
+        consumer(list);
+        return;
     }
-    if list.len() == 1 {
-        return vec![list];
-    }
-    let mut all_permutations: Vec<Vec<T>> = Vec::with_capacity(factorial(list.len()));
-    for n in 0..list.len() {
-        let mut list = list.clone();
-        let element = list.remove(n);
-        // get each permutation of the remaining elements
-        // and add the element we removed to the permuted list
-        for mut sub_permutation in permutations(list).drain(..) {
-            sub_permutation.push(element.clone());
-            all_permutations.push(sub_permutation);
+
+    for i in 0..k {
+        heaps_permutations(k - 1, list, consumer);
+        // avoid redundant swaps
+        if i < k - 1 {
+            // Swap on the even/oddness of k
+            if k % 2 == 0 {
+                // if k is even swap final and the index
+                list.swap(i, k - 1);
+            } else {
+                // if k is odd swap final and first
+                list.swap(0, k - 1);
+            }
         }
     }
-    all_permutations
+}
+
+/**
+ * Generates a list of all possible permutations of a list, with each
+ * sublist one swap different from the last and correspondingly alternating
+ * in even and odd swaps required to obtain the reordering.
+ */
+fn generate_permutations<T: Clone>(list: &mut Vec<T>) -> Vec<(Vec<T>, bool)> {
+    let mut permutations = Vec::with_capacity(factorial(list.len()));
+    let mut even_swaps = true;
+    heaps_permutations(list.len(), list, &mut |permuted| {
+        permutations.push((permuted.clone(), even_swaps));
+        even_swaps = !even_swaps;
+    });
+    permutations
+}
+
+#[test]
+fn test_permutations() {
+    // Exhaustively test permutation even/oddness for an input
+    // of length 3
+    let mut list = vec![ 1, 2, 3 ];
+    let permutations = generate_permutations(&mut list);
+    assert!(permutations.contains(&(vec![1, 2, 3], true)));
+    assert!(permutations.contains(&(vec![3, 2, 1], false)));
+    assert!(permutations.contains(&(vec![2, 3, 1], true)));
+    assert!(permutations.contains(&(vec![1, 3, 2], false)));
+    assert!(permutations.contains(&(vec![2, 1, 3], false)));
+    assert!(permutations.contains(&(vec![3, 1, 2], true)));
+    assert_eq!(permutations.len(), 6);
+
+    // Test a larger input non exhaustively to make sure it
+    // generalises.
+    let mut list = vec![ 1, 2, 3, 4, 5 ];
+    let permuted = generate_permutations(&mut list);
+    assert!(permuted.contains(&(vec![1, 2, 3, 4, 5], true)));
+    assert!(permuted.contains(&(vec![1, 2, 3, 5, 4], false)));
+    assert!(permuted.contains(&(vec![1, 2, 5, 3, 4], true)));
+
+    // Test a length 2 input as well
+    let mut list = vec![0, 1];
+    let permuted = generate_permutations(&mut list);
+    assert!(permuted.contains(&(vec![0, 1], true)));
+    assert!(permuted.contains(&(vec![1, 0], false)));
+    assert_eq!(permuted.len(), 2);
 }
