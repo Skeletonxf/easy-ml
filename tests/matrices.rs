@@ -101,4 +101,31 @@ mod tests {
         let matrix1 = Matrix::from(vec![vec![-1, 2], vec![1, -2]]);
         assert_eq!(- matrix1, Matrix::from(vec![vec![1, -2], vec![-1, 2]]));
     }
+
+    #[test]
+    fn check_resizing_matrix() {
+        let mut matrix = Matrix::from(vec![
+            vec![ 1, 2 ],
+            vec![ 3, 4]]);
+        matrix.insert_row(0, 5);
+        let mut iterator = matrix.column_major_iter();
+        assert_eq!(Some(5), iterator.next());
+        assert_eq!(Some(1), iterator.next());
+        assert_eq!(Some(3), iterator.next());
+        assert_eq!(Some(5), iterator.next());
+        assert_eq!(Some(2), iterator.next());
+        assert_eq!(Some(4), iterator.next());
+        assert_eq!(None, iterator.next());
+        matrix.remove_column(0);
+        let mut iterator = matrix.column_major_iter();
+        assert_eq!(Some(5), iterator.next());
+        assert_eq!(Some(2), iterator.next());
+        assert_eq!(Some(4), iterator.next());
+        assert_eq!(None, iterator.next());
+        assert_eq!((3, 1), matrix.size());
+        matrix.insert_column(1, 3);
+        assert_eq!((3, 2), matrix.size());
+        matrix.remove_row(1);
+        assert_eq!((2, 2), matrix.size());
+    }
 }

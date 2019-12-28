@@ -2,10 +2,7 @@
  * Generic matrix type
  */
 
-use std::ops::Add;
-use std::ops::Sub;
-use std::ops::Mul;
-use std::ops::Neg;
+use std::ops::{Add, Sub, Mul, Neg, Div};
 
 pub mod iterators;
 
@@ -115,6 +112,32 @@ impl <T> Matrix<T> {
         assert!(column < self.columns(), "Column out of index");
         self.data[row][column] = value;
     }
+
+    /**
+     * Removes a row from this Matrix, shifting all other rows to the left.
+     * Rows are 0 indexed.
+     *
+     * This will panic if the row does not exist or the matrix only has
+     * one row.
+     */
+    pub fn remove_row(&mut self, row: Row) {
+        assert!(self.rows() > 1);
+        self.data.remove(row);
+    }
+
+    /**
+     * Removes a column from this Matrix, shifting all other columns to the left.
+     * Columns are 0 indexed.
+     *
+     * This will panic if the column does not exist or the matrix only has
+     * one column.
+     */
+    pub fn remove_column(&mut self, column: Column) {
+        assert!(self.columns() > 1);
+        for row in 0..self.rows() {
+            self.data[row].remove(column);
+        }
+    }
 }
 
 /**
@@ -128,10 +151,26 @@ impl <T: Clone> Matrix<T> {
         let mut result = Matrix::empty(self.get(0, 0), (self.columns(), self.rows()));
         for i in 0..self.columns() {
             for j in 0..self.rows() {
-                result.set(i, j, self.data[j][i].clone());
+                result.set(i, j, self.get(j, i).clone());
             }
         }
         result
+    }
+
+    /**
+     * Transposes the matrix in place.
+     */
+    pub fn transpose_mut(&mut self) {
+        for i in 0..self.rows() {
+            for j in 0..self.columns() {
+                if i > j {
+                    continue;
+                }
+                let temp = self.get(i, j);
+                self.set(i, j, self.get(j, i));
+                self.set(j, i, temp);
+            }
+        }
     }
 
     /**
@@ -203,6 +242,40 @@ impl <T: Clone> Matrix<T> {
         }
         mapped
     }
+
+    /**
+     * Inserts a new row into the Matrix immediately after the provided index,
+     * shifting other rows to the right and filling all entries with the
+     * provided value. Rows are 0 indexed.
+     *
+     * This will panic if the row is greater than the number of rows in the matrix.
+     */
+    pub fn insert_row(&mut self, row: Row, value: T) {
+        let new_row = vec![value.clone(); self.columns()];
+        self.data.insert(row, new_row);
+    }
+
+    /**
+     * Inserts a new column into the Matrix immediately after the provided index,
+     * shifting other columns to the right and filling all entries with the
+     * provided value. Columns are 0 indexed.
+     *
+     * This will panic if the column is greater than the number of columns in the matrix.
+     */
+    pub fn insert_column(&mut self, column: Column, value: T) {
+        for row in 0..self.rows() {
+            self.data[row].insert(column, value.clone());
+        }
+    }
+}
+
+/**
+ * Any matrix of a Cloneable type implements Clone.
+ */
+impl <T: Clone> Clone for Matrix<T> {
+    fn clone(&self) -> Self {
+        self.map(|element| element)
+    }
 }
 
 /**
@@ -219,8 +292,27 @@ impl <T: Clone> Matrix<T> {
  *
  * Determinants can be computed without loss of precision using sufficiently large signed
  * integers because the only operations performed on the elements are addition, subtraction
- * and mulitplication.
+ * and mulitplication. However the inverse of a matrix such as
  *
+ * ```ignore
+ * [
+ *   4, 7
+ *   2, 8
+ * ]
+ * ```
+ *
+ * is
+ *
+ * ```ignore
+ * [
+ *   0.6, -0.7,
+ *  -0.2, 0.4
+ * ]
+ * ```
+ *
+ * which requires a type that supports decimals to accurately represent.
+ *
+ * Mapping matrix type example:
  * ```
  * use easy_ml::matrices::Matrix;
  * use std::num::Wrapping;
@@ -239,6 +331,31 @@ impl <T: Clone> Matrix<T> {
  * ```
  */
 impl <T: Numeric> Matrix<T> {
+    /**
+     * Creates an identity matrix of the provided size. An identity matrix
+     * is always square and has elements equal to 1 along its diagonal and
+     * zero everywhere else. The size is still taken as a tuple to facilitate
+     * creating an identity matrix from the dimensionality of an existing one.
+     *
+     * A 3 x 3 identity matrix:
+     * ```ignore
+     * [
+     *   1, 0, 0
+     *   0, 1, 0
+     *   0, 0, 1
+     * ]
+     * ```
+     */
+    pub fn identity(size: (Row, Column)) -> Matrix<T> {
+        assert!(size.0 == size.1);
+        let mut matrix = Matrix {
+            data: vec![vec![T::zero(); size.1]; size.0]
+        };
+        for i in 0..size.0 {
+            matrix.set(i, i, T::one());
+        }
+        matrix
+    }
 
     /**
      * Returns the determinant of this square matrix, or None if the matrix
@@ -247,6 +364,16 @@ impl <T: Numeric> Matrix<T> {
     pub fn determinant(&self) -> Option<T>
     where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
         linear_algebra::determinant(self)
+    }
+
+    /**
+    * Computes the inverse of a matrix provided that it exists. To have an inverse a
+    * matrix must be square (same number of rows and columns) and it must also have a
+    * non zero determinant. See [`linear_algebra`](../linear_algebra/fn.inverse.html)
+    */
+    pub fn inverse(&self) -> Option<Matrix<T>>
+    where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
+        linear_algebra::inverse(self)
     }
 }
 
