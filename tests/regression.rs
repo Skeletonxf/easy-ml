@@ -7,6 +7,7 @@ extern crate easy_ml;
 #[cfg(test)]
 mod tests {
     use easy_ml::matrices::Matrix;
+    use easy_ml::linear_algebra;
 
     #[test]
     fn linear_regression() {
@@ -33,7 +34,7 @@ mod tests {
         println!("{:?}", &X);
 
         // w is given by inverse(XT*X) * (XT * y)
-        let w = invese(X.transpose() * &X) * (X.transpose() * &y);
+        let w = linear_algebra::inverse(&(X.transpose() * &X)).unwrap() * (X.transpose() * &y);
         let error = error_function(&w, &X, &y);
         println!("error {:?}", error);
         println!("y = {:?}\nprediction = {:?}", y, (&X * &w));
@@ -49,17 +50,18 @@ mod tests {
         (error.transpose() * error).get(0, 0)
     }
 
-    // Inversing an arbitarty square matrix is hard. We only need to inverse a 2x2 here
-    // TODO: See if there's an algorithm that can be implemented for arbitary inversions
-    fn invese(matrix: Matrix<f32>) -> Matrix<f32> {
-        let a = matrix.get(0, 0);
-        let b = matrix.get(0, 1);
-        let c = matrix.get(1, 0);
-        let d = matrix.get(1, 1);
-        let determinant = (a * d) - (b * c);
-        Matrix::from(vec![
-            vec![ d, -b ],
-            vec![ -c, a ]
-        ]).map(|x| x / determinant)
-    }
+    // TODO: turn this into a test
+    // // Inversing an arbitarty square matrix is hard. We only need to inverse a 2x2 here
+    // // TODO: See if there's an algorithm that can be implemented for arbitary inversions
+    // fn invese(matrix: Matrix<f32>) -> Matrix<f32> {
+    //     let a = matrix.get(0, 0);
+    //     let b = matrix.get(0, 1);
+    //     let c = matrix.get(1, 0);
+    //     let d = matrix.get(1, 1);
+    //     let determinant = (a * d) - (b * c);
+    //     Matrix::from(vec![
+    //         vec![ d, -b ],
+    //         vec![ -c, a ]
+    //     ]).map(|x| x / determinant)
+    // }
 }
