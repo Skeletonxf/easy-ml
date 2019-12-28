@@ -251,7 +251,7 @@ impl <T: Clone> Matrix<T> {
      * This will panic if the row is greater than the number of rows in the matrix.
      */
     pub fn insert_row(&mut self, row: Row, value: T) {
-        let new_row = vec![value.clone(); self.columns()];
+        let new_row = vec![value; self.columns()];
         self.data.insert(row, new_row);
     }
 

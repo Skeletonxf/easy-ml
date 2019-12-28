@@ -55,11 +55,8 @@ where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
             let mut cofactor_matrix = Matrix::empty(T::zero(), matrix.size());
             for i in 0..matrix.rows() {
                 for j in 0..matrix.columns() {
-                    let ij_minor = minor(matrix, i, j);
-                    if ij_minor.is_none() {
-                        // this should be prevented by earlier checks
-                        return None;
-                    }
+                    // this should always return Some due to the earlier checks
+                    let ij_minor = minor(matrix, i, j)?;
                     // i and j may each be up to the maximum value for usize but
                     // we only need to know if they are even or add as
                     // -1 ^ (i + j) == -1 ^ ((i % 2) + (j % 2))
@@ -74,7 +71,7 @@ where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
                     };
                     // each element of the cofactor matrix is -1^(i+j) * M_ij
                     // for M_ij equal to the ij minor of the matrix
-                    cofactor_matrix.set(i, j, sign * ij_minor.unwrap());
+                    cofactor_matrix.set(i, j, sign * ij_minor);
                 }
             }
             // tranposing the cofactor matrix yields the adjugate matrix
@@ -86,6 +83,9 @@ where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
         None => None
     }
 }
+
+// TODO: expose these minor methods and test them directly
+// https://www.teachoo.com/9780/1204/Minor-and-Cofactor-of-a-determinant/category/Finding-Minors-and-cofactors/
 
 /*
  * Computes the (i,j) minor of a matrix by copying it. This is the
