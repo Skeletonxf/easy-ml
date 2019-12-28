@@ -20,17 +20,10 @@ mod tests {
 
         // We will compute w as a column vector with values corresponding to c then m
 
-        // Define the design matrix consisting of 1 and each x in each row
-        // TODO: Some stacking methods like in numpy would be useful here
-        let mut X = Matrix::empty(1.0, (x.rows(), 1 + x.columns()));
-        for i in 0..X.rows() {
-            for j in 0..X.columns() {
-                if j == 0 {
-                    continue
-                }
-                X.set(i, j, x.get(i, 0));
-            }
-        }
+        // Define the design matrix consisting of 1 and each value for x in each row
+        // by inserting a column of 1s
+        let mut X = x.clone();
+        X.insert_column(0, 1.0);
         println!("{:?}", &X);
 
         // w is given by inverse(XT*X) * (XT * y)

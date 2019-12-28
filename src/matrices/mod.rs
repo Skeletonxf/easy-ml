@@ -17,6 +17,11 @@ use crate::linear_algebra;
  * most storage and accessor methods are defined and if the type implements
  * [`Numeric`](../numeric/trait.Numeric.html) then the matrix can be used in
  * a mathematical way.
+ *
+ * When doing numeric operations with Matrices you should be careful to not
+ * consume a matrix by accidentally using it by value. All the operations are
+ * also defined on references to matrices so you should favor `&x * &y` style
+ * notation for matrices you intend to continue using.
  */
 #[derive(Debug)]
 pub struct Matrix<T> {
@@ -61,7 +66,22 @@ impl <T> Matrix<T> {
 
     /**
      * Creates a matrix from a nested array of values, each inner vector
-     * being a row, and hence the outer vector containing all rows in sequence
+     * being a row, and hence the outer vector containing all rows in sequence, the
+     * same way as when writing matrices in mathematics.
+     *
+     * Example of a 2 x 3 matrix in both notations:
+     * ```ignore
+     *   [
+     *      1, 2, 4
+     *      8, 9, 3
+     *   ]
+     * ```
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * Matrix::from(vec![
+     *     vec![ 1, 2, 4 ],
+     *     vec![ 8, 9, 3 ]]);
+     * ```
      */
     pub fn from(values: Vec<Vec<T>>) -> Matrix<T> {
         assert!(!values.is_empty(), "No rows defined");
@@ -146,6 +166,17 @@ impl <T> Matrix<T> {
 impl <T: Clone> Matrix<T> {
     /**
      * Computes and returns the transpose of this matrix
+     *
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * let x = Matrix::from(vec![
+     *    vec![ 1, 2 ],
+     *    vec![ 3, 4 ]]);
+     * let y = Matrix::from(vec![
+     *    vec![ 1, 3 ],
+     *    vec![ 2, 4 ]]);
+     * assert_eq!(x.transpose(), y);
+     * ```
      */
     pub fn transpose(&self) -> Matrix<T> {
         let mut result = Matrix::empty(self.get(0, 0), (self.columns(), self.rows()));
@@ -159,6 +190,18 @@ impl <T: Clone> Matrix<T> {
 
     /**
      * Transposes the matrix in place.
+     *
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * let mut x = Matrix::from(vec![
+     *    vec![ 1, 2 ],
+     *    vec![ 3, 4 ]]);
+     * x.transpose_mut();
+     * let y = Matrix::from(vec![
+     *    vec![ 1, 3 ],
+     *    vec![ 2, 4 ]]);
+     * assert_eq!(x, y);
+     * ```
      */
     pub fn transpose_mut(&mut self) {
         for i in 0..self.rows() {
@@ -175,6 +218,17 @@ impl <T: Clone> Matrix<T> {
 
     /**
      * Returns an iterator over a column vector in this matrix. Columns are 0 indexed.
+     *
+     * If you have a matrix such as:
+     * ```ignore
+     * [
+     *    1, 2, 3
+     *    4, 5, 6
+     *    7, 8, 9
+     * ]
+     * ```
+     * then a column of 0, 1, and 2 will yield [1, 4, 7], [2, 5, 8] and [3, 6, 9]
+     * respectively.
      */
     pub fn column_iter(&self, column: Column) -> ColumnIterator<T> {
         ColumnIterator::new(self, column)
@@ -182,6 +236,17 @@ impl <T: Clone> Matrix<T> {
 
     /**
      * Returns an iterator over a row vector in this matrix. Rows are 0 indexed.
+     *
+     * If you have a matrix such as:
+     * ```ignore
+     * [
+     *    1, 2, 3
+     *    4, 5, 6
+     *    7, 8, 9
+     * ]
+     * ```
+     * then a row of 0, 1, and 2 will yield [1, 2, 3], [4, 5, 6] and [7, 8, 9]
+     * respectively.
      */
     pub fn row_iter(&self, row: Row) -> RowIterator<T> {
         RowIterator::new(self, row)
@@ -190,6 +255,15 @@ impl <T: Clone> Matrix<T> {
     /**
      * Returns a column major iterator over all values in this matrix, proceeding through each
      * column in order.
+     *
+     * If you have a matrix such as:
+     * ```ignore
+     * [
+     *    1, 2
+     *    3, 4
+     * ]
+     * ```
+     * then the iterator will yield [1, 3, 2, 4].
      */
     pub fn column_major_iter(&self) -> ColumnMajorIterator<T> {
         ColumnMajorIterator::new(self)
@@ -227,7 +301,19 @@ impl <T: Clone> Matrix<T> {
 
     /**
      * Creates and returns a new matrix with all values from the original with the
-     * function applied to each.
+     * function applied to each. This can be used to change the type of the matrix
+     * such as creating a mask:
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * let x = Matrix::from(vec![
+     *    vec![ 0.0, 1.2 ],
+     *    vec![ 5.8, 6.9 ]]);
+     * let y = x.map(|element| element > 2.0);
+     * let result = Matrix::from(vec![
+     *    vec![ false, false ],
+     *    vec![ true, true ]]);
+     * assert_eq!(&y, &result);
+     * ```
      */
     pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Matrix<U>
             where U: Clone {
@@ -256,6 +342,38 @@ impl <T: Clone> Matrix<T> {
     }
 
     /**
+     * Inserts a new row into the Matrix immediately after the provided index,
+     * shifting other rows to the right and filling all entries with the
+     * values from the iterator in sequence. Rows are 0 indexed.
+     *
+     * This will panic if the row is greater than the number of rows in the matrix,
+     * or if the iterator has fewer elements than `self.columns()`.
+     *
+     * Example of duplicating a row:
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * let x: Matrix<u8> = Matrix::row(vec![ 1, 2, 3 ]);
+     * let mut y = x.clone();
+     * // duplicate the first row as the second row
+     * y.insert_row_with(1, x.row_iter(0));
+     * assert_eq!((2, 3), y.size());
+     * let mut values = y.column_major_iter();
+     * assert_eq!(Some(1), values.next());
+     * assert_eq!(Some(1), values.next());
+     * assert_eq!(Some(2), values.next());
+     * assert_eq!(Some(2), values.next());
+     * assert_eq!(Some(3), values.next());
+     * assert_eq!(Some(3), values.next());
+     * assert_eq!(None, values.next());
+     * ```
+     */
+    pub fn insert_row_with<I>(&mut self, row: Row, values: I)
+    where I: Iterator<Item = T> {
+        let new_row = values.take(self.columns()).collect();
+        self.data.insert(row, new_row);
+    }
+
+    /**
      * Inserts a new column into the Matrix immediately after the provided index,
      * shifting other columns to the right and filling all entries with the
      * provided value. Columns are 0 indexed.
@@ -265,6 +383,39 @@ impl <T: Clone> Matrix<T> {
     pub fn insert_column(&mut self, column: Column, value: T) {
         for row in 0..self.rows() {
             self.data[row].insert(column, value.clone());
+        }
+    }
+
+    /**
+     * Inserts a new column into the Matrix immediately after the provided index,
+     * shifting other columns to the right and filling all entries with the
+     * values from the iterator in sequence. Columns are 0 indexed.
+     *
+     * This will panic if the column is greater than the number of columns in the matrix,
+     * or if the iterator has fewer elements than `self.rows()`.
+     *
+     * Example of duplicating a column:
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * let x: Matrix<u8> = Matrix::column(vec![ 1, 2, 3 ]);
+     * let mut y = x.clone();
+     * // duplicate the first column as the second column
+     * y.insert_column_with(1, x.column_iter(0));
+     * assert_eq!((3, 2), y.size());
+     * let mut values = y.column_major_iter();
+     * assert_eq!(Some(1), values.next());
+     * assert_eq!(Some(2), values.next());
+     * assert_eq!(Some(3), values.next());
+     * assert_eq!(Some(1), values.next());
+     * assert_eq!(Some(2), values.next());
+     * assert_eq!(Some(3), values.next());
+     * assert_eq!(None, values.next());
+     * ```
+     */
+    pub fn insert_column_with<I>(&mut self, column: Column, mut values: I)
+    where I: Iterator<Item = T> {
+        for row in 0..self.rows() {
+            self.data[row].insert(column, values.next().unwrap());
         }
     }
 }
@@ -285,7 +436,7 @@ impl <T: Clone> Clone for Matrix<T> {
  * implement [Neg](https://doc.rust-lang.org/std/ops/trait.Neg.html). You must first
  * wrap unsigned integers via [Wrapping](https://doc.rust-lang.org/std/num/struct.Wrapping.html).
  *
- * While these will all be defined on signed integer types as well, such as i16 or i32,
+ * While these methods will all be defined on signed integer types as well, such as i16 or i32,
  * in many cases integers cannot be used sensibly in these computations. If you
  * have a matrix of type i8 for example, you should consider mapping it into a floating
  * type before doing heavy linear algebra maths on it.
@@ -381,7 +532,7 @@ impl <T: Numeric> Matrix<T> {
  * PartialEq is implemented as two matrices are equal if and only if all their elements
  * are equal and they have the same size.
  */
-impl <T: Numeric> PartialEq for Matrix<T> {
+impl <T: PartialEq> PartialEq for Matrix<T> {
     fn eq(&self, other: &Self) -> bool {
         if self.rows() != other.rows() {
             return false;

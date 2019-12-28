@@ -1,5 +1,5 @@
 /*!
- * Linear algebra algorithms on numbers and matrices.
+ * Linear algebra algorithms on numbers and matrices
  *
  * Note that these functions are also exposed as corresponding methods on the Matrix type,
  * but in depth documentation is only presented here.
