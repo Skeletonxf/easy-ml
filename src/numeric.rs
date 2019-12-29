@@ -16,19 +16,68 @@ use core::num::Wrapping;
  * A general purpose numeric trait that defines all the behaviour numerical matrices need
  * their types to support for math operations.
  */
-pub trait Numeric: Add + Sub + Mul + Div + Neg + Sum + PartialOrd + Sized + Clone + ZeroOne {}
+pub trait Numeric where
+    Self:
+        Add<Output = Self>
+        + Sub<Output = Self>
+        + Mul<Output = Self>
+        + Div<Output = Self>
+        + Neg<Output = Self>
+        + Sum
+        + PartialOrd
+        + Sized
+        + Clone
+        + ZeroOne,
+    Self: for<'a> Add<&'a Self, Output = Self>,
+    // for<'a> &'a Self: Add<Self, Output = Self>,
+    //for<'a, 'b> &'a Self: Add<&'b Self, Output = Self>,
+    Self: for<'a> Sub<&'a Self, Output = Self>,
+    Self: for<'a> Mul<&'a Self, Output = Self>,
+    Self: for<'a> Div<&'a Self, Output = Self>,
+{}
 
-// TODO: Want to express that Numeric types should also have &T operators but can't work out
-// the syntax for this. Once work out the syntax can remove a lot of unneccessary copies.
+// FIXME: Want to express that Numeric types should also have &T operators but can't work out
+// how to get &T op T and &T op &T to be specified on Numeric, T op &T is working fine.
 
 /**
  * Anything which implements all the super traits will automatically implement this trait too.
- * This covers primitives such as f32, f64, unsigned integers and signed integers.
+ * This covers primitives such as f32, f64, signed integers and
+ * [Wrapped unsigned integers](https://doc.rust-lang.org/std/num/struct.Wrapping.html).
  *
  * Other types such as infinite precision numbers will probably implement nearly all of these
  * anyway, but will need to add a boilerplate implementation for ZeroOne.
  */
-impl<T: Add + Sub + Mul + Div + Neg + Sum + PartialOrd + Sized + Clone + ZeroOne> Numeric for T {}
+impl <T> Numeric for T where
+    T: Add<Output = Self>
+    + Sub<Output = Self>
+    + Mul<Output = Self>
+    + Div<Output = Self>
+    + Neg<Output = Self>
+    + Sum
+    + PartialOrd
+    + Sized
+    + Clone
+    + ZeroOne,
+    // also require that operations on two &T give T
+    // this allows to make no copies for things like adding
+    // two f32 matrices as they can be added by reference
+    for<'a, 'b> &'a T: Add<&'b T, Output = T>,
+    for<'a, 'b> &'a T: Sub<&'b T, Output = T>,
+    for<'a, 'b> &'a T: Mul<&'b T, Output = T>,
+    for<'a, 'b> &'a T: Div<&'b T, Output = T>,
+    for<'a> &'a T: Neg<Output = T>,
+    // for completeness require both &T op T and T op &T
+    // &T op T -> T
+    for<'a> &'a T: Add<T, Output = T>,
+    for<'a> &'a T: Sub<T, Output = T>,
+    for<'a> &'a T: Mul<T, Output = T>,
+    for<'a> &'a T: Div<T, Output = T>,
+    // T op &T -> T
+    for<'a> T: Add<&'a T, Output = T>,
+    for<'a> T: Sub<&'a T, Output = T>,
+    for<'a> T: Mul<&'a T, Output = T>,
+    for<'a> T: Div<&'a T, Output = T>,
+{}
 
 /**
  * A trait defining how to obtain 0 and 1 for every implementing type.

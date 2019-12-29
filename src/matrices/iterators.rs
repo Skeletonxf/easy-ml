@@ -4,6 +4,8 @@
 
 use crate::matrices::{Matrix, Row, Column};
 
+// TODO by reference versions for each iterator using get_reference
+
 /**
  * An iterator over a column in a matrix.
  *

@@ -5,8 +5,6 @@
  * but in depth documentation is only presented here.
  */
 
-use std::ops::{Add, Mul, Sub, Div};
-
 use crate::matrices::{Matrix, Row, Column};
 use crate::numeric::Numeric;
 
@@ -30,8 +28,7 @@ use crate::numeric::Numeric;
  * and should compute the inverse for any size of square matrix if it exists, but
  * is inefficient for large matrices.
  */
-pub fn inverse<T: Numeric>(matrix: &Matrix<T>) -> Option<Matrix<T>>
-where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
+pub fn inverse<T: Numeric>(matrix: &Matrix<T>) -> Option<Matrix<T>> {
     if matrix.rows() != matrix.columns() {
         return None;
     }
@@ -95,8 +92,7 @@ where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
  * columns to remove. Hence for non square matrices or 1 x 1 matrices this returns
  * None.
  */
-fn minor<T: Numeric>(matrix: &Matrix<T>, i: Row, j: Column) -> Option<T>
-where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
+fn minor<T: Numeric>(matrix: &Matrix<T>, i: Row, j: Column) -> Option<T> {
     minor_mut(&mut matrix.clone(), i, j)
 }
 
@@ -108,8 +104,7 @@ where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
  * columns to remove. Hence for non square matrices or 1 x 1 matrices this returns
  * None and does not modify the matrix.
  */
-fn minor_mut<T: Numeric>(matrix: &mut Matrix<T>, i: Row, j: Column) -> Option<T>
-where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
+fn minor_mut<T: Numeric>(matrix: &mut Matrix<T>, i: Row, j: Column) -> Option<T> {
     if matrix.rows() == 1 || matrix.columns() == 1 {
         // nothing to delete
         return None;
@@ -145,8 +140,7 @@ where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
  *
  * [https://en.wikipedia.org/wiki/Determinant](https://en.wikipedia.org/wiki/Determinant)
  */
-pub fn determinant<T: Numeric>(matrix: &Matrix<T>) -> Option<T>
-where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
+pub fn determinant<T: Numeric>(matrix: &Matrix<T>) -> Option<T> {
     if matrix.rows() != matrix.columns() {
         return None;
     }
@@ -179,7 +173,7 @@ where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
         for (n, i) in permutation.iter().enumerate() {
             // Get the element at the index corresponding to n and the n'th
             // element in the permutation list.
-            let element = matrix.get(n, *i);
+            let element = matrix.get_reference(n, *i);
             product = product * element;
         }
         // copying the sum to prevent a move that stops us from returning it

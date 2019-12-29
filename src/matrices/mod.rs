@@ -560,7 +560,7 @@ impl <T: PartialEq> PartialEq for Matrix<T> {
  * multiply a (NxM) matrix by a (Nx1) column vector, you must transpose one of the arguments so
  * that the operation is valid.
  */
-impl <T: Numeric> Mul for &Matrix<T> where T: Mul<Output = T> {
+impl <T: Numeric> Mul for &Matrix<T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
@@ -586,7 +586,7 @@ impl <T: Numeric> Mul for &Matrix<T> where T: Mul<Output = T> {
 /**
  * Matrix multiplication for two matrices.
  */
-impl <T: Numeric> Mul for Matrix<T> where T: Mul<Output = T> {
+impl <T: Numeric> Mul for Matrix<T> {
     type Output = Matrix<T>;
     fn mul(self, rhs: Self) -> Self::Output {
         &self * &rhs
@@ -596,7 +596,7 @@ impl <T: Numeric> Mul for Matrix<T> where T: Mul<Output = T> {
 /**
  * Matrix multiplication for two matrices with one referenced.
  */
-impl <T: Numeric> Mul<&Matrix<T>> for Matrix<T> where T: Mul<Output = T> {
+impl <T: Numeric> Mul<&Matrix<T>> for Matrix<T> {
     type Output = Matrix<T>;
     fn mul(self, rhs: &Self) -> Self::Output {
         &self * rhs
@@ -606,7 +606,7 @@ impl <T: Numeric> Mul<&Matrix<T>> for Matrix<T> where T: Mul<Output = T> {
 /**
  * Matrix multiplication for two matrices with one referenced.
  */
-impl <T: Numeric> Mul<Matrix<T>> for &Matrix<T> where T: Mul<Output = T> {
+impl <T: Numeric> Mul<Matrix<T>> for &Matrix<T> {
     type Output = Matrix<T>;
     fn mul(self, rhs: Matrix<T>) -> Self::Output {
         self * &rhs
@@ -616,7 +616,8 @@ impl <T: Numeric> Mul<Matrix<T>> for &Matrix<T> where T: Mul<Output = T> {
 /**
  * Elementwise addition for two referenced matrices.
  */
-impl <T: Numeric> Add for &Matrix<T> where T: Add<Output = T> {
+impl <T: Numeric> Add for &Matrix<T>
+where for<'a, 'b> &'a T: Add<&'b T, Output = T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
@@ -627,8 +628,7 @@ impl <T: Numeric> Add for &Matrix<T> where T: Add<Output = T> {
         let mut result = Matrix::empty(self.get(0, 0), self.size());
         for i in 0..self.rows() {
             for j in 0..self.columns() {
-                // compute dot product for each element in the new matrix
-                result.set(i, j, self.get(i, j) + rhs.get(i, j));
+                result.set(i, j, self.get_reference(i, j) + rhs.get_reference(i, j));
             }
         }
         result
@@ -638,7 +638,8 @@ impl <T: Numeric> Add for &Matrix<T> where T: Add<Output = T> {
 /**
  * Elementwise addition for two matrices.
  */
-impl <T: Numeric> Add for Matrix<T> where T: Add<Output = T> {
+impl <T: Numeric> Add for Matrix<T>
+where for<'a, 'b> &'a T: Add<&'b T, Output = T> {
     type Output = Matrix<T>;
     fn add(self, rhs: Self) -> Self::Output {
         &self + &rhs
@@ -648,7 +649,8 @@ impl <T: Numeric> Add for Matrix<T> where T: Add<Output = T> {
 /**
  * Elementwise addition for two matrices with one referenced.
  */
-impl <T: Numeric> Add<&Matrix<T>> for Matrix<T> where T: Add<Output = T> {
+impl <T: Numeric> Add<&Matrix<T>> for Matrix<T>
+where for<'a, 'b> &'a T: Add<&'b T, Output = T> {
     type Output = Matrix<T>;
     fn add(self, rhs: &Self) -> Self::Output {
         &self + rhs
@@ -658,7 +660,8 @@ impl <T: Numeric> Add<&Matrix<T>> for Matrix<T> where T: Add<Output = T> {
 /**
  * Elementwise addition for two matrices with one referenced.
  */
-impl <T: Numeric> Add<Matrix<T>> for &Matrix<T> where T: Add<Output = T> {
+impl <T: Numeric> Add<Matrix<T>> for &Matrix<T>
+where for<'a, 'b> &'a T: Add<&'b T, Output = T> {
     type Output = Matrix<T>;
     fn add(self, rhs: Matrix<T>) -> Self::Output {
         self + &rhs
@@ -668,7 +671,8 @@ impl <T: Numeric> Add<Matrix<T>> for &Matrix<T> where T: Add<Output = T> {
 /**
  * Elementwise subtraction for two referenced matrices.
  */
-impl <T: Numeric> Sub for &Matrix<T> where T: Sub<Output = T> {
+impl <T: Numeric> Sub for &Matrix<T>
+where for<'a, 'b> &'a T: Sub<&'b T, Output = T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
@@ -679,8 +683,7 @@ impl <T: Numeric> Sub for &Matrix<T> where T: Sub<Output = T> {
         let mut result = Matrix::empty(self.get(0, 0), self.size());
         for i in 0..self.rows() {
             for j in 0..self.columns() {
-                // compute dot product for each element in the new matrix
-                result.set(i, j, self.get(i, j) - rhs.get(i, j));
+                result.set(i, j, self.get_reference(i, j) - rhs.get_reference(i, j));
             }
         }
         result
@@ -690,7 +693,8 @@ impl <T: Numeric> Sub for &Matrix<T> where T: Sub<Output = T> {
 /**
  * Elementwise subtraction for two matrices.
  */
-impl <T: Numeric> Sub for Matrix<T> where T: Sub<Output = T> {
+impl <T: Numeric> Sub for Matrix<T>
+where for<'a, 'b> &'a T: Sub<&'b T, Output = T> {
     type Output = Matrix<T>;
     fn sub(self, rhs: Self) -> Self::Output {
         &self - &rhs
@@ -700,7 +704,8 @@ impl <T: Numeric> Sub for Matrix<T> where T: Sub<Output = T> {
 /**
  * Elementwise subtraction for two matrices with one referenced.
  */
-impl <T: Numeric> Sub<&Matrix<T>> for Matrix<T> where T: Sub<Output = T> {
+impl <T: Numeric> Sub<&Matrix<T>> for Matrix<T>
+where for<'a, 'b> &'a T: Sub<&'b T, Output = T> {
     type Output = Matrix<T>;
     fn sub(self, rhs: &Self) -> Self::Output {
         &self - rhs
@@ -710,7 +715,8 @@ impl <T: Numeric> Sub<&Matrix<T>> for Matrix<T> where T: Sub<Output = T> {
 /**
  * Elementwise subtraction for two matrices with one referenced.
  */
-impl <T: Numeric> Sub<Matrix<T>> for &Matrix<T> where T: Sub<Output = T> {
+impl <T: Numeric> Sub<Matrix<T>> for &Matrix<T>
+where for<'a, 'b> &'a T: Sub<&'b T, Output = T> {
     type Output = Matrix<T>;
     fn sub(self, rhs: Matrix<T>) -> Self::Output {
         self - &rhs
@@ -720,7 +726,7 @@ impl <T: Numeric> Sub<Matrix<T>> for &Matrix<T> where T: Sub<Output = T> {
 /**
  * Elementwise negation for a referenced matrix.
  */
-impl <T: Numeric> Neg for &Matrix<T> where T: Neg<Output = T> {
+impl <T: Numeric> Neg for &Matrix<T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
@@ -732,7 +738,7 @@ impl <T: Numeric> Neg for &Matrix<T> where T: Neg<Output = T> {
 /**
  * Elementwise negation for a matrix.
  */
-impl <T: Numeric> Neg for Matrix<T> where T: Neg<Output = T> {
+impl <T: Numeric> Neg for Matrix<T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
