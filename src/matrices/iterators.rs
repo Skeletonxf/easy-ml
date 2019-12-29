@@ -4,8 +4,6 @@
 
 use crate::matrices::{Matrix, Row, Column};
 
-// TODO by reference versions for each iterator using get_reference
-
 /**
  * An iterator over a column in a matrix.
  *
@@ -157,7 +155,178 @@ impl <'a, T: Clone> Iterator for ColumnMajorIterator<'a, T> {
 
         let value = Some(self.matrix.get(self.row_counter, self.column_counter));
 
-        if self.row_counter == self.matrix.rows() - 1 && self.column_counter == self.matrix.columns() -1 {
+        if self.row_counter == self.matrix.rows() - 1
+                && self.column_counter == self.matrix.columns() -1 {
+            // reached end of matrix for next iteration
+            self.finished = true;
+        }
+
+        if self.row_counter == self.matrix.rows() - 1 {
+            // reached end of a column, need to reset to first element in next column
+            self.row_counter = 0;
+            self.column_counter += 1;
+        } else {
+            // keep incrementing through this column
+            self.row_counter += 1;
+        }
+
+        value
+    }
+}
+
+/**
+ * An iterator over references to a column in a matrix.
+ *
+ * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
+ * ```ignore
+ * [
+ *   1, 2
+ *   3, 4
+ * ]
+ * ```
+ * Depending on the row iterator you want to obtain,
+ * can either iterate through &1, &3 or &2, &4.
+ */
+pub struct ColumnReferenceIterator<'a, T> {
+    matrix: &'a Matrix<T>,
+    column: Column,
+    counter: usize,
+    finished: bool,
+}
+
+impl <'a, T> ColumnReferenceIterator<'a, T> {
+    /**
+     * Constructs a column iterator over this matrix.
+     */
+    pub fn new(matrix: &Matrix<T>, column: Column) -> ColumnReferenceIterator<T> {
+        ColumnReferenceIterator {
+            matrix,
+            column,
+            counter: 0,
+            finished: false,
+        }
+    }
+}
+
+impl <'a, T> Iterator for ColumnReferenceIterator<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None
+        }
+
+        let value = Some(self.matrix.get_reference(self.counter, self.column));
+
+        if self.counter == self.matrix.rows() - 1 {
+            self.finished = true;
+        }
+
+        self.counter += 1;
+
+        value
+    }
+}
+
+/**
+ * An iterator over references to a row in a matrix.
+ *
+ * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
+ * ```ignore
+ * [
+ *   1, 2
+ *   3, 4
+ * ]
+ * ```
+ * Depending on the row iterator you want to obtain,
+ * can either iterate through &1, &2 or &3, &4.
+ */
+pub struct RowReferenceIterator<'a, T> {
+    matrix: &'a Matrix<T>,
+    row: Row,
+    counter: usize,
+    finished: bool,
+}
+
+impl <'a, T> RowReferenceIterator<'a, T> {
+    /**
+     * Constructs a row iterator over this matrix.
+     */
+    pub fn new(matrix: &Matrix<T>, row: Row) -> RowReferenceIterator<T> {
+        RowReferenceIterator {
+            matrix,
+            row,
+            counter: 0,
+            finished: false,
+        }
+    }
+}
+
+impl <'a, T> Iterator for RowReferenceIterator<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None
+        }
+
+        let value = Some(self.matrix.get_reference(self.row, self.counter));
+
+        if self.counter == self.matrix.columns() - 1 {
+            self.finished = true;
+        }
+
+        self.counter += 1;
+
+        value
+    }
+}
+
+/**
+ * An column major iterator over references to all values in a matrix.
+ *
+ * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
+ * ```ignore
+ * [
+ *   1, 2
+ *   3, 4
+ * ]
+ * ```
+ * The elements will be iterated through as &1, &3, &2, &4
+ */
+pub struct ColumnMajorReferenceIterator<'a, T> {
+    matrix: &'a Matrix<T>,
+    column_counter: Column,
+    row_counter: Row,
+    finished: bool,
+}
+
+impl <'a, T> ColumnMajorReferenceIterator<'a, T> {
+    /**
+     * Constructs a column major iterator over this matrix.
+     */
+    pub fn new(matrix: &Matrix<T>) -> ColumnMajorReferenceIterator<T> {
+        ColumnMajorReferenceIterator {
+            matrix,
+            column_counter: 0,
+            row_counter: 0,
+            finished: false,
+        }
+    }
+}
+
+impl <'a, T> Iterator for ColumnMajorReferenceIterator<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None
+        }
+
+        let value = Some(self.matrix.get_reference(self.row_counter, self.column_counter));
+
+        if self.row_counter == self.matrix.rows() - 1
+                && self.column_counter == self.matrix.columns() -1 {
             // reached end of matrix for next iteration
             self.finished = true;
         }

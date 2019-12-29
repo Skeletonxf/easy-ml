@@ -6,7 +6,9 @@ use std::ops::{Add, Sub, Mul, Neg, Div};
 
 pub mod iterators;
 
-use crate::matrices::iterators::{ColumnIterator, RowIterator, ColumnMajorIterator};
+use crate::matrices::iterators::{
+    ColumnIterator, RowIterator, ColumnMajorIterator,
+    ColumnReferenceIterator, RowReferenceIterator, ColumnMajorReferenceIterator};
 use crate::numeric::Numeric;
 use crate::linear_algebra;
 
@@ -158,6 +160,30 @@ impl <T> Matrix<T> {
             self.data[row].remove(column);
         }
     }
+
+    /**
+     * Returns an iterator over references to a column vector in this matrix.
+     * Columns are 0 indexed.
+     */
+    pub fn column_reference_iter(&self, column: Column) -> ColumnReferenceIterator<T> {
+        ColumnReferenceIterator::new(self, column)
+    }
+
+    /**
+     * Returns an iterator over references to a row vector in this matrix.
+     * Rows are 0 indexed.
+     */
+    pub fn row_reference_iter(&self, row: Row) -> RowReferenceIterator<T> {
+        RowReferenceIterator::new(self, row)
+    }
+
+    /**
+     * Returns a column major iterator over references to all values in this matrix,
+     * proceeding through each column in order.
+     */
+    pub fn column_major_reference_iter(&self) -> ColumnMajorReferenceIterator<T> {
+        ColumnMajorReferenceIterator::new(self)
+    }
 }
 
 /**
@@ -228,7 +254,8 @@ impl <T: Clone> Matrix<T> {
      * ]
      * ```
      * then a column of 0, 1, and 2 will yield [1, 4, 7], [2, 5, 8] and [3, 6, 9]
-     * respectively.
+     * respectively. If you do not need to copy the elements use `column_reference_iter`
+     * instead.
      */
     pub fn column_iter(&self, column: Column) -> ColumnIterator<T> {
         ColumnIterator::new(self, column)
@@ -246,7 +273,8 @@ impl <T: Clone> Matrix<T> {
      * ]
      * ```
      * then a row of 0, 1, and 2 will yield [1, 2, 3], [4, 5, 6] and [7, 8, 9]
-     * respectively.
+     * respectively. If you do not need to copy the elements use `row_reference_iter`
+     * instead.
      */
     pub fn row_iter(&self, row: Row) -> RowIterator<T> {
         RowIterator::new(self, row)
@@ -263,7 +291,8 @@ impl <T: Clone> Matrix<T> {
      *    3, 4
      * ]
      * ```
-     * then the iterator will yield [1, 3, 2, 4].
+     * then the iterator will yield [1, 3, 2, 4]. If you do not need to copy the
+     * elements use `column_major_reference_iter` instead.
      */
     pub fn column_major_iter(&self) -> ColumnMajorIterator<T> {
         ColumnMajorIterator::new(self)
@@ -560,7 +589,8 @@ impl <T: PartialEq> PartialEq for Matrix<T> {
  * multiply a (NxM) matrix by a (Nx1) column vector, you must transpose one of the arguments so
  * that the operation is valid.
  */
-impl <T: Numeric> Mul for &Matrix<T> {
+impl <T: Numeric> Mul for &Matrix<T>
+where for<'a, 'b> &'a T: Mul<&'b T, Output = T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
@@ -573,8 +603,8 @@ impl <T: Numeric> Mul for &Matrix<T> {
             for j in 0..rhs.columns() {
                 // compute dot product for each element in the new matrix
                 result.set(i, j,
-                    self.row_iter(i)
-                    .zip(rhs.column_iter(j))
+                    self.row_reference_iter(i)
+                    .zip(rhs.column_reference_iter(j))
                     .map(|(x, y)| x * y)
                     .sum());
             }
@@ -586,7 +616,8 @@ impl <T: Numeric> Mul for &Matrix<T> {
 /**
  * Matrix multiplication for two matrices.
  */
-impl <T: Numeric> Mul for Matrix<T> {
+impl <T: Numeric> Mul for Matrix<T>
+where for<'a, 'b> &'a T: Mul<&'b T, Output = T> {
     type Output = Matrix<T>;
     fn mul(self, rhs: Self) -> Self::Output {
         &self * &rhs
@@ -596,7 +627,8 @@ impl <T: Numeric> Mul for Matrix<T> {
 /**
  * Matrix multiplication for two matrices with one referenced.
  */
-impl <T: Numeric> Mul<&Matrix<T>> for Matrix<T> {
+impl <T: Numeric> Mul<&Matrix<T>> for Matrix<T>
+where for<'a, 'b> &'a T: Mul<&'b T, Output = T> {
     type Output = Matrix<T>;
     fn mul(self, rhs: &Self) -> Self::Output {
         &self * rhs
@@ -606,7 +638,8 @@ impl <T: Numeric> Mul<&Matrix<T>> for Matrix<T> {
 /**
  * Matrix multiplication for two matrices with one referenced.
  */
-impl <T: Numeric> Mul<Matrix<T>> for &Matrix<T> {
+impl <T: Numeric> Mul<Matrix<T>> for &Matrix<T>
+where for<'a, 'b> &'a T: Mul<&'b T, Output = T> {
     type Output = Matrix<T>;
     fn mul(self, rhs: Matrix<T>) -> Self::Output {
         self * &rhs
