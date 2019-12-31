@@ -1,3 +1,5 @@
+#![recursion_limit="10"]
+
 pub mod numeric;
 pub mod linear_algebra;
 pub mod matrices;

@@ -6,117 +6,120 @@
  */
 
 use crate::matrices::{Matrix, Row, Column};
-use crate::numeric::Numeric;
-
-/**
- * Computes the inverse of a matrix provided that it exists. To have an inverse
- * a matrix must be square (same number of rows and columns) and it must also
- * have a non zero determinant.
- *
- * The inverse of a matrix `A` is the matrix `A^-1` which when multiplied by `A`
- * in either order yields the identity matrix `I`.
- *
- * `A(A^-1) == (A^-1)A == I`.
- *
- *The inverse is like the reciprocal of a number, except for matrices instead of scalars.
- * With scalars, there is no inverse for `0` because `1 / 0` is not defined. Similarly
- * to compute the inverse of a matrix we divide by the determinant, so matrices
- * with a determinant of 0 have no inverse, even if they are square.
- *
- * This algorithm performs the analytic solution described by
- * [wikipedia](https://en.wikipedia.org/wiki/Invertible_matrix#Analytic_solution)
- * and should compute the inverse for any size of square matrix if it exists, but
- * is inefficient for large matrices.
- */
-pub fn inverse<T: Numeric>(matrix: &Matrix<T>) -> Option<Matrix<T>> {
-    if matrix.rows() != matrix.columns() {
-        return None;
-    }
-    // inverse of a 1 x 1 matrix is a special case
-    if matrix.rows() == 1 {
-        // determinant of a 1 x 1 matrix is the single element
-        let element = matrix.get(0, 0);
-        if element == T::zero() {
-            return None;
-        }
-        return Some(Matrix::unit(T::one() / element));
-    }
-
-    // compute the general case for a N x N matrix where N >= 2
-    match determinant(matrix) {
-        Some(det) => {
-            if det == T::zero() {
-                return None;
-            }
-            let determinant_reciprocal = T::one() / det;
-            let mut cofactor_matrix = Matrix::empty(T::zero(), matrix.size());
-            for i in 0..matrix.rows() {
-                for j in 0..matrix.columns() {
-                    // this should always return Some due to the earlier checks
-                    let ij_minor = minor(matrix, i, j)?;
-                    // i and j may each be up to the maximum value for usize but
-                    // we only need to know if they are even or add as
-                    // -1 ^ (i + j) == -1 ^ ((i % 2) + (j % 2))
-                    // by taking modulo of both before adding we ensure there
-                    // is no overflow
-                    let sign = i8::pow(-1, (i.rem_euclid(2) + j.rem_euclid(2)) as u32);
-                    // convert sign into type T
-                    let sign = if sign == 1 {
-                        T::one()
-                    } else {
-                        T::zero() - T::one()
-                    };
-                    // each element of the cofactor matrix is -1^(i+j) * M_ij
-                    // for M_ij equal to the ij minor of the matrix
-                    cofactor_matrix.set(i, j, sign * ij_minor);
-                }
-            }
-            // tranposing the cofactor matrix yields the adjugate matrix
-            cofactor_matrix.transpose_mut();
-            // finally to compute the inverse we need to multiple each element by 1 / |A|
-            cofactor_matrix.map_mut(|element| element * determinant_reciprocal.clone());
-            Some(cofactor_matrix)
-        },
-        None => None
-    }
-}
-
-// TODO: expose these minor methods and test them directly
-// https://www.teachoo.com/9780/1204/Minor-and-Cofactor-of-a-determinant/category/Finding-Minors-and-cofactors/
-
-/*
- * Computes the (i,j) minor of a matrix by copying it. This is the
- * determinant of the matrix after deleting the ith row and the jth column.
- *
- * Minors can only be taken on matrices which have a determinant and rows and
- * columns to remove. Hence for non square matrices or 1 x 1 matrices this returns
- * None.
- */
-fn minor<T: Numeric>(matrix: &Matrix<T>, i: Row, j: Column) -> Option<T> {
-    minor_mut(&mut matrix.clone(), i, j)
-}
-
-/**
- * Computes the (i,j) minor of a matrix by modifying it in place. This is
- * the determinant of the matrix after deleting the ith row and the jth column.
- *
- * Minors can only be taken on matrices which have a determinant and rows and
- * columns to remove. Hence for non square matrices or 1 x 1 matrices this returns
- * None and does not modify the matrix.
- */
-fn minor_mut<T: Numeric>(matrix: &mut Matrix<T>, i: Row, j: Column) -> Option<T> {
-    if matrix.rows() == 1 || matrix.columns() == 1 {
-        // nothing to delete
-        return None;
-    }
-    if matrix.rows() != matrix.columns() {
-        // no determinant
-        return None;
-    }
-    matrix.remove_row(i);
-    matrix.remove_column(j);
-    determinant(matrix)
-}
+use crate::numeric::{Numeric, NumericRef};
+//
+// /**
+//  * Computes the inverse of a matrix provided that it exists. To have an inverse
+//  * a matrix must be square (same number of rows and columns) and it must also
+//  * have a non zero determinant.
+//  *
+//  * The inverse of a matrix `A` is the matrix `A^-1` which when multiplied by `A`
+//  * in either order yields the identity matrix `I`.
+//  *
+//  * `A(A^-1) == (A^-1)A == I`.
+//  *
+//  *The inverse is like the reciprocal of a number, except for matrices instead of scalars.
+//  * With scalars, there is no inverse for `0` because `1 / 0` is not defined. Similarly
+//  * to compute the inverse of a matrix we divide by the determinant, so matrices
+//  * with a determinant of 0 have no inverse, even if they are square.
+//  *
+//  * This algorithm performs the analytic solution described by
+//  * [wikipedia](https://en.wikipedia.org/wiki/Invertible_matrix#Analytic_solution)
+//  * and should compute the inverse for any size of square matrix if it exists, but
+//  * is inefficient for large matrices.
+//  */
+// pub fn inverse<T: Numeric>(matrix: &Matrix<T>) -> Option<Matrix<T>>
+// where for<'a> &'a T: NumericRef<T> {
+//     if matrix.rows() != matrix.columns() {
+//         return None;
+//     }
+//     // inverse of a 1 x 1 matrix is a special case
+//     if matrix.rows() == 1 {
+//         // determinant of a 1 x 1 matrix is the single element
+//         let element = matrix.get(0, 0);
+//         if element == T::zero() {
+//             return None;
+//         }
+//         return Some(Matrix::unit(T::one() / element));
+//     }
+//
+//     // compute the general case for a N x N matrix where N >= 2
+//     match determinant(matrix) {
+//         Some(det) => {
+//             if det == T::zero() {
+//                 return None;
+//             }
+//             let determinant_reciprocal = T::one() / det;
+//             let mut cofactor_matrix = Matrix::empty(T::zero(), matrix.size());
+//             for i in 0..matrix.rows() {
+//                 for j in 0..matrix.columns() {
+//                     // this should always return Some due to the earlier checks
+//                     let ij_minor = minor(matrix, i, j)?;
+//                     // i and j may each be up to the maximum value for usize but
+//                     // we only need to know if they are even or add as
+//                     // -1 ^ (i + j) == -1 ^ ((i % 2) + (j % 2))
+//                     // by taking modulo of both before adding we ensure there
+//                     // is no overflow
+//                     let sign = i8::pow(-1, (i.rem_euclid(2) + j.rem_euclid(2)) as u32);
+//                     // convert sign into type T
+//                     let sign = if sign == 1 {
+//                         T::one()
+//                     } else {
+//                         T::zero() - T::one()
+//                     };
+//                     // each element of the cofactor matrix is -1^(i+j) * M_ij
+//                     // for M_ij equal to the ij minor of the matrix
+//                     cofactor_matrix.set(i, j, sign * ij_minor);
+//                 }
+//             }
+//             // tranposing the cofactor matrix yields the adjugate matrix
+//             cofactor_matrix.transpose_mut();
+//             // finally to compute the inverse we need to multiple each element by 1 / |A|
+//             cofactor_matrix.map_mut(|element| element * determinant_reciprocal.clone());
+//             Some(cofactor_matrix)
+//         },
+//         None => None
+//     }
+// }
+//
+// // TODO: expose these minor methods and test them directly
+// // https://www.teachoo.com/9780/1204/Minor-and-Cofactor-of-a-determinant/category/Finding-Minors-and-cofactors/
+//
+// /*
+//  * Computes the (i,j) minor of a matrix by copying it. This is the
+//  * determinant of the matrix after deleting the ith row and the jth column.
+//  *
+//  * Minors can only be taken on matrices which have a determinant and rows and
+//  * columns to remove. Hence for non square matrices or 1 x 1 matrices this returns
+//  * None.
+//  */
+// fn minor<T: Numeric>(matrix: &Matrix<T>, i: Row, j: Column) -> Option<T>
+// where for<'a> &'a T: NumericRef<T> {
+//     minor_mut(&mut matrix.clone(), i, j)
+// }
+//
+// /**
+//  * Computes the (i,j) minor of a matrix by modifying it in place. This is
+//  * the determinant of the matrix after deleting the ith row and the jth column.
+//  *
+//  * Minors can only be taken on matrices which have a determinant and rows and
+//  * columns to remove. Hence for non square matrices or 1 x 1 matrices this returns
+//  * None and does not modify the matrix.
+//  */
+// fn minor_mut<T: Numeric>(matrix: &mut Matrix<T>, i: Row, j: Column) -> Option<T>
+// where for<'a> &'a T: NumericRef<T> {
+//     if matrix.rows() == 1 || matrix.columns() == 1 {
+//         // nothing to delete
+//         return None;
+//     }
+//     if matrix.rows() != matrix.columns() {
+//         // no determinant
+//         return None;
+//     }
+//     matrix.remove_row(i);
+//     matrix.remove_column(j);
+//     determinant(matrix)
+// }
 
 /**
  * Computes the determinant of a square matrix. For a 2 x 2 matrix this is given by
@@ -140,7 +143,8 @@ fn minor_mut<T: Numeric>(matrix: &mut Matrix<T>, i: Row, j: Column) -> Option<T>
  *
  * [https://en.wikipedia.org/wiki/Determinant](https://en.wikipedia.org/wiki/Determinant)
  */
-pub fn determinant<T: Numeric>(matrix: &Matrix<T>) -> Option<T> {
+pub fn determinant<T: Numeric>(matrix: &Matrix<T>) -> Option<T>
+where for<'a> &'a T: NumericRef<T> {
     if matrix.rows() != matrix.columns() {
         return None;
     }

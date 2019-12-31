@@ -9,7 +9,7 @@ pub mod iterators;
 use crate::matrices::iterators::{
     ColumnIterator, RowIterator, ColumnMajorIterator,
     ColumnReferenceIterator, RowReferenceIterator, ColumnMajorReferenceIterator};
-use crate::numeric::Numeric;
+use crate::numeric::{Numeric, NumericRef};
 use crate::linear_algebra;
 
 /**
@@ -510,7 +510,8 @@ impl <T: Clone> Clone for Matrix<T> {
  * println!("{:?}", matrix.map(|element| element.0 as f32).determinant()); // -> -18.0
  * ```
  */
-impl <T: Numeric> Matrix<T> {
+impl <T: Numeric> Matrix<T>
+where for<'a> &'a T: NumericRef<T> {
     /**
      * Creates an identity matrix of the provided size. An identity matrix
      * is always square and has elements equal to 1 along its diagonal and
@@ -537,24 +538,23 @@ impl <T: Numeric> Matrix<T> {
         matrix
     }
 
-    /**
-     * Returns the determinant of this square matrix, or None if the matrix
-     * does not have a determinant. See [`linear_algebra`](../linear_algebra/fn.determinant.html)
-     */
-    pub fn determinant(&self) -> Option<T>
-    where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> {
-        linear_algebra::determinant(self)
-    }
-
-    /**
-    * Computes the inverse of a matrix provided that it exists. To have an inverse a
-    * matrix must be square (same number of rows and columns) and it must also have a
-    * non zero determinant. See [`linear_algebra`](../linear_algebra/fn.inverse.html)
-    */
-    pub fn inverse(&self) -> Option<Matrix<T>>
-    where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
-        linear_algebra::inverse(self)
-    }
+    // /**
+    //  * Returns the determinant of this square matrix, or None if the matrix
+    //  * does not have a determinant. See [`linear_algebra`](../linear_algebra/fn.determinant.html)
+    //  */
+    // pub fn determinant(&self) -> Option<T> {
+    //     linear_algebra::determinant(self)
+    // }
+    //
+    // /**
+    // * Computes the inverse of a matrix provided that it exists. To have an inverse a
+    // * matrix must be square (same number of rows and columns) and it must also have a
+    // * non zero determinant. See [`linear_algebra`](../linear_algebra/fn.inverse.html)
+    // */
+    // pub fn inverse(&self) -> Option<Matrix<T>>
+    // where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
+    //     linear_algebra::inverse(self)
+    // }
 }
 
 /**
@@ -590,7 +590,7 @@ impl <T: PartialEq> PartialEq for Matrix<T> {
  * that the operation is valid.
  */
 impl <T: Numeric> Mul for &Matrix<T>
-where for<'a, 'b> &'a T: Mul<&'b T, Output = T> {
+where for<'a> &'a T: NumericRef<T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
@@ -617,7 +617,7 @@ where for<'a, 'b> &'a T: Mul<&'b T, Output = T> {
  * Matrix multiplication for two matrices.
  */
 impl <T: Numeric> Mul for Matrix<T>
-where for<'a, 'b> &'a T: Mul<&'b T, Output = T> {
+where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
     fn mul(self, rhs: Self) -> Self::Output {
         &self * &rhs
@@ -628,7 +628,7 @@ where for<'a, 'b> &'a T: Mul<&'b T, Output = T> {
  * Matrix multiplication for two matrices with one referenced.
  */
 impl <T: Numeric> Mul<&Matrix<T>> for Matrix<T>
-where for<'a, 'b> &'a T: Mul<&'b T, Output = T> {
+where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
     fn mul(self, rhs: &Self) -> Self::Output {
         &self * rhs
@@ -639,7 +639,7 @@ where for<'a, 'b> &'a T: Mul<&'b T, Output = T> {
  * Matrix multiplication for two matrices with one referenced.
  */
 impl <T: Numeric> Mul<Matrix<T>> for &Matrix<T>
-where for<'a, 'b> &'a T: Mul<&'b T, Output = T> {
+where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
     fn mul(self, rhs: Matrix<T>) -> Self::Output {
         self * &rhs
@@ -650,7 +650,7 @@ where for<'a, 'b> &'a T: Mul<&'b T, Output = T> {
  * Elementwise addition for two referenced matrices.
  */
 impl <T: Numeric> Add for &Matrix<T>
-where for<'a, 'b> &'a T: Add<&'b T, Output = T> {
+where for<'a> &'a T: NumericRef<T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
@@ -672,7 +672,7 @@ where for<'a, 'b> &'a T: Add<&'b T, Output = T> {
  * Elementwise addition for two matrices.
  */
 impl <T: Numeric> Add for Matrix<T>
-where for<'a, 'b> &'a T: Add<&'b T, Output = T> {
+where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
     fn add(self, rhs: Self) -> Self::Output {
         &self + &rhs
@@ -683,7 +683,7 @@ where for<'a, 'b> &'a T: Add<&'b T, Output = T> {
  * Elementwise addition for two matrices with one referenced.
  */
 impl <T: Numeric> Add<&Matrix<T>> for Matrix<T>
-where for<'a, 'b> &'a T: Add<&'b T, Output = T> {
+where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
     fn add(self, rhs: &Self) -> Self::Output {
         &self + rhs
@@ -694,7 +694,7 @@ where for<'a, 'b> &'a T: Add<&'b T, Output = T> {
  * Elementwise addition for two matrices with one referenced.
  */
 impl <T: Numeric> Add<Matrix<T>> for &Matrix<T>
-where for<'a, 'b> &'a T: Add<&'b T, Output = T> {
+where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
     fn add(self, rhs: Matrix<T>) -> Self::Output {
         self + &rhs
@@ -705,7 +705,7 @@ where for<'a, 'b> &'a T: Add<&'b T, Output = T> {
  * Elementwise subtraction for two referenced matrices.
  */
 impl <T: Numeric> Sub for &Matrix<T>
-where for<'a, 'b> &'a T: Sub<&'b T, Output = T> {
+where for<'a> &'a T: NumericRef<T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
@@ -727,7 +727,7 @@ where for<'a, 'b> &'a T: Sub<&'b T, Output = T> {
  * Elementwise subtraction for two matrices.
  */
 impl <T: Numeric> Sub for Matrix<T>
-where for<'a, 'b> &'a T: Sub<&'b T, Output = T> {
+where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
     fn sub(self, rhs: Self) -> Self::Output {
         &self - &rhs
@@ -738,7 +738,7 @@ where for<'a, 'b> &'a T: Sub<&'b T, Output = T> {
  * Elementwise subtraction for two matrices with one referenced.
  */
 impl <T: Numeric> Sub<&Matrix<T>> for Matrix<T>
-where for<'a, 'b> &'a T: Sub<&'b T, Output = T> {
+where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
     fn sub(self, rhs: &Self) -> Self::Output {
         &self - rhs
@@ -749,7 +749,7 @@ where for<'a, 'b> &'a T: Sub<&'b T, Output = T> {
  * Elementwise subtraction for two matrices with one referenced.
  */
 impl <T: Numeric> Sub<Matrix<T>> for &Matrix<T>
-where for<'a, 'b> &'a T: Sub<&'b T, Output = T> {
+where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
     fn sub(self, rhs: Matrix<T>) -> Self::Output {
         self - &rhs
@@ -759,7 +759,8 @@ where for<'a, 'b> &'a T: Sub<&'b T, Output = T> {
 /**
  * Elementwise negation for a referenced matrix.
  */
-impl <T: Numeric> Neg for &Matrix<T> {
+impl <T: Numeric> Neg for &Matrix<T>
+where for<'a> &'a T: NumericRef<T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
@@ -771,7 +772,8 @@ impl <T: Numeric> Neg for &Matrix<T> {
 /**
  * Elementwise negation for a matrix.
  */
-impl <T: Numeric> Neg for Matrix<T> {
+impl <T: Numeric> Neg for Matrix<T>
+where for<'a> &'a T: NumericRef<T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
