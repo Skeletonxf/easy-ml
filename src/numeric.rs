@@ -147,3 +147,146 @@ zero_one_float!(f32);
 zero_one_float!(f64);
 zero_one_integral!(usize);
 zero_one_integral!(isize);
+
+/**
+ * Additional traits for more complex numerical operations.
+ */
+pub mod extra {
+
+/**
+ * A type which can be square rooted.
+ *
+ * This is implemented by `f32` and `f64` by value and by reference.
+ */
+pub trait Sqrt {
+    type Output;
+    fn sqrt(self) -> Self::Output;
+}
+
+macro_rules! sqrt_float {
+    ($T:ty) => {
+        impl Sqrt for $T {
+            type Output = $T;
+            #[inline]
+            fn sqrt(self) -> Self::Output {
+                self.sqrt()
+            }
+        }
+        impl Sqrt for &$T {
+            type Output = $T;
+            #[inline]
+            fn sqrt(self) -> Self::Output {
+                self.clone().sqrt()
+            }
+        }
+    };
+}
+
+sqrt_float!(f32);
+sqrt_float!(f64);
+
+/**
+ * A type which can compute e^self.
+ *
+ * This is implemented by `f32` and `f64` by value and by reference.
+ */
+pub trait Exp {
+    type Output;
+    fn exp(self) -> Self::Output;
+}
+
+macro_rules! exp_float {
+    ($T:ty) => {
+        impl Exp for $T {
+            type Output = $T;
+            #[inline]
+            fn exp(self) -> Self::Output {
+                self.exp()
+            }
+        }
+        impl Exp for &$T {
+            type Output = $T;
+            #[inline]
+            fn exp(self) -> Self::Output {
+                self.clone().exp()
+            }
+        }
+    };
+}
+
+exp_float!(f32);
+exp_float!(f64);
+
+
+/**
+ * A type which can compute self^rhs.
+ *
+ * This is implemented by `f32` and `f64` for all combinations of
+ * by value and by reference.
+ */
+pub trait Pow<Rhs = Self> {
+    type Output;
+    fn pow(self, rhs: Rhs) -> Self::Output;
+}
+
+macro_rules! pow_float {
+    ($T:ty) => {
+        // T ^ T
+        impl Pow<$T> for $T {
+            type Output = $T;
+            #[inline]
+            fn pow(self, rhs: Self) -> Self::Output {
+                self.powf(rhs)
+            }
+        }
+        // T ^ &T
+        impl <'a> Pow<&'a $T> for $T {
+            type Output = $T;
+            #[inline]
+            fn pow(self, rhs: &Self) -> Self::Output {
+                self.powf(rhs.clone())
+            }
+        }
+        // &T ^ T
+        impl <'a> Pow<$T> for &'a $T {
+            type Output = $T;
+            #[inline]
+            fn pow(self, rhs: $T) -> Self::Output {
+                self.powf(rhs)
+            }
+        }
+        // &T ^ &T
+        impl <'a> Pow<&'a $T> for &'a $T {
+            type Output = $T;
+            #[inline]
+            fn pow(self, rhs: Self) -> Self::Output {
+                self.powf(rhs.clone())
+            }
+        }
+    };
+}
+
+pow_float!(f32);
+pow_float!(f64);
+
+
+/**
+ * A type which can represent Pi.
+ */
+pub trait Pi {
+    fn pi() -> Self;
+}
+
+impl Pi for f32 {
+    fn pi() -> f32 {
+        std::f32::consts::PI
+    }
+}
+
+impl Pi for f64 {
+    fn pi() -> f64 {
+        std::f64::consts::PI
+    }
+}
+
+}
