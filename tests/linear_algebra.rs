@@ -13,8 +13,7 @@ mod tests {
         let c = matrix.get(1, 0);
         let d = matrix.get(1, 1);
         let determinant = (a * d) - (b * c);
-        // FIXME
-        assert_eq!(determinant, matrix.determinant().unwrap());
+        assert_eq!(determinant, linear_algebra::determinant::<f32>(&matrix).unwrap());
     }
 
     #[test]
@@ -40,7 +39,7 @@ mod tests {
     #[test]
     fn inverse_1_by_1() {
         let matrix = Matrix::unit(3.0);
-        let inverse = matrix.inverse().unwrap();
+        let inverse = linear_algebra::inverse::<f32>(&matrix).unwrap();
         let absolute_difference = inverse.get(0, 0) - (1.0 / 3.0);
         assert!(absolute_difference <= std::f32::EPSILON);
     }
