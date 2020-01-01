@@ -538,23 +538,23 @@ where for<'a> &'a T: NumericRef<T> {
         matrix
     }
 
-    // /**
-    //  * Returns the determinant of this square matrix, or None if the matrix
-    //  * does not have a determinant. See [`linear_algebra`](../linear_algebra/fn.determinant.html)
-    //  */
-    // pub fn determinant(&self) -> Option<T> {
-    //     linear_algebra::determinant(self)
-    // }
-    //
-    // /**
-    // * Computes the inverse of a matrix provided that it exists. To have an inverse a
-    // * matrix must be square (same number of rows and columns) and it must also have a
-    // * non zero determinant. See [`linear_algebra`](../linear_algebra/fn.inverse.html)
-    // */
-    // pub fn inverse(&self) -> Option<Matrix<T>>
-    // where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
-    //     linear_algebra::inverse(self)
-    // }
+    /**
+     * Returns the determinant of this square matrix, or None if the matrix
+     * does not have a determinant. See [`linear_algebra`](../linear_algebra/fn.determinant.html)
+     */
+    pub fn determinant(&self) -> Option<T> {
+        linear_algebra::determinant(self)
+    }
+
+    /**
+    * Computes the inverse of a matrix provided that it exists. To have an inverse a
+    * matrix must be square (same number of rows and columns) and it must also have a
+    * non zero determinant. See [`linear_algebra`](../linear_algebra/fn.inverse.html)
+    */
+    pub fn inverse(&self) -> Option<Matrix<T>>
+    where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
+        linear_algebra::inverse(self)
+    }
 }
 
 /**
