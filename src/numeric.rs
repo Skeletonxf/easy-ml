@@ -1,5 +1,8 @@
 /*!
-* Numerical type definitions
+* Numerical type definitions. `Numeric` together with `where for<'a> &'a T: NumericRef<T>`
+* expresses the operations in `NumericByValue` for all 4 combinations of by value
+* and by reference. Numeric additionally adds some additional constraints only needed
+* by value on an implementing type such as `PartialOrd` and [`ZeroOne`](./trait.ZeroOne.html).
 */
 
 use std::ops::Add;
@@ -47,40 +50,13 @@ impl <T, Rhs, Output> NumericByValue<Rhs, Output> for T where
     + Neg<Output = Output>
     + Sized {}
 
-// just need to fix this error that still tries to look for nested matrices
-// error[E0275]: overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
-//    --> tests/linear_algebra.rs:17:33
-//     |
-// 17  |         assert_eq!(determinant, linear_algebra::determinant(&matrix).unwrap());
-//     |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-// or fails to realise what T is
-// error[E0277]: the trait bound `&'a _: easy_ml::numeric::NumericByValue<_, _>` is not satisfied
-//    --> tests/linear_algebra.rs:17:33
-//     |
-// 17  |         assert_eq!(determinant, linear_algebra::determinant(&matrix).unwrap());
-//     |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `easy_ml::numeric::NumericByValue<_, _>` is not implemented for `&'a _`
-//     |
-//    ::: /easy-ml/src/linear_algebra.rs:147:22
-//     |
-// 147 | where for<'a> &'a T: NumericRef<T> {
-//     |                      ------------- required by this bound in `easy_ml::linear_algebra::determinant`
-//     |
-//     = help: the following implementations were found:
-//               <f32 as easy_ml::numeric::NumericByValue<Rhs, Output>>
-//               <f64 as easy_ml::numeric::NumericByValue<Rhs, Output>>
-//               <i128 as easy_ml::numeric::NumericByValue<Rhs, Output>>
-//               <i16 as easy_ml::numeric::NumericByValue<Rhs, Output>>
-//             and 22 others
-//     = note: required because of the requirements on the impl of `for<'a> easy_ml::numeric::NumericRef<_>` for `&'a _`
-// but both only happen when trying to use a function rather than a method
-// the same function works fine called in method form on the matrix directly?
-
-
 /**
  * The trait to define &T op T and &T op &T versions for NumericByValue
  * based off the MIT/Apache 2.0 licensed code from num-traits 0.2.10:
  *
- * *This trait is not ever used directly for users of this library*.
+ * **This trait is not ever used directly for users of this library**. You
+ * don't need to deal with it apart from when implementing numeric types
+ * and even then it will be implemented automatically. 
  *
  * - http://opensource.org/licenses/MIT
  * - https://docs.rs/num-traits/0.2.10/src/num_traits/lib.rs.html#112
@@ -109,14 +85,14 @@ impl <RefT, T> NumericRef<T> for RefT where
  * A general purpose numeric trait that defines all the behaviour numerical
  * matrices need their types to support for math operations.
  *
- * This trait extends the constraints in NumericByValue to types which
- * also support the operations with a right hand side type
+ * This trait extends the constraints in [NumericByValue](./trait.NumericByValue.html)
+ * to types which also support the operations with a right hand side type
  * by reference, and adds some additional constraints needed only
  * by value on types.
  *
- * When used together with NumericRef this expresses all 4 by value
- * and by reference combinations for the operations using the
- * following
+ * When used together with [NumericRef](./trait.NumericRef.html) this
+ * expresses all 4 by value and by reference combinations for the
+ * operations using the following syntax:
  *
  * ```ignore
  *  fn function_name<T: Numeric>()
