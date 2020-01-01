@@ -22,53 +22,88 @@ pub trait NumericByValue<Rhs = Self, Output = Self>:
     + Sub<Rhs, Output = Output>
     + Mul<Rhs, Output = Output>
     + Div<Rhs, Output = Output>
+    + Neg<Output = Output>
     + Sized {}
 
-macro_rules! numeric {
-    ($T:ty) => {
-        impl <Rhs, Output> NumericByValue<Rhs, Output> for $T {}
-        // impl <$T, Rhs, Output> NumericByValue<Rhs, Output> for $T where
-        //     // Div is first here because Matrix does not implement it.
-        //     // if Add, Sub or Mul are first the rust compiler gets stuck
-        //     // in an infinite loop considering arbitarily nested matrix
-        //     // types, even though any level of nested Matrix types will
-        //     // never implement Div so shouldn't be considered for
-        //     // implementing NumericByValue
-        //     T: Add<Rhs, Output = Output>
-        //     + Sub<Rhs, Output = Output>
-        //     + Mul<Rhs, Output = Output>
-        //     + Div<Rhs, Output = Output>
-        //     + Neg<Output = Output>
-        //     + Sized {}
-    }
-}
+// macro_rules! numeric {
+//     ($T:ty) => {
+//         impl <Rhs, Output> NumericByValue<Rhs, Output> for $T where
+//             $T: Add<Rhs, Output = Output>
+//             + Sub<Rhs, Output = Output>
+//             + Mul<Rhs, Output = Output>
+//             + Div<Rhs, Output = Output>
+//             + Sized {}
+impl <T, Rhs, Output> NumericByValue<Rhs, Output> for T where
+    // Div is first here because Matrix does not implement it.
+    // if Add, Sub or Mul are first the rust compiler gets stuck
+    // in an infinite loop considering arbitarily nested matrix
+    // types, even though any level of nested Matrix types will
+    // never implement Div so shouldn't be considered for
+    // implementing NumericByValue
+    T: Div<Rhs, Output = Output>
+    + Add<Rhs, Output = Output>
+    + Sub<Rhs, Output = Output>
+    + Mul<Rhs, Output = Output>
+    + Neg<Output = Output>
+    + Sized {}
+//     }
+// }
 
-numeric!(f32);
-numeric!(f64);
-numeric!(u8);
-numeric!(u16);
-numeric!(u32);
-numeric!(u64);
-numeric!(u128);
-numeric!(i8);
-numeric!(i16);
-numeric!(i32);
-numeric!(i64);
-numeric!(i128);
-numeric!(Wrapping<u8>);
-numeric!(Wrapping<u16>);
-numeric!(Wrapping<u32>);
-numeric!(Wrapping<u64>);
-numeric!(Wrapping<u128>);
-numeric!(Wrapping<i8>);
-numeric!(Wrapping<i16>);
-numeric!(Wrapping<i32>);
-numeric!(Wrapping<i64>);
-numeric!(Wrapping<i128>);
-numeric!(usize);
-numeric!(isize);
-numeric!(Wrapping<usize>);
-numeric!(Wrapping<isize>);
+// just need to fix this error that still tries to look for nested matrices
+// error[E0275]: overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+//    --> tests/linear_algebra.rs:17:33
+//     |
+// 17  |         assert_eq!(determinant, linear_algebra::determinant(&matrix).unwrap());
+//     |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// or fails to realise what T is
+// error[E0277]: the trait bound `&'a _: easy_ml::numeric::NumericByValue<_, _>` is not satisfied
+//    --> tests/linear_algebra.rs:17:33
+//     |
+// 17  |         assert_eq!(determinant, linear_algebra::determinant(&matrix).unwrap());
+//     |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `easy_ml::numeric::NumericByValue<_, _>` is not implemented for `&'a _`
+//     |
+//    ::: /easy-ml/src/linear_algebra.rs:147:22
+//     |
+// 147 | where for<'a> &'a T: NumericRef<T> {
+//     |                      ------------- required by this bound in `easy_ml::linear_algebra::determinant`
+//     |
+//     = help: the following implementations were found:
+//               <f32 as easy_ml::numeric::NumericByValue<Rhs, Output>>
+//               <f64 as easy_ml::numeric::NumericByValue<Rhs, Output>>
+//               <i128 as easy_ml::numeric::NumericByValue<Rhs, Output>>
+//               <i16 as easy_ml::numeric::NumericByValue<Rhs, Output>>
+//             and 22 others
+//     = note: required because of the requirements on the impl of `for<'a> easy_ml::numeric::NumericRef<_>` for `&'a _`
+// but both only happen when trying to use a function rather than a method
+// the same function works fine called in method form on the matrix directly?
+
+//
+// numeric!(f32);
+// numeric!(f64);
+// numeric!(u8);
+// numeric!(u16);
+// numeric!(u32);
+// numeric!(u64);
+// numeric!(u128);
+// numeric!(i8);
+// numeric!(i16);
+// numeric!(i32);
+// numeric!(i64);
+// numeric!(i128);
+// numeric!(Wrapping<u8>);
+// numeric!(Wrapping<u16>);
+// numeric!(Wrapping<u32>);
+// numeric!(Wrapping<u64>);
+// numeric!(Wrapping<u128>);
+// numeric!(Wrapping<i8>);
+// numeric!(Wrapping<i16>);
+// numeric!(Wrapping<i32>);
+// numeric!(Wrapping<i64>);
+// numeric!(Wrapping<i128>);
+// numeric!(usize);
+// numeric!(isize);
+// numeric!(Wrapping<usize>);
+// numeric!(Wrapping<isize>);
 
 //
 // /**
@@ -124,7 +159,6 @@ pub trait Numeric:
     // T op &T -> T
     + for<'a> NumericByValue<&'a Self>
     + Clone
-    + Neg<Output = Self>
     + ZeroOne
     + Sum
     + PartialOrd {}
@@ -137,7 +171,6 @@ impl <T> Numeric for T where T:
     NumericByValue
     + for<'a> NumericByValue<&'a T>
     + Clone
-    + Neg<Output = T>
     + ZeroOne
     + Sum
     + PartialOrd {}

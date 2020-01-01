@@ -513,6 +513,27 @@ impl <T: Clone> Clone for Matrix<T> {
 impl <T: Numeric> Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     /**
+     * Returns the determinant of this square matrix, or None if the matrix
+     * does not have a determinant. See [`linear_algebra`](../linear_algebra/fn.determinant.html)
+     */
+    pub fn determinant(&self) -> Option<T> {
+        linear_algebra::determinant(self)
+    }
+
+    /**
+    * Computes the inverse of a matrix provided that it exists. To have an inverse a
+    * matrix must be square (same number of rows and columns) and it must also have a
+    * non zero determinant. See [`linear_algebra`](../linear_algebra/fn.inverse.html)
+    */
+    pub fn inverse(&self) -> Option<Matrix<T>>
+    where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
+        linear_algebra::inverse(self)
+    }
+}
+
+// FIXME: want this to be callable in the main numeric impl block
+impl <T: Numeric> Matrix<T> {
+    /**
      * Creates an identity matrix of the provided size. An identity matrix
      * is always square and has elements equal to 1 along its diagonal and
      * zero everywhere else. The size is still taken as a tuple to facilitate
@@ -536,24 +557,6 @@ where for<'a> &'a T: NumericRef<T> {
             matrix.set(i, i, T::one());
         }
         matrix
-    }
-
-    /**
-     * Returns the determinant of this square matrix, or None if the matrix
-     * does not have a determinant. See [`linear_algebra`](../linear_algebra/fn.determinant.html)
-     */
-    pub fn determinant(&self) -> Option<T> {
-        linear_algebra::determinant(self)
-    }
-
-    /**
-    * Computes the inverse of a matrix provided that it exists. To have an inverse a
-    * matrix must be square (same number of rows and columns) and it must also have a
-    * non zero determinant. See [`linear_algebra`](../linear_algebra/fn.inverse.html)
-    */
-    pub fn inverse(&self) -> Option<Matrix<T>>
-    where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
-        linear_algebra::inverse(self)
     }
 }
 
