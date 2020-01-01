@@ -3,10 +3,14 @@
  *
  * Note that these functions are also exposed as corresponding methods on the Matrix type,
  * but in depth documentation is only presented here.
+ *
+ * It is recommended to favor the corresponding methods on the Matrix type as the
+ * Rust compiler can get confused with the generics on these functions if you use
+ * these methods without turbofish syntax.
  */
 
 use crate::matrices::{Matrix, Row, Column};
-use crate::numeric::Numeric;
+use crate::numeric::{Numeric, NumericRef};
 
 /**
  * Computes the inverse of a matrix provided that it exists. To have an inverse
@@ -27,8 +31,23 @@ use crate::numeric::Numeric;
  * [wikipedia](https://en.wikipedia.org/wiki/Invertible_matrix#Analytic_solution)
  * and should compute the inverse for any size of square matrix if it exists, but
  * is inefficient for large matrices.
+ *
+ * # Warning
+ *
+ * With some uses of this function the Rust compiler gets confused about what type `T`
+ * should be and you will get the error:
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ *
+ * In this case you need to manually specify the type of T by using the
+ * turbofish syntax like:
+ * `linear_algebra::inverse::<f32>(&matrix)`
+ *
+ * Alternatively, the compiler doesn't seem to run into this problem if you
+ * use the equivalent methods on the matrix type like so:
+ * `matrix.inverse()`
  */
-pub fn inverse<T: Numeric>(matrix: &Matrix<T>) -> Option<Matrix<T>> {
+pub fn inverse<T: Numeric>(matrix: &Matrix<T>) -> Option<Matrix<T>>
+where for<'a> &'a T: NumericRef<T> {
     if matrix.rows() != matrix.columns() {
         return None;
     }
@@ -92,7 +111,8 @@ pub fn inverse<T: Numeric>(matrix: &Matrix<T>) -> Option<Matrix<T>> {
  * columns to remove. Hence for non square matrices or 1 x 1 matrices this returns
  * None.
  */
-fn minor<T: Numeric>(matrix: &Matrix<T>, i: Row, j: Column) -> Option<T> {
+fn minor<T: Numeric>(matrix: &Matrix<T>, i: Row, j: Column) -> Option<T>
+where for<'a> &'a T: NumericRef<T> {
     minor_mut(&mut matrix.clone(), i, j)
 }
 
@@ -104,7 +124,8 @@ fn minor<T: Numeric>(matrix: &Matrix<T>, i: Row, j: Column) -> Option<T> {
  * columns to remove. Hence for non square matrices or 1 x 1 matrices this returns
  * None and does not modify the matrix.
  */
-fn minor_mut<T: Numeric>(matrix: &mut Matrix<T>, i: Row, j: Column) -> Option<T> {
+fn minor_mut<T: Numeric>(matrix: &mut Matrix<T>, i: Row, j: Column) -> Option<T>
+where for<'a> &'a T: NumericRef<T> {
     if matrix.rows() == 1 || matrix.columns() == 1 {
         // nothing to delete
         return None;
@@ -139,8 +160,23 @@ fn minor_mut<T: Numeric>(matrix: &mut Matrix<T>, i: Row, j: Column) -> Option<T>
  * is likely to not make any sense because a determinant may be negative.
  *
  * [https://en.wikipedia.org/wiki/Determinant](https://en.wikipedia.org/wiki/Determinant)
+ *
+ * # Warning
+ *
+ * With some uses of this function the Rust compiler gets confused about what type `T`
+ * should be and you will get the error:
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ *
+ * In this case you need to manually specify the type of T by using the
+ * turbofish syntax like:
+ * `linear_algebra::determinant::<f32>(&matrix)`
+ *
+ * Alternatively, the compiler doesn't seem to run into this problem if you
+ * use the equivalent methods on the matrix type like so:
+ * `matrix.determinant()`
  */
-pub fn determinant<T: Numeric>(matrix: &Matrix<T>) -> Option<T> {
+pub fn determinant<T: Numeric>(matrix: &Matrix<T>) -> Option<T>
+where for<'a> &'a T: NumericRef<T> {
     if matrix.rows() != matrix.columns() {
         return None;
     }

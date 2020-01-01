@@ -13,71 +13,145 @@ use std::marker::Sized;
 use core::num::Wrapping;
 
 /**
- * A general purpose numeric trait that defines all the behaviour numerical matrices need
- * their types to support for math operations.
+ * A trait defining what a numeric type is in terms of by value
+ * numerical operations matrices need their types to support for
+ * math operations.
  */
-pub trait Numeric where
-    Self:
-        Add<Output = Self>
-        + Sub<Output = Self>
-        + Mul<Output = Self>
-        + Div<Output = Self>
-        + Neg<Output = Self>
-        + Sum
-        + PartialOrd
-        + Sized
-        + Clone
-        + ZeroOne,
-    Self: for<'a> Add<&'a Self, Output = Self>,
-    // for<'a> &'a Self: Add<Self, Output = Self>,
-    //for<'a, 'b> &'a Self: Add<&'b Self, Output = Self>,
-    Self: for<'a> Sub<&'a Self, Output = Self>,
-    Self: for<'a> Mul<&'a Self, Output = Self>,
-    Self: for<'a> Div<&'a Self, Output = Self>,
-{}
-
-// FIXME: Want to express that Numeric types should also have &T operators but can't work out
-// how to get &T op T and &T op &T to be specified on Numeric, T op &T is working fine.
+pub trait NumericByValue<Rhs = Self, Output = Self>:
+    Add<Rhs, Output = Output>
+    + Sub<Rhs, Output = Output>
+    + Mul<Rhs, Output = Output>
+    + Div<Rhs, Output = Output>
+    + Neg<Output = Output>
+    + Sized {}
 
 /**
  * Anything which implements all the super traits will automatically implement this trait too.
  * This covers primitives such as f32, f64, signed integers and
  * [Wrapped unsigned integers](https://doc.rust-lang.org/std/num/struct.Wrapping.html).
  *
- * Other types such as infinite precision numbers will probably implement nearly all of these
- * anyway, but will need to add a boilerplate implementation for ZeroOne.
+ * It will not include Matrix because Matrix does not implement Div.
+ * Similarly, unwrapped unsigned integers do not implement Neg so are not included.
  */
-impl <T> Numeric for T where
-    T: Add<Output = Self>
-    + Sub<Output = Self>
-    + Mul<Output = Self>
-    + Div<Output = Self>
-    + Neg<Output = Self>
-    + Sum
-    + PartialOrd
-    + Sized
-    + Clone
-    + ZeroOne,
-    // also require that operations on two &T give T
-    // this allows to make no copies for things like adding
-    // two f32 matrices as they can be added by reference
-    for<'a, 'b> &'a T: Add<&'b T, Output = T>,
-    for<'a, 'b> &'a T: Sub<&'b T, Output = T>,
-    for<'a, 'b> &'a T: Mul<&'b T, Output = T>,
-    for<'a, 'b> &'a T: Div<&'b T, Output = T>,
-    for<'a> &'a T: Neg<Output = T>,
-    // for completeness require both &T op T and T op &T
+impl <T, Rhs, Output> NumericByValue<Rhs, Output> for T where
+    // Div is first here because Matrix does not implement it.
+    // if Add, Sub or Mul are first the rust compiler gets stuck
+    // in an infinite loop considering arbitarily nested matrix
+    // types, even though any level of nested Matrix types will
+    // never implement Div so shouldn't be considered for
+    // implementing NumericByValue
+    T: Div<Rhs, Output = Output>
+    + Add<Rhs, Output = Output>
+    + Sub<Rhs, Output = Output>
+    + Mul<Rhs, Output = Output>
+    + Neg<Output = Output>
+    + Sized {}
+
+// just need to fix this error that still tries to look for nested matrices
+// error[E0275]: overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+//    --> tests/linear_algebra.rs:17:33
+//     |
+// 17  |         assert_eq!(determinant, linear_algebra::determinant(&matrix).unwrap());
+//     |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// or fails to realise what T is
+// error[E0277]: the trait bound `&'a _: easy_ml::numeric::NumericByValue<_, _>` is not satisfied
+//    --> tests/linear_algebra.rs:17:33
+//     |
+// 17  |         assert_eq!(determinant, linear_algebra::determinant(&matrix).unwrap());
+//     |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `easy_ml::numeric::NumericByValue<_, _>` is not implemented for `&'a _`
+//     |
+//    ::: /easy-ml/src/linear_algebra.rs:147:22
+//     |
+// 147 | where for<'a> &'a T: NumericRef<T> {
+//     |                      ------------- required by this bound in `easy_ml::linear_algebra::determinant`
+//     |
+//     = help: the following implementations were found:
+//               <f32 as easy_ml::numeric::NumericByValue<Rhs, Output>>
+//               <f64 as easy_ml::numeric::NumericByValue<Rhs, Output>>
+//               <i128 as easy_ml::numeric::NumericByValue<Rhs, Output>>
+//               <i16 as easy_ml::numeric::NumericByValue<Rhs, Output>>
+//             and 22 others
+//     = note: required because of the requirements on the impl of `for<'a> easy_ml::numeric::NumericRef<_>` for `&'a _`
+// but both only happen when trying to use a function rather than a method
+// the same function works fine called in method form on the matrix directly?
+
+
+/**
+ * The trait to define &T op T and &T op &T versions for NumericByValue
+ * based off the MIT/Apache 2.0 licensed code from num-traits 0.2.10:
+ *
+ * *This trait is not ever used directly for users of this library*.
+ *
+ * - http://opensource.org/licenses/MIT
+ * - https://docs.rs/num-traits/0.2.10/src/num_traits/lib.rs.html#112
+ *
+ * The trick is that all types implementing this trait will be references,
+ * so the first constraint expresses some &T which can be operated on with
+ * some right hand side type T to yield a value of type T.
+ *
+ * In a similar way the second constraint expresses &T op &T -> T operations
+ */
+pub trait NumericRef<T>:
     // &T op T -> T
-    for<'a> &'a T: Add<T, Output = T>,
-    for<'a> &'a T: Sub<T, Output = T>,
-    for<'a> &'a T: Mul<T, Output = T>,
-    for<'a> &'a T: Div<T, Output = T>,
+    NumericByValue<T, T>
+    // &T op &T -> T
+    + for<'a> NumericByValue<&'a T, T> {}
+
+/**
+ * Anything which implements all the super traits will automatically implement this trait too.
+ * This covers primitives such as `&f32`, `&f64`, ie a type like `&u8` is `NumericRef<u8>`.
+ */
+impl <RefT, T> NumericRef<T> for RefT where
+    RefT: NumericByValue<T, T>
+    + for<'a> NumericByValue<&'a T, T> {}
+
+/**
+ * A general purpose numeric trait that defines all the behaviour numerical
+ * matrices need their types to support for math operations.
+ *
+ * This trait extends the constraints in NumericByValue to types which
+ * also support the operations with a right hand side type
+ * by reference, and adds some additional constraints needed only
+ * by value on types.
+ *
+ * When used together with NumericRef this expresses all 4 by value
+ * and by reference combinations for the operations using the
+ * following
+ *
+ * ```ignore
+ *  fn function_name<T: Numeric>()
+ *  where for<'a> &'a T: NumericRef<T> {
+ * ```
+ *
+ * This pair of constraints is used nearly everywhere some numeric
+ * type is needed, so although this trait does not require reference
+ * type methods by itself, in practise you won't be able to call many
+ * functions in this library with a numeric type that doesn't.
+ */
+pub trait Numeric:
+    // T op T -> T
+    NumericByValue
     // T op &T -> T
-    for<'a> T: Add<&'a T, Output = T>,
-    for<'a> T: Sub<&'a T, Output = T>,
-    for<'a> T: Mul<&'a T, Output = T>,
-    for<'a> T: Div<&'a T, Output = T>,
-{}
+    + for<'a> NumericByValue<&'a Self>
+    + Clone
+    + ZeroOne
+    + Sum
+    + PartialOrd {}
+
+/**
+ * All types implemeting the operations in NumericByValue with a right hand
+ * side type by reference are Numeric.
+ *
+ * This covers primitives such as f32, f64, signed integers and
+ * [Wrapped unsigned integers](https://doc.rust-lang.org/std/num/struct.Wrapping.html).
+ */
+impl <T> Numeric for T where T:
+    NumericByValue
+    + for<'a> NumericByValue<&'a T>
+    + Clone
+    + ZeroOne
+    + Sum
+    + PartialOrd {}
 
 /**
  * A trait defining how to obtain 0 and 1 for every implementing type.
@@ -147,6 +221,8 @@ zero_one_float!(f32);
 zero_one_float!(f64);
 zero_one_integral!(usize);
 zero_one_integral!(isize);
+
+// FIXME give these the same by reference lift
 
 /**
  * Additional traits for more complex numerical operations.

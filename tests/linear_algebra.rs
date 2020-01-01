@@ -13,8 +13,7 @@ mod tests {
         let c = matrix.get(1, 0);
         let d = matrix.get(1, 1);
         let determinant = (a * d) - (b * c);
-        // FIXME
-        assert_eq!(determinant, linear_algebra::determinant(&matrix).unwrap());
+        assert_eq!(determinant, linear_algebra::determinant::<f32>(&matrix).unwrap());
     }
 
     #[test]
@@ -34,13 +33,13 @@ mod tests {
             + (matrix.get(0, 2) * matrix.get(1, 0) * matrix.get(2, 1))
             - (matrix.get(0, 2) * matrix.get(1, 1) * matrix.get(2, 0));
 
-        assert_eq!(determinant, linear_algebra::determinant(&matrix).unwrap());
+        assert_eq!(determinant, matrix.determinant().unwrap());
     }
 
     #[test]
     fn inverse_1_by_1() {
         let matrix = Matrix::unit(3.0);
-        let inverse = linear_algebra::inverse(&matrix).unwrap();
+        let inverse = linear_algebra::inverse::<f32>(&matrix).unwrap();
         let absolute_difference = inverse.get(0, 0) - (1.0 / 3.0);
         assert!(absolute_difference <= std::f32::EPSILON);
     }
@@ -50,7 +49,7 @@ mod tests {
         let matrix = Matrix::from(vec![
             vec![ 4.0, 7.0 ],
             vec![ 2.0, 6.0 ]]);
-        let inverse = linear_algebra::inverse(&matrix).unwrap();
+        let inverse = matrix.inverse().unwrap();
         // we use the example from https://www.mathsisfun.com/algebra/matrix-inverse.html
         let answer = Matrix::from(vec![
             vec![ 0.6, -0.7 ],
@@ -77,7 +76,7 @@ mod tests {
         let matrix = Matrix::from(vec![
             vec![ 3.0, 4.0 ],
             vec![ 6.0, 8.0 ]]);
-        let inverse = linear_algebra::inverse(&matrix);
+        let inverse = matrix.inverse();
         assert!(inverse.is_none());
     }
 }

@@ -27,7 +27,7 @@ mod tests {
         println!("{:?}", &X);
 
         // w is given by inverse(XT*X) * (XT * y)
-        let w = linear_algebra::inverse(&(X.transpose() * &X)).unwrap() * (X.transpose() * &y);
+        let w = linear_algebra::inverse::<f32>(&(X.transpose() * &X)).unwrap() * (X.transpose() * &y);
         let error = error_function(&w, &X, &y);
         println!("error {:?}", error);
         println!("y = {:?}\nprediction = {:?}", y, (&X * &w));
