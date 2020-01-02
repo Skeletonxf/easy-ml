@@ -1,9 +1,11 @@
 /*!
-* Numerical type definitions. `Numeric` together with `where for<'a> &'a T: NumericRef<T>`
-* expresses the operations in `NumericByValue` for all 4 combinations of by value
-* and by reference. Numeric additionally adds some additional constraints only needed
-* by value on an implementing type such as `PartialOrd` and [`ZeroOne`](./trait.ZeroOne.html).
-*/
+ * Numerical type definitions.
+ *
+ * `Numeric` together with `where for<'a> &'a T: NumericRef<T>`
+ * expresses the operations in `NumericByValue` for all 4 combinations of by value
+ * and by reference. Numeric additionally adds some additional constraints only needed
+ * by value on an implementing type such as `PartialOrd` and [`ZeroOne`](./trait.ZeroOne.html).
+ */
 
 use std::ops::Add;
 use std::ops::Sub;
@@ -56,7 +58,7 @@ impl <T, Rhs, Output> NumericByValue<Rhs, Output> for T where
  *
  * **This trait is not ever used directly for users of this library**. You
  * don't need to deal with it apart from when implementing numeric types
- * and even then it will be implemented automatically. 
+ * and even then it will be implemented automatically.
  *
  * - http://opensource.org/licenses/MIT
  * - https://docs.rs/num-traits/0.2.10/src/num_traits/lib.rs.html#112
@@ -340,5 +342,102 @@ impl Pi for f64 {
         std::f64::consts::PI
     }
 }
+
+/**
+ * A type which can compute the natural logarithm of itself: ln(self).
+ *
+ * This is implemented by `f32` and `f64` by value and by reference.
+ */
+pub trait Ln {
+    type Output;
+    fn ln(self) -> Self::Output;
+}
+
+macro_rules! ln_float {
+    ($T:ty) => {
+        impl Ln for $T {
+            type Output = $T;
+            #[inline]
+            fn ln(self) -> Self::Output {
+                self.ln()
+            }
+        }
+        impl Ln for &$T {
+            type Output = $T;
+            #[inline]
+            fn ln(self) -> Self::Output {
+                self.clone().ln()
+            }
+        }
+    };
+}
+
+ln_float!(f32);
+ln_float!(f64);
+
+/**
+ * A type which can compute the sine of itself: sin(self)
+ *
+ * This is implemented by `f32` and `f64` by value and by reference.
+ */
+pub trait Sin {
+    type Output;
+    fn sin(self) -> Self::Output;
+}
+
+macro_rules! sin_float {
+    ($T:ty) => {
+        impl Sin for $T {
+            type Output = $T;
+            #[inline]
+            fn sin(self) -> Self::Output {
+                self.sin()
+            }
+        }
+        impl Sin for &$T {
+            type Output = $T;
+            #[inline]
+            fn sin(self) -> Self::Output {
+                self.clone().sin()
+            }
+        }
+    };
+}
+
+sin_float!(f32);
+sin_float!(f64);
+
+
+/**
+ * A type which can compute the cosine of itself: cos(self)
+ *
+ * This is implemented by `f32` and `f64` by value and by reference.
+ */
+pub trait Cos {
+    type Output;
+    fn cos(self) -> Self::Output;
+}
+
+macro_rules! cos_float {
+    ($T:ty) => {
+        impl Cos for $T {
+            type Output = $T;
+            #[inline]
+            fn cos(self) -> Self::Output {
+                self.cos()
+            }
+        }
+        impl Cos for &$T {
+            type Output = $T;
+            #[inline]
+            fn cos(self) -> Self::Output {
+                self.clone().cos()
+            }
+        }
+    };
+}
+
+cos_float!(f32);
+cos_float!(f64);
 
 }
