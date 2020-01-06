@@ -1,11 +1,60 @@
 /*!
- * Models of distributions that samples can be drawn from.
+Models of distributions that samples can be drawn from.
+
+# Example of plotting a Gaussian
+
+```
+extern crate rand;
+extern crate rand_chacha;
+extern crate textplots;
+extern crate easy_ml;
+
+use rand::{Rng, SeedableRng};
+use textplots::{Chart, Plot, Shape};
+use easy_ml::distributions::Gaussian;
+
+const SAMPLES: usize = 10000;
+
+// create a normal distribution, note the mean and variance are
+// given in floating point notation as this will be a f64 Gaussian
+let normal_distribution = Gaussian::new(0.0, 1.0);
+
+// first create random numbers between 0 and 1
+// using a fixed seed non cryptographically secure random
+// generator from the rand crate
+let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(10);
+
+let mut random_numbers = Vec::with_capacity(SAMPLES);
+for _ in 0..SAMPLES {
+    random_numbers.push(random_generator.gen::<f64>());
+}
+
+// draw samples from the normal distribution
+let samples: Vec<f64> = normal_distribution.draw(&mut random_numbers.drain(..), SAMPLES);
+
+// create a [(f32, f32)] list to plot a histogram of
+let histogram_points = {
+    let x = 0..SAMPLES;
+    let mut y = samples;
+    let mut points = Vec::with_capacity(SAMPLES);
+    for (x, y) in y.drain(..).zip(x).map(|(y, x)| (x as f32, y as f32)) {
+        points.push((x, y));
+    }
+    points
+};
+
+// plot a histogram from -3 to 3 with 30 bins
+// to check that this distribution looks like a gaussian
+// this will show a bell curve for large enough SAMPLES.
+let histogram = textplots::utils::histogram(&histogram_points, -3.0, 3.0, 30);
+Chart::new(180, 60, -3.0, 3.0)
+    .lineplot( Shape::Bars(&histogram) )
+    .nice();
+```
  */
 
 use crate::numeric::{Numeric, NumericRef};
 use crate::numeric::extra::{Sqrt, Pi, Exp, Pow, Ln, Sin, Cos};
-
-// TODO: make non exhaustive and provide constructor function
 
 /**
  * A Gaussian probability density function of a normally distributed
@@ -16,6 +65,15 @@ use crate::numeric::extra::{Sqrt, Pi, Exp, Pow, Ln, Sin, Cos};
 pub struct Gaussian<T: Numeric> {
     pub mean: T,
     pub variance: T
+}
+
+impl <T: Numeric> Gaussian<T> {
+    pub fn new(mean: T, variance: T) -> Gaussian<T> {
+        Gaussian {
+            mean,
+            variance,
+        }
+    }
 }
 
 impl <T: Numeric> Gaussian<T>
