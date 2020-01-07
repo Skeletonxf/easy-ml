@@ -56,6 +56,8 @@ Chart::new(180, 60, -3.0, 3.0)
 use crate::numeric::{Numeric, NumericRef};
 use crate::numeric::extra::{Sqrt, Pi, Exp, Pow, Ln, Sin, Cos};
 
+use crate::matrices::Matrix;
+
 /**
  * A Gaussian probability density function of a normally distributed
  * random variable with expected value / mean μ, and variance σ^2.
@@ -162,5 +164,52 @@ where for<'a> &'a T: NumericRef<T> {
     fn generate_pair<I>(&self, source: &mut I) -> Option<(T, T)>
     where I: Iterator<Item = T> {
         Some((source.next()?, source.next()?))
+    }
+}
+
+
+/**
+ * A multivariate Gaussian distribution with mean vector μ, and covariance matrix Σ.
+ *
+ * See: [https://en.wikipedia.org/wiki/Multivariate_normal_distribution](https://en.wikipedia.org/wiki/Multivariate_normal_distribution)
+ *
+ * The mean [Matrix](./../matrices/struct.Matrix.html) must always be a column vector.
+ */
+pub struct MultivariateGaussian<T: Numeric> {
+    pub mean: Matrix<T>,
+    pub covariance: Matrix<T>
+}
+
+impl <T: Numeric> MultivariateGaussian<T> {
+    /**
+     * Constructs a new multivariate Gaussian distribution from
+     * a Nx1 column vector of means and a NxN covariance matrix
+     */
+    pub fn new(mean: Matrix<T>, covariance: Matrix<T>) -> MultivariateGaussian<T> {
+        MultivariateGaussian {
+            mean,
+            covariance,
+        }
+    }
+
+    /**
+     * Draws samples from this multivariate distribution.
+     *
+     * For max_samples of M and sufficient random numbers from the source iterator,
+     * returns an MxN matrix of drawn values.
+     */
+    pub fn draw<I>(&self, source: &mut I, max_samples: usize) -> Matrix<T> {
+        // https://en.wikipedia.org/wiki/Multivariate_normal_distribution#Computational_methods
+        // first compute A so A*A^T = Σ via the extended Cholesky decomposition
+        // this can be done once the Cholesky decomposition is implemented
+        // as D = S^2, for S = diagonal of L_cholesky
+        // and L = L_cholesky * S^-1
+        // for L_cholesky is the L from the Cholesky decomposition of the matrix A
+        // then A = L D L^T, and A*A^T = Σ
+
+        // for 0..M
+        // use the box muller transform to get N independent values from a normal distribution (x)
+        // mean + (A * z) yields each m'th vector from the distribution
+        unimplemented!()
     }
 }
