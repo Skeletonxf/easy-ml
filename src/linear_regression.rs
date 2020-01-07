@@ -1,9 +1,20 @@
 /*!
 Linear regression examples
 
+[Overview](https://en.wikipedia.org/wiki/Linear_regression).
+
 # Linear regression to fit a polynomial line
-The method below is a method for minimising the sum of squares error in choosing
-weights to learn to predict a line.
+The code below is a method for [minimising the sum of squares error](https://en.wikipedia.org/wiki/Least_squares)
+in choosing weights to learn to predict a polynomial ine. The method creates a design matrix
+from the inputs x, expanding each row from [x] to [1, x, x^2] to allow the model
+to represent the non linear relationship between x and y. To model more complex
+x and f(x), more complex basis functions are needed (ie to model a n-degree polynomial
+you will probably need n + 1 polynomial basis functions from x^0 to x^N).
+
+This example does not include any methods to prevent overfitting. In practise you
+may want to use some kind of [regularisation](https://en.wikipedia.org/wiki/Regularization_(mathematics))
+and or holding back some data for verification to stop updating the the model when it starts
+performing worse on unseen data.
 
 ```
 use easy_ml::matrices::Matrix;
@@ -13,6 +24,7 @@ let x: Matrix<f32> = Matrix::column(
     vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0]);
 // we are going to fit a polynomial curve of x^2, but add the sin of x to each value for
 // y to create some deteriministic 'noise'.
+//
 let y = x.map(|x| x.powi(2) + x.sin());
 println!("{:?}", &y);
 

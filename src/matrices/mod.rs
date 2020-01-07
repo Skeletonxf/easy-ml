@@ -318,12 +318,24 @@ impl <T: Clone> Matrix<T> {
 
     /**
      * Applies a function to all values in the matrix, modifying
-     * the matrix.
+     * the matrix in place.
      */
     pub fn map_mut(&mut self, mapping_function: impl Fn(T) -> T) {
         for i in 0..self.rows() {
             for j in 0..self.columns() {
                 self.set(i, j, mapping_function(self.get(i, j).clone()));
+            }
+        }
+    }
+
+    /**
+     * Applies a function to all values and each value's index in the
+     * matrix, modifying the matrix in place.
+     */
+    pub fn map_mut_with_index(&mut self, mapping_function: impl Fn(T, Row, Column) -> T) {
+        for i in 0..self.rows() {
+            for j in 0..self.columns() {
+                self.set(i, j, mapping_function(self.get(i, j).clone(), i, j));
             }
         }
     }
@@ -353,6 +365,24 @@ impl <T: Clone> Matrix<T> {
         for i in 0..self.rows() {
             for j in 0..self.columns() {
                 mapped.set(i, j, mapping_function(self.get(i, j).clone()));
+            }
+        }
+        mapped
+    }
+
+    /**
+     * Creates and returns a new matrix with all values from the original
+     * and the index of each value mapped by a function.
+     */
+    pub fn map_with_index<U>(&self, mapping_function: impl Fn(T, Row, Column) -> U) -> Matrix<U>
+            where U: Clone {
+        // compute the first mapped value so we have a value of type U
+        // to initialise the mapped matrix with
+        let first_value: U = mapping_function(self.get(0, 0), 0, 0);
+        let mut mapped = Matrix::empty(first_value, self.size());
+        for i in 0..self.rows() {
+            for j in 0..self.columns() {
+                mapped.set(i, j, mapping_function(self.get(i, j).clone(), i, j));
             }
         }
         mapped
