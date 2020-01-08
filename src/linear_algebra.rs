@@ -319,3 +319,43 @@ fn test_permutations() {
     assert!(permuted.contains(&(vec![1, 0], false)));
     assert_eq!(permuted.len(), 2);
 }
+//
+// /**
+//  * Computes the covariance matrix for an NxM feature matrix, in which
+//  * each N'th row has M features to find the covariance and variance of.
+//  */
+// // TODO: mention Bessel's correction, do covariance and correlation and explain
+// // difference, do DataxFeatures and FeaturesxData
+// pub fn covariance<T: Numeric>(matrix: &Matrix<T>) -> Matrix<T>
+// where for<'a> &'a T: NumericRef<T> {
+//     let features = matrix.columns();
+//     let samples = matrix.rows();
+//     let mut covariance_matrix = Matrix::empty(T::zero(), (features, features));
+//     covariance_matrix.map_mut_with_index(|_, i, j| {
+//         // set each element of the covariance matrix to the variance
+//         // of features i and j
+//         // FIXME: need to covert usize into T to take mean
+//         let feature_i_mean: T = matrix.column_reference_iter(i).cloned().sum() / samples;
+//         let feature_j_mean: T = matrix.column_reference_iter(j).cloned().sum() / samples;
+//         matrix.column_reference_iter(i)
+//             .map(|x| x - &feature_i_mean)
+//             .zip(matrix.column_reference_iter(j).map(|y| y - &feature_j_mean))
+//             .map(|(x, y)| x * y)
+//             .sum()
+//     });
+//     covariance_matrix
+// }
+// 
+// #[test]
+// fn test_covariance() {
+//     let matrix: Matrix<f32> = Matrix::from(vec![
+//             vec![  1.0,  1.0, -1.0],
+//             vec![ -1.0, -1.0,  1.0],
+//             vec![ -1.0, -1.0,  1.0],
+//             vec![  1.0,  1.0, -1.0]]);
+//     assert_eq!(covariance::<f32>(&matrix),
+//         Matrix::from(vec![
+//             vec![ 1.0,  1.0, -1.0 ],
+//             vec![ 1.0,  1.0, -1.0 ],
+//             vec![ -1.0, -1.0, 1.0 ]]));
+// }
