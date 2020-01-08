@@ -4,7 +4,8 @@
  * `Numeric` together with `where for<'a> &'a T: NumericRef<T>`
  * expresses the operations in `NumericByValue` for all 4 combinations of by value
  * and by reference. Numeric additionally adds some additional constraints only needed
- * by value on an implementing type such as `PartialOrd` and [`ZeroOne`](./trait.ZeroOne.html).
+ * by value on an implementing type such as `PartialOrd`, [`ZeroOne`](./trait.ZeroOne.html)
+ * and [`FromUsize`](./trait.FromUsize.html).
  */
 
 use std::ops::Add;
@@ -15,7 +16,7 @@ use std::ops::Neg;
 use std::iter::Sum;
 use std::cmp::PartialOrd;
 use std::marker::Sized;
-use core::num::Wrapping;
+use std::num::Wrapping;
 
 /**
  * A trait defining what a numeric type is in terms of by value
@@ -113,6 +114,7 @@ pub trait Numeric:
     + for<'a> NumericByValue<&'a Self>
     + Clone
     + ZeroOne
+    + FromUsize
     + Sum
     + PartialOrd {}
 
@@ -128,6 +130,7 @@ impl <T> Numeric for T where T:
     + for<'a> NumericByValue<&'a T>
     + Clone
     + ZeroOne
+    + FromUsize
     + Sum
     + PartialOrd {}
 
@@ -142,6 +145,15 @@ pub trait ZeroOne: Sized {
     fn one() -> Self;
 }
 
+impl <T: ZeroOne> ZeroOne for Wrapping<T> {
+    fn zero() -> Wrapping<T> {
+        Wrapping(T::zero())
+    }
+    fn one() -> Wrapping<T> {
+        Wrapping(T::one())
+    }
+}
+
 macro_rules! zero_one_integral {
     ($T:ty) => {
         impl ZeroOne for $T {
@@ -149,17 +161,6 @@ macro_rules! zero_one_integral {
             fn zero() -> $T { 0 }
             #[inline]
             fn one() -> $T { 1 }
-        }
-    };
-}
-
-macro_rules! zero_one_wrapping_integral {
-    ($T:ty) => {
-        impl ZeroOne for $T {
-            #[inline]
-            fn zero() -> $T { Wrapping(0) }
-            #[inline]
-            fn one() -> $T { Wrapping(1) }
         }
     };
 }
@@ -185,20 +186,69 @@ zero_one_integral!(u64);
 zero_one_integral!(i64);
 zero_one_integral!(u128);
 zero_one_integral!(i128);
-zero_one_wrapping_integral!(Wrapping<u8>);
-zero_one_wrapping_integral!(Wrapping<i8>);
-zero_one_wrapping_integral!(Wrapping<u16>);
-zero_one_wrapping_integral!(Wrapping<i16>);
-zero_one_wrapping_integral!(Wrapping<u32>);
-zero_one_wrapping_integral!(Wrapping<i32>);
-zero_one_wrapping_integral!(Wrapping<u64>);
-zero_one_wrapping_integral!(Wrapping<i64>);
-zero_one_wrapping_integral!(Wrapping<u128>);
-zero_one_wrapping_integral!(Wrapping<i128>);
 zero_one_float!(f32);
 zero_one_float!(f64);
 zero_one_integral!(usize);
 zero_one_integral!(isize);
+
+/**
+ * Specifies how to obtain an instance of this numeric type
+ * equal to the usize primitive. If the number is too large to
+ * represent in this type, `None` should be returned instead.
+ *
+ * The boilerplate implementations for primitives is performed with a macro.
+ * If a primitive type is missing from this list, please open an issue to add it in.
+ */
+pub trait FromUsize: Sized {
+    fn from_usize(n: usize) -> Option<Self>;
+}
+
+impl <T: FromUsize> FromUsize for Wrapping<T> {
+    fn from_usize(n: usize) -> Option<Wrapping<T>> {
+        Some(Wrapping(T::from_usize(n)?))
+    }
+}
+
+macro_rules! from_usize_integral {
+    ($T:ty) => {
+        impl FromUsize for $T {
+            #[inline]
+            fn from_usize(n: usize) -> Option<$T> {
+                if n <= (<$T>::max_value() as usize) {
+                    Some(n as $T)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
+macro_rules! from_usize_float {
+    ($T:ty) => {
+        impl FromUsize for $T {
+            #[inline]
+            fn from_usize(n: usize) -> Option<$T> {
+                Some(n as $T)
+            }
+        }
+    }
+}
+
+from_usize_integral!(u8);
+from_usize_integral!(i8);
+from_usize_integral!(u16);
+from_usize_integral!(i16);
+from_usize_integral!(u32);
+from_usize_integral!(i32);
+from_usize_integral!(u64);
+from_usize_integral!(i64);
+from_usize_integral!(u128);
+from_usize_integral!(i128);
+from_usize_float!(f32);
+from_usize_float!(f64);
+from_usize_integral!(usize);
+from_usize_integral!(isize);
 
 // FIXME give these the same by reference lift
 

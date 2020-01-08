@@ -319,43 +319,51 @@ fn test_permutations() {
     assert!(permuted.contains(&(vec![1, 0], false)));
     assert_eq!(permuted.len(), 2);
 }
-//
-// /**
-//  * Computes the covariance matrix for an NxM feature matrix, in which
-//  * each N'th row has M features to find the covariance and variance of.
-//  */
-// // TODO: mention Bessel's correction, do covariance and correlation and explain
-// // difference, do DataxFeatures and FeaturesxData
-// pub fn covariance<T: Numeric>(matrix: &Matrix<T>) -> Matrix<T>
-// where for<'a> &'a T: NumericRef<T> {
-//     let features = matrix.columns();
-//     let samples = matrix.rows();
-//     let mut covariance_matrix = Matrix::empty(T::zero(), (features, features));
-//     covariance_matrix.map_mut_with_index(|_, i, j| {
-//         // set each element of the covariance matrix to the variance
-//         // of features i and j
-//         // FIXME: need to covert usize into T to take mean
-//         let feature_i_mean: T = matrix.column_reference_iter(i).cloned().sum() / samples;
-//         let feature_j_mean: T = matrix.column_reference_iter(j).cloned().sum() / samples;
-//         matrix.column_reference_iter(i)
-//             .map(|x| x - &feature_i_mean)
-//             .zip(matrix.column_reference_iter(j).map(|y| y - &feature_j_mean))
-//             .map(|(x, y)| x * y)
-//             .sum()
-//     });
-//     covariance_matrix
-// }
-// 
-// #[test]
-// fn test_covariance() {
-//     let matrix: Matrix<f32> = Matrix::from(vec![
-//             vec![  1.0,  1.0, -1.0],
-//             vec![ -1.0, -1.0,  1.0],
-//             vec![ -1.0, -1.0,  1.0],
-//             vec![  1.0,  1.0, -1.0]]);
-//     assert_eq!(covariance::<f32>(&matrix),
-//         Matrix::from(vec![
-//             vec![ 1.0,  1.0, -1.0 ],
-//             vec![ 1.0,  1.0, -1.0 ],
-//             vec![ -1.0, -1.0, 1.0 ]]));
-// }
+
+/**
+ * Computes the covariance matrix for an NxM feature matrix, in which
+ * each N'th row has M features to find the covariance and variance of.
+ *
+ * Each element in the covariance matrix at (i, j) will be the variance of the
+ * ith and jth features from the feature matrix, defined as the zero meaned
+ * dot product of the two feature vectors divided by the number of samples.
+ *
+ * If the numeric type is unable to represent the number of samples
+ * for each feature (ie if `T: u8` and you have 1000 samples) then this function
+ * will return `None`. Otherwise the covariance matrix will always be
+ * computed and the function will return `Some`.
+ *
+ * # Warning
+ *
+ * With some uses of this function the Rust compiler gets confused about what type `T`
+ * should be and you will get the error:
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ *
+ * In this case you need to manually specify the type of T by using the
+ * turbofish syntax like:
+ * `linear_algebra::covariance::<f32>(&matrix)`
+ *
+ * Alternatively, the compiler doesn't seem to run into this problem if you
+ * use the equivalent methods on the matrix type like so:
+ * `matrix.covariance()`
+ */
+// TODO: mention Bessel's correction, do covariance and correlation and explain
+// difference, do DataxFeatures and FeaturesxData
+pub fn covariance<T: Numeric>(matrix: &Matrix<T>) -> Option<Matrix<T>>
+where for<'a> &'a T: NumericRef<T> {
+    let features = matrix.columns();
+    let samples = T::from_usize(matrix.rows())?;
+    let mut covariance_matrix = Matrix::empty(T::zero(), (features, features));
+    covariance_matrix.map_mut_with_index(|_, i, j| {
+        // set each element of the covariance matrix to the variance
+        // of features i and j
+        let feature_i_mean: T = matrix.column_iter(i).sum::<T>() / &samples;
+        let feature_j_mean: T = matrix.column_iter(j).sum::<T>() / &samples;
+        matrix.column_reference_iter(i)
+            .map(|x| x - &feature_i_mean)
+            .zip(matrix.column_reference_iter(j).map(|y| y - &feature_j_mean))
+            .map(|(x, y)| x * y)
+            .sum::<T>() / &samples
+    });
+    Some(covariance_matrix)
+}

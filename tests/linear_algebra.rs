@@ -79,4 +79,18 @@ mod tests {
         let inverse = matrix.inverse();
         assert!(inverse.is_none());
     }
+
+    #[test]
+    fn test_covariance() {
+        let matrix: Matrix<f32> = Matrix::from(vec![
+                vec![  1.0,  1.0, -1.0],
+                vec![ -1.0, -1.0,  1.0],
+                vec![ -1.0, -1.0,  1.0],
+                vec![  1.0,  1.0, -1.0]]);
+        assert_eq!(linear_algebra::covariance::<f32>(&matrix).unwrap(),
+            Matrix::from(vec![
+                vec![ 1.0,  1.0, -1.0 ],
+                vec![ 1.0,  1.0, -1.0 ],
+                vec![ -1.0, -1.0, 1.0 ]]));
+    }
 }

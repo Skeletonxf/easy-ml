@@ -559,6 +559,16 @@ where for<'a> &'a T: NumericRef<T> {
     where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
         linear_algebra::inverse(self)
     }
+
+    /**
+     * Computes the covariance matrix for this NxM feature matrix, in which
+     * each N'th row has M features to find the covariance and variance of.
+     * Returns `None` if this type's maximum value is less than N. See
+     * [`linear_algebra`](../linear_algebra/fn.covariance.html)
+     */
+    pub fn covariance(&self) -> Option<Matrix<T>> {
+        linear_algebra::covariance(self)
+    }
 }
 
 // FIXME: want this to be callable in the main numeric impl block

@@ -130,20 +130,6 @@ mod tests {
             // and the datapoints seen
         }
 
-        //
-        //
-        // let normal_distribution = Gaussian::new(0.0, 1.0);
-        //
-        //
-        //
-        // let mut random_numbers = Vec::with_capacity(SAMPLES);
-        // for _ in 0..SAMPLES {
-        //     random_numbers.push(random_generator.gen::<f64>());
-        // }
-        //
-        // // draw samples from the normal distribution
-        // let samples: Vec<f64> = normal_distribution.draw(&mut random_numbers.drain(..), SAMPLES);
-        //
-        assert_eq!(1, 2);
+        //assert_eq!(1, 2);
     }
 }
