@@ -13,7 +13,7 @@ mod tests {
 
     use textplots::{Chart, Plot, Shape};
 
-    use easy_ml::distributions::Gaussian;
+    use easy_ml::distributions::{Gaussian, MultivariateGaussian};
     use easy_ml::matrices::Matrix;
 
     // 3 steps for bayesian regression
@@ -108,23 +108,44 @@ mod tests {
             .lineplot(Shape::Lines(&sort_and_merge_for_plotting(&observations, &targets)))
             .nice();
 
+        // TODO understand what these parameters mean
+        let alpha: f64 = 1.0;
+        let beta: f64 = 1.0;
+
         // start with a prior distribution which we will update as we see new data
-        // TODO: this needs to be multivariate to cover w0 and w1
-        let prior = Gaussian::new(0.0, 2.0);
+        // for simplicity we use 0 mean and the scaled identity matrix as the covariance
+        // this is 2 dimensional because we have two paramters w0 and w1 to draw
+        // from this distribution
+        let identity: Matrix<f64> = Matrix::identity((2, 2));
+
+        let prior = MultivariateGaussian::new(
+            Matrix::column(vec![ 0.0, 0.0]),
+            identity.map(|x| x * alpha.powi(-1)));
 
         for training_size in vec![1, 2, 5, 20] {
+            println!("Training size: {}", training_size);
+
             // use increasing amounts of training samples to see the effect
             // on the posterior as more evidence is seen
-            let X = Matrix::column(X.column_iter(0).take(training_size).collect());
+            let mut X = Matrix::column(X.column_iter(1).take(training_size).collect());
+            X.insert_column(0, 1.0);
+            println!("Observations: {:?}", X);
             let targets = Matrix::column(targets.column_iter(0).take(training_size).collect());
+            println!("Targets: {:?}", targets);
 
-            // use design matrix X and targets, plus the parameters alpha and beta
-            // TODO: work out what alpha and beta mean
-            // to compute the posterior Gaussian
-            // the posterior needs to be multivariate too
+            let new_mean = prior.covariance.map(|x| x * beta) * X.transpose() * &targets;
+            println!("Mean of posterior: {:?}", new_mean);
+            let new_covariance = identity.map(|x| x * alpha) + (X.transpose() * &X).map(|x| x * beta);
+            println!("Covariance of posterior: {:?}", new_covariance);
+            let posterior = MultivariateGaussian::new(new_mean, new_covariance);
 
             // then draw a few samples from the new Gaussian having seen N data
             // and use these w0 and w1 parameters drawn to create a few lines
+            // draw MxN random numbers because N is even
+            let mut random_numbers = n_random_numbers(&mut random_generator, training_size * 2);
+
+            let weights = posterior.draw(&mut random_numbers.drain(..), training_size).unwrap();
+            println!("Data: {}, Weights:\n{:?}", training_size, weights);
 
             // then plot the sample of lines and the true one
             // and the datapoints seen

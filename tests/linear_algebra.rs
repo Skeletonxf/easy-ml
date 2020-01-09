@@ -93,4 +93,52 @@ mod tests {
                 vec![ 1.0,  1.0, -1.0 ],
                 vec![ -1.0, -1.0, 1.0 ]]));
     }
+
+    #[test]
+    fn test_cholesky_decomposition_3_by_3() {
+        // some examples are outlined at https://rosettacode.org/wiki/Cholesky_decomposition
+        // they form the test cases here
+        let matrix = Matrix::from(vec![
+            vec![ 25.0, 15.0, -5.0 ],
+            vec![ 15.0, 18.0,  0.0 ],
+            vec![ -5.0,  0.0, 11.0 ]]);
+        let lower_triangular = linear_algebra::cholesky_decomposition::<f32>(&matrix).unwrap();
+        let recovered = &lower_triangular * lower_triangular.transpose();
+        assert_eq!(lower_triangular, Matrix::from(vec![
+            vec![ 5.0, 0.0, 0.0 ],
+            vec![ 3.0, 3.0, 0.0 ],
+            vec![-1.0, 1.0, 3.0 ]]));
+        assert_eq!(matrix, recovered);
+    }
+
+    #[test]
+    fn test_cholesky_decomposition_4_by_4() {
+        // some examples are outlined at https://rosettacode.org/wiki/Cholesky_decomposition
+        // they form the test cases here
+        // this test case requires a lot of decimal representation so
+        // is checked for approximation rather than exact value
+        let matrix = Matrix::from(vec![
+            vec![ 18.0, 22.0,  54.0,  42.0 ],
+            vec![ 22.0, 70.0,  86.0,  62.0 ],
+            vec![ 54.0, 86.0, 174.0, 134.0 ],
+            vec![ 42.0, 62.0, 134.0, 106.0 ]]);
+        let lower_triangular = linear_algebra::cholesky_decomposition::<f64>(&matrix).unwrap();
+        let recovered = &lower_triangular * lower_triangular.transpose();
+        let expected = Matrix::from(vec![
+            vec![  4.24264, 0.0,     0.0,     0.0     ],
+            vec![  5.18545, 6.56591, 0.0,     0.0     ],
+            vec![ 12.72792, 3.04604, 1.64974, 0.0     ],
+            vec![  9.89949, 1.62455, 1.84971, 1.39262 ]]);
+        let absolute_difference: f64 = lower_triangular.column_major_iter()
+            .zip(expected.column_major_iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        println!("absolute_difference: {}", absolute_difference);
+        assert!(absolute_difference < 0.0001);
+        let absolute_difference: f64 = matrix.column_major_iter()
+            .zip(recovered.column_major_iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        assert!(absolute_difference < 0.0001);
+    }
 }

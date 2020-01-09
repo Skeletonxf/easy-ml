@@ -55,8 +55,8 @@ Chart::new(180, 60, -3.0, 3.0)
 
 use crate::numeric::{Numeric, NumericRef};
 use crate::numeric::extra::{Sqrt, Pi, Exp, Pow, Ln, Sin, Cos};
-
 use crate::matrices::Matrix;
+use crate::linear_algebra;
 
 /**
  * A Gaussian probability density function of a normally distributed
@@ -186,30 +186,55 @@ impl <T: Numeric> MultivariateGaussian<T> {
      * a Nx1 column vector of means and a NxN covariance matrix
      */
     pub fn new(mean: Matrix<T>, covariance: Matrix<T>) -> MultivariateGaussian<T> {
+        // TODO: check arguments
         MultivariateGaussian {
             mean,
             covariance,
         }
     }
+}
 
+impl <T: Numeric> MultivariateGaussian<T>
+where for<'a> &'a T: NumericRef<T> {
     /**
      * Draws samples from this multivariate distribution.
      *
      * For max_samples of M and sufficient random numbers from the source iterator,
      * returns an MxN matrix of drawn values.
+     *
+     * The source iterator must have MxN random values if N is even, and
+     * Mx(N+1) random values if N is odd, or `None` will be returned. If
+     * the cholesky decomposition cannot be taken on this Gaussian's
+     * covariance matrix then `None` is also returned.
      */
-    pub fn draw<I>(&self, source: &mut I, max_samples: usize) -> Matrix<T> {
+    pub fn draw<I>(&self, source: &mut I, max_samples: usize) -> Option<Matrix<T>>
+        where
+            T: Pi + Sqrt<Output = T> + Cos<Output = T> + Sin<Output = T>,
+            I: Iterator<Item = T>,
+            for<'a> &'a T: Ln<Output = T>,
+            for<'a> &'a T: Sqrt<Output = T>, {
+        // Follow the method outlined at
         // https://en.wikipedia.org/wiki/Multivariate_normal_distribution#Computational_methods
-        // first compute A so A*A^T = Σ via the extended Cholesky decomposition
-        // this can be done once the Cholesky decomposition is implemented
-        // as D = S^2, for S = diagonal of L_cholesky
-        // and L = L_cholesky * S^-1
-        // for L_cholesky is the L from the Cholesky decomposition of the matrix A
-        // then A = L D L^T, and A*A^T = Σ
+        let normal_distribution = Gaussian::new(T::zero(), T::one());
 
-        // for 0..M
-        // use the box muller transform to get N independent values from a normal distribution (x)
-        // mean + (A * z) yields each m'th vector from the distribution
-        unimplemented!()
+        // hope cholesky works for now and check later
+        let lower_triangular = linear_algebra::cholesky_decomposition(&self.covariance)?;
+
+        let mut samples = Matrix::empty(T::zero(), (max_samples, self.mean.rows()));
+
+        for row in 0..samples.rows() {
+            // use the box muller transform to get N independent values from
+            //  a normal distribution (x)
+            let standard_normals = normal_distribution.draw(source, self.mean.rows());
+            if standard_normals.len() < self.mean.rows() {
+                return None;
+            }
+            // mean + (L * standard_normals) yields each m'th vector from the distribution
+            let random_vector = &self.mean + (&lower_triangular * Matrix::column(standard_normals));
+            for x in 0..random_vector.columns() {
+                samples.set(row, x, random_vector.get(0, x));
+            }
+        }
+        Some(samples)
     }
 }

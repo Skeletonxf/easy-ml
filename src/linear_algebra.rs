@@ -11,6 +11,7 @@
 
 use crate::matrices::{Matrix, Row, Column};
 use crate::numeric::{Numeric, NumericRef};
+use crate::numeric::extra::Sqrt;
 
 /**
  * Computes the inverse of a matrix provided that it exists. To have an inverse
@@ -366,4 +367,61 @@ where for<'a> &'a T: NumericRef<T> {
             .sum::<T>() / &samples
     });
     Some(covariance_matrix)
+}
+
+/**
+ * Computes the cholesky decomposition of a matrix. This yields a matrix `L`
+ * such that for the provided matrix `A`, `L * L^T = A`. `L` will always be
+ * lower triangular, ie all entries above the diagonal will be 0. Hence cholesky
+ * decomposition can be interpreted as a generalised square root function.
+ *
+ * Cholesky decomposition is defined for
+ * [Hermitian](https://en.wikipedia.org/wiki/Hermitian_matrix),
+ * [positive definite](https://en.wikipedia.org/wiki/Definiteness_of_a_matrix)
+ * matrices. For a real valued (ie not containing complex numbers) matrix, if it is
+ * [Symmetric](https://en.wikipedia.org/wiki/Symmetric_matrix) it is Hermitian.
+ *
+ * This function does not check that the provided matrix is Hermitian or
+ * positive definite at present, but may in the future, in which case `None`
+ * will be returned.
+ */
+pub fn cholesky_decomposition<T: Numeric + Sqrt<Output = T>>(matrix: &Matrix<T>) -> Option<Matrix<T>>
+where for<'a> &'a T: NumericRef<T> {
+    if matrix.rows() != matrix.columns() {
+        return None;
+    }
+    // The computation steps are outlined nicely at https://rosettacode.org/wiki/Cholesky_decomposition
+    let mut lower_triangular = Matrix::empty(T::zero(), matrix.size());
+    for i in 0..lower_triangular.rows() {
+        // For each column k we need to compute all i, k entries
+        // before incrementing k further as the diagonals depend
+        // on the elements below the diagonal of the previous columns,
+        // and the elements below the diagonal depend on the diagonal
+        // of their column and elements below the diagonal up to that
+        // column.
+        for k in 0..lower_triangular.columns() {
+            if i == k {
+                let mut sum = T::zero();
+                for j in 0..k {
+                    sum = &sum + (lower_triangular.get_reference(k, j)
+                        * lower_triangular.get_reference(k, j));
+                }
+                lower_triangular.set(i, k, (matrix.get_reference(i, k) - sum).sqrt());
+            }
+            // after 0,0 we iterate down the rows for i,k where i > k
+            // these elements only depend on values already computed in
+            // their own column and prior columns
+            if i > k {
+                let mut sum = T::zero();
+                for j in 0..k {
+                    sum = &sum + (lower_triangular.get_reference(i, j)
+                        * lower_triangular.get_reference(k, j));
+                }
+                lower_triangular.set(i, k,
+                    (T::one() / lower_triangular.get_reference(k, k)) *
+                    (matrix.get_reference(i, k) - sum));
+            }
+        }
+    }
+    Some(lower_triangular)
 }
