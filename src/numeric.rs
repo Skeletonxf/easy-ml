@@ -146,9 +146,11 @@ pub trait ZeroOne: Sized {
 }
 
 impl <T: ZeroOne> ZeroOne for Wrapping<T> {
+    #[inline]
     fn zero() -> Wrapping<T> {
         Wrapping(T::zero())
     }
+    #[inline]
     fn one() -> Wrapping<T> {
         Wrapping(T::one())
     }

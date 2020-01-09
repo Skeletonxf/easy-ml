@@ -8,5 +8,7 @@ edition = "2018"
 
 [dev-dependencies]
 rand = "0.7"
-rand_chacha = "0.2.1"
-textplots = "0.4.1"
+rand_chacha = "0.2"
+textplots = "0.4"
+num-bigint = "0.2.4"
+num-traits = "0.2.7"
