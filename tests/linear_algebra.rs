@@ -62,7 +62,7 @@ mod tests {
         }
         // multiplying the inverse and original should yeild the identity matrix
         let identity = &matrix * &inverse;
-        let answer: Matrix<f32> = Matrix::identity(matrix.size());
+        let answer = Matrix::diagonal(1.0, matrix.size());
         for row in 0..answer.rows() {
             for column in 0..answer.columns() {
                 let absolute_difference = identity.get(row, column) - answer.get(row, column);

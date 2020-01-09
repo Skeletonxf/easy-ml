@@ -574,10 +574,13 @@ where for<'a> &'a T: NumericRef<T> {
 // FIXME: want this to be callable in the main numeric impl block
 impl <T: Numeric> Matrix<T> {
     /**
-     * Creates an identity matrix of the provided size. An identity matrix
-     * is always square and has elements equal to 1 along its diagonal and
-     * zero everywhere else. The size is still taken as a tuple to facilitate
-     * creating an identity matrix from the dimensionality of an existing one.
+     * Creates a diagonal matrix of the provided size with the diagonal elements
+     * set to the provided value and all other elements in the matrix set to 0.
+     * A diagonal matrix is always square.
+     *
+     * The size is still taken as a tuple to facilitate creating a diagonal matrix
+     * from the dimensionality of an existing one. If the provided value is 1 then
+     * this will create an identity matrix.
      *
      * A 3 x 3 identity matrix:
      * ```ignore
@@ -588,13 +591,13 @@ impl <T: Numeric> Matrix<T> {
      * ]
      * ```
      */
-    pub fn identity(size: (Row, Column)) -> Matrix<T> {
+    pub fn diagonal(value: T, size: (Row, Column)) -> Matrix<T> {
         assert!(size.0 == size.1);
         let mut matrix = Matrix {
             data: vec![vec![T::zero(); size.1]; size.0]
         };
         for i in 0..size.0 {
-            matrix.set(i, i, T::one());
+            matrix.set(i, i, value.clone());
         }
         matrix
     }

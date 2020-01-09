@@ -116,7 +116,7 @@ mod tests {
         // for simplicity we use 0 mean and the scaled identity matrix as the covariance
         // this is 2 dimensional because we have two paramters w0 and w1 to draw
         // from this distribution
-        let identity: Matrix<f64> = Matrix::identity((2, 2));
+        let identity = Matrix::diagonal(1.0, (2, 2));
 
         let prior = MultivariateGaussian::new(
             Matrix::column(vec![ 0.0, 0.0]),
