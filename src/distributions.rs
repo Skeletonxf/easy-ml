@@ -231,8 +231,8 @@ where for<'a> &'a T: NumericRef<T> {
             }
             // mean + (L * standard_normals) yields each m'th vector from the distribution
             let random_vector = &self.mean + (&lower_triangular * Matrix::column(standard_normals));
-            for x in 0..random_vector.columns() {
-                samples.set(row, x, random_vector.get(0, x));
+            for x in 0..random_vector.rows() {
+                samples.set(row, x, random_vector.get(x, 0));
             }
         }
         Some(samples)
