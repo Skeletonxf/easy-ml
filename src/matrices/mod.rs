@@ -5,10 +5,12 @@
 use std::ops::{Add, Sub, Mul, Neg, Div};
 
 pub mod iterators;
+pub mod slices;
 
 use crate::matrices::iterators::{
     ColumnIterator, RowIterator, ColumnMajorIterator,
     ColumnReferenceIterator, RowReferenceIterator, ColumnMajorReferenceIterator};
+use crate::matrices::slices::Slice;
 use crate::numeric::{Numeric, NumericRef};
 use crate::linear_algebra;
 
@@ -183,6 +185,32 @@ impl <T> Matrix<T> {
      */
     pub fn column_major_reference_iter(&self) -> ColumnMajorReferenceIterator<T> {
         ColumnMajorReferenceIterator::new(self)
+    }
+
+    /**
+     * Shrinks this matrix down from its current MxN size down to
+     * some new size OxP where O and P are determined by the kind of
+     * slice given, O <= M and P <= N. Only rows and columns specified by the slice will
+     * be retained, so for instance if the Slice is `Slice::RowColumnRange(0..2, 0..3)`
+     * then the modified matrix will be no bigger than 2x3 and contain up to the first two
+     * rows and first three columns that it previously had.
+     */
+    pub fn retain_mut(&mut self, slice: Slice) {
+        // iterate through rows and columns backwards so removing entries doesn't
+        // invalidate the index
+        for row in (0..self.rows()).rev() {
+            for column in (0..self.columns()).rev() {
+                if !slice.is_in(row, column) {
+                    self.data[row].remove(column);
+                }
+            }
+            // delete empty rows
+            if self.data[row].len() == 0 {
+                self.data.remove(row);
+            }
+        }
+        // TODO: check the matrix is still correctly formed and hasn't
+        // become jagged or 
     }
 }
 
@@ -476,6 +504,16 @@ impl <T: Clone> Matrix<T> {
         for row in 0..self.rows() {
             self.data[row].insert(column, values.next().unwrap());
         }
+    }
+
+    /**
+     * Makes a copy of this matrix shrunk down in size according to the slice
+     * and the `retain_mut` method.
+     */
+    pub fn retain(&self, slice: Slice) -> Matrix<T> {
+        let mut retained = self.clone();
+        retained.retain_mut(slice);
+        retained
     }
 }
 

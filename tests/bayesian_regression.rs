@@ -13,12 +13,15 @@ mod tests {
 
     use easy_ml::distributions::{Gaussian, MultivariateGaussian};
     use easy_ml::matrices::Matrix;
+    use easy_ml::matrices::slices::Slice;
 
     // 3 steps for bayesian regression
     // 0: have data to model
     // 1: create a model from a prior distribution
     // 2: observe data
     // 3: update beliefs
+
+    const LINES_TO_DRAW: usize = 5;
 
     /**
      * The function of x without any noise
@@ -128,8 +131,6 @@ mod tests {
         // this is 2 dimensional because we have two paramters w0 and w1 to draw
         // from this distribution
 
-        let LINES_TO_DRAW = 5;
-
         let prior = MultivariateGaussian::new(
             Matrix::column(vec![ 0.0, 0.0]),
             Matrix::diagonal(prior_variance, (2, 2)));
@@ -160,12 +161,8 @@ mod tests {
 
             // use increasing amounts of training samples to see the effect
             // on the posterior as more evidence is seen
-            let design_matrix_n = {
-                let mut design_matrix_n = Matrix::column(
-                    design_matrix.column_iter(1).take(training_size).collect());
-                design_matrix_n.insert_column(0, 1.0);
-                design_matrix_n
-            };
+            let design_matrix_n = design_matrix.retain(Slice::RowRange(0..training_size));
+
             println!("Observations: {:?}", design_matrix_n);
             let targets = Matrix::column(targets.column_iter(0).take(training_size).collect());
             println!("Targets: {:?}", targets);
@@ -208,6 +205,5 @@ mod tests {
         }
 
         assert_eq!(1, 2);
-        //assert_eq!(1, 2);
     }
 }
