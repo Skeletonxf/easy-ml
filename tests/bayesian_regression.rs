@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 extern crate rand;
 extern crate rand_chacha;
 
@@ -34,6 +32,7 @@ mod tests {
         Matrix<f64>,
         Matrix<f64>,
         Matrix<f64>,
+        Matrix<f64>,
         Matrix<f64>
     ) {
         // create data range from -1 to 1
@@ -56,12 +55,19 @@ mod tests {
             |x, row, _| target(x) + samples[row]);
 
         // create a design matrix of [1, x] for each x in observations
-        let X = {
-            let mut X = observations.clone();
-            X.insert_column(0, 1.0);
-            X
+        let design_matrix = {
+            let mut design_matrix = observations.clone();
+            design_matrix.insert_column(0, 1.0);
+            design_matrix
         };
-        (x, y, X, targets, observations)
+
+        let test_design_matrix = {
+            let mut test_design_matrix = x.clone();
+            test_design_matrix.insert_column(0, 1.0);
+            test_design_matrix
+        };
+
+        (x, y, test_design_matrix, design_matrix, targets, observations)
     }
 
     fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f64> {
@@ -98,59 +104,110 @@ mod tests {
         // generator from the rand crate
         let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(10);
 
-        let variance = 1.0 / 25.0;
-        let (x, y, X, targets, observations) = generate_data(&mut random_generator, variance, 20);
+        let noise_precision = 25.0;
+        let noise_variance = 1.0 / noise_precision;
+        let (x, y, test_design_matrix, design_matrix, targets, observations) = generate_data(
+            &mut random_generator, noise_variance, 20);
 
         // plot x and y to see the true line and the approximate line from
         // the noisy data
-        Chart::new(180, 60, 0.0, 1.0)
+        println!("True x and f(x) and noisy version");
+        Chart::new(180, 60, -1.0, 1.0)
             .lineplot(Shape::Lines(&merge_for_plotting(&x, &y)))
             .lineplot(Shape::Lines(&sort_and_merge_for_plotting(&observations, &targets)))
             .nice();
 
-        // TODO understand what these parameters mean
-        let alpha: f64 = 1.0;
-        let beta: f64 = 1.0;
+        // TODO: cover how to obtain the noise precision and the prior precision
+        // by search rather than cheating and taking them as known
+
+        let prior_precision = 1.0;
+        let prior_variance = 1.0 / prior_precision;
 
         // start with a prior distribution which we will update as we see new data
         // for simplicity we use 0 mean and the scaled identity matrix as the covariance
         // this is 2 dimensional because we have two paramters w0 and w1 to draw
         // from this distribution
-        let identity = Matrix::diagonal(1.0, (2, 2));
+
+        let LINES_TO_DRAW = 5;
 
         let prior = MultivariateGaussian::new(
             Matrix::column(vec![ 0.0, 0.0]),
-            identity.map(|x| x * alpha.powi(-1)));
+            Matrix::diagonal(prior_variance, (2, 2)));
+
+        let mut random_numbers = n_random_numbers(&mut random_generator, LINES_TO_DRAW * 2);
+
+        // Draw some lines from the prior before seeing data to see what our
+        // prior belief looks like
+        let weights = prior.draw(&mut random_numbers.drain(..), LINES_TO_DRAW).unwrap();
+        let predicted_targets = &test_design_matrix * weights.transpose();
+
+        // plot the x and predicted to see the lines drawn from the posterior
+        // over the whole data range
+        println!("True x and f(x) and 5 lines of the parameters drawn from the prior");
+        let mut chart = Chart::new(180, 60, -1.0, 1.0);
+        chart.lineplot(Shape::Lines(&merge_for_plotting(&x, &y)));
+        for i in 0..LINES_TO_DRAW {
+            // slice into each column of the predicted_targets matrix to
+            // get the predictions for each set of paramters drawn from the posterior
+            chart.lineplot(Shape::Lines(&merge_for_plotting(
+                &x,
+                &Matrix::column(predicted_targets.column_iter(i).collect()))));
+        }
+        chart.nice();
 
         for training_size in vec![1, 2, 5, 20] {
             println!("Training size: {}", training_size);
 
             // use increasing amounts of training samples to see the effect
             // on the posterior as more evidence is seen
-            let mut X = Matrix::column(X.column_iter(1).take(training_size).collect());
-            X.insert_column(0, 1.0);
-            println!("Observations: {:?}", X);
+            let design_matrix_n = {
+                let mut design_matrix_n = Matrix::column(
+                    design_matrix.column_iter(1).take(training_size).collect());
+                design_matrix_n.insert_column(0, 1.0);
+                design_matrix_n
+            };
+            println!("Observations: {:?}", design_matrix_n);
             let targets = Matrix::column(targets.column_iter(0).take(training_size).collect());
             println!("Targets: {:?}", targets);
 
-            let new_mean = prior.covariance.map(|x| x * beta) * X.transpose() * &targets;
-            println!("Mean of posterior: {:?}", new_mean);
-            let new_covariance = identity.map(|x| x * alpha) + (X.transpose() * &X).map(|x| x * beta);
+            let new_precision = Matrix::diagonal(prior_precision, (2, 2))
+                + (design_matrix_n.transpose() * &design_matrix_n).map(|x| x * noise_precision);
+            let new_covariance = new_precision.inverse().unwrap();
             println!("Covariance of posterior: {:?}", new_covariance);
+            let new_mean = new_covariance.map(|x| x * noise_precision)
+                * design_matrix_n.transpose() * &targets;
+            println!("Mean of posterior: {:?}", new_mean);
+
             let posterior = MultivariateGaussian::new(new_mean, new_covariance);
 
             // then draw a few samples from the new Gaussian having seen N data
             // and use these w0 and w1 parameters drawn to create a few lines
             // draw MxN random numbers because N is even
-            let mut random_numbers = n_random_numbers(&mut random_generator, training_size * 2);
+            let mut random_numbers = n_random_numbers(&mut random_generator, LINES_TO_DRAW * 2);
 
-            let weights = posterior.draw(&mut random_numbers.drain(..), training_size).unwrap();
+            let weights = posterior.draw(&mut random_numbers.drain(..), LINES_TO_DRAW).unwrap();
             println!("Data: {}, Weights:\n{:?}", training_size, weights);
+            let predicted_targets = &test_design_matrix * weights.transpose();
+
+            // plot the x and predicted to see the lines drawn from the posterior
+            // over the whole data range
+            println!("True x and f(x) and 5 lines of the parameters drawn from the posterior of N={}", training_size);
+            let mut chart = Chart::new(180, 60, -1.0, 1.0);
+            chart.lineplot(Shape::Lines(&merge_for_plotting(&x, &y)));
+            for i in 0..LINES_TO_DRAW {
+                // slice into each column of the predicted_targets matrix to
+                // get the predictions for each set of paramters drawn from the posterior
+                chart.lineplot(Shape::Lines(&merge_for_plotting(
+                    &x,
+                    &Matrix::column(predicted_targets.column_iter(i).collect()))));
+            }
+            chart.nice();
 
             // then plot the sample of lines and the true one
             // and the datapoints seen
         }
 
+        assert_eq!(1, 2);
         //assert_eq!(1, 2);
     }
 }
