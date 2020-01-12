@@ -1,5 +1,8 @@
 /*!
- * Generic matrix type
+ * Generic matrix type.
+ *
+ * Matrices are generic over some type `T`. If `T` is [Numeric](../numeric/index.html) then
+ * the matrix can be used in a mathematical way.
  */
 
 use std::ops::{Add, Sub, Mul, Neg, Div};
@@ -19,7 +22,7 @@ use crate::linear_algebra;
  * no traits, in which case the matrix will be rather useless. If the
  * type implements [`Clone`](https://doc.rust-lang.org/std/clone/trait.Clone.html)
  * most storage and accessor methods are defined and if the type implements
- * [`Numeric`](../numeric/trait.Numeric.html) then the matrix can be used in
+ * [`Numeric`](../numeric/index.html) then the matrix can be used in
  * a mathematical way.
  *
  * When doing numeric operations with Matrices you should be careful to not
@@ -190,17 +193,21 @@ impl <T> Matrix<T> {
     /**
      * Shrinks this matrix down from its current MxN size down to
      * some new size OxP where O and P are determined by the kind of
-     * slice given, O <= M and P <= N. Only rows and columns specified by the slice will
-     * be retained, so for instance if the Slice is `Slice::RowColumnRange(0..2, 0..3)`
-     * then the modified matrix will be no bigger than 2x3 and contain up to the first two
+     * slice given, O <= M and P <= N.
+     *
+     * Only rows and columns specified by the slice will be retained, so for
+     * instance if the Slice is `Slice::RowColumnRange(0..2, 0..3)` then the
+     * modified matrix will be no bigger than 2x3 and contain up to the first two
      * rows and first three columns that it previously had.
+     *
+     * See [Slice](./slices/enum.Slice.html) for constructing slices.
      */
     pub fn retain_mut(&mut self, slice: Slice) {
         // iterate through rows and columns backwards so removing entries doesn't
         // invalidate the index
         for row in (0..self.rows()).rev() {
             for column in (0..self.columns()).rev() {
-                if !slice.is_in(row, column) {
+                if !slice.accepts(row, column) {
                     self.data[row].remove(column);
                 }
             }
@@ -209,8 +216,6 @@ impl <T> Matrix<T> {
                 self.data.remove(row);
             }
         }
-        // TODO: check the matrix is still correctly formed and hasn't
-        // become jagged or 
     }
 }
 
@@ -507,8 +512,8 @@ impl <T: Clone> Matrix<T> {
     }
 
     /**
-     * Makes a copy of this matrix shrunk down in size according to the slice
-     * and the `retain_mut` method.
+     * Makes a copy of this matrix shrunk down in size according to the slice. See
+     * [retain_mut](#method.retain_mut).
      */
     pub fn retain(&self, slice: Slice) -> Matrix<T> {
         let mut retained = self.clone();

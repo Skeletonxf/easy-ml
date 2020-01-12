@@ -2,10 +2,11 @@
  * Numerical type definitions.
  *
  * `Numeric` together with `where for<'a> &'a T: NumericRef<T>`
- * expresses the operations in `NumericByValue` for all 4 combinations of by value
- * and by reference. Numeric additionally adds some additional constraints only needed
- * by value on an implementing type such as `PartialOrd`, [`ZeroOne`](./trait.ZeroOne.html)
- * and [`FromUsize`](./trait.FromUsize.html).
+ * expresses the operations in [`NumericByValue`](./trait.NumericByValue.html) for
+ * all 4 combinations of by value and by reference. [`Numeric`](./trait.Numeric.html)
+ * additionally adds some additional constraints only needed by value on an implementing
+ * type such as `PartialOrd`, [`ZeroOne`](./trait.ZeroOne.html) and
+ * [`FromUsize`](./trait.FromUsize.html).
  */
 
 use std::ops::Add;
@@ -22,6 +23,10 @@ use std::num::Wrapping;
  * A trait defining what a numeric type is in terms of by value
  * numerical operations matrices need their types to support for
  * math operations.
+ *
+ * The requirements are Add, Sub, Mul, Div, Neg and Sized. Note that
+ * unsigned integers do not implement Neg unless they are wrapped by
+ * [Wrapping](https://doc.rust-lang.org/std/num/struct.Wrapping.html).
  */
 pub trait NumericByValue<Rhs = Self, Output = Self>:
     Add<Rhs, Output = Output>
@@ -54,12 +59,13 @@ impl <T, Rhs, Output> NumericByValue<Rhs, Output> for T where
     + Sized {}
 
 /**
- * The trait to define &T op T and &T op &T versions for NumericByValue
+ * The trait to define `&T op T` and `&T op &T` versions for NumericByValue
  * based off the MIT/Apache 2.0 licensed code from num-traits 0.2.10:
  *
- * **This trait is not ever used directly for users of this library**. You
- * don't need to deal with it apart from when implementing numeric types
- * and even then it will be implemented automatically.
+ * **This trait is not ever used directly for users of this library. You
+ * don't need to deal with it unless
+ * [implementing custom numeric types](../using_custom_types/index.html)
+ * and even then it will be implemented automatically.**
  *
  * - http://opensource.org/licenses/MIT
  * - https://docs.rs/num-traits/0.2.10/src/num_traits/lib.rs.html#112
@@ -68,7 +74,7 @@ impl <T, Rhs, Output> NumericByValue<Rhs, Output> for T where
  * so the first constraint expresses some &T which can be operated on with
  * some right hand side type T to yield a value of type T.
  *
- * In a similar way the second constraint expresses &T op &T -> T operations
+ * In a similar way the second constraint expresses `&T op &T -> T` operations
  */
 pub trait NumericRef<T>:
     // &T op T -> T

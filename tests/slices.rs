@@ -42,7 +42,7 @@ mod tests {
     }
 
     #[test]
-    fn test_slicing_row_column_negation() {
+    fn test_slicing_row_column() {
         let matrix = Matrix::from(vec![
             vec![ 1, 2, 3, 4, 5, 6 ],
             vec![ 7, 8, 9, 1, 2, 3 ]]);
@@ -51,5 +51,39 @@ mod tests {
             Matrix::from(vec![
                 vec![ 4, 5 ],
                 vec![ 1, 2 ]]));
+    }
+
+    #[test]
+    fn test_slicing_row_column_negated() {
+        let matrix = Matrix::from(vec![
+            vec![ 1, 2, 3, 4, 5, 6 ],
+            vec![ 7, 8, 9, 1, 2, 3 ]]);
+        assert_eq!(
+            matrix.retain(Slice::RowColumnRange(1..2, 2..3).not()),
+            Matrix::row(vec![ 1, 2, 4, 5, 6 ]));
+    }
+
+    #[test]
+    fn test_slicing_row_column_or() {
+        let matrix = Matrix::from(vec![
+            vec![ 1, 2, 3 ],
+            vec![ 4, 5, 6 ],
+            vec![ 7, 8, 9 ]]);
+        assert_eq!(
+            matrix.retain(Slice::RowRange(0..1).or(Slice::RowColumnRange(2..3, 0..1))),
+            Matrix::from(vec![
+                vec![ 1, 2, 3],
+                vec![ 7, 8, 9]]));
+    }
+
+    #[test]
+    fn test_slicing_row_column_and() {
+        let matrix = Matrix::from(vec![
+            vec![ 1, 2, 3 ],
+            vec![ 4, 5, 6 ],
+            vec![ 7, 8, 9 ]]);
+        assert_eq!(
+            matrix.retain(Slice::RowRange(0..1).and(Slice::ColumnRange(0..2))),
+            Matrix::row(vec![ 1, 2 ]));
     }
 }

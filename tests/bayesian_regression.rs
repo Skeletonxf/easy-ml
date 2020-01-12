@@ -53,7 +53,7 @@ mod tests {
         // create noisy target values to train on from these observations
         let normal_distribution = Gaussian::new(0.0, variance);
         let mut random_numbers = n_random_numbers(random_generator, training_size);
-        let samples = normal_distribution.draw(&mut random_numbers.drain(..), training_size);
+        let samples = normal_distribution.draw(&mut random_numbers.drain(..), training_size).unwrap();
         let targets = observations.map_with_index(
             |x, row, _| target(x) + samples[row]);
 
@@ -204,6 +204,6 @@ mod tests {
             // and the datapoints seen
         }
 
-        assert_eq!(1, 2);
+        //assert_eq!(1, 2);
     }
 }

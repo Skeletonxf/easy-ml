@@ -24,7 +24,7 @@ mod tests {
             0.6579461681015037, 0.014173578615730431
         ];
         let max_samples = random_source.len();
-        let samples = function.draw(&mut random_source.drain(..), max_samples);
+        let samples = function.draw(&mut random_source.drain(..), max_samples).unwrap();
 
         // the mean of the drawn samples should be very close to 1.0
         let mean: f64 = samples.iter().cloned().sum::<f64>() / (max_samples as f64);

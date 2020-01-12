@@ -30,7 +30,7 @@ for _ in 0..SAMPLES {
 }
 
 // draw samples from the normal distribution
-let samples: Vec<f64> = normal_distribution.draw(&mut random_numbers.drain(..), SAMPLES);
+let samples: Vec<f64> = normal_distribution.draw(&mut random_numbers.drain(..), SAMPLES).unwrap();
 
 // create a [(f32, f32)] list to plot a histogram of
 let histogram_points = {
@@ -60,7 +60,7 @@ use crate::linear_algebra;
 
 /**
  * A Gaussian probability density function of a normally distributed
- * random variable with expected value / mean μ, and variance σ^2.
+ * random variable with expected value / mean μ, and variance σ<sup>2</sup>.
  *
  * See: [https://en.wikipedia.org/wiki/Gaussian_function](https://en.wikipedia.org/wiki/Gaussian_function)
  */
@@ -104,22 +104,21 @@ where for<'a> &'a T: NumericRef<T> {
 
     /**
      * Given a source of random variables in the uniformly distributed
-     * range [0, 1] inclusive, draws up to `max_samples` of independent
+     * range [0, 1] inclusive, draws `max_samples` of independent
      * random numbers according to this Gaussian distribution's mean and
      * variance using the Box-Muller transform:
      *
      * [https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform](https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform)
      *
-     * The source of random variables must provide as many values
+     * The source of random variables must provide at least as many values
      * as `max_samples` if `max_samples` is even, and one more than `max_samples`
-     * if `max_samples` is odd. If fewer are provided the returned
-     * list of samples will not contain as many elements as max_samples.
+     * if `max_samples` is odd. If fewer are provided None is returned.
      *
      * As all randomness is provided to this method, this code is deterministic
      * and will always compute the same samples given the same random source
      * of numbers.
      */
-    pub fn draw<I>(&self, source: &mut I, max_samples: usize) -> Vec<T>
+    pub fn draw<I>(&self, source: &mut I, max_samples: usize) -> Option<Vec<T>>
         where
             T: Pi + Sqrt<Output = T> + Cos<Output = T> + Sin<Output = T>,
             I: Iterator<Item = T>,
@@ -134,31 +133,25 @@ where for<'a> &'a T: NumericRef<T> {
         // until either the iterator runs out or we reach the max_samples
         // limit
         while samples.len() < max_samples {
-            match self.generate_pair(source) {
-                Some((u, v)) => {
-                    // these computations convert two samples from the inclusive 0 - 1
-                    // range to two samples of a normal distribution with with
-                    // μ = 0 and σ = 1.
-                    let z1 = (&minus_two * &u.ln()).sqrt() * ((&two_pi * &v).cos());
-                    let z2 = (&minus_two * &u.ln()).sqrt() * ((&two_pi * &v).sin());
-                    // now we scale to the mean and variance for this Gaussian
-                    let sample1 = (z1 * &standard_deviation) + &self.mean;
-                    let sample2 = (z2 * &standard_deviation) + &self.mean;
-                    samples.push(sample1);
-                    samples.push(sample2);
-                },
-                None => {
-                    return samples;
-                }
-            }
+            let (u, v) = self.generate_pair(source)?;
+            // these computations convert two samples from the inclusive 0 - 1
+            // range to two samples of a normal distribution with with
+            // μ = 0 and σ = 1.
+            let z1 = (&minus_two * &u.ln()).sqrt() * ((&two_pi * &v).cos());
+            let z2 = (&minus_two * &u.ln()).sqrt() * ((&two_pi * &v).sin());
+            // now we scale to the mean and variance for this Gaussian
+            let sample1 = (z1 * &standard_deviation) + &self.mean;
+            let sample2 = (z2 * &standard_deviation) + &self.mean;
+            samples.push(sample1);
+            samples.push(sample2);
         }
         // return the full list of samples, removing the final sample
         // if adding 2 samples took us over the max
         if samples.len() > max_samples {
             samples.pop();
-            return samples;
+            return Some(samples);
         }
-        samples
+        Some(samples)
     }
 
     fn generate_pair<I>(&self, source: &mut I) -> Option<(T, T)>
@@ -184,9 +177,14 @@ impl <T: Numeric> MultivariateGaussian<T> {
     /**
      * Constructs a new multivariate Gaussian distribution from
      * a Nx1 column vector of means and a NxN covariance matrix
+     *
+     * This function does not check that the provided covariance matrix
+     * is actually a covariance matrix. If a square matrix that is not
+     * symmetric is supplied the gaussian is not defined.
      */
     pub fn new(mean: Matrix<T>, covariance: Matrix<T>) -> MultivariateGaussian<T> {
-        // TODO: check arguments
+        assert!(mean.columns() == 1, "Mean must be a column vector");
+        assert!(covariance.rows() == covariance.columns(), "Supplied 'covariance' matrix is not square");
         MultivariateGaussian {
             mean,
             covariance,
@@ -199,10 +197,10 @@ where for<'a> &'a T: NumericRef<T> {
     /**
      * Draws samples from this multivariate distribution.
      *
-     * For max_samples of M and sufficient random numbers from the source iterator,
-     * returns an MxN matrix of drawn values.
+     * For max_samples of M, sufficient random numbers from the source iterator,
+     * and this Gaussian's dimensionality of N, returns an MxN matrix of drawn values.
      *
-     * The source iterator must have MxN random values if N is even, and
+     * The source iterator must have at least MxN random values if N is even, and
      * Mx(N+1) random values if N is odd, or `None` will be returned. If
      * the cholesky decomposition cannot be taken on this Gaussian's
      * covariance matrix then `None` is also returned.
@@ -225,10 +223,7 @@ where for<'a> &'a T: NumericRef<T> {
         for row in 0..samples.rows() {
             // use the box muller transform to get N independent values from
             //  a normal distribution (x)
-            let standard_normals = normal_distribution.draw(source, self.mean.rows());
-            if standard_normals.len() < self.mean.rows() {
-                return None;
-            }
+            let standard_normals = normal_distribution.draw(source, self.mean.rows())?;
             // mean + (L * standard_normals) yields each m'th vector from the distribution
             let random_vector = &self.mean + (&lower_triangular * Matrix::column(standard_normals));
             for x in 0..random_vector.rows() {
