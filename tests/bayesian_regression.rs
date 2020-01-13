@@ -22,6 +22,7 @@ mod tests {
     // 3: update beliefs
 
     const LINES_TO_DRAW: usize = 5;
+    const SAMPLES_FOR_PLOTTING_DISTRIBUTION: usize = 200;
 
     /**
      * The function of x without any noise
@@ -183,7 +184,7 @@ mod tests {
             let mut random_numbers = n_random_numbers(&mut random_generator, LINES_TO_DRAW * 2);
 
             let weights = posterior.draw(&mut random_numbers.drain(..), LINES_TO_DRAW).unwrap();
-            println!("Data: {}, Weights:\n{:?}", training_size, weights);
+
             let predicted_targets = &test_design_matrix * weights.transpose();
 
             // plot the x and predicted to see the lines drawn from the posterior
@@ -200,10 +201,21 @@ mod tests {
             }
             chart.nice();
 
-            // then plot the sample of lines and the true one
-            // and the datapoints seen
+            // draw more weights so we can plot the distribution of weights we
+            // in our posterior
+            let mut random_numbers = n_random_numbers(&mut random_generator, SAMPLES_FOR_PLOTTING_DISTRIBUTION * 2);
+            let weights = posterior.draw(&mut random_numbers.drain(..), SAMPLES_FOR_PLOTTING_DISTRIBUTION).unwrap();
+
+            // if we output a CSV and import this into a spreadsheet we can see
+            // the gaussian nature of the posterior, it is now strongly correlated
+            //println!("Weights distribution");
+            //for row in 0..weights.rows() {
+            //    println!("{},{}", weights.get(row, 0), weights.get(row, 1));
+            //}
+
+            // TODO: get a better plotting library to do scatter plots directly
         }
 
-        //assert_eq!(1, 2);
+        assert_eq!(1, 2);
     }
 }
