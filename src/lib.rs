@@ -12,3 +12,4 @@ pub mod distributions;
 // examples
 pub mod linear_regression;
 pub mod using_custom_types;
+pub mod k_means;
