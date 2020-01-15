@@ -422,7 +422,7 @@ impl <T: Clone> Matrix<T> {
     }
 
     /**
-     * Inserts a new row into the Matrix immediately after the provided index,
+     * Inserts a new row into the Matrix at the provided index,
      * shifting other rows to the right and filling all entries with the
      * provided value. Rows are 0 indexed.
      *
@@ -434,9 +434,9 @@ impl <T: Clone> Matrix<T> {
     }
 
     /**
-     * Inserts a new row into the Matrix immediately after the provided index,
-     * shifting other rows to the right and filling all entries with the
-     * values from the iterator in sequence. Rows are 0 indexed.
+     * Inserts a new row into the Matrix at the provided index, shifting other rows
+     * to the right and filling all entries with the values from the iterator in sequence.
+     * Rows are 0 indexed.
      *
      * This will panic if the row is greater than the number of rows in the matrix,
      * or if the iterator has fewer elements than `self.columns()`.
@@ -466,9 +466,9 @@ impl <T: Clone> Matrix<T> {
     }
 
     /**
-     * Inserts a new column into the Matrix immediately after the provided index,
-     * shifting other columns to the right and filling all entries with the
-     * provided value. Columns are 0 indexed.
+     * Inserts a new column into the Matrix at the provided index, shifting other
+     * columns to the right and filling all entries with the provided value.
+     * Columns are 0 indexed.
      *
      * This will panic if the column is greater than the number of columns in the matrix.
      */
@@ -479,9 +479,9 @@ impl <T: Clone> Matrix<T> {
     }
 
     /**
-     * Inserts a new column into the Matrix immediately after the provided index,
-     * shifting other columns to the right and filling all entries with the
-     * values from the iterator in sequence. Columns are 0 indexed.
+     * Inserts a new column into the Matrix at the provided index, shifting other columns
+     * to the right and filling all entries with the values from the iterator in sequence.
+     * Columns are 0 indexed.
      *
      * This will panic if the column is greater than the number of columns in the matrix,
      * or if the iterator has fewer elements than `self.rows()`.
