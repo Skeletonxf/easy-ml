@@ -212,7 +212,7 @@ impl <T> Matrix<T> {
                 }
             }
             // delete empty rows
-            if self.data[row].len() == 0 {
+            if self.data[row].is_empty() {
                 self.data.remove(row);
             }
         }

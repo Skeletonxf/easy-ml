@@ -1,7 +1,11 @@
 /*!
- * If this is your first time using Easy ML you should check out some of the
- * [examples](./linear_regression/index.html) to get an overview of how to use matrices
- * then study the [Matrix](./matrices/struct.Matrix.html) type for what you need.
+ * If this is your first time using Easy ML you should check out some of the examples
+ * to get an overview of how to use matrices then study the
+ * [Matrix](./matrices/struct.Matrix.html) type for what you need.
+ *
+ * # Examples
+ * - [Linear Regression](./linear_regression/index.html)
+ * - [k-means clustering](./k_means/index.html)
  */
 
 pub mod numeric;

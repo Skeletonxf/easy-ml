@@ -4,7 +4,7 @@
  * At the moment slicing is not very usable and can only be used to downsize
  * matrices with [retain](../struct.Matrix.html#method.retain) and
  * [retain_mut](../struct.Matrix.html#method.retain_mut). In the future it will be available
- * for iterating through matrices as well.
+ * for iterating through matrices as well and indexing into matrices to get values.
  */
 
 use std::ops::Range;
@@ -13,7 +13,7 @@ use crate::matrices::{Row, Column};
 
 /**
  * A kind of slice that can be taken on a matrix. This enum is not
- * stabilised and may gain new variants over time.
+ * stabilised and may change over time.
  */
 #[derive(Clone)]
 pub enum Slice {
@@ -67,6 +67,10 @@ pub enum Slice {
      *
      * This can loosly be considered `!R & !C` in terms of what is negated.
      */
+    // TODO: these are still confusing and need to be reconsidered
+    // Slices in numpy are written separately for each dimension,
+    // copying that format will probably make more sense
+    #[doc(hidden)]
     Not(Box<Slice>),
     // NotRow(Box<Slice>),
     // NotColumn(Box<Slice>),
@@ -76,6 +80,7 @@ pub enum Slice {
      *
      * This can loosly be considered `R1 & R2 & C1 & C2` in terms of what is accepted.
      */
+    #[doc(hidden)]
     And(Box<Slice>, Box<Slice>),
     /**
      * The logical or of two slices, accepting any row and column where one of the two
@@ -104,6 +109,7 @@ pub enum Slice {
      *
      * This can loosly be considered `(R1 || R2) & (C1 || C2)` in terms of what is accepted.
      */
+    #[doc(hidden)]
     Or(Box<Slice>, Box<Slice>),
 }
 
@@ -168,6 +174,7 @@ impl Slice {
     /**
      * Returns the negation of this slice
      */
+    #[doc(hidden)]
     pub fn not(self) -> Slice {
         Slice::Not(Box::new(self))
     }
@@ -175,6 +182,7 @@ impl Slice {
     /**
      * Returns the and of this slice and the other one
      */
+    #[doc(hidden)]
     pub fn and(self, other: Slice) -> Slice {
         Slice::And(Box::new(self), Box::new(other))
     }
@@ -182,6 +190,7 @@ impl Slice {
     /**
      * Returns the or of this slice and the other one
      */
+    #[doc(hidden)]
     pub fn or(self, other: Slice) -> Slice {
         Slice::Or(Box::new(self), Box::new(other))
     }

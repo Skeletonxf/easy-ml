@@ -22,11 +22,10 @@ fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f64> {
     random_numbers
 }
 
-// generate two cluster centres using two 2d gaussians, making sure they overlap a bit
-
 // use a fixed seed non cryptographically secure random generator from the rand crate
 let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(11);
 
+// generate two cluster centres using two 2d gaussians, making sure they overlap a bit
 let cluster1 = MultivariateGaussian::new(
     Matrix::column(vec![ 2.0, 3.0 ]),
     Matrix::from(vec![
@@ -34,7 +33,7 @@ let cluster1 = MultivariateGaussian::new(
         vec![ 0.1, 1.0 ]]));
 
 // make the second cluster more spread out so there will be a bit of overlap with the first
-// in the (0,0) to (1, 1) range
+// in the (0,0) to (1, 1) area
 let cluster2 = MultivariateGaussian::new(
     Matrix::column(vec![ -2.0, -1.0 ]),
     Matrix::from(vec![
@@ -133,8 +132,8 @@ while absolute_changes == -1.0 || absolute_changes > CHANGE_THRESHOLD {
             // collect into a vector of tuples
             .collect::<Vec<(&f64, &f64)>>();
         let total = owned.len() as f64;
-        let mean_x = owned.iter().map(|(&x, y)| x).sum::<f64>() / total;
-        let mean_y = owned.iter().map(|(x, &y)| y).sum::<f64>() / total;
+        let mean_x = owned.iter().map(|(&x, _)| x).sum::<f64>() / total;
+        let mean_y = owned.iter().map(|(_, &y)| y).sum::<f64>() / total;
         // track the absolute difference between the new mean and the old one
         // so we know when to stop updating the clusters
         absolute_changes += (clusters.get(cluster, X) - mean_x).abs();
