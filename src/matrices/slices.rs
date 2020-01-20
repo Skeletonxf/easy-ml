@@ -12,169 +12,66 @@ use std::ops::Range;
 use crate::matrices::{Row, Column};
 
 /**
- * A kind of slice that can be taken on a matrix. This enum is not
- * stabilised and may change over time.
+ * A slice defines across one dimension what values are accepted,
+ * it can act like a filter. Slices can also be constructed via
+ * boolean logic operations in the same way as in predicate logic expressions.
  */
-#[derive(Clone)]
+#[non_exhaustive]
 pub enum Slice {
+    /** A slice that accepts all indexes */
+    All(),
+    /** A slice that accepts no indexes */
+    None(),
+    /** A slice that accepts only the provided index */
+    Single(usize),
+    /** A slice that accepts only indexes within the range */
+    Range(Range<usize>),
     /**
-     * A slice into a single row.
+     * A slice which rejects all indexes accepted by the argument, and accepts all indexes
+     * rejected by the argument.
      */
-    SingleRow(Row),
-    /**
-     * A slice into a single column.
-     */
-    SingleColumn(Column),
-    /**
-     * A slice into some range over the columns.
-     */
-    ColumnRange(Range<Column>),
-    /**
-     * A slice into some range over the rows.
-     */
-    RowRange(Range<Row>),
-    /**
-     * A slice into a range of rows and a range of columns.
-     */
-    RowColumnRange(Range<Row>, Range<Column>),
-    /**
-     * The negation of a slice, transforming all rows and columns previously
-     * accepted by the slice into ones not accepted, and all rows and columns
-     * previously rejected into ones accepted.
-     *
-     * This may not do what you expect! Rows and Columns are handled separately
-     * to prevent the construction of jagged slices.
-     *
-     * For a 3x3 array and an existing slice accepting only the middle element,
-     * negating this slice will not return a new slice accepting everything
-     * but the middle element, but will instead take a minor accepting only
-     * the elements that are not in the row or column of the previously accepted
-     * element.
-     *
-     * <pre><code>  [
-     *     ✗, ✗, ✗
-     *     ✗, ✓, ✗
-     *     ✗. ✗. ✗
-     *   ]
-     * </code></pre>
-     *
-     * <pre><code>  [
-     *     ✓, ✗, ✓
-     *     ✗, ✗, ✗
-     *     ✓. ✗. ✓
-     *   ]
-     * </code></pre>
-     *
-     * This can loosly be considered `!R & !C` in terms of what is negated.
-     */
-    // TODO: these are still confusing and need to be reconsidered
-    // Slices in numpy are written separately for each dimension,
-    // copying that format will probably make more sense
-    #[doc(hidden)]
     Not(Box<Slice>),
-    // NotRow(Box<Slice>),
-    // NotColumn(Box<Slice>),
     /**
-     * The logical and of two slices, accepting only rows and columns accepted
-     * by both.
-     *
-     * This can loosly be considered `R1 & R2 & C1 & C2` in terms of what is accepted.
+     * A slice which accepts only indexes accepted by both arguments, and rejects all others.
      */
-    #[doc(hidden)]
     And(Box<Slice>, Box<Slice>),
     /**
-     * The logical or of two slices, accepting any row and column where one of the two
-     * slices accept that row and one of the two slices accept that column.
+     * A slice which accepts indexes accepted by either arguments, and rejects only
+     * indexes accepted by neither. This is an inclusive or.
      *
-     * This may not do what you expect! Rows and Columns are handled separately
-     * to prevent the construction of jagged slices.
-     *
-     * For the slices of the 3x3 matrix:
-     *
-     * <pre><code>  [                [
-     *     ✓, ✓, ✓         ✗, ✗, ✗
-     *     ✗, ✗, ✗         ✗, ✗, ✗
-     *     ✗. ✗. ✗         ✓, ✗, ✗
-     *   ]                ]
-     * </code></pre>
-     *
-     * The or of them is
-     *
-     * <pre><code>  [
-     *     ✓, ✓, ✓
-     *     ✗, ✗, ✗
-     *     ✓. ✓. ✓
-     *   ]
-     * </code></pre>
-     *
-     * This can loosly be considered `(R1 || R2) & (C1 || C2)` in terms of what is accepted.
+     * You could construct an exclusive or by using combinations of AND, OR and NOT as
+     * (a AND (NOT b)) OR ((NOT a) AND b) = a XOR b.
      */
-    #[doc(hidden)]
     Or(Box<Slice>, Box<Slice>),
+}
+
+/**
+ * A kind of slice that can be taken on a matrix, over its rows and columns.
+ */
+pub struct Slice2D {
+    rows: Slice,
+    columns: Slice,
 }
 
 impl Slice {
     /**
-     * Checks this slice as a filter for some row and column.
+     * Checks if this slice accepts some index.
      */
-    pub fn accepts(&self, row: Row, column: Column) -> bool {
+    pub fn accepts(&self, index: usize) -> bool {
         match self {
-            Slice::SingleRow(r) => r == &row,
-            Slice::SingleColumn(c) => c == &column,
-            Slice::ColumnRange(column_range) => column_range.contains(&column),
-            Slice::RowRange(row_range) => row_range.contains(&row),
-            Slice::RowColumnRange(row_range, column_range) => {
-                row_range.contains(&row) && column_range.contains(&column)
-            },
-            Slice::Not(slice) => (!slice.accepts_row(row)) && (!slice.accepts_column(column)),
-            Slice::And(slice1, slice2) => {
-                slice1.accepts(row, column) && slice2.accepts(row, column)
-            },
-            Slice::Or(slice1, slice2) => {
-                (slice1.accepts_row(row) || slice2.accepts_row(row))
-                && (slice1.accepts_column(column) || slice2.accepts_column(column))
-            },
-        }
-    }
-
-    fn accepts_row(&self, row: Row) -> bool {
-        match self {
-            Slice::SingleRow(r) => r == &row,
-            Slice::SingleColumn(_) => true,
-            Slice::ColumnRange(_) => true,
-            Slice::RowRange(row_range) => row_range.contains(&row),
-            Slice::RowColumnRange(row_range, _) => row_range.contains(&row),
-            Slice::Not(slice) => !slice.accepts_row(row),
-            Slice::And(slice1, slice2) => {
-                slice1.accepts_row(row) && slice2.accepts_row(row)
-            },
-            Slice::Or(slice1, slice2) => {
-                slice1.accepts_row(row) || slice2.accepts_row(row)
-            },
-        }
-    }
-
-    fn accepts_column(&self, column: Column) -> bool {
-        match self {
-            Slice::SingleRow(_) => true,
-            Slice::SingleColumn(c) => c == &column,
-            Slice::ColumnRange(column_range) => column_range.contains(&column),
-            Slice::RowRange(_) => true,
-            Slice::RowColumnRange(_, column_range) => column_range.contains(&column),
-            Slice::Not(slice) => !slice.accepts_column(column),
-            Slice::And(slice1, slice2) => {
-                slice1.accepts_column(column) && slice2.accepts_column(column)
-            },
-            Slice::Or(slice1, slice2) => {
-                slice1.accepts_column(column) || slice2.accepts_column(column)
-            },
+            Slice::All() => true,
+            Slice::None() => false,
+            Slice::Single(i) => i == &index,
+            Slice::Range(range) => range.contains(&index),
+            Slice::Not(slice) => !slice.accepts(index),
+            Slice::And(slice1, slice2) => slice1.accepts(index) && slice2.accepts(index),
+            Slice::Or(slice1, slice2) => slice1.accepts(index) || slice2.accepts(index),
         }
     }
 
     /**
      * Returns the negation of this slice
      */
-    #[doc(hidden)]
     pub fn not(self) -> Slice {
         Slice::Not(Box::new(self))
     }
@@ -182,7 +79,6 @@ impl Slice {
     /**
      * Returns the and of this slice and the other one
      */
-    #[doc(hidden)]
     pub fn and(self, other: Slice) -> Slice {
         Slice::And(Box::new(self), Box::new(other))
     }
@@ -190,8 +86,114 @@ impl Slice {
     /**
      * Returns the or of this slice and the other one
      */
-    #[doc(hidden)]
     pub fn or(self, other: Slice) -> Slice {
         Slice::Or(Box::new(self), Box::new(other))
+    }
+}
+
+/**
+ * A builder object to create a slice. This exists to make forgetting to specify rows
+ * *and* columns a compilation error rather than a runtime one.
+ */
+pub struct EmptySlice2DBuilder {}
+/**
+ * A builder object to create a slice. This exists to make forgetting to specify rows
+ * *and* columns a compilation error rather than a runtime one.
+ */
+pub struct RowSlice2DBuilder { rows: Slice }
+/**
+ * A builder object to create a slice. This exists to make forgetting to specify rows
+ * *and* columns a compilation error rather than a runtime one.
+ */
+pub struct ColumnSlice2DBuilder { columns: Slice }
+
+/**
+ * Constructs a builder object to create a 2d slice
+ *
+ * The full syntax to create a `Slice2D` is like so:
+ *
+ * ```
+ * use easy_ml::matrices::slices;
+ * use easy_ml::matrices::slices::Slice;
+ * slices::new()
+ *      .rows(Slice::All())
+ *      .columns(Slice::Single(1));
+ * ```
+ *
+ * Rows and Column slices can be specified in either order but both must be given.
+ */
+pub fn new() -> EmptySlice2DBuilder {
+    Slice2D::new()
+}
+
+impl Slice2D {
+    /**
+     * Constructs a builder object to create a 2d slice
+     *
+     * The full syntax to create a `Slice2D` is like so:
+     *
+     * ```
+     * use easy_ml::matrices::slices::{Slice2D, Slice};
+     * Slice2D::new()
+     *      .rows(Slice::All())
+     *      .columns(Slice::Single(1));
+     * ```
+     *
+     * Rows and Column slices can be specified in either order but both must be given.
+     */
+    pub fn new() -> EmptySlice2DBuilder {
+        EmptySlice2DBuilder { }
+    }
+
+    /**
+     * Checks if this 2 dimensional slice accepts some index. The row and column
+     * slices it is composed from must accept the row and column respectively.
+     */
+    pub fn accepts(&self, row: Row, column: Column) -> bool {
+        self.rows.accepts(row) && self.columns.accepts(column)
+    }
+}
+
+impl EmptySlice2DBuilder {
+    /**
+     * Constructs a new builder object with the rows defined first.
+     */
+    pub fn rows(self, rows: Slice) -> RowSlice2DBuilder {
+        RowSlice2DBuilder {
+            rows,
+        }
+    }
+
+    /**
+     * Constructs a new builder object with the columns defined first.
+     */
+    pub fn columns(self, columns: Slice) -> ColumnSlice2DBuilder {
+        ColumnSlice2DBuilder {
+            columns,
+        }
+    }
+}
+
+impl RowSlice2DBuilder {
+    /**
+     * Constructs a 2d slice with rows and columns defined.
+     */
+    pub fn columns(self, columns: Slice) -> Slice2D {
+        Slice2D {
+            rows: self.rows,
+            columns,
+        }
+    }
+}
+
+impl ColumnSlice2DBuilder {
+    /**
+     * Constructs a 2d slice with rows and columns defined.
+     */
+    pub fn rows(self, rows: Slice) -> Slice2D {
+        Slice2D {
+            rows,
+            columns: self.columns,
+        }
     }
 }

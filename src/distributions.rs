@@ -117,6 +117,8 @@ where for<'a> &'a T: NumericRef<T> {
      * As all randomness is provided to this method, this code is deterministic
      * and will always compute the same samples given the same random source
      * of numbers.
+     *
+     * [Example of generating and feeding random numbers](./index.html)
      */
     pub fn draw<I>(&self, source: &mut I, max_samples: usize) -> Option<Vec<T>>
         where
@@ -166,7 +168,10 @@ where for<'a> &'a T: NumericRef<T> {
  *
  * See: [https://en.wikipedia.org/wiki/Multivariate_normal_distribution](https://en.wikipedia.org/wiki/Multivariate_normal_distribution)
  *
- * The mean [Matrix](./../matrices/struct.Matrix.html) must always be a column vector.
+ * # Invariants
+ *
+ * The mean [Matrix](./../matrices/struct.Matrix.html) must always be a column vector, and
+ * must be the same length as the covariance matrix.
  */
 pub struct MultivariateGaussian<T: Numeric> {
     pub mean: Matrix<T>,
@@ -185,6 +190,7 @@ impl <T: Numeric> MultivariateGaussian<T> {
     pub fn new(mean: Matrix<T>, covariance: Matrix<T>) -> MultivariateGaussian<T> {
         assert!(mean.columns() == 1, "Mean must be a column vector");
         assert!(covariance.rows() == covariance.columns(), "Supplied 'covariance' matrix is not square");
+        assert!(mean.rows() == covariance.rows(), "Means must be same length as covariance matrix");
         MultivariateGaussian {
             mean,
             covariance,
@@ -204,6 +210,8 @@ where for<'a> &'a T: NumericRef<T> {
      * Mx(N+1) random values if N is odd, or `None` will be returned. If
      * the cholesky decomposition cannot be taken on this Gaussian's
      * covariance matrix then `None` is also returned.
+     *
+     * [Example of generating and feeding random numbers](../k_means/index.html)
      */
     pub fn draw<I>(&self, source: &mut I, max_samples: usize) -> Option<Matrix<T>>
         where

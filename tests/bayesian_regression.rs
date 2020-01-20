@@ -13,7 +13,7 @@ mod tests {
 
     use easy_ml::distributions::{Gaussian, MultivariateGaussian};
     use easy_ml::matrices::Matrix;
-    use easy_ml::matrices::slices::Slice;
+    use easy_ml::matrices::slices::{Slice, Slice2D};
 
     // 3 steps for bayesian regression
     // 0: have data to model
@@ -162,7 +162,10 @@ mod tests {
 
             // use increasing amounts of training samples to see the effect
             // on the posterior as more evidence is seen
-            let design_matrix_n = design_matrix.retain(Slice::RowRange(0..training_size));
+            let design_matrix_n = design_matrix.retain(
+                Slice2D::new()
+                .rows(Slice::Range(0..training_size))
+                .columns(Slice::All()));
 
             println!("Observations: {:?}", design_matrix_n);
             let targets = Matrix::column(targets.column_iter(0).take(training_size).collect());
@@ -216,6 +219,6 @@ mod tests {
             // TODO: get a better plotting library to do scatter plots directly
         }
 
-        assert_eq!(1, 2);
+        //assert_eq!(1, 2);
     }
 }

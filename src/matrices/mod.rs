@@ -13,7 +13,7 @@ pub mod slices;
 use crate::matrices::iterators::{
     ColumnIterator, RowIterator, ColumnMajorIterator,
     ColumnReferenceIterator, RowReferenceIterator, ColumnMajorReferenceIterator};
-use crate::matrices::slices::Slice;
+use crate::matrices::slices::Slice2D;
 use crate::numeric::{Numeric, NumericRef};
 use crate::linear_algebra;
 
@@ -29,6 +29,19 @@ use crate::linear_algebra;
  * consume a matrix by accidentally using it by value. All the operations are
  * also defined on references to matrices so you should favor `&x * &y` style
  * notation for matrices you intend to continue using.
+ *
+ * # Matrix size invariants
+ *
+ * Matrices must always be at least 1x1. You cannot construct a matrix with no rows or
+ * no columns, and any function that resizes matrices will error if you try to use it
+ * in a way that would construct a 0x1, 1x0, or 0x0 matrix. The maximum size of a matrix
+ * is dependent on the platform's `std::usize::MAX` value. Matrices with dimensions NxM
+ * such that N * M < `std::usize::MAX` should not cause any errors in this library, but
+ * expanding their size further may cause panics and or errors. At the time of writing it
+ * is theoretically possible to construct and use matrices where the product of their number
+ * of rows and columns exceed `std::usize::MAX` but this should not be relied upon and may
+ * become an error in the future. Readers should also note that on a 64 bit computer this maximum
+ * value is 18,446,744,073,709,551,615 so running out of memory is likely to occur first.
  */
 #[derive(Debug)]
 pub struct Matrix<T> {
@@ -193,16 +206,22 @@ impl <T> Matrix<T> {
     /**
      * Shrinks this matrix down from its current MxN size down to
      * some new size OxP where O and P are determined by the kind of
-     * slice given, O <= M and P <= N.
+     * slice given and 1 <= O <= M and 1 <= P <= N.
      *
      * Only rows and columns specified by the slice will be retained, so for
-     * instance if the Slice is `Slice::RowColumnRange(0..2, 0..3)` then the
+     * instance if the Slice is constructed by
+     * `Slice2D::new().rows(Slice::Range(0..2)).columns(Slice::Range(0..3))` then the
      * modified matrix will be no bigger than 2x3 and contain up to the first two
      * rows and first three columns that it previously had.
      *
      * See [Slice](./slices/enum.Slice.html) for constructing slices.
+     *
+     * # Panics
+     *
+     * This function will panic if the slice would delete all rows or all columns
+     * from this matrix, ie the resulting matrix must be at least 1x1.
      */
-    pub fn retain_mut(&mut self, slice: Slice) {
+    pub fn retain_mut(&mut self, slice: Slice2D) {
         // iterate through rows and columns backwards so removing entries doesn't
         // invalidate the index
         for row in (0..self.rows()).rev() {
@@ -216,6 +235,17 @@ impl <T> Matrix<T> {
                 self.data.remove(row);
             }
         }
+        assert!(
+            !self.data.is_empty(),
+            "Provided slice must leave at least 1 row in the retained matrix");
+        assert!(
+            !self.data[0].is_empty(),
+            "Provided slice must leave at least 1 column in the retained matrix");
+        // By construction jagged slices should be impossible, if this
+        // invariant later changes by accident it would be possible to break the
+        // rectangle shape invariant on a matrix object
+        // As Slice2D should prevent the construction of jagged slices no
+        // check is here to detect if all rows are still the same length
     }
 }
 
@@ -405,7 +435,28 @@ impl <T: Clone> Matrix<T> {
 
     /**
      * Creates and returns a new matrix with all values from the original
-     * and the index of each value mapped by a function.
+     * and the index of each value mapped by a function. This can be used
+     * to perform elementwise operations that are not defined on the
+     * Matrix type itself.
+     *
+     * # Exmpless
+     *
+     * Matrix elementwise division:
+     *
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * let x = Matrix::from(vec![
+     *     vec![ 9.0, 2.0 ],
+     *     vec![ 4.0, 3.0 ]]);
+     * let y = Matrix::from(vec![
+     *     vec![ 3.0, 2.0 ],
+     *     vec![ 1.0, 3.0 ]]);
+     * let z = x.map_with_index(|x, row, column| x / y.get(row, column));
+     * let result = Matrix::from(vec![
+     *     vec![ 3.0, 1.0 ],
+     *     vec![ 4.0, 1.0 ]]);
+     * assert_eq!(&z, &result);
+     * ```
      */
     pub fn map_with_index<U>(&self, mapping_function: impl Fn(T, Row, Column) -> U) -> Matrix<U>
             where U: Clone {
@@ -515,7 +566,7 @@ impl <T: Clone> Matrix<T> {
      * Makes a copy of this matrix shrunk down in size according to the slice. See
      * [retain_mut](#method.retain_mut).
      */
-    pub fn retain(&self, slice: Slice) -> Matrix<T> {
+    pub fn retain(&self, slice: Slice2D) -> Matrix<T> {
         let mut retained = self.clone();
         retained.retain_mut(slice);
         retained
@@ -606,7 +657,7 @@ where for<'a> &'a T: NumericRef<T> {
     /**
      * Computes the covariance matrix for this NxM feature matrix, in which
      * each N'th row has M features to find the covariance and variance of.
-     * Returns `None` if this type's maximum value is less than N. See
+     * Returns `None` if this type's maximum representable value is less than N. See
      * [`linear_algebra`](../linear_algebra/fn.covariance.html)
      */
     pub fn covariance(&self) -> Option<Matrix<T>> {
