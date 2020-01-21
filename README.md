@@ -19,10 +19,10 @@ This library is currently usable for simple linear algebra tasks like linear reg
 
 - Make runtime assert errors for things like mismatched matrices more user friendly
 - Implement more linear algebra, examples and supporting functions
-  - bayesian regression WIP, blocked on needing a scatter plot library
+  - bayesian regression WIP
   - naive bayes
   - gradient descent
-  - k means WIP, slightly blocked on needing a scatter plot library
+  - k means WIP
   - computer vision with mnist dataset
 
 Planned but unlikely to happen any time soon:
