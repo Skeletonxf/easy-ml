@@ -5,11 +5,16 @@ K-means example
 
 # K means
 
+The following code creates two 2-dimensional gaussian distributions and then draws samples
+from them to create some data which is then assigned to clusters
+
 ```
 use easy_ml::matrices::Matrix;
 use easy_ml::distributions::MultivariateGaussian;
 
 use rand::{Rng, SeedableRng};
+
+use textplots::{Chart, Plot, Shape};
 
 /**
  * Utility function to create a list of random numbers.
@@ -47,18 +52,27 @@ let cluster1_points = cluster1.draw(&mut random_numbers.drain(..), points).unwra
 let mut random_numbers = n_random_numbers(&mut random_generator, points * 2);
 let cluster2_points = cluster2.draw(&mut random_numbers.drain(..), points).unwrap();
 
-// The following code outputs the data of both clusters in CSV format for
-// inspecting in external programs
-// TODO: get a scatter plot library
-// println!("Cluster 1:");
-// for row in 0..cluster1_points.rows() {
-//     println!("{},{}", cluster1_points.get(row, 0), cluster1_points.get(row, 1));
-// }
-//
-// println!("Cluster 2:");
-// for row in 0..cluster2_points.rows() {
-//     println!("{},{}", cluster2_points.get(row, 0), cluster2_points.get(row, 1));
-// }
+// Plot the generated data into a scatter plot
+// There are two clear clusters around the means (of cluster1 and cluster2) but
+// many points in the middle are ambiguous, this was deliberate in the choice of
+// parameters to generate the data with, as if our data was linearly seperable we
+// wouldn't need to perform clustering on it in the first place. Note that, as an unsupervised
+// learning method, k-means does not find or try to find a 'right' clustering for arbitary data
+println!("Generated data points");
+// textplots expects a Vec<(f32, f32)> where each tuple is a (x,y) point to plot,
+// so we must transform the data from the cluster points slightly to plot
+let scatter_points = cluster1_points.column_iter(0)
+    // zip is used to merge the x and y columns in the cluster points into a single tuple
+    .zip(cluster1_points.column_iter(1))
+    // chain then links the two iterators together so after all of cluster1_points
+    // are consumed we use all of cluster2_points
+    .chain(cluster2_points.column_iter(0).zip(cluster2_points.column_iter(1)))
+    // finally we map the tuples of (f64, f64) into (f32, f32) for handing to the library
+    .map(|(x, y)| (x as f32, y as f32))
+    .collect::<Vec<(f32, f32)>>();
+Chart::new(180, 60, -8.0, 8.0)
+    .lineplot(Shape::Points(&scatter_points))
+    .display();
 
 
 // pick seeds to start each cluster at, in this case we start the seeds at a fixed position
@@ -91,12 +105,19 @@ const CHANGE_THRESHOLD: f64 = 0.001;
 // track how much the means have changed each update
 let mut absolute_changes = -1.0;
 
+// track where the clusters move over time for plotting
+let mut cluster_center_1_history = Vec::with_capacity(7);
+let mut cluster_center_2_history = Vec::with_capacity(7);
+
 // loop until we go under the CHANGE_THRESHOLD, reassigning points to the nearest
 // cluster then cluster centres to their mean of points
 while absolute_changes == -1.0 || absolute_changes > CHANGE_THRESHOLD {
     println!("Cluster centres: ({},{}), ({},{})",
         clusters.get(0, X), clusters.get(0, Y),
         clusters.get(1, X), clusters.get(1, Y));
+    cluster_center_1_history.push((clusters.get(0, X) as f32, clusters.get(0, Y) as f32));
+    cluster_center_2_history.push((clusters.get(1, X) as f32, clusters.get(1, Y) as f32));
+
     // assign each point to the nearest cluster centre by euclidean distance
     for point in 0..points.rows() {
         let x = points.get(point, X);
@@ -146,6 +167,15 @@ while absolute_changes == -1.0 || absolute_changes > CHANGE_THRESHOLD {
 println!("Cluster centres: ({},{}), ({},{})",
     clusters.get(0, X), clusters.get(0, Y),
     clusters.get(1, X), clusters.get(1, Y));
+cluster_center_1_history.push((clusters.get(0, X) as f32, clusters.get(0, Y) as f32));
+cluster_center_2_history.push((clusters.get(1, X) as f32, clusters.get(1, Y) as f32));
+
+println!("Cluster centre movements");
+Chart::new(180, 60, -8.0, 8.0)
+    .lineplot(Shape::Points(&scatter_points))
+    .lineplot(Shape::Lines(&cluster_center_1_history))
+    .lineplot(Shape::Lines(&cluster_center_2_history))
+    .display();
 
 ```
 */
