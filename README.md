@@ -22,7 +22,6 @@ This library is currently usable for simple linear algebra tasks like linear reg
   - bayesian regression WIP
   - naive bayes
   - gradient descent
-  - k means WIP
   - computer vision with mnist dataset
 
 Planned but unlikely to happen any time soon:
