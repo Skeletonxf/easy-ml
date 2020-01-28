@@ -17,3 +17,4 @@ pub mod distributions;
 pub mod linear_regression;
 pub mod using_custom_types;
 pub mod k_means;
+pub mod logistic_regression;
