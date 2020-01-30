@@ -134,7 +134,7 @@ mod tests {
             .display();
 
         // Start with a prior distribution which we will update as we see new data.
-        // We use 0 mean and the scaled identity matrix as the covariance which regularises
+        // We use 0 mean and the scaled identity matrix as the covariance prior which regularises
         // the bayesian regression towards low values for w0 and w1. To get this regularisation
         // in standard linear regression we would have to add a regularisation parameter, but
         // because bayesian regression starts with a prior we can regularise with the prior.
@@ -142,6 +142,8 @@ mod tests {
         // the prior there to help with the learning.
         // Note also that the prior and posterior distributions are over the parameters
         // of our line w0 + w1*x. They are not distributions over the values of x or f(x).
+        // Both the prior and posterior distributions are generative models that we can draw
+        // samples for the weights w0 and w1 to then estimate f(x) from x.
         let prior_precision = 1.0;
         let prior_variance = 1.0 / prior_precision;
         let prior = MultivariateGaussian::new(
@@ -201,10 +203,11 @@ mod tests {
                 .lineplot(Shape::Points(&sort_and_merge_for_plotting(&observations_n, &targets_n)))
                 .display();
 
-            // TODO: Generalise this into some kind of add() method for MultivariateGaussians?
-            // Adding gaussians requires knowing the precision of the prior covariance and
-            // precision of the noise covariance
-            // Need to generalise p(weights|evidence) ∝ p(evidence|weights) * p(weights)
+            // General case for multivariate regression is
+            // Prior is N(u_prior, C_prior)
+            // (C_n)^-1 is (X^T * C_error^-1 * X) + (C_prior)^-1
+            // u_n is C_n * ((X^T * C_error * targets_n) + (((C_prior)^-1) * u_prior))
+
             let new_precision = Matrix::diagonal(prior_precision, (2, 2))
                 + (design_matrix_n.transpose() * &design_matrix_n).map(|x| x * noise_precision);
             let new_covariance = new_precision.inverse().unwrap();
