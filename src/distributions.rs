@@ -65,7 +65,14 @@ use crate::linear_algebra;
  * See: [https://en.wikipedia.org/wiki/Gaussian_function](https://en.wikipedia.org/wiki/Gaussian_function)
  */
 pub struct Gaussian<T: Numeric> {
+    /**
+     * The mean is the expected value of this gaussian.
+     */
     pub mean: T,
+    /**
+     * The variance is a measure of the spread of values around the mean, high variance means
+     * one standard deviation encompasses a larger spread of values from the mean.
+     */
     pub variance: T
 }
 
@@ -174,7 +181,29 @@ where for<'a> &'a T: NumericRef<T> {
  * must be the same length as the covariance matrix.
  */
 pub struct MultivariateGaussian<T: Numeric> {
+    /**
+     * The mean is a column vector of expected values in each dimension
+     */
     pub mean: Matrix<T>,
+    /**
+     * The covariance matrix is a NxN matrix where N is the number of dimensions for
+     * this Gaussian. A covariance matrix must always be symmetric, that is `C[i,j] = C[j,i]`.
+     *
+     * The covariance matrix is a measure of how much values from each dimension vary
+     * from their expected value with respect to each other.
+     *
+     * For a 2 dimensional multivariate Gaussian the covariance matrix could be the 2x2 identity
+     * matrix:
+     *
+     * ```ignore
+     * [
+     *   1.0, 0.0
+     *   0.0, 1.0
+     * ]
+     * ```
+     *
+     * In which case the two dimensions are completely uncorrelated as `C[0,1] = C[1,0] = 0`.
+     */
     pub covariance: Matrix<T>
 }
 
