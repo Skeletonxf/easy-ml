@@ -10,14 +10,14 @@ transforming the probabilities with a logit function:
 
 <pre>log(p / (1 - p))</pre>
 
-puts them in the -infinity to infinity range. If we assume a simple linear model over two inputs
-x1 and x2 then:
+where p is the probability of success, ie P(y=True|x), puts them in the -infinity to infinity
+range. If we assume a simple linear model over two inputs x1 and x2 then:
 
 <pre>log(p / (1 - p)) = w0 + w1*x1 + w2*x2</pre>
 
 For more complex data [basis functions](../linear_regression/index.html)
-can be used on the inputs to model non linearity. Once we have a model we can try to learn
-the weights with gradient descent to minimise error on the data. Once we have fixed weights
+can be used on the inputs to model non linearity. Once we have a model we can define the
+objective function to maximise to learn the weights for. Once we have fixed weights
 we can estimate the probability of new data by taking the inverse of the logit function
 (the sigmoid function):
 
@@ -25,7 +25,49 @@ we can estimate the probability of new data by taking the inverse of the logit f
 
 which maps back into the 0 - 1 range and produces a probability for the unseen data. We can then
 choose a cutoff at say 0.5 and we have a classifier that ouputs True for any unseen data estimated
-to have a probability >= 0.5 and False otherwise.
+to have a probability &ge; 0.5 and False otherwise.
+
+# Arriving at the update rule
+
+If the samples are independent of each other, ie knowing P(y<sub>1</sub>=True|x<sub>1</sub>)
+tells you nothing about P(y<sub>1</sub>=True|x<sub>2</sub>), as is the case in a bernoulli
+distribution, then the probability of P(**y**|X) is the product of each
+P(y<sub>i</sub>|**x<sub>i</sub>**). For numerical stability reasons we often want to take logs
+of the probability, which transforms the product into a sum.
+
+log(P(**y**|X)) = the sum over all i data of (log(P(y<sub>i</sub>|**x<sub>i</sub>**)))
+
+Our model **w**<sup>T</sup>**x** is already defined as P(y<sub>i</sub>=True|**x<sub>i</sub>**) so
+
+P(y<sub>i</sub>) = p<sub>i</sub> if y<sub>i</sub> = 1 and 1 - p<sub>i</sub> if y<sub>i</sub> = 0,
+where p<sub>i</sub> = **w**<sup>T</sup>**x** = P(y<sub>i</sub>=True|**x<sub>i</sub>**)
+
+this can be converted into a single equation because a<sup>0</sup> = 1
+
+P(y<sub>i</sub>) = (p<sub>i</sub>^y<sub>i</sub>) * ((1 - p<sub>i</sub>)^(1 - y<sub>i</sub>))
+
+putting the two equations together gives the log probability we want to maximise in terms of
+p<sub>i</sub>, which is itself in terms of our model's weights
+
+log(P(**y**|X)) = the sum over all i data of (log((p<sub>i</sub>^y<sub>i</sub>) * (1 - p<sub>i</sub>)^(1 - y<sub>i</sub>)))
+
+by log rules we can remove the exponents
+
+log(P(**y**|X)) = the sum over all i data of (y<sub>i</sub> * log(p<sub>i</sub>) + (1 - y<sub>i</sub>) * log(1 - p<sub>i</sub>)))
+
+we want to maximise P(**y**|X) with our weights so we take the derivative with respect to **w**
+
+d(log(P(**y**|X))) / d**w** = the sum over all i data of ((y<sub>i</sub> - p(y<sub>i</sub>=True|**x<sub>i</sub>**))**x<sub>i</sub>**)
+
+where p(y<sub>i</sub>=True|**x<sub>i</sub>**) = 1 / (1 + e^(-(w0 + w1 * x1 + w2 * x2))) as defined
+earlier. This derivative will maximise log(P(**y**|X)), and as logs are monotonic P(**y**|X) as
+well, when it equals 0. Unfortunatly there is no closed form solution so we must perform gradient
+descent to fit **w**. In this example i is small enough we perform gradient descent over all the
+training data, for big data problems stochastic gradient descent would scale better.
+
+The update rule:
+
+**w<sub>new</sub>** = **w<sub>old</sub>** + learning_rate * (the sum over all i data of (y<sub>i</sub> - [1 / (1 + e^(-(**w**<sup>T</sup>**x**)))])**x<sub>i</sub>**))
 
 # Logistic regression example
 ```
