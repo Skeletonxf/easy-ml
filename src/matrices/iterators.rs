@@ -1,5 +1,38 @@
 /*!
  * Iterators over parts of a Matrix
+ *
+ * # Examples
+ *
+ * Extending a matrix with new columns
+ * ```
+ * use easy_ml::matrices::Matrix;
+ *
+ * // we start with some matrix where the first and second columns correspond
+ * // to x and y points
+ * let mut matrix = Matrix::from(vec![
+ *     vec![ 3.0, 4.0 ],
+ *     vec![ 8.0, 1.0 ],
+ *     vec![ 2.0, 9.0 ]]);
+ * // insert a third column based on the formula x * y
+ * matrix.insert_column_with(2, matrix.column_iter(0)
+ *     // join together the x and y columns
+ *     .zip(matrix.column_iter(1))
+ *     // compute the values for the new column
+ *     .map(|(x, y)| x * y)
+ *     // Collect into a vector so we stop immutably borrowing from `matrix`.
+ *     // This is only neccessary when we use the data from a Matrix to modify itself,
+ *     // because the rust compiler enforces that we do not mutably and immutably borrow
+ *     // something at the same time. If we used data from a different Matrix to update
+ *     // `matrix` then we could stop at map and pass the iterator directly.
+ *     .collect::<Vec<f64>>()
+ *     // now that the Vec created owns the data for the new column and we have stopped
+ *     // borrowing immutably from `matrix` we turn the vec back into an iterator and
+ *     // mutably borrow `matrix` to add the new column
+ *     .drain(..));
+ * assert_eq!(matrix.get(0, 2), 3.0 * 4.0);
+ * assert_eq!(matrix.get(1, 2), 8.0 * 1.0);
+ * assert_eq!(matrix.get(2, 2), 2.0 * 9.0);
+ * ```
  */
 
 use crate::matrices::{Matrix, Row, Column};

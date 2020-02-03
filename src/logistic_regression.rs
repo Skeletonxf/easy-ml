@@ -37,10 +37,10 @@ of the probability, which transforms the product into a sum.
 
 log(P(**y**|X)) = the sum over all i data of (log(P(y<sub>i</sub>|**x<sub>i</sub>**)))
 
-Our model **w**<sup>T</sup>**x** is already defined as P(y<sub>i</sub>=True|**x<sub>i</sub>**) so
+Our model sigmoid(**w**<sup>T</sup>**x**) is already defined as P(y<sub>i</sub>=True|**x<sub>i</sub>**) so
 
 P(y<sub>i</sub>) = p<sub>i</sub> if y<sub>i</sub> = 1 and 1 - p<sub>i</sub> if y<sub>i</sub> = 0,
-where p<sub>i</sub> = **w**<sup>T</sup>**x** = P(y<sub>i</sub>=True|**x<sub>i</sub>**)
+where p<sub>i</sub> = P(y<sub>i</sub>=True|**x<sub>i</sub>**) = sigmoid(**w**<sup>T</sup>**x**)
 
 this can be converted into a single equation because a<sup>0</sup> = 1
 
@@ -77,11 +77,7 @@ The update rule:
 //
 // To ensure our example is not overly complicated but requires two dimensions for the inputs
 // to estimate the probability distribution of the random variable we sample from, we model
-// the safty of positioning an object on a platform.
-// In this example the platform is a rectangle in continuous space. Then we randomly place an
-// object somewhere on the platform and apply gaussian noise to it, to model an earthquake or
-// strong wind and ask if the object fell off.
-
+// two clusters of different clusters to classify.
 
 use easy_ml::matrices::Matrix;
 use easy_ml::matrices::slices::{Slice2D, Slice};
@@ -89,84 +85,88 @@ use easy_ml::distributions::MultivariateGaussian;
 
 use rand::{Rng, SeedableRng};
 
-// first we define the AABB bounding box of the platform using a matrix as a datastructure
-let platform = Matrix::from(vec![
-    vec![ 3.0, 3.0 ],
-    vec![ 6.0, 5.0 ]]);
-
-// for the wind we use a simple 0 mean 1 variance multivariate gaussian
-let wind = MultivariateGaussian::new(
-    Matrix::column(vec![ 0.0, 0.0 ]),
-    Matrix::from(vec![
-        vec![ 1.0, 0.0 ],
-        vec![ 0.0, 1.0 ]]));
-
-const DATASET_SIZE: usize = 100;
+use textplots::{Chart, Plot, Shape};
 
 // use a fixed seed non cryptographically secure random generator from the rand crate
 let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(13);
 
-// generate the dataset of numbers in the range (3, 3) to (6, 4)
-let mut objects = Matrix::empty(0.0, (DATASET_SIZE, 2));
-for i in 0..DATASET_SIZE {
-    // first generate numbers in the [0, 1) range using rand then scale them into
-    // the range of the platform
-    let position = {
-        let x = random_generator.gen::<f64>();
-        let y = random_generator.gen::<f64>();
-        let x = x * (platform.get(1, 0) - platform.get(0, 0));
-        let y = y * (platform.get(1, 1) - platform.get(0, 1));
-        let x = x + platform.get(0, 0);
-        let y = y + platform.get(0, 1);
-        (x, y)
-    };
-    objects.set(i, 0, position.0);
-    objects.set(i, 1, position.1);
+/**
+ * Utility function to create a list of random numbers.
+ */
+fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f64> {
+    let mut random_numbers = Vec::with_capacity(n);
+    for _ in 0..n {
+        random_numbers.push(random_generator.gen::<f64>());
+    }
+    random_numbers
 }
 
-// insert two new columns into the objects which is their position after being blown by the wind
-let blown_objects: Vec<(f64, f64)> = objects.column_iter(0).zip(objects.column_iter(1))
-    .map(|(x, y)| {
-        // draw a sample for the noise x and y
-        let noise = wind.draw(
-            &mut vec![ random_generator.gen::<f64>(), random_generator.gen::<f64>() ].drain(..),
-            1).unwrap();
-        (x + noise.get(0, 0), y + noise.get(0, 1))
-    })
-    .collect();
-objects.insert_column_with(2, blown_objects.iter().map(|&(x, _)| x));
-objects.insert_column_with(3, blown_objects.iter().map(|&(_, y)| y));
+// define two cluster centres using two 2d gaussians, making sure they overlap a bit
+let class1 = MultivariateGaussian::new(
+    Matrix::column(vec![ 2.0, 3.0 ]),
+    Matrix::from(vec![
+        vec![ 1.0, 0.1 ],
+        vec![ 0.1, 1.0 ]]));
 
-// check each object's new position and determine if it is still on the platform
-// if it's still there we set 1, and if it fell off we set 0.
-objects.insert_column_with(4,
-    objects.column_iter(2).zip(objects.column_iter(3))
-    .map(|(x, y)| {
-        if x < platform.get(0, 0) || x > platform.get(1, 0)
-                || y < platform.get(0, 1) || y > platform.get(1, 1) {
-            0.0
-        } else {
-            1.0
-        }
-    })
-    // a collect then immediate drain is performed so we stop immutably borrowing
-    // from objects before we need to mutably borrow from objects to insert the new column
-    .collect::<Vec<f64>>()
-    .drain(..)
-    );
+// make the second cluster more spread out so there will be a bit of overlap with the first
+// in the (0,0) to (1, 1) area
+let class2 = MultivariateGaussian::new(
+    Matrix::column(vec![ -2.0, -1.0 ]),
+    Matrix::from(vec![
+        vec![ 2.5, 1.2 ],
+        vec![ 1.2, 2.5 ]]));
 
-// objects.insert_column_with(5,
-//     objects.column_iter(4)
-//     .map(|p| (p / (1.0 - p)).ln())
-//     .collect::<Vec<f64>>()
-//     .drain(..));
+// Generate 200 points for each cluster
+let points = 200;
+let mut random_numbers = n_random_numbers(&mut random_generator, points * 2);
+let class1_points = class1.draw(&mut random_numbers.drain(..), points).unwrap();
+let mut random_numbers = n_random_numbers(&mut random_generator, points * 2);
+let class2_points = class2.draw(&mut random_numbers.drain(..), points).unwrap();
+
+// Plot each class of the generated data in a scatter plot
+println!("Generated data points");
+
+/**
+ * Helper function to print a scatter plot of a provided matrix with x, y in each row
+ */
+fn scatter_plot(data: &Matrix<f64>) {
+    // textplots expects a Vec<(f32, f32)> where each tuple is a (x,y) point to plot,
+    // so we must transform the data from the cluster points slightly to plot
+    let scatter_points = data.column_iter(0)
+        // zip is used to merge the x and y columns in the data into a single tuple
+        .zip(data.column_iter(1))
+        // finally we map the tuples of (f64, f64) into (f32, f32) for handing to the library
+        .map(|(x, y)| (x as f32, y as f32))
+        .collect::<Vec<(f32, f32)>>();
+    Chart::new(180, 60, -8.0, 8.0)
+        .lineplot(Shape::Points(&scatter_points))
+        .display();
+}
+
+println!("Classs 1");
+scatter_plot(&class1_points);
+println!("Classs 2");
+scatter_plot(&class2_points);
+
+// for ease of use later we insert a 0th column into both class's points so w0 + w1*x1 + w2*x2
+// can be computed by w^T x
+let class1_inputs = {
+    let mut design_matrix = class1_points.clone();
+    design_matrix.insert_column(0, 1.0);
+    design_matrix
+};
+let class2_inputs =  {
+    let mut design_matrix = class2_points.clone();
+    design_matrix.insert_column(0, 1.0);
+    design_matrix
+};
 
 /**
  * The sigmoid function, taking values in the [-inf, inf] range and mapping
- * them into the [0, 1] range
+ * them into the [0, 1] range.
  */
 fn sigmoid(x: f64) -> f64 {
-    1.0 / (1.0 + (-x).exp())
+    1.0 / (1.0 + ((-x).exp()))
 }
 
 /**
@@ -177,37 +177,144 @@ fn logit(x: f64) -> f64 {
     (x / (1.0 - x)).ln()
 }
 
-/**
- * Computes the estimated probability of some feature vector x staying on the
- * platform given the weights in the logistic regression model.
- */
-fn probability_estimate(x: &Matrix<f64>, weights: &Matrix<f64>) -> f64 {
-    sigmoid((weights.transpose() * x).get(0, 0))
-}
+// First we initialise the weights matrix to some initial values
+let mut weights = Matrix::column(vec![ 1.0, 1.0, 1.0 ]);
 
 /**
- * Computes the negative log likelihood of something? Used to fit the weights for
- * maximum likelihood
+ * The log of the likelihood function P(**y**|X). This is what we want to update our weights
+ * to maximise as we want to train the model to predict y given **x**, where y is the class and
+ * **x** is the two features the model takes as input. It should be noted that something has
+ * probably gone wrong if you ever get 100% performance on your training data, either your
+ * training data is linearly seperable or you are overfitting and the weights won't generalise to
+ * predicting the correct class given unseen inputs.
+ *
+ * This function is mostly defined for completeness, we maximise it using the derivative
+ * and never need to compute it.
  */
-fn negative_log_likelihood(x: &Matrix<f64>, weights: &Matrix<f64>, fell: bool) -> f64 {
-    if fell {
-        // negative case
-        -(1.0 - probability_estimate(x, weights).ln())
-    } else {
-        // positive case
-        -(probability_estimate(x, weights).ln())
+fn log_likelihood(
+    weights: &Matrix<f64>, class1_inputs: &Matrix<f64>, class2_inputs: &Matrix<f64>
+) -> f64 {
+    // The probability of predicting all inputs as the correct class is the product
+    // of the probability of predicting each individal input and class correctly, as we
+    // assume each sample is independent of each other.
+    let mut likelihood = 1_f64.ln();
+    // the model should predict 1 for each class 1
+    let predictions = (class1_inputs * weights).map(sigmoid);
+    for i in 0..predictions.rows() {
+        likelihood += predictions.get(i, 0).ln();
     }
+    // the model should predict 0 for each class 2
+    let predictions = (class2_inputs * weights).map(sigmoid).map(|p| 1.0 - p);
+    for i in 0..predictions.rows() {
+        likelihood += predictions.get(i, 0).ln();
+    }
+    likelihood
 }
 
-// Plot the first 10 object starting positions and if they fell or not
-println!("Objects:\n{:?}", objects.retain(
-    Slice2D::new().rows(Slice::Range(0..10)).columns(Slice::Range(0..2).or(Slice::Single(4)))));
+/**
+ * The derivative of the negative log likelihood function, which we want to set to 0 in order
+ * to maximise P(**y**|X).
+ */
+fn update_function(
+    weights: &Matrix<f64>, class1_inputs: &Matrix<f64>, class2_inputs: &Matrix<f64>
+) -> Matrix<f64> {
+    let mut derivative = Matrix::column(vec![ 0.0, 0.0, 0.0 ]);
 
-// TODO: stochastic gradient descent using the derivative of negative_log_likelihood
-// which is: (target - probability_estimate(x, weights)) * x
-// ??
-// references: http://www.stat.cmu.edu/~cshalizi/uADA/12/lectures/ch12.pdf eq 12.12
-// https://towardsdatascience.com/understanding-logistic-regression-step-by-step-704a78be7e0a
+    // compute y - predictions for all the first class of inputs
+    let prediction_errors = (class1_inputs * weights).map(sigmoid).map(|p| 1.0 - p);
+    for i in 0..prediction_errors.rows() {
+        // compute diff * x_i
+        let diff = prediction_errors.get(i, 0);
+        let ith_error = Matrix::column(class1_inputs.row_iter(i).collect()).map(|x| x * diff);
+        derivative = derivative + ith_error;
+    }
+
+    // compute y - predictions for all the second class of inputs
+    let prediction_errors = (class2_inputs * weights).map(sigmoid).map(|p| 0.0 - p);
+    for i in 0..prediction_errors.rows() {
+        // compute diff * x_i
+        let diff = prediction_errors.get(i, 0);
+        let ith_error = Matrix::column(class1_inputs.row_iter(i).collect()).map(|x| x * diff);
+        derivative = derivative + ith_error;
+    }
+
+    derivative
+}
+
+let learning_rate = 0.002;
+
+let mut log_likelihood_progress = Vec::with_capacity(25);
+
+// FIXME: got the update and log likelihood the wrong way around
+// the model learns the right classes if the learning rate is negative,
+// but the plot of log likelihood only looks like it converges when
+// the learning rate is positive and the model learns the classes
+// the wrong way around!
+
+for i in 0..25 {
+    let update = update_function(&weights, &class1_inputs, &class2_inputs);
+    weights = weights - update.map(|w| w * learning_rate);
+    log_likelihood_progress.push(
+        (i as f32, log_likelihood(&weights, &class1_inputs, &class2_inputs) as f32)
+    );
+}
+
+println!("Log likelihood over 25 iterations");
+Chart::new(180, 60, 0.0, 15.0)
+    .lineplot(Shape::Lines(&log_likelihood_progress))
+    .display();
+
+println!("Decision boundry after 25 iterations");
+decision_boundry(&weights);
+
+// The model should learn to classify class 2 correctly at the expected value of the cluster
+assert!(
+    sigmoid(
+        (weights.transpose() * Matrix::column(vec![ 1.0, -2.0, -1.0])).get(0, 0)
+    ) < 0.5);
+// The model should learn to classify class 1 correctly at the expected value of the cluster
+assert!(
+    sigmoid(
+        (weights.transpose() * Matrix::column(vec![ 1.0, 2.0, 3.0])).get(0, 0)
+    ) > 0.5);
+
+/**
+ * A utility function to plot the decision boundry of the model. As the terminal plotting
+ * library doesn't support colored plotting at the time of writing this is a little challenging
+ * to do given we have two dimensions of inputs and one dimension of output which is also real
+ * valued, because logistic regression computes probability. This could best be done with a 3d
+ * plot or a heatmap, but is done with this function by taking 0.5 as the cutoff for
+ * classification, generating a grid of points in the two dimensional space and classifying all
+ * of them, then plotting the ones classified as class 1.
+ *
+ * TODO: work out how to retrieve a line from these points so the decision boundry is easier
+ * to see
+ */
+fn decision_boundry(weights: &Matrix<f64>) {
+    // compute a matrix of coordinate pairs from (-8.0, -8.0) to (8.0, 8.0)
+    let grid_values = Matrix::empty(0.0, (160, 160));
+    // create a matrix of tuples combining every combination of coordinates
+    let grid_values = grid_values.map_with_index(|_, i, j| (
+        (i as f64 - 80.0) * 0.1, (j as f64 - 80.0) * 0.1)
+    );
+    // iterate through every tuple and see if the model predicts class 1
+    let points = grid_values.column_major_iter()
+        .map(|(x1, x2)| {
+            let input = Matrix::column(vec![ 1.0, x1, x2 ]);
+            let prediction = sigmoid((weights.transpose() * input).get(0, 0));
+            return if prediction > 0.5 {
+                (x1, x2, 1)
+            } else {
+                (x1, x2, 0)
+            }
+        })
+        .filter(|(_, _, class)| class == &1)
+        .map(|(x1, x2, _)| (x1 as f32, x2 as f32))
+        .collect::<Vec<(f32, f32)>>();
+    Chart::new(180, 60, -8.0, 8.0)
+        .lineplot(Shape::Points(&points))
+        .display();
+}
 
 //assert_eq!(1, 2);
 ```

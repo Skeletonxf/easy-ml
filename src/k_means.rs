@@ -30,7 +30,7 @@ fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f64> {
 // use a fixed seed non cryptographically secure random generator from the rand crate
 let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(11);
 
-// generate two cluster centres using two 2d gaussians, making sure they overlap a bit
+// define two cluster centres using two 2d gaussians, making sure they overlap a bit
 let cluster1 = MultivariateGaussian::new(
     Matrix::column(vec![ 2.0, 3.0 ]),
     Matrix::from(vec![

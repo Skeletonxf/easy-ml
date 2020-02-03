@@ -348,6 +348,7 @@ fn test_permutations() {
  * use the equivalent methods on the matrix type like so:
  * `matrix.covariance()`
  */
+// equivalent to X^T*X / n if X already zero mean
 // TODO: mention Bessel's correction, do covariance and correlation and explain
 // difference, do DataxFeatures and FeaturesxData
 pub fn covariance<T: Numeric>(matrix: &Matrix<T>) -> Option<Matrix<T>>
