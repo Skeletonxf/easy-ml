@@ -77,7 +77,9 @@ The update rule:
 //
 // To ensure our example is not overly complicated but requires two dimensions for the inputs
 // to estimate the probability distribution of the random variable we sample from, we model
-// two clusters of different clusters to classify.
+// two clusters from different classes to classify. As each class is arbitary, we assign the first
+// class as the True case that the model should predict >0.5 probability for, and the second
+// class as the False case that the model should predict <0.5 probability for.
 
 use easy_ml::matrices::Matrix;
 use easy_ml::matrices::slices::{Slice2D, Slice};
@@ -181,12 +183,13 @@ fn logit(x: f64) -> f64 {
 let mut weights = Matrix::column(vec![ 1.0, 1.0, 1.0 ]);
 
 /**
- * The log of the likelihood function P(**y**|X). This is what we want to update our weights
- * to maximise as we want to train the model to predict y given **x**, where y is the class and
- * **x** is the two features the model takes as input. It should be noted that something has
- * probably gone wrong if you ever get 100% performance on your training data, either your
- * training data is linearly seperable or you are overfitting and the weights won't generalise to
- * predicting the correct class given unseen inputs.
+ * The log of the likelihood function P(**y**|X). This is what we want to update our
+ * weights to maximise as we want to train the model to predict y given **x**,
+ * where y is the class and **x** is the two features the model takes as input.
+ * It should be noted that something has probably gone wrong if you ever get 100%
+ * performance on your training data, either your training data is linearly seperable
+ * or you are overfitting and the weights won't generalise to predicting the correct
+ * class given unseen inputs.
  *
  * This function is mostly defined for completeness, we maximise it using the derivative
  * and never need to compute it.
@@ -234,7 +237,7 @@ fn update_function(
     for i in 0..prediction_errors.rows() {
         // compute diff * x_i
         let diff = prediction_errors.get(i, 0);
-        let ith_error = Matrix::column(class1_inputs.row_iter(i).collect()).map(|x| x * diff);
+        let ith_error = Matrix::column(class2_inputs.row_iter(i).collect()).map(|x| x * diff);
         derivative = derivative + ith_error;
     }
 
@@ -245,21 +248,18 @@ let learning_rate = 0.002;
 
 let mut log_likelihood_progress = Vec::with_capacity(25);
 
-// FIXME: got the update and log likelihood the wrong way around
-// the model learns the right classes if the learning rate is negative,
-// but the plot of log likelihood only looks like it converges when
-// the learning rate is positive and the model learns the classes
-// the wrong way around!
-
+// For this example we cheat and have simply found what number of iterations and learning rate
+// yields a correct decision boundry so don't actually check for convergence. In a real example
+// you would stop once the updates for the weights become 0 or very close to 0.
 for i in 0..25 {
     let update = update_function(&weights, &class1_inputs, &class2_inputs);
-    weights = weights - update.map(|w| w * learning_rate);
+    weights = weights + update.map(|w| w * learning_rate);
     log_likelihood_progress.push(
         (i as f32, log_likelihood(&weights, &class1_inputs, &class2_inputs) as f32)
     );
 }
 
-println!("Log likelihood over 25 iterations");
+println!("Log likelihood over 25 iterations (bigger is better as logs are monotonic)");
 Chart::new(180, 60, 0.0, 15.0)
     .lineplot(Shape::Lines(&log_likelihood_progress))
     .display();
@@ -267,16 +267,19 @@ Chart::new(180, 60, 0.0, 15.0)
 println!("Decision boundry after 25 iterations");
 decision_boundry(&weights);
 
-// The model should learn to classify class 2 correctly at the expected value of the cluster
-assert!(
-    sigmoid(
-        (weights.transpose() * Matrix::column(vec![ 1.0, -2.0, -1.0])).get(0, 0)
-    ) < 0.5);
-// The model should learn to classify class 1 correctly at the expected value of the cluster
+// The model should have learnt to classify class 1 correctly at the expected value
+// of the cluster
 assert!(
     sigmoid(
         (weights.transpose() * Matrix::column(vec![ 1.0, 2.0, 3.0])).get(0, 0)
     ) > 0.5);
+
+// The model should have learnt to classify class 2 correctly at the expected value
+// of the cluster
+assert!(
+    sigmoid(
+        (weights.transpose() * Matrix::column(vec![ 1.0, -2.0, -1.0])).get(0, 0)
+    ) < 0.5);
 
 /**
  * A utility function to plot the decision boundry of the model. As the terminal plotting
@@ -315,7 +318,5 @@ fn decision_boundry(weights: &Matrix<f64>) {
         .lineplot(Shape::Points(&points))
         .display();
 }
-
-//assert_eq!(1, 2);
 ```
 */
