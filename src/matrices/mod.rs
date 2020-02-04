@@ -380,6 +380,28 @@ impl <T: Clone> Matrix<T> {
     }
 
     /**
+     * Similar to matrix.get(0, 0) in that this returns the element in the first
+     * row and first column, except that this method will panic if the matrix is
+     * not 1x1.
+     *
+     * This is provided as a convenience function when you want to convert a unit matrix
+     * to a scalar, such as when taking a dot product of two vectors.
+     *
+     * # Example
+     *
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * let x = Matrix::column(vec![ 1.0, 2.0, 3.0 ]);
+     * let sum_of_squares: f64 = (x.transpose() * x).scalar();
+     * ```
+     */
+    pub fn scalar(&self) -> T {
+        assert!(self.rows() == 1, "Cannot treat matrix as scalar as it has more than one row");
+        assert!(self.columns() == 1, "Cannot treat matrix as scalar as it has more than one column");
+        self.get(0, 0)
+    }
+
+    /**
      * Applies a function to all values in the matrix, modifying
      * the matrix in place.
      */
@@ -581,6 +603,26 @@ impl <T: Clone> Clone for Matrix<T> {
         self.map(|element| element)
     }
 }
+
+// FIXME: conflicting implementations of trait `std::convert::TryInto<_>` for type `matrices::Matrix<_>`
+// /**
+//  * An error indicating failure to convert a matrix to a scalar because it is not a unit matrix.
+//  */
+// pub struct ScalarConversionError;
+//
+// impl <T: Clone> std::convert::TryInto<T> for Matrix<T> {
+//     /**
+//      * Attempts to convert a unit matrix into a scalar. If the matrix is not 1x1 then
+//      * an error is returned.
+//      */
+//     fn try_into(&self) -> Result<T, ScalarConversionError> {
+//         if self.rows() == 1 && self.columns() == 1 {
+//             Ok(self.get(0, 0))
+//         } else {
+//             Err(ScalarConversionError)
+//         }
+//     }
+// }
 
 /**
  * Methods for matrices with numerical types, such as f32 or f64.
