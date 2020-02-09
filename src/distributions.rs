@@ -1,6 +1,9 @@
 /*!
 Models of distributions that samples can be drawn from.
 
+These structs and methods require numerical types that can be treated as real numbers, ie
+unsigned and signed numbers cannot be used here.
+
 # Example of plotting a Gaussian
 
 ```
@@ -54,7 +57,8 @@ Chart::new(180, 60, -3.0, 3.0)
  */
 
 use crate::numeric::{Numeric, NumericRef};
-use crate::numeric::extra::{Sqrt, Pi, Exp, Pow, Ln, Sin, Cos};
+use crate::numeric::extra::{Real, RealRef};
+//use crate::numeric::extra::{Sqrt, Pi, Exp, Pow, Ln, Sin, Cos};
 use crate::matrices::Matrix;
 use crate::linear_algebra;
 
@@ -64,7 +68,7 @@ use crate::linear_algebra;
  *
  * See: [https://en.wikipedia.org/wiki/Gaussian_function](https://en.wikipedia.org/wiki/Gaussian_function)
  */
-pub struct Gaussian<T: Numeric> {
+pub struct Gaussian<T: Numeric + Real> {
     /**
      * The mean is the expected value of this gaussian.
      */
@@ -76,7 +80,7 @@ pub struct Gaussian<T: Numeric> {
     pub variance: T
 }
 
-impl <T: Numeric> Gaussian<T> {
+impl <T: Numeric + Real> Gaussian<T> {
     pub fn new(mean: T, variance: T) -> Gaussian<T> {
         Gaussian {
             mean,
@@ -85,8 +89,8 @@ impl <T: Numeric> Gaussian<T> {
     }
 }
 
-impl <T: Numeric> Gaussian<T>
-where for<'a> &'a T: NumericRef<T> {
+impl <T: Numeric + Real> Gaussian<T>
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     /**
      * Computes g(x) for some x, the probability density of a normally
      * distributed random variable x, or in other words how likely x is
@@ -96,12 +100,9 @@ where for<'a> &'a T: NumericRef<T> {
      * g(x) will tend towards zero as x is further from this distribution's
      * mean, at a rate corresponding to this distribution's variance.
      */
-    pub fn map(&self, x: &T) -> T
-        where
-            T: Pi + Exp<Output = T> + Pow<Output = T> + Sqrt<Output = T>,
-            for<'a> &'a T: Sqrt<Output = T>,
-            for<'a> T: Pow<&'a T, Output = T>, {
-        let standard_deviation = (&self.variance).sqrt();
+    pub fn map(&self, x: &T) -> T {
+        // FIXME: &T sqrt doesn't seem to be picked up by the compiler here
+        let standard_deviation = self.variance.clone().sqrt();
         let two = T::one() + T::one();
         let two_pi = &two * T::pi();
         let fraction = T::one() / (standard_deviation * (&two_pi.sqrt()));
@@ -128,16 +129,12 @@ where for<'a> &'a T: NumericRef<T> {
      * [Example of generating and feeding random numbers](./index.html)
      */
     pub fn draw<I>(&self, source: &mut I, max_samples: usize) -> Option<Vec<T>>
-        where
-            T: Pi + Sqrt<Output = T> + Cos<Output = T> + Sin<Output = T>,
-            I: Iterator<Item = T>,
-            for<'a> &'a T: Ln<Output = T>,
-            for<'a> &'a T: Sqrt<Output = T>, {
+    where I: Iterator<Item = T> {
         let two = T::one() + T::one();
         let minus_two = - &two;
         let two_pi = &two * T::pi();
         let mut samples = Vec::with_capacity(max_samples);
-        let standard_deviation = (&self.variance).sqrt();
+        let standard_deviation = self.variance.clone().sqrt();
         // keep drawing samples from this normal Gaussian distribution
         // until either the iterator runs out or we reach the max_samples
         // limit
@@ -146,8 +143,8 @@ where for<'a> &'a T: NumericRef<T> {
             // these computations convert two samples from the inclusive 0 - 1
             // range to two samples of a normal distribution with with
             // μ = 0 and σ = 1.
-            let z1 = (&minus_two * &u.ln()).sqrt() * ((&two_pi * &v).cos());
-            let z2 = (&minus_two * &u.ln()).sqrt() * ((&two_pi * &v).sin());
+            let z1 = (&minus_two * u.clone().ln()).sqrt() * ((&two_pi * &v).cos());
+            let z2 = (&minus_two * u.clone().ln()).sqrt() * ((&two_pi * &v).sin());
             // now we scale to the mean and variance for this Gaussian
             let sample1 = (z1 * &standard_deviation) + &self.mean;
             let sample2 = (z2 * &standard_deviation) + &self.mean;
@@ -180,7 +177,7 @@ where for<'a> &'a T: NumericRef<T> {
  * The mean [Matrix](./../matrices/struct.Matrix.html) must always be a column vector, and
  * must be the same length as the covariance matrix.
  */
-pub struct MultivariateGaussian<T: Numeric> {
+pub struct MultivariateGaussian<T: Numeric + Real> {
     /**
      * The mean is a column vector of expected values in each dimension
      */
@@ -207,7 +204,7 @@ pub struct MultivariateGaussian<T: Numeric> {
     pub covariance: Matrix<T>
 }
 
-impl <T: Numeric> MultivariateGaussian<T> {
+impl <T: Numeric + Real> MultivariateGaussian<T> {
     /**
      * Constructs a new multivariate Gaussian distribution from
      * a Nx1 column vector of means and a NxN covariance matrix
@@ -227,8 +224,8 @@ impl <T: Numeric> MultivariateGaussian<T> {
     }
 }
 
-impl <T: Numeric> MultivariateGaussian<T>
-where for<'a> &'a T: NumericRef<T> {
+impl <T: Numeric + Real> MultivariateGaussian<T>
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     /**
      * Draws samples from this multivariate distribution.
      *
@@ -243,11 +240,7 @@ where for<'a> &'a T: NumericRef<T> {
      * [Example of generating and feeding random numbers](../k_means/index.html)
      */
     pub fn draw<I>(&self, source: &mut I, max_samples: usize) -> Option<Matrix<T>>
-        where
-            T: Pi + Sqrt<Output = T> + Cos<Output = T> + Sin<Output = T>,
-            I: Iterator<Item = T>,
-            for<'a> &'a T: Ln<Output = T>,
-            for<'a> &'a T: Sqrt<Output = T>, {
+    where I: Iterator<Item = T> {
         // Follow the method outlined at
         // https://en.wikipedia.org/wiki/Multivariate_normal_distribution#Computational_methods
         let normal_distribution = Gaussian::new(T::zero(), T::one());

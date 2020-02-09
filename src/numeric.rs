@@ -258,10 +258,8 @@ from_usize_float!(f64);
 from_usize_integral!(usize);
 from_usize_integral!(isize);
 
-// FIXME give these the same by reference lift
-
 /**
- * Additional traits for more complex numerical operations.
+ * Additional traits for more complex numerical operations on real numbers.
  */
 pub mod extra {
 
@@ -368,10 +366,10 @@ macro_rules! pow_float {
             }
         }
         // &T ^ &T
-        impl <'a> Pow<&'a $T> for &'a $T {
+        impl <'a, 'b> Pow<&'b $T> for &'a $T {
             type Output = $T;
             #[inline]
-            fn pow(self, rhs: Self) -> Self::Output {
+            fn pow(self, rhs: &$T) -> Self::Output {
                 self.powf(rhs.clone())
             }
         }
@@ -497,5 +495,107 @@ macro_rules! cos_float {
 
 cos_float!(f32);
 cos_float!(f64);
+
+/**
+ * A trait defining what a real number type is in terms of by value
+ * numerical operations needed on top of operations defined by Numeric
+ * for some functions.
+ *
+ * The requirements are Sqrt, Exp, Pow, Ln, Sin, Cos and Sized.
+ */
+pub trait RealByValue<Rhs = Self, Output = Self>:
+    Sqrt<Output = Output>
+    + Exp<Output = Output>
+    + Pow<Rhs, Output = Output>
+    + Ln<Output = Output>
+    + Sin<Output = Output>
+    + Cos<Output = Output>
+    + Sized {}
+
+/**
+ * Anything which implements all the super traits will automatically implement this trait too.
+ * This covers primitives such as f32 & f64
+ */
+impl <T, Rhs, Output> RealByValue<Rhs, Output> for T where
+    T: Sqrt<Output = Output>
+    + Exp<Output = Output>
+    + Pow<Rhs, Output = Output>
+    + Ln<Output = Output>
+    + Sin<Output = Output>
+    + Cos<Output = Output>
+    + Sized {}
+
+/**
+ * The trait to define `&T op T` and `&T op &T` versions for RealByValue
+ * based off the MIT/Apache 2.0 licensed code from num-traits 0.2.10:
+ *
+ * **This trait is not ever used directly for users of this library. You
+ * don't need to deal with it unless
+ * [implementing custom numeric types](../../using_custom_types/index.html)
+ * and even then it will be implemented automatically.**
+ *
+ * - http://opensource.org/licenses/MIT
+ * - https://docs.rs/num-traits/0.2.10/src/num_traits/lib.rs.html#112
+ *
+ * The trick is that all types implementing this trait will be references,
+ * so the first constraint expresses some &T which can be operated on with
+ * some right hand side type T to yield a value of type T.
+ *
+ * In a similar way the second constraint expresses `&T op &T -> T` operations
+ */
+pub trait RealRef<T>:
+    // &T op T -> T
+    RealByValue<T, T>
+    // &T op &T -> T
+    + for<'a> RealByValue<&'a T, T> {}
+
+/**
+ * Anything which implements all the super traits will automatically implement this trait too.
+ * This covers primitives such as `&f32` & `&f64`, ie a type like `&f64` is `RealRef<&f64>`.
+ */
+impl <RefT, T> RealRef<T> for RefT where
+    RefT: RealByValue<T, T>
+    + for<'a> RealByValue<&'a T, T> {}
+
+/**
+ * A general purpose extension to the numeric trait that adds many operations needed
+ * for more complex math operations.
+ *
+ * This trait extends the constraints in [RealByValue](./trait.RealByValue.html)
+ * to types which also support the operations with a right hand side type
+ * by reference, and adds some additional constraints needed only
+ * by value on types.
+ *
+ * When used together with [RealRef](./trait.RealRef.html) this
+ * expresses all 4 by value and by reference combinations for the
+ * operations using the following syntax:
+ *
+ * ```ignore
+ *  fn function_name<T: Numeric + Real>()
+ *  where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+ * ```
+ *
+ * This pair of constraints is used where any real number type is needed, so although
+ * this trait does not require reference type methods by itself, or re-require
+ * what is in Numeric, in practise you won't be able to call many
+ * functions in this library with a real type that doesn't.
+ */
+pub trait Real:
+    // T op T -> T
+    RealByValue
+    // T op &T -> T
+    + for<'a> RealByValue<&'a Self>
+    + Pi {}
+
+/**
+ * All types implemeting the operations in RealByValue with a right hand
+ * side type by reference are Real.
+ *
+ * This covers primitives such as f32 & f64.
+ */
+impl <T> Real for T where T:
+    RealByValue
+    + for<'a> RealByValue<&'a T>
+    + Pi {}
 
 }
