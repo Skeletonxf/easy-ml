@@ -5,7 +5,8 @@
  *
  * # Examples
  * - [Linear Regression](./linear_regression/index.html)
- * - [k-means clustering](./k_means/index.html)
+ * - [k-means Clustering](./k_means/index.html)
+ * - [Logistic Regression](./logistic_regression/index.html)
  */
 
 pub mod numeric;

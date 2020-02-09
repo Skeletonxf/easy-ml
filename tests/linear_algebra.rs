@@ -40,7 +40,7 @@ mod tests {
     fn inverse_1_by_1() {
         let matrix = Matrix::unit(3.0);
         let inverse = linear_algebra::inverse::<f32>(&matrix).unwrap();
-        let absolute_difference = inverse.get(0, 0) - (1.0 / 3.0);
+        let absolute_difference = inverse.scalar() - (1.0 / 3.0);
         assert!(absolute_difference <= std::f32::EPSILON);
     }
 
@@ -87,7 +87,7 @@ mod tests {
                 vec![ -1.0, -1.0,  1.0],
                 vec![ -1.0, -1.0,  1.0],
                 vec![  1.0,  1.0, -1.0]]);
-        assert_eq!(linear_algebra::covariance::<f32>(&matrix).unwrap(),
+        assert_eq!(linear_algebra::covariance_column_features::<f32>(&matrix),
             Matrix::from(vec![
                 vec![ 1.0,  1.0, -1.0 ],
                 vec![ 1.0,  1.0, -1.0 ],

@@ -271,21 +271,21 @@ decision_boundry(&weights);
 // of the cluster
 assert!(
     sigmoid(
-        (weights.transpose() * Matrix::column(vec![ 1.0, 2.0, 3.0])).get(0, 0)
+        (weights.transpose() * Matrix::column(vec![ 1.0, 2.0, 3.0])).scalar()
     ) > 0.5);
 
 // The model should have learnt to classify class 2 correctly at the expected value
 // of the cluster
 assert!(
     sigmoid(
-        (weights.transpose() * Matrix::column(vec![ 1.0, -2.0, -1.0])).get(0, 0)
+        (weights.transpose() * Matrix::column(vec![ 1.0, -2.0, -1.0])).scalar()
     ) < 0.5);
 
 /**
  * A utility function to plot the decision boundry of the model. As the terminal plotting
  * library doesn't support colored plotting at the time of writing this is a little challenging
  * to do given we have two dimensions of inputs and one dimension of output which is also real
- * valued, because logistic regression computes probability. This could best be done with a 3d
+ * valued as logistic regression computes probability. This could best be done with a 3d
  * plot or a heatmap, but is done with this function by taking 0.5 as the cutoff for
  * classification, generating a grid of points in the two dimensional space and classifying all
  * of them, then plotting the ones classified as class 1.
@@ -304,7 +304,7 @@ fn decision_boundry(weights: &Matrix<f64>) {
     let points = grid_values.column_major_iter()
         .map(|(x1, x2)| {
             let input = Matrix::column(vec![ 1.0, x1, x2 ]);
-            let prediction = sigmoid((weights.transpose() * input).get(0, 0));
+            let prediction = sigmoid((weights.transpose() * input).scalar());
             return if prediction > 0.5 {
                 (x1, x2, 1)
             } else {

@@ -55,7 +55,7 @@ where for<'a> &'a T: NumericRef<T> {
     // inverse of a 1 x 1 matrix is a special case
     if matrix.rows() == 1 {
         // determinant of a 1 x 1 matrix is the single element
-        let element = matrix.get(0, 0);
+        let element = matrix.scalar();
         if element == T::zero() {
             return None;
         }
@@ -93,7 +93,7 @@ where for<'a> &'a T: NumericRef<T> {
             }
             // tranposing the cofactor matrix yields the adjugate matrix
             cofactor_matrix.transpose_mut();
-            // finally to compute the inverse we need to multiple each element by 1 / |A|
+            // finally to compute the inverse we need to multiply each element by 1 / |A|
             cofactor_matrix.map_mut(|element| element * determinant_reciprocal.clone());
             Some(cofactor_matrix)
         },
@@ -188,7 +188,7 @@ where for<'a> &'a T: NumericRef<T> {
     }
 
     if length == 1 {
-        return Some(matrix.get(0, 0));
+        return Some(matrix.scalar());
     }
 
     // compute the general case for the determinant of an N x N matrix with
@@ -278,7 +278,7 @@ fn generate_permutations<T: Clone>(list: &mut Vec<T>) -> Vec<(Vec<T>, bool)> {
 }
 
 /*
- * Inplace version of generate_permutations which calls the consumer on
+ * In place version of generate_permutations which calls the consumer on
  * each permuted list without performing any copies (ie each permuted list)
  * is the same list before and after permutation.
  */
@@ -325,14 +325,24 @@ fn test_permutations() {
  * Computes the covariance matrix for an NxM feature matrix, in which
  * each N'th row has M features to find the covariance and variance of.
  *
+ * The covariance matrix is a matrix of how each feature varies with itself
+ * (along the diagonal) and all the other features (symmetrically above and below
+ * the diagonal).
+ *
  * Each element in the covariance matrix at (i, j) will be the variance of the
  * ith and jth features from the feature matrix, defined as the zero meaned
  * dot product of the two feature vectors divided by the number of samples.
  *
+ * If all the features in the input have a variance of one then the covariance matrix
+ * returned by this function will be equivalent to the correlation matrix of the input
+ *
+ * This function does not perform [Bessel's correction](https://en.wikipedia.org/wiki/Bessel%27s_correction)
+ *
+ * # Panics
+ *
  * If the numeric type is unable to represent the number of samples
- * for each feature (ie if `T: u8` and you have 1000 samples) then this function
- * will return `None`. Otherwise the covariance matrix will always be
- * computed and the function will return `Some`.
+ * for each feature (ie if `T: i8` and you have 1000 samples) then this function
+ * will panic.
  *
  * # Warning
  *
@@ -346,15 +356,13 @@ fn test_permutations() {
  *
  * Alternatively, the compiler doesn't seem to run into this problem if you
  * use the equivalent methods on the matrix type like so:
- * `matrix.covariance()`
+ * `matrix.covariance_column_features()`
  */
-// equivalent to X^T*X / n if X already zero mean
-// TODO: mention Bessel's correction, do covariance and correlation and explain
-// difference, do DataxFeatures and FeaturesxData
-pub fn covariance<T: Numeric>(matrix: &Matrix<T>) -> Option<Matrix<T>>
+pub fn covariance_column_features<T: Numeric>(matrix: &Matrix<T>) -> Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     let features = matrix.columns();
-    let samples = T::from_usize(matrix.rows())?;
+    let samples = T::from_usize(matrix.rows()).expect(
+        "The maximum value of the matrix type T cannot represent this many samples");
     let mut covariance_matrix = Matrix::empty(T::zero(), (features, features));
     covariance_matrix.map_mut_with_index(|_, i, j| {
         // set each element of the covariance matrix to the variance
@@ -367,7 +375,64 @@ where for<'a> &'a T: NumericRef<T> {
             .map(|(x, y)| x * y)
             .sum::<T>() / &samples
     });
-    Some(covariance_matrix)
+    covariance_matrix
+}
+
+/**
+ * Computes the covariance matrix for an NxM feature matrix, in which
+ * each M'th column has N features to find the covariance and variance of.
+ *
+ * The covariance matrix is a matrix of how each feature varies with itself
+ * (along the diagonal) and all the other features (symmetrically above and below
+ * the diagonal).
+ *
+ * Each element in the covariance matrix at (i, j) will be the variance of the
+ * ith and jth features from the feature matrix, defined as the zero meaned
+ * dot product of the two feature vectors divided by the number of samples.
+ *
+ * If all the features in the input have a variance of one then the covariance matrix
+ * returned by this function will be equivalent to the correlation matrix of the input
+ *
+ * This function does not perform [Bessel's correction](https://en.wikipedia.org/wiki/Bessel%27s_correction)
+ *
+ * # Panics
+ *
+ * If the numeric type is unable to represent the number of samples
+ * for each feature (ie if `T: i8` and you have 1000 samples) then this function
+ * will panic.
+ *
+ * # Warning
+ *
+ * With some uses of this function the Rust compiler gets confused about what type `T`
+ * should be and you will get the error:
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ *
+ * In this case you need to manually specify the type of T by using the
+ * turbofish syntax like:
+ * `linear_algebra::covariance::<f32>(&matrix)`
+ *
+ * Alternatively, the compiler doesn't seem to run into this problem if you
+ * use the equivalent methods on the matrix type like so:
+ * `matrix.covariance_row_features()`
+ */
+pub fn covariance_row_features<T: Numeric>(matrix: &Matrix<T>) -> Matrix<T>
+where for<'a> &'a T: NumericRef<T> {
+    let features = matrix.rows();
+    let samples = T::from_usize(matrix.columns()).expect(
+        "The maximum value of the matrix type T cannot represent this many samples");
+    let mut covariance_matrix = Matrix::empty(T::zero(), (features, features));
+    covariance_matrix.map_mut_with_index(|_, i, j| {
+        // set each element of the covariance matrix to the variance
+        // of features i and j
+        let feature_i_mean: T = matrix.row_iter(i).sum::<T>() / &samples;
+        let feature_j_mean: T = matrix.row_iter(j).sum::<T>() / &samples;
+        matrix.row_reference_iter(i)
+            .map(|x| x - &feature_i_mean)
+            .zip(matrix.row_reference_iter(j).map(|y| y - &feature_j_mean))
+            .map(|(x, y)| x * y)
+            .sum::<T>() / &samples
+    });
+    covariance_matrix
 }
 
 /**

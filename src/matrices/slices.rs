@@ -4,7 +4,7 @@
  * At the moment slicing is not very usable and can only be used to downsize
  * matrices with [retain](../struct.Matrix.html#method.retain) and
  * [retain_mut](../struct.Matrix.html#method.retain_mut). In the future it will be available
- * for iterating through matrices as well and indexing into matrices to get values.
+ * for iterating through matrices and indexing into matrices to get values.
  */
 
 use std::ops::Range;

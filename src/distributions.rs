@@ -15,7 +15,7 @@ use easy_ml::distributions::Gaussian;
 
 const SAMPLES: usize = 10000;
 
-// create a normal distribution, note the mean and variance are
+// create a normal distribution, note that the mean and variance are
 // given in floating point notation as this will be a f64 Gaussian
 let normal_distribution = Gaussian::new(0.0, 1.0);
 

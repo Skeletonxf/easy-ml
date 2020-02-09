@@ -1,8 +1,12 @@
 [package]
-name = "easy_ml"
-version = "0.1.0"
+name = "easy-ml"
+version = "1.0.0"
 authors = ["Skeletonxf <skeletonxf@gmail.com>"]
 edition = "2018"
+homepage = "https://github.com/Skeletonxf/easy-ml"
+repository = "https://github.com/Skeletonxf/easy-ml"
+description = "Matrix and linear algebra library aimed at being easy to use"
+keywords = ["machine-learning", "machine", "learning", "matrices", "linear-algebra"]
 
 [dependencies]
 

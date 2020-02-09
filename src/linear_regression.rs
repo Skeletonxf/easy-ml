@@ -77,7 +77,4 @@ println!("MSE on unseen values: {}", mean_squared_error);
 assert!(mean_squared_error < 1.0);
 assert!(mean_squared_error > 0.99);
 ```
-
-# Multivariate linear regression
-TODO
 */

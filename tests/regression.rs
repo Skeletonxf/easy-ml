@@ -40,21 +40,6 @@ mod tests {
      */
     fn error_function(w: &Matrix<f32>, X: &Matrix<f32>, y: &Matrix<f32>) -> f32 {
         let error = y - (X * w);
-        (error.transpose() * error).get(0, 0)
+        (error.transpose() * error).scalar()
     }
-
-    // TODO: turn this into a test
-    // // Inversing an arbitarty square matrix is hard. We only need to inverse a 2x2 here
-    // // TODO: See if there's an algorithm that can be implemented for arbitary inversions
-    // fn invese(matrix: Matrix<f32>) -> Matrix<f32> {
-    //     let a = matrix.get(0, 0);
-    //     let b = matrix.get(0, 1);
-    //     let c = matrix.get(1, 0);
-    //     let d = matrix.get(1, 1);
-    //     let determinant = (a * d) - (b * c);
-    //     Matrix::from(vec![
-    //         vec![ d, -b ],
-    //         vec![ -c, a ]
-    //     ]).map(|x| x / determinant)
-    // }
 }

@@ -40,8 +40,8 @@ use crate::linear_algebra;
  * expanding their size further may cause panics and or errors. At the time of writing it
  * is theoretically possible to construct and use matrices where the product of their number
  * of rows and columns exceed `std::usize::MAX` but this should not be relied upon and may
- * become an error in the future. Readers should also note that on a 64 bit computer this maximum
- * value is 18,446,744,073,709,551,615 so running out of memory is likely to occur first.
+ * become an error in the future. Concerned readers should note that on a 64 bit computer this
+ * maximum value is 18,446,744,073,709,551,615 so running out of memory is likely to occur first.
  */
 #[derive(Debug)]
 pub struct Matrix<T> {
@@ -385,7 +385,7 @@ impl <T: Clone> Matrix<T> {
      * not 1x1.
      *
      * This is provided as a convenience function when you want to convert a unit matrix
-     * to a scalar, such as when taking a dot product of two vectors.
+     * to a scalar, such as after taking a dot product of two vectors.
      *
      * # Example
      *
@@ -461,7 +461,7 @@ impl <T: Clone> Matrix<T> {
      * to perform elementwise operations that are not defined on the
      * Matrix type itself.
      *
-     * # Exmpless
+     * # Exmples
      *
      * Matrix elementwise division:
      *
@@ -698,12 +698,20 @@ where for<'a> &'a T: NumericRef<T> {
 
     /**
      * Computes the covariance matrix for this NxM feature matrix, in which
-     * each N'th row has M features to find the covariance and variance of.
-     * Returns `None` if this type's maximum representable value is less than N. See
-     * [`linear_algebra`](../linear_algebra/fn.covariance.html)
+     * each N'th row has M features to find the covariance and variance of. See
+     * [`linear_algebra`](../linear_algebra/fn.covariance_column_features.html)
      */
-    pub fn covariance(&self) -> Option<Matrix<T>> {
-        linear_algebra::covariance(self)
+    pub fn covariance_column_features(&self) -> Matrix<T> {
+        linear_algebra::covariance_column_features(self)
+    }
+
+    /**
+     * Computes the covariance matrix for this NxM feature matrix, in which
+     * each M'th column has N features to find the covariance and variance of. See
+     * [`linear_algebra`](../linear_algebra/fn.covariance_row_features.html)
+     */
+    pub fn covariance_row_features(&self) -> Matrix<T> {
+        linear_algebra::covariance_row_features(self)
     }
 }
 
@@ -778,7 +786,9 @@ where for<'a> &'a T: NumericRef<T> {
 
     fn mul(self, rhs: Self) -> Self::Output {
         // LxM * MxN -> LxN
-        assert!(self.columns() == rhs.rows(), "Mismatched Matrices");
+        assert!(self.columns() == rhs.rows(),
+            "Mismatched Matrices, left is {}x{}, right is {}x{}, * is only defined for MxN * NxL",
+            self.rows(), self.columns(), rhs.rows(), rhs.columns());
 
         let mut result = Matrix::empty(self.get(0, 0), (self.rows(), rhs.columns()));
         for i in 0..self.rows() {
@@ -838,7 +848,9 @@ where for<'a> &'a T: NumericRef<T> {
 
     fn add(self, rhs: Self) -> Self::Output {
         // LxM + LxM -> LxM
-        assert!(self.size() == rhs.size(), "Mismatched Matrices");
+        assert!(self.size() == rhs.size(),
+            "Mismatched Matrices, left is {}x{}, right is {}x{}, + is only defined for MxN + MxN",
+            self.rows(), self.columns(), rhs.rows(), rhs.columns());
 
         let mut result = Matrix::empty(self.get(0, 0), self.size());
         for i in 0..self.rows() {
@@ -893,7 +905,9 @@ where for<'a> &'a T: NumericRef<T> {
 
     fn sub(self, rhs: Self) -> Self::Output {
         // LxM - LxM -> LxM
-        assert!(self.size() == rhs.size(), "Mismatched Matrices");
+        assert!(self.size() == rhs.size(),
+            "Mismatched Matrices, left is {}x{}, right is {}x{}, - is only defined for MxN - MxN",
+            self.rows(), self.columns(), rhs.rows(), rhs.columns());
 
         let mut result = Matrix::empty(self.get(0, 0), self.size());
         for i in 0..self.rows() {
