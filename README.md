@@ -22,11 +22,10 @@ Where as other machine learning libraries often create objects/structs to repres
 
 ## Roadmap
 
-- Make runtime assert errors for things like mismatched matrices more user friendly
 - Implement more linear algebra, examples and supporting functions
-  - bayesian regression WIP
   - naive bayes
   - computer vision with mnist dataset
+  - bayesian regression WIP
 
 Planned but unlikely to happen any time soon:
 
