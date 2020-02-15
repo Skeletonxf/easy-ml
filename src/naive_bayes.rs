@@ -58,6 +58,7 @@ For continuous data we can model the feature as distributed according to a Gauss
 
 use easy_ml::matrices::Matrix;
 use easy_ml::matrices::slices::{Slice2D, Slice};
+use easy_ml::linear_algebra;
 use easy_ml::distributions::Gaussian;
 
 use rand::{Rng, SeedableRng};
@@ -203,11 +204,30 @@ let unlabelled_subset = unlabelled_dataset.retain(
     .rows(Slice::Range(0..30))
 );
 
+// As clustering will use euclidean distance as the distance metric we normalise all the features
+// to 0 mean and 1 standard deviation.
+
+let normalised_subset = {
+    let mut normalised_subset = unlabelled_subset;
+    for feature in 0..normalised_subset.columns() {
+        // TODO: keep hold of these for later
+        // TODO: test these functions
+        let mean = linear_algebra::mean(normalised_subset.column_iter(feature));
+        let variance = linear_algebra::variance(normalised_subset.column_iter(feature));
+        for row in 0..normalised_subset.rows() {
+            let x = normalised_subset.get(row, feature);
+            normalised_subset.set(row, feature, (x - mean) / variance);
+        }
+    }
+    normalised_subset
+};
+
+
 // pick the first 3 samples as the starting points for the cluster centres
 let cluster_centers = Matrix::from(vec![
-    unlabelled_subset.row_iter(0).collect(),
-    unlabelled_subset.row_iter(1).collect(),
-    unlabelled_subset.row_iter(2).collect()]);
+    normalised_subset.row_iter(0).collect(),
+    normalised_subset.row_iter(1).collect(),
+    normalised_subset.row_iter(2).collect()]);
 
 //assert_eq!(1, 2);
 

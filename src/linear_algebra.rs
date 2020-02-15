@@ -436,6 +436,63 @@ where for<'a> &'a T: NumericRef<T> {
 }
 
 /**
+ * Computes the mean of the values in an iterator, consuming the iterator.
+ *
+ * This function does not perform [Bessel's correction](https://en.wikipedia.org/wiki/Bessel%27s_correction)
+ *
+ * # Panics
+ *
+ * If the iterator is empty. This function will also fail if the length of the iterator
+ * or sum of all the values in the iterator exceeds the maximum number the type can
+ * represent.
+ */
+pub fn mean<I, T: Numeric>(mut data: I) -> T
+where I: Iterator<Item = T> {
+    let mut next = data.next();
+    assert!(next.is_some(), "Provided iterator must not be empty");
+    let mut count = T::zero();
+    let mut sum = T::zero();
+    while next.is_some() {
+        count = count + T::one();
+        sum = sum + next.unwrap();
+        next = data.next();
+    }
+    sum / count
+}
+
+/**
+ * Computes the variance of the values in an iterator, consuming the iterator.
+ *
+ * Variance is defined as expected value of of the squares of the zero mean data.
+ * It captures how much data varies from its mean, ie the spread of the data.
+ *
+ * This function does not perform [Bessel's correction](https://en.wikipedia.org/wiki/Bessel%27s_correction)
+ *
+ * Variance may also be computed as the mean of each squared datapoint minus the
+ * square of the mean of the data. Although this method would allow for a streaming
+ * implementation the [wikipedia page](https://en.wikipedia.org/wiki/Variance#Definition)
+ * cautions: "This equation should not be used for computations using floating point
+ * arithmetic because it suffers from catastrophic cancellation if the two components
+ * of the equation are similar in magnitude".
+ *
+ * # Panics
+ *
+ * If the iterator is empty. This function will also fail if the length of the iterator
+ * or sum of all the values in the iterator exceeds the maximum number the type can
+ * represent.
+ */
+pub fn variance<I, T: Numeric>(data: I) -> T
+where I: Iterator<Item = T>, {
+    let mut list = data.collect::<Vec<T>>();
+    assert!(list.len() > 0, "Provided iterator must not be empty");
+
+    // copy the list as we need to keep it as well as getting the mean
+    let m = mean(list.iter().cloned());
+    // use drain here as we no longer need to keep list
+    mean(list.drain(..).map(|x| (x.clone() - m.clone()) * (x - m.clone())))
+}
+
+/**
  * Computes the cholesky decomposition of a matrix. This yields a matrix `L`
  * such that for the provided matrix `A`, `L * L^T = A`. `L` will always be
  * lower triangular, ie all entries above the diagonal will be 0. Hence cholesky
