@@ -374,8 +374,10 @@ impl <T: Clone> Matrix<T> {
      * Gets a copy of the value at this row and column. Rows and Columns are 0 indexed.
      */
     pub fn get(&self, row: Row, column: Column) -> T {
-        assert!(row < self.rows(), "Row out of index");
-        assert!(column < self.columns(), "Column out of index");
+        assert!(row < self.rows(),
+            "Row out of index, only have {} rows", self.rows());
+        assert!(column < self.columns(),
+            "Column out of index, only have {} columns", self.columns());
         self.data[row][column].clone()
     }
 
@@ -502,6 +504,7 @@ impl <T: Clone> Matrix<T> {
      * This will panic if the row is greater than the number of rows in the matrix.
      */
     pub fn insert_row(&mut self, row: Row, value: T) {
+        assert!(row <= self.rows(), "Row to insert must be <= to {}", self.rows());
         let new_row = vec![value; self.columns()];
         self.data.insert(row, new_row);
     }
@@ -534,6 +537,7 @@ impl <T: Clone> Matrix<T> {
      */
     pub fn insert_row_with<I>(&mut self, row: Row, values: I)
     where I: Iterator<Item = T> {
+        assert!(row <= self.rows(), "Row to insert must be <= to {}", self.rows());
         let new_row = values.take(self.columns()).collect();
         self.data.insert(row, new_row);
     }
@@ -546,6 +550,7 @@ impl <T: Clone> Matrix<T> {
      * This will panic if the column is greater than the number of columns in the matrix.
      */
     pub fn insert_column(&mut self, column: Column, value: T) {
+        assert!(column <= self.columns(), "Column to insert must be <= to {}", self.columns());
         for row in 0..self.rows() {
             self.data[row].insert(column, value.clone());
         }
@@ -579,6 +584,7 @@ impl <T: Clone> Matrix<T> {
      */
     pub fn insert_column_with<I>(&mut self, column: Column, mut values: I)
     where I: Iterator<Item = T> {
+        assert!(column <= self.columns(), "Column to insert must be <= to {}", self.columns());
         for row in 0..self.rows() {
             self.data[row].insert(column, values.next().unwrap());
         }
@@ -601,6 +607,32 @@ impl <T: Clone> Matrix<T> {
 impl <T: Clone> Clone for Matrix<T> {
     fn clone(&self) -> Self {
         self.map(|element| element)
+    }
+}
+
+/**
+ * Any matrix of a Displayable + Cloneable type implements Display
+ */
+impl <T: std::fmt::Display + Clone> std::fmt::Display for Matrix<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "[ ")?;
+        for row in 0..self.rows() {
+            if row > 0 {
+                write!(f, "  ")?;
+            }
+            for column in 0..self.columns() {
+                // default to 3 decimals but allow the caller to override
+                // TODO: ideally want to set significant figures instead of decimals
+                write!(f, "{:.*}", f.precision().unwrap_or(3), self.get(row, column))?;
+                if column < self.columns() - 1 {
+                    write!(f, ", ")?;
+                }
+            }
+            if row < self.rows() - 1 {
+                write!(f, "\n")?;
+            }
+        }
+        write!(f, " ]")
     }
 }
 

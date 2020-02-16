@@ -141,4 +141,19 @@ mod tests {
             .sum();
         assert!(absolute_difference < 0.0001);
     }
+
+    #[test]
+    fn test_mean() {
+        assert_eq!(linear_algebra::mean(vec![ 2.0, -2.0, 0.0, 1.0 ].drain(..)), 0.25);
+    }
+
+    #[test]
+    fn test_variance() {
+        // test is performed by using the alternate formula and avoiding linear_algebra::mean
+        // because linear_algebra::variance uses linear_algebra::mean in its implementation
+        let data = vec![ 2.0, -2.0, 0.0, 1.0 ];
+        let squared_mean = data.iter().map(|x| x * x).sum::<f64>() / 4.0;
+        let mean_squared = (data.iter().cloned().sum::<f64>() / 4.0).powi(2);
+        assert_eq!(linear_algebra::variance(data.iter().cloned()), squared_mean - mean_squared);
+    }
 }

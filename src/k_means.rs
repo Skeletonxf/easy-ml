@@ -127,7 +127,7 @@ while absolute_changes == -1.0 || absolute_changes > CHANGE_THRESHOLD {
         for cluster in 0..clusters.rows() {
             let cx = clusters.get(cluster, X);
             let cy = clusters.get(cluster, Y);
-            // we don't actually need to square the distances for finding
+            // we don't actually need to square root the distances for finding
             // which is least because least squared distance is the same as
             // least distance
             let squared_distance = (x - cx).powi(2) + (y - cy).powi(2);
@@ -176,6 +176,9 @@ Chart::new(180, 60, -8.0, 8.0)
     .lineplot(Shape::Lines(&cluster_center_1_history))
     .lineplot(Shape::Lines(&cluster_center_2_history))
     .display();
-
 ```
+
+# 5 Dimensional K-means
+
+See [naive_bayes](../naive_bayes/index.html#naïve-bayes-example)
 */
