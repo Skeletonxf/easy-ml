@@ -87,6 +87,28 @@ impl <T: Numeric + Real> Gaussian<T> {
             variance,
         }
     }
+
+    /**
+     * Creates a Gaussian approximating the mean and variance in the provided
+     * data.
+     *
+     * Note that this will always be an approximation, if you generate some data
+     * according to some mean and variance then construct a Gaussian from
+     * the mean and variance of that generated data the approximated mean
+     * and variance is unlikely to be exactly the same as the parameters the
+     * data was generated with, though as the amout of data increases you
+     * can expect the approximation to be more close.
+     */
+    pub fn approximating<I>(data: I) -> Gaussian<T>
+    where I: Iterator<Item = T> {
+        let mut copy: Vec<T> = data.collect();
+        Gaussian {
+            // duplicate the data to pass once each to mean and variance
+            // functions of linear_algebra
+            mean: linear_algebra::mean(copy.iter().cloned()),
+            variance: linear_algebra::variance(copy.drain(..)),
+        }
+    }
 }
 
 impl <T: Numeric + Real> Gaussian<T>

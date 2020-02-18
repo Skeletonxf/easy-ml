@@ -355,8 +355,6 @@ println!(
 // 2) Construct a vector of aliens and generate some new aliens
 // 3) Try to classify the unseen aliens using the 1000 aliens dataset
 // Will need both Gaussian naive bayes and laplacian smoothing for categories here
-// Add a constructor to Gaussian type to construct from a dataset - will use the
-// equations for mean and variance of samples: variance is expectation of zero mean squares
 // 4) Finally see what the performance is
 ```
 */
