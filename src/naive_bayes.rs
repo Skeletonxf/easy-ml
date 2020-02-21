@@ -47,6 +47,9 @@ For continuous data we can model the feature as distributed according to a Gauss
 
 ## Naïve Bayes Example
 
+Note that most of the code below is for generating the data to perform Naïve Bayes on, not
+doing it.
+
 ```
 // For this example some population data is generated for a fictional alien race as I didn't
 // have any real datasets to hand
@@ -63,6 +66,7 @@ use easy_ml::distributions::Gaussian;
 
 use rand::{Rng, SeedableRng};
 
+#[derive(Clone, Copy, PartialEq, Debug)]
 struct Alien {
     height: f64,
     primary_marking_color: AlienMarkingColor,
@@ -72,12 +76,12 @@ struct Alien {
     sex: AlienSex,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
 enum AlienMarkingColor {
     Red = 1, Yellow, Orange, Blue, Purple, White, Black
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
 enum AlienSex {
     A, B, C
 }
@@ -147,6 +151,42 @@ fn generate_colors(samples: usize, random_numbers: &mut EndlessRandomGenerator) 
     colors
 }
 
+/**
+ * Recovers the color type which is the closest match to the input floating point color
+ */
+fn recover_generated_color(color: f64) -> AlienMarkingColor {
+    let numerical_colors = [
+        AlienMarkingColor::Red as u8 as f64,
+        AlienMarkingColor::Yellow as u8 as f64,
+        AlienMarkingColor::Orange as u8 as f64,
+        AlienMarkingColor::Blue as u8 as f64,
+        AlienMarkingColor::Purple as u8 as f64,
+        AlienMarkingColor::White as u8 as f64,
+        AlienMarkingColor::Black as u8 as f64,
+    ];
+    let colors = [
+        AlienMarkingColor::Red,
+        AlienMarkingColor::Yellow,
+        AlienMarkingColor::Orange,
+        AlienMarkingColor::Blue,
+        AlienMarkingColor::Purple,
+        AlienMarkingColor::White,
+        AlienMarkingColor::Black,
+    ];
+    // look for the closest fit, as manipulated floating points may not be exact
+    let color_index = numerical_colors.iter()
+        // take the absolute difference so an exact match will become 0
+        .map(|c| (c - color).abs())
+        .enumerate()
+        // find the element with the smallest difference in the list
+        .min_by(|(_, a), (_, b)| a.partial_cmp(b).expect("NaN should not be in list"))
+        // discard the difference
+        .map(|(index, difference)| index)
+        // retrieve the value from the option
+        .unwrap();
+    colors[color_index]
+}
+
 fn generate_metabolic_rate(
     samples: usize, random_numbers: &mut EndlessRandomGenerator
 ) -> Vec<f64> {
@@ -180,6 +220,13 @@ fn generate_spiked_tail(
         }
     }
     spikes
+}
+
+/**
+ * Recovers the spiked tail type which is the closest match to the input floating point
+ */
+fn recover_generated_spiked_tail(spiked: f64) -> bool {
+    return spiked >= 0.5
 }
 
 let samples = 1000;
@@ -345,16 +392,115 @@ println!(
         (x * variance) + mean
     }));
 
+// Now we will assign every alien in the full dataset a sex using these cluster centres
+let mut aliens: Vec<Alien> = Vec::with_capacity(unlabelled_dataset.rows());
+
+fn assign_alien_sex(index: u8) -> AlienSex {
+    if index == 0 {
+        AlienSex::A
+    } else if index == 1 {
+        AlienSex::B
+    } else {
+        AlienSex::C
+    }
+}
+
+for i in 0..unlabelled_dataset.rows() {
+    let alien_data = Matrix::column(unlabelled_dataset.row_iter(i).collect());
+    // normalise the alien data first so comparisons are on unit variance
+    // and zero mean
+    let normalised_alien_data = alien_data.map_with_index(|x, feature, _| {
+        let mean = means_and_variances.get(feature, 0);
+        let variance = means_and_variances.get(feature, 1);
+        // normalise each feature in the alien data
+        (x - mean) / variance
+    });
+    let mut distances = Vec::with_capacity(clusters.rows());
+    for j in 0..clusters.rows() {
+        let cluster_data = Matrix::row(clusters.row_iter(j).collect());
+        // use euclidean distance to compare the alien with the cluster, the cluster
+        // is already normalised
+        let sum_of_squares = (cluster_data * &normalised_alien_data).scalar();
+        distances.push(sum_of_squares);
+    }
+    // we could choose the closest cluster to assign each alien a sex but
+    // that might make the data too linearly seperable so we use the distances
+    // to assign probabalistically
+    // first convert distance to similarity by taking the reciprocal
+    let mut similarity = distances.drain(..)
+        .map(|distance| 1.0 / (distance + 0.00001))
+        .collect::<Vec<f64>>();
+    let total: f64 = similarity.iter().sum();
+    // then normalise so the total of the weights are 1
+    let weights = similarity.drain(..)
+        .map(|similarity| similarity / total)
+        .collect::<Vec<f64>>();
+
+    let random_number = random_numbers.next().unwrap();
+    // run through the weights dividing the 0 - 1 space into weighted regions
+    // to probabalistically choose the cluster
+    let mut j = 0;
+    let mut total = 0.0;
+    let chosen_cluster = loop {
+        // the first cluster will occupy a range starting at 0 and the last cluster's
+        // range will end at 1, which covers the entire range of values the random_number
+        // can be
+        // guard to prevent an infinite loop if floating point precision arithmetic fails us
+        if j >= weights.len() {
+            break j - 1;
+        }
+        if random_number <= weights[j] + total {
+            break j;
+        }
+        total += weights[j];
+        j += 1;
+    };
+
+    // convert each float to the correct data type
+    aliens.push(Alien {
+        height: alien_data.get(0, 0),
+        primary_marking_color: recover_generated_color(alien_data.get(1, 0)),
+        tail_length: alien_data.get(2, 0),
+        metabolic_rate: alien_data.get(3, 0),
+        spiked_tail: recover_generated_spiked_tail(alien_data.get(4, 0)),
+        sex: assign_alien_sex(chosen_cluster as u8),
+    })
+}
+
+println!("First 10 aliens");
+for i in 0..10 {
+    println!("{:?}", aliens[i]);
+}
+
+// Put the aliens in a matrix for convenience
+let aliens = Matrix::row(aliens);
+
+println!("Sex A aliens total: {}", aliens.row_reference_iter(0)
+    .fold(0, |accumulator, alien| accumulator + if alien.sex == AlienSex::A { 1 } else { 0 }));
+
+println!("Sex B aliens total: {}", aliens.row_reference_iter(0)
+    .fold(0, |accumulator, alien| accumulator + if alien.sex == AlienSex::B { 1 } else { 0 }));
+
+println!("Sex C aliens total: {}", aliens.row_reference_iter(0)
+    .fold(0, |accumulator, alien| accumulator + if alien.sex == AlienSex::C { 1 } else { 0 }));
+
+// A is almost as common as B and C together, this means we should have a strong prior
+// that the alien is A, although 472 / 1000 means it is still more likely that an alien
+// is not A
+
+// In order to evaluate the performance of the Naïve Bayes classifier we will hold out
+// the last 100 aliens from the dataset and use them as training data
+
+let training_data = Matrix::row(aliens.row_iter(0).take(900).collect());
+let test_data = Matrix::row(aliens.row_iter(0).skip(900).collect());
+
+// Time to do Naïve Bayes!
+
 //assert_eq!(1, 2);
 
 // TODO:
-// Use the 3 cluster centres to assign all the 1000 aliens a sex, creating 3 groups,
-// should do this probabalistically to avoid making the problem linearly seperable
-// ie if x is 3 times closer to cluster A than B or C then have a 75% chance of assigning it to A
-// rather than 100%.
-// 2) Construct a vector of aliens and generate some new aliens
-// 3) Try to classify the unseen aliens using the 1000 aliens dataset
-// Will need both Gaussian naive bayes and laplacian smoothing for categories here
-// 4) Finally see what the performance is
+// 1) Try to classify the unseen aliens using the 1000 aliens dataset
+// 2) Will need both Gaussian naive bayes and laplacian smoothing for categories here
+// 3) Finally see what the performance is using precision and recall
 ```
 */
