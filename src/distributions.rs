@@ -68,6 +68,7 @@ use crate::linear_algebra;
  *
  * See: [https://en.wikipedia.org/wiki/Gaussian_function](https://en.wikipedia.org/wiki/Gaussian_function)
  */
+#[derive(Debug)]
 pub struct Gaussian<T: Numeric + Real> {
     /**
      * The mean is the expected value of this gaussian.
@@ -122,7 +123,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
      * g(x) will tend towards zero as x is further from this distribution's
      * mean, at a rate corresponding to this distribution's variance.
      */
-    pub fn map(&self, x: &T) -> T {
+    pub fn probability(&self, x: &T) -> T {
         // FIXME: &T sqrt doesn't seem to be picked up by the compiler here
         let standard_deviation = self.variance.clone().sqrt();
         let two = T::one() + T::one();
@@ -130,6 +131,20 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
         let fraction = T::one() / (standard_deviation * (&two_pi.sqrt()));
         let exponent = (- T::one() / &two) * ((x - &self.mean) / &self.variance).pow(&two);
         fraction * exponent.exp()
+    }
+
+    /**
+     * Computes g(x) for some x, the probability density of a normally
+     * distributed random variable x, or in other words how likely x is
+     * to be drawn from this normal distribution.
+     *
+     * g(x) is largest for x equal to this distribution's mean and
+     * g(x) will tend towards zero as x is further from this distribution's
+     * mean, at a rate corresponding to this distribution's variance.
+     */
+    #[deprecated(since="1.1.0", note="renamed to `probability`")]
+    pub fn map(&self, x: &T) -> T {
+        self.probability(x)
     }
 
     /**
@@ -199,6 +214,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
  * The mean [Matrix](./../matrices/struct.Matrix.html) must always be a column vector, and
  * must be the same length as the covariance matrix.
  */
+#[derive(Debug)]
 pub struct MultivariateGaussian<T: Numeric + Real> {
     /**
      * The mean is a column vector of expected values in each dimension

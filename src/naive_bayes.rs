@@ -423,38 +423,13 @@ for i in 0..unlabelled_dataset.rows() {
         let sum_of_squares = (cluster_data * &normalised_alien_data).scalar();
         distances.push(sum_of_squares);
     }
-    // we could choose the closest cluster to assign each alien a sex but
-    // that might make the data too linearly seperable so we use the distances
-    // to assign probabalistically
-    // first convert distance to similarity by taking the reciprocal
-    let mut similarity = distances.drain(..)
-        .map(|distance| 1.0 / (distance + 0.00001))
-        .collect::<Vec<f64>>();
-    let total: f64 = similarity.iter().sum();
-    // then normalise so the total of the weights are 1
-    let weights = similarity.drain(..)
-        .map(|similarity| similarity / total)
-        .collect::<Vec<f64>>();
 
-    let random_number = random_numbers.next().unwrap();
-    // run through the weights dividing the 0 - 1 space into weighted regions
-    // to probabalistically choose the cluster
-    let mut j = 0;
-    let mut total = 0.0;
-    let chosen_cluster = loop {
-        // the first cluster will occupy a range starting at 0 and the last cluster's
-        // range will end at 1, which covers the entire range of values the random_number
-        // can be
-        // guard to prevent an infinite loop if floating point precision arithmetic fails us
-        if j >= weights.len() {
-            break j - 1;
-        }
-        if random_number <= weights[j] + total {
-            break j;
-        }
-        total += weights[j];
-        j += 1;
-    };
+    let chosen_cluster = distances.iter()
+        .enumerate()
+        // find the cluster with the lowest distance to each point
+        .min_by(|(_, a), (_, b)| a.partial_cmp(b).expect("NaN should not be in list"))
+        .map(|(i, _)| i)
+        .unwrap();
 
     // convert each float to the correct data type
     aliens.push(Alien {
@@ -484,9 +459,7 @@ println!("Sex B aliens total: {}", aliens.row_reference_iter(0)
 println!("Sex C aliens total: {}", aliens.row_reference_iter(0)
     .fold(0, |accumulator, alien| accumulator + if alien.sex == AlienSex::C { 1 } else { 0 }));
 
-// A is almost as common as B and C together, this means we should have a strong prior
-// that the alien is A, although 472 / 1000 means it is still more likely that an alien
-// is not A
+// Each class is roughly one third so we should not have a strong prior to a particular class
 
 // In order to evaluate the performance of the Naïve Bayes classifier we will hold out
 // the last 100 aliens from the dataset and use them as training data
@@ -496,11 +469,140 @@ let test_data = Matrix::row(aliens.row_iter(0).skip(900).collect());
 
 // Time to do Naïve Bayes!
 
+/**
+ * Predicts the most probable alien sex for each test input alien (disregarding
+ * the sex field in those inputs)
+ */
+fn predict_aliens(training_data: &Matrix<Alien>, test_data: &Matrix<Alien>) -> Matrix<AlienSex> {
+    let mut relative_log_probabilities = Vec::with_capacity(3);
+
+    for class in &[ AlienSex::A, AlienSex::B, AlienSex::C ] {
+        let training_data_class_only = training_data.row_iter(0)
+            .filter(|a| &a.sex == class)
+            .collect::<Vec<Alien>>();
+
+        // compute how likely each class is in the training set
+        let prior = (training_data_class_only.len() as f64) / (training_data.columns() as f64);
+
+        // We model the real valued features as Gaussians, note that these
+        // are Gaussian distributions over only the training data of each class
+        let heights: Gaussian<f64> = Gaussian::approximating(
+            training_data_class_only.iter().map(|a| a.height)
+        );
+        let tail_lengths: Gaussian<f64> = Gaussian::approximating(
+            training_data_class_only.iter().map(|a| a.tail_length)
+        );
+        let metabolic_rates: Gaussian<f64> = Gaussian::approximating(
+            training_data_class_only.iter().map(|a| a.metabolic_rate)
+        );
+
+        let relative_log_probabilities_of_class = test_data.row_reference_iter(0).map(|alien| {
+            // gradually build up the sum of log probabilities to get the
+            // log of the prior x likelihood which will be proportional to the posterior
+            // probabilitiy of the alien sex and the alien
+            let mut log_relative_probability = prior.ln();
+
+            // Compute the probability using the Gaussian model for each real valued feature.
+            // Due to floating point precision limits and the variance for some of these
+            // Gaussian models being extremely small (0.01 for heights) we
+            // check if a probability computed is zero or extremely close to zero
+            // and if so increase it a bit to avoid computing -inf when we take the log.
+
+            let mut height_given_class = heights.probability(&alien.height);
+            if height_given_class.abs() <= 0.000000000001 {
+                height_given_class = 0.000000000001;
+            }
+            log_relative_probability += height_given_class.ln();
+
+            let mut tail_given_class = tail_lengths.probability(&alien.tail_length);
+            if tail_given_class.abs() <= 0.000000000001 {
+                tail_given_class = 0.000000000001;
+            }
+            log_relative_probability += tail_given_class.ln();
+
+            let mut metabolic_rates_given_class = metabolic_rates.probability(&alien.metabolic_rate);
+            if metabolic_rates_given_class.abs() <= 0.000000000001 {
+                metabolic_rates_given_class = 0.000000000001;
+            }
+            log_relative_probability += metabolic_rates_given_class.ln();
+
+            // compute the probability of the categorical features using lapacian smoothing
+            let color_of_class = training_data_class_only.iter()
+                .map(|a| a.primary_marking_color)
+                // count how many aliens of this class have this color
+                .fold(0, |acc, color| acc + if color == alien.primary_marking_color { 1 } else { 0 });
+            // with laplacian smoothing we assume there is one datapoint for each color
+            // which avoids zero probabilities but does not distort the probabilities much
+            // there are 7 color types so we add 7 to the total
+            let color_given_class = ((color_of_class + 1) as f64)
+                / ((training_data_class_only.len() + 7) as f64);
+            log_relative_probability += color_given_class.ln();
+
+            let spiked_tail_of_class = training_data_class_only.iter()
+                .map(|a| a.spiked_tail)
+                // count how many aliens of this class have a spiked tail or not
+                .fold(0, |acc, spiked| acc + if spiked == alien.spiked_tail { 1 } else { 0 });
+            // again we assume one alien of the class with a spiked tail and one without
+            // to avoid zero probabilities
+            let spiked_tail_given_class = ((spiked_tail_of_class + 1) as f64)
+                / ((training_data_class_only.len() + 2) as f64);
+            log_relative_probability += spiked_tail_given_class.ln();
+
+            if log_relative_probability == std::f64::NEG_INFINITY {
+                println!("Individual probs P:{} H:{} T:{} M:{} C:{} S:{}",
+                    prior, height_given_class, tail_given_class, metabolic_rates_given_class,
+                    color_given_class, spiked_tail_given_class);
+            }
+
+            log_relative_probability
+        }).collect();
+
+        relative_log_probabilities.push(relative_log_probabilities_of_class);
+    }
+
+    // collect the relative probabilitiy estimates for each class and each alien
+    // into a 3 x 100 matrix respectively
+    let probabilities = Matrix::from(relative_log_probabilities);
+
+    let predictions = (0..probabilities.columns()).map(|i| {
+        let predicted_class_index = probabilities.column_iter(i)
+            .enumerate()
+            // find the class with the highest relative probability estimate
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).expect("NaN should not be in list"))
+            // discard the probability
+            .map(|(index, p)| index)
+            // retrieve the value from the option
+            .unwrap();
+        if predicted_class_index == 0 {
+            AlienSex::A
+        } else if predicted_class_index == 1 {
+            AlienSex::B
+        } else {
+            AlienSex::C
+        }
+    }).collect();
+
+    Matrix::row(predictions)
+}
+
+let predictions = predict_aliens(&training_data, &test_data);
+
+println!("First 10 test aliens and predictions");
+for i in 0..10 {
+    println!("{:?}", test_data.get(0, i));
+    println!("{:?}", predictions.get(0, i));
+}
+
+let accuracy = test_data.row_iter(0)
+    .zip(predictions.row_iter(0))
+    .map(|(alien, prediction)| if alien.sex == prediction { 1 } else { 0 })
+    .sum::<u16>() as f64 / (test_data.columns() as f64);
+
+println!("Accuracy {}", accuracy);
+
 //assert_eq!(1, 2);
 
 // TODO:
-// 1) Try to classify the unseen aliens using the 1000 aliens dataset
-// 2) Will need both Gaussian naive bayes and laplacian smoothing for categories here
-// 3) Finally see what the performance is using precision and recall
+// see what the performance is using precision and recall
 ```
 */
