@@ -59,7 +59,7 @@ where for<'a> &'a T: NumericRef<T> {
         if element == T::zero() {
             return None;
         }
-        return Some(Matrix::unit(T::one() / element));
+        return Some(Matrix::from_scalar(T::one() / element));
     }
 
     // compute the general case for a N x N matrix where N >= 2

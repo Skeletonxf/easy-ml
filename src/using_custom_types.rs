@@ -206,13 +206,13 @@ impl ToString for BigIntWrapper {
 let one_million = ToBigInt::to_bigint(&1000000).unwrap();
 let wrapped = BigIntWrapper(one_million);
 
-let matrix = Matrix::unit(wrapped);
+let matrix = Matrix::from_scalar(wrapped);
 println!("1000000 x 1000000 = {:?}", (&matrix * &matrix).get_reference(0, 0).to_string());
 
 // Wrapping and unwrapping transformations can be done with map
 let unwrapped: Matrix<BigInt> = matrix.map(|wrapped| wrapped.0);
 println!("Unwrapped:\n{:?}", unwrapped);
-let matrix: Matrix<BigInt> = Matrix::unit(ToBigInt::to_bigint(&-3).unwrap());
+let matrix: Matrix<BigInt> = Matrix::from_scalar(ToBigInt::to_bigint(&-3).unwrap());
 let wrapped: Matrix<BigIntWrapper> = matrix.map(|unwrapped| BigIntWrapper(unwrapped));
 println!("Wrapped:\n{:?}", wrapped);
 ```

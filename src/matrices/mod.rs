@@ -15,6 +15,7 @@ use crate::matrices::iterators::{
     ColumnReferenceIterator, RowReferenceIterator, ColumnMajorReferenceIterator};
 use crate::matrices::slices::Slice2D;
 use crate::numeric::{Numeric, NumericRef};
+use crate::numeric::extra::{Real, RealRef};
 use crate::linear_algebra;
 
 /**
@@ -49,7 +50,7 @@ pub struct Matrix<T> {
 }
 
 /// The maximum row and column lengths are usize, due to the internal storage being backed by
-/// nested Vecs
+/// Vec
 pub type Row = usize;
 pub type Column = usize;
 
@@ -58,9 +59,9 @@ pub type Column = usize;
  */
 impl <T> Matrix<T> {
     /**
-     * Creates a unit (1x1) matrix from some element
+     * Creates a 1x1 matrix from some scalar
      */
-    pub fn unit(value: T) -> Matrix<T> {
+    pub fn from_scalar(value: T) -> Matrix<T> {
         Matrix {
             data: vec![vec![value]]
         }
@@ -112,6 +113,11 @@ impl <T> Matrix<T> {
         Matrix {
             data: values
         }
+    }
+
+    #[deprecated(since="1.1.0", note="Incorrect use of terminology, a unit matrix is another term for an identity matrix, please use `from_scalar` instead")]
+    pub fn unit(value: T) -> Matrix<T> {
+        Matrix::from_scalar(value)
     }
 
     /**
@@ -744,6 +750,61 @@ where for<'a> &'a T: NumericRef<T> {
      */
     pub fn covariance_row_features(&self) -> Matrix<T> {
         linear_algebra::covariance_row_features(self)
+    }
+}
+
+/**
+ * Methods for matrices with numerical real valued types, such as f32 or f64.
+ *
+ * This excludes signed and unsigned integers as they do not support decimal
+ * precision and hence can't be used for operations like square roots.
+ *
+ * Third party fixed precision and infinite precision decimal types should
+ * be able to implement all of the methods for [Real](../numeric/extra/trait.Real.html)
+ * and then utilise these functions.
+ */
+impl <T: Numeric + Real> Matrix<T>
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    /**
+     * Computes the [L2 norm](https://en.wikipedia.org/wiki/Euclidean_vector#Length)
+     * of this row or column vector, also referred to as the length or magnitude,
+     * and written as ||x||, or sometimes |x|.
+     *
+     * ||**a**|| = sqrt(a<sub>1</sub><sup>2</sup> + a<sub>2</sub><sup>2</sup> + a<sub>3</sub><sup>2</sup>...) = sqrt(**a**<sup>T</sup> * **a**)
+     *
+     * This is a shorthand for `(x.transpose() * x).scalar().sqrt()` for
+     * column vectors and `(x * x.transpose()).scalar().sqrt()` for row vectors, ie
+     * the square root of the dot product of a vector with itself.
+     *
+     * The euclidean length can be used to compute a
+     * [unit vector](https://en.wikipedia.org/wiki/Unit_vector), that is, a
+     * vector with length of 1. This should not be confused with a unit matrix,
+     * which is another name for an identity matrix.
+     *
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * let a = Matrix::column(vec![ 1.0, 2.0, 3.0 ]);
+     * let length = a.euclidean_length(); // (1^2 + 2^2 + 3^2)^0.5
+     * let unit = a.map(|x| x / length);
+     * assert_eq!(unit.euclidean_length(), 1.0);
+     * ```
+     *
+     * # Panics
+     *
+     * If the matrix is not a vector, ie if it has more than one row and more than one
+     * column.
+     */
+    pub fn euclidean_length(&self) -> T {
+        if self.columns() == 1 {
+            // column vector
+            (self.transpose() * self).scalar().sqrt()
+        } else if self.rows() == 1 {
+            // row vector
+            (self * self.transpose()).scalar().sqrt()
+        } else {
+            panic!("Cannot compute unit vector of a non vector, rows: {}, columns: {}",
+                self.rows(), self.columns());
+        }
     }
 }
 

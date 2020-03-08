@@ -38,7 +38,7 @@ mod tests {
 
     #[test]
     fn inverse_1_by_1() {
-        let matrix = Matrix::unit(3.0);
+        let matrix = Matrix::from_scalar(3.0);
         let inverse = linear_algebra::inverse::<f32>(&matrix).unwrap();
         let absolute_difference = inverse.scalar() - (1.0 / 3.0);
         assert!(absolute_difference <= std::f32::EPSILON);
