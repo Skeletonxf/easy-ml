@@ -16,3 +16,5 @@ Deprecated `Gaussian::map` and renamed to `Gaussian::probability`
 
 Added fully worked Naive Bayes example and supporting library code for
 Gaussians and linear algebra.
+
+Improved the explanation in some of the runtime `panic!` errors
