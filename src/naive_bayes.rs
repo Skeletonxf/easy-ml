@@ -12,7 +12,6 @@ of the input given the class. As a classifier only needs to determine which clas
 is most likely to be we can compare just the product of the probability of the input given a class
 and the probability of that class.
 
-
 ## Bayes' Theorum
 
 posterior = ( prior x likelihood ) / evidence
@@ -47,18 +46,30 @@ For continuous data we can model the feature as distributed according to a Gauss
 
 ## Naïve Bayes Example
 
-Note that most of the code below is for generating the data to perform Naïve Bayes on, not
-doing it.
+For this example some population data is generated for a fictional alien race as I didn't
+have any real datasets to hand. This alien race has 3 sexes (mysteriously no individuals
+are ever intersex or trans) and is sexually dimorphic, meaning we can try to determine their
+sex from various measuremnts.
 
+As with humans, a gaussian distribution for physical charateristics is sensible due to
+evolutionary and biological factors.
+
+The example deliberately includes categorical features such as marking color and real valued
+features such as height in order to show how both can be modelled with Naïve Bayes.
+
+Note that most of the code below is for generating and clustering the data to perform
+Naïve Bayes on, not doing it.
+
+### Clustering
+
+After generating the unlabelled data clustering is performed on a very small subset of that data
+to find three cluster centres that are then used to assign the whole dataset sex class labels.
+This creates a labelled dataset to perform Naïve Bayes on to see if we can predict sex given
+the various features.
+
+By clustering only a very small bit of the data, by chance we can expect there to be large gaps
+in the subset because our data has many dimensions.
 ```
-// For this example some population data is generated for a fictional alien race as I didn't
-// have any real datasets to hand
-// This alien race has 3 sexes (mysteriously no individuals are ever intersex or trans) and is
-// sexually dimorphic, meaning we can try to determine their sex from various measuremnts.
-
-// As with humans, a gaussian distribution for physical charateristics is sensible due to
-// evolutionary and biological factors.
-
 use easy_ml::matrices::Matrix;
 use easy_ml::matrices::slices::{Slice2D, Slice};
 use easy_ml::linear_algebra;
@@ -86,19 +97,23 @@ enum AlienSex {
     A, B, C
 }
 
+/**
+ * ===============================
+ * =       Data Generation       =
+ * ===============================
+ */
+
 // rather than explicitly define a generative function that already knows the relationship
-// between alien charateristics and sex which would be unrealistic in a real example and
-// not very interesting, instead the samples are generated without an assigned sex and then
-// clustered using k-means
+// between alien charateristics instead the samples are generated without an assigned sex
+// and then clustered using k-means
 
 // use a fixed seed non cryptographically secure random generator from the rand crate
 let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(16);
 
+// an infinite iterator is used for convenience as shown in the distributions module
 struct EndlessRandomGenerator {
     rng: rand_chacha::ChaCha8Rng
 }
-
-let mut random_numbers = EndlessRandomGenerator { rng: random_generator };
 
 impl Iterator for EndlessRandomGenerator {
     type Item = f64;
@@ -108,6 +123,11 @@ impl Iterator for EndlessRandomGenerator {
     }
 }
 
+let mut random_numbers = EndlessRandomGenerator { rng: random_generator };
+
+/**
+ * Generates height data for creating the alien dataset.
+ */
 fn generate_heights(samples: usize, random_numbers: &mut EndlessRandomGenerator) -> Vec<f64> {
     // the average height shall be 1.5 meters with a standard deviation of 0.25
     let heights_distribution = Gaussian::new(1.5, 0.25 * 0.25);
@@ -116,6 +136,9 @@ fn generate_heights(samples: usize, random_numbers: &mut EndlessRandomGenerator)
     heights.drain(..).map(|x| if x > 0.25 { x } else { 0.25 }).collect()
 }
 
+/**
+ * Generates tail length data for creating the alien dataset.
+ */
 fn generate_tail_length(samples: usize, random_numbers: &mut EndlessRandomGenerator) -> Vec<f64> {
     // the average length shall be 1.25 meters with more variation in tail length
     let tails_distribution = Gaussian::new(1.25, 0.5 * 0.5);
@@ -124,9 +147,11 @@ fn generate_tail_length(samples: usize, random_numbers: &mut EndlessRandomGenera
     tails.drain(..).map(|x| if x > 0.5 { x } else { 0.5 }).collect()
 }
 
-/*
- * Floats are still returned despite this being a category because we need all the data types
- * to be the same for clustering
+/**
+ * Generates color data for creating the alien dataset.
+ *
+ * Note that floats are still returned despite this being a category because we need all the
+ * data types to be the same for clustering
  */
 fn generate_colors(samples: usize, random_numbers: &mut EndlessRandomGenerator) -> Vec<f64> {
     let mut colors = Vec::with_capacity(samples);
@@ -187,6 +212,9 @@ fn recover_generated_color(color: f64) -> AlienMarkingColor {
     colors[color_index]
 }
 
+/**
+ * Generates metabolic rate data for creating the alien dataset.
+ */
 fn generate_metabolic_rate(
     samples: usize, random_numbers: &mut EndlessRandomGenerator
 ) -> Vec<f64> {
@@ -205,6 +233,9 @@ fn generate_metabolic_rate(
     }).collect()
 }
 
+/**
+ * Generates spiked tailness data for creating the alien dataset.
+ */
 fn generate_spiked_tail(
     samples: usize, random_numbers: &mut EndlessRandomGenerator
 ) -> Vec<f64> {
@@ -229,41 +260,45 @@ fn recover_generated_spiked_tail(spiked: f64) -> bool {
     return spiked >= 0.5
 }
 
-let samples = 1000;
+// We shall generate 1000 samples for the dataset
+const SAMPLES: usize = 1000;
 
-let named_features = vec![ "H", "C", "T", "M", "S" ];
-
+// Collect all the float typed features into a matrix
 let unlabelled_dataset = {
-    let mut dataset = Matrix::column(generate_heights(samples, &mut random_numbers));
-    dataset.insert_column_with(1, generate_colors(samples, &mut random_numbers).drain(..));
-    dataset.insert_column_with(2, generate_tail_length(samples, &mut random_numbers).drain(..));
-    dataset.insert_column_with(3, generate_metabolic_rate(samples, &mut random_numbers).drain(..));
-    dataset.insert_column_with(4, generate_spiked_tail(samples, &mut random_numbers).drain(..));
+    let mut dataset = Matrix::column(generate_heights(SAMPLES, &mut random_numbers));
+    dataset.insert_column_with(1,
+        generate_colors(SAMPLES, &mut random_numbers).drain(..));
+    dataset.insert_column_with(2,
+        generate_tail_length(SAMPLES, &mut random_numbers).drain(..));
+    dataset.insert_column_with(3,
+        generate_metabolic_rate(SAMPLES, &mut random_numbers).drain(..));
+    dataset.insert_column_with(4,
+        generate_spiked_tail(SAMPLES, &mut random_numbers).drain(..));
     dataset
 };
 
-println!(
-    "First 3 rows in unlabeled dataset:\n{:?}",
-    unlabelled_dataset.retain(Slice2D::new().columns(Slice::All()).rows(Slice::Range(0..3)))
-);
+/**
+ * ===============================
+ * =          Clustering         =
+ * ===============================
+ */
 
-// By clustering only a very small bit of the data, by chance we can expect
-// there to be large gaps in the subset because our data is high dimensional
-// which will allow k-means to find 3 cluster centres which we will then use
-// to assign all the data to classes.
-
+// Create a subset of the first 30 samples from the full dataset to use for clustering
 let unlabelled_subset = unlabelled_dataset.retain(
     Slice2D::new()
     .columns(Slice::All())
     .rows(Slice::Range(0..30))
 );
 
-// As clustering will use euclidean distance as the distance metric and
-// our features have widly varing variances we normalise all the features
-// to 0 mean and 1 standard deviation.
+// We normalise all the features to 0 mean and 1 standard deviation because
+// we will use euclidean distance as the distance matric, and our features
+// have very different variances. This avoids the distance metric being
+// dominated by any particular feature.
 
 let mut means_and_variances = Vec::with_capacity(unlabelled_subset.columns());
 
+// The normalised subset is computed taking the mean and variance from the subset,
+// these means and variances will be needed later to apply to the rest of the data.
 let mut normalised_subset = {
     let mut normalised_subset = unlabelled_subset;
     for feature in 0..normalised_subset.columns() {
@@ -281,7 +316,7 @@ let mut normalised_subset = {
     normalised_subset
 };
 
-// create a matrix where each row is the mean and variance of each feature
+// create a 5 x 2  matrix where each row is the mean and variance of each of the 5 features
 let means_and_variances = Matrix::from(means_and_variances);
 
 // pick the first 3 samples as the starting points for the cluster centres
@@ -292,7 +327,7 @@ let mut clusters = Matrix::from(vec![
     normalised_subset.row_iter(1).collect(),
     normalised_subset.row_iter(2).collect()]);
 
-// add a 6th column to the points to track the closest cluster
+// add a 6th column to the subset to track the closest cluster for each sample
 const CLUSTER_ID_COLUMN: usize = 5;
 normalised_subset.insert_column(CLUSTER_ID_COLUMN, -1.0);
 
@@ -337,14 +372,13 @@ while absolute_changes == -1.0 || absolute_changes > CHANGE_THRESHOLD {
     for cluster in 0..clusters.rows() {
         // construct a list of the points this cluster owns
         let owned = normalised_subset.column_iter(CLUSTER_ID_COLUMN)
-            // zip together the index of each point, which will be the
-            // row each considered point is stored in
-            .zip((0..))
+            // zip together the id values with their index
+            .enumerate()
             // exclude the points that aren't assigned to this cluster
-            .filter(|(id, index)| (*id as usize) == cluster)
+            .filter(|(index, id)| (*id as usize) == cluster)
             // drop the cluster ids from each item and copy over the data
             // for each point for each feature
-            .map(|(id, index)| {
+            .map(|(index, id)| {
                 // for each point copy all its data in each feature excluding the
                 // final cluster id column into a new vec
                 normalised_subset.row_iter(index)
@@ -385,7 +419,7 @@ while absolute_changes == -1.0 || absolute_changes > CHANGE_THRESHOLD {
 
 println!(
     "Denormalised clusters at convergence:\n{:?}\n{:.3}",
-    named_features,
+    vec![ "H", "C", "T", "M", "S" ],
     clusters.map_with_index(|x, _, feature| {
         let mean = means_and_variances.get(feature, 0);
         let variance = means_and_variances.get(feature, 1);
@@ -424,9 +458,9 @@ for i in 0..unlabelled_dataset.rows() {
         distances.push(sum_of_squares);
     }
 
+    // find the cluster with the lowest distance to each point and get its index
     let chosen_cluster = distances.iter()
         .enumerate()
-        // find the cluster with the lowest distance to each point
         .min_by(|(_, a), (_, b)| a.partial_cmp(b).expect("NaN should not be in list"))
         .map(|(i, _)| i)
         .unwrap();
@@ -459,15 +493,19 @@ println!("Sex B aliens total: {}", aliens.row_reference_iter(0)
 println!("Sex C aliens total: {}", aliens.row_reference_iter(0)
     .fold(0, |accumulator, alien| accumulator + if alien.sex == AlienSex::C { 1 } else { 0 }));
 
+/**
+ * ===============================
+ * =         Naïve Bayes         =
+ * ===============================
+ */
+
 // Each class is roughly one third so we should not have a strong prior to a particular class
 
 // In order to evaluate the performance of the Naïve Bayes classifier we will hold out
 // the last 100 aliens from the dataset and use them as training data
 
-let training_data = Matrix::row(aliens.row_iter(0).take(900).collect());
-let test_data = Matrix::row(aliens.row_iter(0).skip(900).collect());
-
-// Time to do Naïve Bayes!
+let training_data = Matrix::column(aliens.row_iter(0).take(900).collect());
+let test_data = Matrix::column(aliens.row_iter(0).skip(900).collect());
 
 /**
  * Predicts the most probable alien sex for each test input alien (disregarding
@@ -482,12 +520,12 @@ fn predict_aliens(training_data: &Matrix<Alien>, test_data: &Matrix<Alien>) -> M
     let mut relative_log_probabilities = Vec::with_capacity(3);
 
     for class in &[ AlienSex::A, AlienSex::B, AlienSex::C ] {
-        let training_data_class_only = training_data.row_iter(0)
+        let training_data_class_only = training_data.column_iter(0)
             .filter(|a| &a.sex == class)
             .collect::<Vec<Alien>>();
 
         // compute how likely each class is in the training set
-        let prior = (training_data_class_only.len() as f64) / (training_data.columns() as f64);
+        let prior = (training_data_class_only.len() as f64) / (training_data.rows() as f64);
 
         // We model the real valued features as Gaussians, note that these
         // are Gaussian distributions over only the training data of each class
@@ -501,9 +539,10 @@ fn predict_aliens(training_data: &Matrix<Alien>, test_data: &Matrix<Alien>) -> M
             training_data_class_only.iter().map(|a| a.metabolic_rate)
         );
 
-        let relative_log_probabilities_of_class = test_data.row_reference_iter(0).map(|alien| {
-            // gradually build up the sum of log probabilities to get the
-            // log of the prior x likelihood which will be proportional to the posterior
+        // gradually build up the sum of log probabilities to get the
+        // log of the prior * likelihood which will be proportional to the posterior
+        let relative_log_probabilities_of_class = test_data.column_reference_iter(0)
+        .map(|alien| {
             // probabilitiy of the alien sex and the alien
             let mut log_relative_probability = prior.ln();
 
@@ -525,7 +564,8 @@ fn predict_aliens(training_data: &Matrix<Alien>, test_data: &Matrix<Alien>) -> M
             }
             log_relative_probability += tail_given_class.ln();
 
-            let mut metabolic_rates_given_class = metabolic_rates.probability(&alien.metabolic_rate);
+            let mut metabolic_rates_given_class = metabolic_rates.probability(
+                &alien.metabolic_rate);
             if metabolic_rates_given_class.abs() <= 0.000000000001 {
                 metabolic_rates_given_class = 0.000000000001;
             }
@@ -535,7 +575,8 @@ fn predict_aliens(training_data: &Matrix<Alien>, test_data: &Matrix<Alien>) -> M
             let color_of_class = training_data_class_only.iter()
                 .map(|a| a.primary_marking_color)
                 // count how many aliens of this class have this color
-                .fold(0, |acc, color| acc + if color == alien.primary_marking_color { 1 } else { 0 });
+                .fold(0, |acc, color|
+                    acc + if color == alien.primary_marking_color { 1 } else { 0 });
             // with laplacian smoothing we assume there is one datapoint for each color
             // which avoids zero probabilities but does not distort the probabilities much
             // there are 7 color types so we add 7 to the total
@@ -587,35 +628,41 @@ fn predict_aliens(training_data: &Matrix<Alien>, test_data: &Matrix<Alien>) -> M
         }
     }).collect();
 
-    Matrix::row(predictions)
+    Matrix::column(predictions)
 }
 
 let predictions = predict_aliens(&training_data, &test_data);
 
 println!("First 10 test aliens and predictions");
 for i in 0..10 {
-    println!("{:?}", test_data.get(0, i));
-    println!("{:?}", predictions.get(0, i));
+    println!("Predicted: {:?} Input: {:?}", predictions.get(i, 0), test_data.get(i, 0));
 }
 
-let accuracy = test_data.row_iter(0)
+let accuracy = test_data.column_iter(0)
     .zip(predictions.row_iter(0))
     .map(|(alien, prediction)| if alien.sex == prediction { 1 } else { 0 })
-    .sum::<u16>() as f64 / (test_data.columns() as f64);
+    .sum::<u16>() as f64 / (test_data.rows() as f64);
 
-println!("Accuracy {}", accuracy);
+println!("Accuracy {}%", accuracy * 100.0);
+
+/**
+ * ===============================
+ * =           Analysis          =
+ * ===============================
+ */
 
 // We can get a better sense of how well our classifier has done by
 // printing the confusion matrix
 
-// construct a confusion matrix of actual x predicted classes, using A as 0, B as 1 and C as 2
-// for indexing
+// Construct a confusion matrix of actual x predicted classes, using A as 0, B as 1 and C as 2
+// for indexing. If the accuracy was 100% we would see only non zero numbers on the diagonal
+// as every prediction would be the actual class.
 let confusion_matrix = {
     let mut confusion_matrix = Matrix::empty(0, (3, 3));
 
     // loop through all the actual and predicted classes to fill the confusion matrix
     // with the total occurances of each possible combination
-    for (actual, predicted) in test_data.row_iter(0).zip(predictions.row_iter(0)) {
+    for (actual, predicted) in test_data.column_iter(0).zip(predictions.column_iter(0)) {
         match actual.sex {
             AlienSex::A => {
                 match predicted {
@@ -644,9 +691,14 @@ let confusion_matrix = {
     confusion_matrix
 };
 
-println!("Confusion matrix: Rows are actual class, Columns are predicted class\n{}", confusion_matrix);
+println!("Confusion matrix: Rows are actual class, Columns are predicted class\n{}",
+    confusion_matrix);
 println!("  A  B  C");
-
-//assert_eq!(1, 2);
 ```
+
+The above code prints 60% accuracy which isn't amazing as if we learned the cluster centers
+that labelled the data in the first place we should be able to get 100% accuracy but
+60% is still far better than guessing for a three class problem. As Naïve Bayes has no
+hyperparameters it is good for establishing a good baseline to compare other examples such
+as [Logistic Regression](../logistic_regression/index.html) to.
 */

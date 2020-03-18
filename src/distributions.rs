@@ -33,7 +33,9 @@ for _ in 0..SAMPLES {
 }
 
 // draw samples from the normal distribution
-let samples: Vec<f64> = normal_distribution.draw(&mut random_numbers.drain(..), SAMPLES).unwrap();
+let samples: Vec<f64> = normal_distribution.draw(&mut random_numbers.drain(..), SAMPLES)
+    // unwrap is perfectly save if and only if we know we have supplied enough random numbers
+    .unwrap();
 
 // create a [(f32, f32)] list to plot a histogram of
 let histogram_points = {
@@ -46,13 +48,40 @@ let histogram_points = {
     points
 };
 
-// plot a histogram from -3 to 3 with 30 bins
-// to check that this distribution looks like a gaussian
-// this will show a bell curve for large enough SAMPLES.
+// Plot a histogram from -3 to 3 with 30 bins to check that this distribution
+// looks like a Gaussian. This will show a bell curve for large enough SAMPLES.
 let histogram = textplots::utils::histogram(&histogram_points, -3.0, 3.0, 30);
 Chart::new(180, 60, -3.0, 3.0)
     .lineplot( Shape::Bars(&histogram) )
     .nice();
+```
+
+# Example of creating an infinite iterator using the rand crate
+
+It may be convenient to create an infinite iterator for random numbers so you don't need
+to populate lists of random numbers when using these types.
+
+```
+use rand::{Rng, SeedableRng};
+
+// use a fixed seed non cryptographically secure random generator from the rand crate
+let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(16);
+
+struct EndlessRandomGenerator {
+    rng: rand_chacha::ChaCha8Rng
+}
+
+impl Iterator for EndlessRandomGenerator {
+    type Item = f64;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // always return Some, hence this iterator is infinite
+        Some(self.rng.gen::<f64>())
+    }
+}
+
+// now pass this instance to Gaussian functions that accept a &mut Iterator
+let mut random_numbers = EndlessRandomGenerator { rng: random_generator };
 ```
  */
 
@@ -134,20 +163,6 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     }
 
     /**
-     * Computes g(x) for some x, the probability density of a normally
-     * distributed random variable x, or in other words how likely x is
-     * to be drawn from this normal distribution.
-     *
-     * g(x) is largest for x equal to this distribution's mean and
-     * g(x) will tend towards zero as x is further from this distribution's
-     * mean, at a rate corresponding to this distribution's variance.
-     */
-    #[deprecated(since="1.1.0", note="renamed to `probability`")]
-    pub fn map(&self, x: &T) -> T {
-        self.probability(x)
-    }
-
-    /**
      * Given a source of random variables in the uniformly distributed
      * range [0, 1] inclusive, draws `max_samples` of independent
      * random numbers according to this Gaussian distribution's mean and
@@ -201,8 +216,12 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     where I: Iterator<Item = T> {
         Some((source.next()?, source.next()?))
     }
-}
 
+    #[deprecated(since="1.1.0", note="renamed to `probability`")]
+    pub fn map(&self, x: &T) -> T {
+        self.probability(x)
+    }
+}
 
 /**
  * A multivariate Gaussian distribution with mean vector μ, and covariance matrix Σ.
