@@ -472,6 +472,11 @@ let test_data = Matrix::row(aliens.row_iter(0).skip(900).collect());
 /**
  * Predicts the most probable alien sex for each test input alien (disregarding
  * the sex field in those inputs)
+ *
+ * For the real valued features the probabilities are computed by modelling
+ * the features (conditioned on each class) as gaussian distributions.
+ * For categorical features laplacian smoothing of the counts is used to
+ * estimate probabilities of the features (conditioned on each class).
  */
 fn predict_aliens(training_data: &Matrix<Alien>, test_data: &Matrix<Alien>) -> Matrix<AlienSex> {
     let mut relative_log_probabilities = Vec::with_capacity(3);
@@ -600,9 +605,48 @@ let accuracy = test_data.row_iter(0)
 
 println!("Accuracy {}", accuracy);
 
-//assert_eq!(1, 2);
+// We can get a better sense of how well our classifier has done by
+// printing the confusion matrix
 
-// TODO:
-// see what the performance is using precision and recall
+// construct a confusion matrix of actual x predicted classes, using A as 0, B as 1 and C as 2
+// for indexing
+let confusion_matrix = {
+    let mut confusion_matrix = Matrix::empty(0, (3, 3));
+
+    // loop through all the actual and predicted classes to fill the confusion matrix
+    // with the total occurances of each possible combination
+    for (actual, predicted) in test_data.row_iter(0).zip(predictions.row_iter(0)) {
+        match actual.sex {
+            AlienSex::A => {
+                match predicted {
+                    AlienSex::A => confusion_matrix.set(0, 0, confusion_matrix.get(0, 0) + 1),
+                    AlienSex::B => confusion_matrix.set(0, 1, confusion_matrix.get(0, 1) + 1),
+                    AlienSex::C => confusion_matrix.set(0, 2, confusion_matrix.get(0, 2) + 1),
+                }
+            },
+            AlienSex::B => {
+                match predicted {
+                    AlienSex::A => confusion_matrix.set(1, 0, confusion_matrix.get(1, 0) + 1),
+                    AlienSex::B => confusion_matrix.set(1, 1, confusion_matrix.get(1, 1) + 1),
+                    AlienSex::C => confusion_matrix.set(1, 2, confusion_matrix.get(1, 2) + 1),
+                }
+            },
+            AlienSex::C => {
+                match predicted {
+                    AlienSex::A => confusion_matrix.set(2, 0, confusion_matrix.get(2, 0) + 1),
+                    AlienSex::B => confusion_matrix.set(2, 1, confusion_matrix.get(2, 1) + 1),
+                    AlienSex::C => confusion_matrix.set(2, 2, confusion_matrix.get(2, 2) + 1),
+                }
+            }
+        }
+    }
+
+    confusion_matrix
+};
+
+println!("Confusion matrix: Rows are actual class, Columns are predicted class\n{}", confusion_matrix);
+println!("  A  B  C");
+
+//assert_eq!(1, 2);
 ```
 */
