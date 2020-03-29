@@ -1,5 +1,5 @@
 /*!
-Naïve Bayes Example
+Naïve Bayes Examples
 
 # Naïve Bayes
 
@@ -44,7 +44,203 @@ avoid computing a probability of 0 when some category doesn't have any samples f
 
 For continuous data we can model the feature as distributed according to a Gaussian distribution.
 
-## Naïve Bayes Example
+## Simple Naïve Bayes Example
+
+Naïve Bayes can be done by hand (with a calculator) which is what the below example will show.
+We have a list of data about the weather and want to predict if we should go outside based on the
+conditions. Some of these are categorical values and others are real valued.
+
+```
+use easy_ml::distributions::Gaussian;
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Weather {
+    Stormy, Rainy, Cloudy, Clear, Sunny
+}
+
+type WindSpeed = f64;
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Pandemic {
+    Pandemic, NoPandemic
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Decision {
+    GoOut, StayIn
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+struct Observation {
+    weather: Weather,
+    wind: WindSpeed,
+    pandemic: Pandemic,
+    decision: Decision,
+}
+
+impl Observation {
+    fn new(
+    weather: Weather, wind: WindSpeed, pandemic: Pandemic, decision: Decision
+) -> Observation {
+        Observation {
+            weather,
+            wind,
+            pandemic,
+            decision
+        }
+    }
+}
+
+let observations = vec![
+    Observation::new(Weather::Clear, 0.5, Pandemic::NoPandemic, Decision::GoOut),
+    Observation::new(Weather::Clear, 0.9, Pandemic::NoPandemic, Decision::GoOut),
+    Observation::new(Weather::Clear, 0.8, Pandemic::NoPandemic, Decision::StayIn),
+    Observation::new(Weather::Stormy, 0.7, Pandemic::NoPandemic, Decision::StayIn),
+    Observation::new(Weather::Rainy, 0.1, Pandemic::NoPandemic, Decision::GoOut),
+    Observation::new(Weather::Rainy, 0.5, Pandemic::NoPandemic, Decision::StayIn),
+    Observation::new(Weather::Rainy, 0.6, Pandemic::NoPandemic, Decision::GoOut),
+    Observation::new(Weather::Rainy, 0.7, Pandemic::NoPandemic, Decision::StayIn),
+    Observation::new(Weather::Cloudy, 0.3, Pandemic::NoPandemic, Decision::GoOut),
+    Observation::new(Weather::Cloudy, 0.5, Pandemic::NoPandemic, Decision::GoOut),
+    Observation::new(Weather::Cloudy, 0.2, Pandemic::NoPandemic, Decision::StayIn),
+    Observation::new(Weather::Cloudy, 0.8, Pandemic::NoPandemic, Decision::StayIn),
+    Observation::new(Weather::Sunny, 0.3, Pandemic::NoPandemic, Decision::GoOut),
+    Observation::new(Weather::Sunny, 0.9, Pandemic::NoPandemic, Decision::GoOut),
+    Observation::new(Weather::Sunny, 0.5, Pandemic::NoPandemic, Decision::GoOut),
+    Observation::new(Weather::Sunny, 0.5, Pandemic::NoPandemic, Decision::StayIn),
+    Observation::new(Weather::Sunny, 0.5, Pandemic::Pandemic, Decision::StayIn),
+    Observation::new(Weather::Clear, 0.1, Pandemic::Pandemic, Decision::StayIn),
+    Observation::new(Weather::Clear, 0.9, Pandemic::Pandemic, Decision::StayIn)
+];
+
+fn predict(
+    observations: &Vec<Observation>, weather: Weather, wind: WindSpeed, pandemic: Pandemic
+) -> Decision {
+    let total = observations.len() as f64;
+    // first compute the number of each class in the data
+    let total_stay_in = observations.iter()
+        .filter(|observation| observation.decision == Decision::StayIn)
+        .count() as f64;
+    let total_go_out = observations.iter()
+        .filter(|observation| observation.decision == Decision::GoOut)
+        .count() as f64;
+
+    let weather_log_probability_stay_in = {
+        // compute how many rows in the data are this weather and stay in
+        let total = observations.iter()
+            .filter(|observation| observation.decision == Decision::StayIn)
+            .filter(|observation| observation.weather == weather)
+            .count() as f64;
+        // there are 5 variants for the weather and we use laplacian smoothing
+        // to avoid introducing zero probabilities, +1 / +5 treats the data
+        // as if there is one stay in for each weather type.
+        ((total + 1.0) / (total_stay_in + 5.0)).ln()
+    };
+
+    let weather_log_probability_go_out = {
+        // compute how many rows in the data are this weather and go out
+        let total = observations.iter()
+            .filter(|observation| observation.decision == Decision::GoOut)
+            .filter(|observation| observation.weather == weather)
+            .count() as f64;
+        // there are 5 variants for the weather and we use laplacian smoothing
+        // to avoid introducing zero probabilities, +1 / +5 treats the data
+        // as if there is one go out for each weather type.
+        ((total + 1.0) / (total_go_out + 5.0)).ln()
+    };
+
+    // we're modelling the wind as a Gaussian so we get a probability by
+    // computing the probability density for the wind we have, if it is
+    // the same as the mean wind for stay in then it will be closest to 1
+    // and the further away the closer to 0 it will be
+    let wind_speed_model_stay_in: Gaussian<WindSpeed> = Gaussian::approximating(
+        observations.iter()
+        .filter(|observation| observation.decision == Decision::StayIn)
+        .map(|observation| observation.wind)
+    );
+    let wind_log_probability_stay_in = wind_speed_model_stay_in.probability(&wind);
+
+    let wind_speed_model_go_out: Gaussian<WindSpeed> = Gaussian::approximating(
+        observations.iter()
+        .filter(|observation| observation.decision == Decision::GoOut)
+        .map(|observation| observation.wind)
+    );
+    let wind_log_probability_go_out = wind_speed_model_go_out.probability(&wind);
+
+    let pandemic_log_probability_stay_in = {
+        // compute how many rows in the data are this pandemic and stay in
+        let total = observations.iter()
+            .filter(|observation| observation.decision == Decision::StayIn)
+            .filter(|observation| observation.pandemic == pandemic)
+            .count() as f64;
+        // there are 2 variants for the pandemic type and we use laplacian smoothing
+        // to avoid introducing zero probabilities, +1 / +2 treats the data
+        // as if there is one stay in for each pandemic type.
+        ((total + 1.0) / (total_stay_in + 2.0)).ln()
+    };
+
+    let pandemic_log_probability_go_out = {
+        // compute how many rows in the data are this pandemic and go out
+        let total = observations.iter()
+            .filter(|observation| observation.decision == Decision::GoOut)
+            .filter(|observation| observation.pandemic == pandemic)
+            .count() as f64;
+        // there are 2 variants for the pandemic type and we use laplacian smoothing
+        // to avoid introducing zero probabilities, +1 / +2 treats the data
+        // as if there is one go out for each pandemic type.
+        ((total + 1.0) / (total_go_out + 2.0)).ln()
+    };
+
+    let prior_log_probability_stay_in = total_stay_in / total;
+    let prior_log_probability_go_out = total_go_out / total;
+
+    let posterior_log_probability_stay_in = (
+        prior_log_probability_stay_in
+        + weather_log_probability_stay_in
+        + wind_log_probability_stay_in
+        + pandemic_log_probability_stay_in
+    );
+    let posterior_log_probability_go_out = (
+        prior_log_probability_go_out
+        + weather_log_probability_go_out
+        + wind_log_probability_go_out
+        + pandemic_log_probability_go_out
+    );
+
+    if posterior_log_probability_go_out > posterior_log_probability_stay_in {
+        Decision::GoOut
+    } else {
+        Decision::StayIn
+    }
+}
+
+let test_data = vec![
+    Observation::new(Weather::Sunny, 0.8, Pandemic::NoPandemic, Decision::StayIn),
+    Observation::new(Weather::Stormy, 0.2, Pandemic::NoPandemic, Decision::StayIn),
+    Observation::new(Weather::Cloudy, 0.3, Pandemic::NoPandemic, Decision::GoOut),
+    Observation::new(Weather::Rainy, 0.8, Pandemic::NoPandemic, Decision::GoOut),
+    Observation::new(Weather::Stormy, 0.6, Pandemic::Pandemic, Decision::StayIn),
+    Observation::new(Weather::Rainy, 0.1, Pandemic::Pandemic, Decision::StayIn),
+];
+
+let predictions = test_data.iter()
+    .map(|data| predict(&observations, data.weather, data.wind, data.pandemic))
+    .collect::<Vec<Decision>>();
+
+println!("{:?}", test_data.iter()
+    .cloned()
+    .zip(predictions.clone())
+    .collect::<Vec<(Observation, Decision)>>());
+
+println!("Accuracy: {:?}", test_data.iter()
+    .zip(predictions.clone())
+    .map(|(data, decision)| if data.decision == decision { 1.0 } else { 0.0 })
+    .sum::<f64>() / (test_data.len() as f64));
+
+// TODO recall and precision
+```
+
+## Full Naïve Bayes Example
 
 For this example some population data is generated for a fictional alien race as I didn't
 have any real datasets to hand. This alien race has 3 sexes (mysteriously no individuals
