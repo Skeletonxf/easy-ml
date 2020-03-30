@@ -47,8 +47,8 @@ For continuous data we can model the feature as distributed according to a Gauss
 ## Simple Naïve Bayes Example
 
 Naïve Bayes can be done by hand (with a calculator) which is what the below example will show.
-We have a list of data about the weather and want to predict if we should go outside based on the
-conditions. Some of these are categorical values and others are real valued.
+We have a list of data about the environment and want to predict if we should go outside based
+on the conditions. Some of these are categorical values and others are real valued.
 
 ```
 use easy_ml::distributions::Gaussian;
@@ -240,7 +240,7 @@ println!("Accuracy: {:?}", test_data.iter()
 // TODO recall and precision
 ```
 
-## Full Naïve Bayes Example
+## 3 Class Naïve Bayes Example
 
 For this example some population data is generated for a fictional alien race as I didn't
 have any real datasets to hand. This alien race has 3 sexes (mysteriously no individuals
@@ -250,7 +250,7 @@ sex from various measuremnts.
 As with humans, a gaussian distribution for physical charateristics is sensible due to
 evolutionary and biological factors.
 
-The example deliberately includes categorical features such as marking color and real valued
+The example includes categorical features such as marking color and real valued
 features such as height in order to show how both can be modelled with Naïve Bayes.
 
 Note that most of the code below is for generating and clustering the data to perform
