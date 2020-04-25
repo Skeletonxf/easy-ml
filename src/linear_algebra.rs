@@ -493,6 +493,58 @@ where I: Iterator<Item = T>, {
 }
 
 /**
+ * Computes the F-1 score of the Precision and Recall
+ *
+ * 2 * (precision * recall) / (precision + recall)
+ *
+ * # [F-1 score](https://en.wikipedia.org/wiki/F1_score)
+ *
+ * This is a harmonic mean of the two, which penalises the score
+ * more heavily if either the precision or recall are poor than
+ * an arithmetic mean.
+ *
+ * The F-1 score is a helpful metric for assessing classifiers, as
+ * it takes into account that classes may be heavily biased which
+ * Accuracy does not. For example, it may be quite easy to create a
+ * 95% accurate test for a medical condition, which inuitively seems
+ * very good, but if 99.9% of patients are expected to not have the
+ * condition then accuracy is a poor way to measure performance, because
+ * it does not consider that the cost of false negatives is very high.
+ *
+ * Note that Precision and Recall both depend on there being a positive
+ * and negative class for a classification task, in some contexts this may
+ * be an arbitrary choice.
+ *
+ * # [Precision](https://en.wikipedia.org/wiki/Precision_and_recall)
+ *
+ * In classification, precision is true positives / positive predictions.
+ * It measures correct identifications of the positive class compared
+ * to all predictions of the positive class. Hence it is trivial to get
+ * 100% precision by never predicting the positive class, as this can
+ * never result in a false positive.
+ *
+ * Note that the meaning of precision in classification or document
+ * retrieval is not the same as its meaning in [measurements](https://en.wikipedia.org/wiki/Accuracy_and_precision).
+ *
+ * # [Recall](https://en.wikipedia.org/wiki/Precision_and_recall)
+ *
+ * In classification, recall is true positives / actual positives.
+ * It measures how many of the positive cases are identified. Hence it
+ * is trivial to get 100% recall by always predicting the positive class,
+ * as this can never result in a false negative.
+ *
+ * [F scores](https://en.wikipedia.org/wiki/F1_score)
+ *
+ * The F-1 score is an evenly weighted combination of Precision and
+ * Recall. For domains where the cost of false positives and false
+ * negatives are not equal, you should use a biased F score that weights
+ * precision or recall more strongly than the other.
+ */
+pub fn f1_score<T: Numeric>(precision: T, recall: T) -> T {
+    (T::one() + T::one()) * ((precision.clone() * recall.clone()) / (precision + recall))
+}
+
+/**
  * Computes the cholesky decomposition of a matrix. This yields a matrix `L`
  * such that for the provided matrix `A`, `L * L^T = A`. `L` will always be
  * lower triangular, ie all entries above the diagonal will be 0. Hence cholesky

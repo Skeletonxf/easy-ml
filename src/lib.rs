@@ -3,11 +3,10 @@
  * to get an overview of how to use matrices then study the
  * [Matrix](./matrices/struct.Matrix.html) type for what you need.
  *
- * # Simple examples
+ * # Examples
  * - [Linear Regression](./linear_regression/index.html)
  * - [k-means Clustering](./k_means/index.html)
  * - [Logistic Regression](./logistic_regression/index.html)
- * # More involved examples
  * - [Naïve Bayes](./naive_bayes/index.html)
  */
 

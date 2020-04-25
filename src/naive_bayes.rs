@@ -44,7 +44,7 @@ avoid computing a probability of 0 when some category doesn't have any samples f
 
 For continuous data we can model the feature as distributed according to a Gaussian distribution.
 
-## Simple Naïve Bayes Example
+## Simple Naïve Bayes Example with F-1 score analysis
 
 Naïve Bayes can be done by hand (with a calculator) which is what the below example will show.
 We have a list of data about the environment and want to predict if we should go outside based
@@ -52,6 +52,7 @@ on the conditions. Some of these are categorical values and others are real valu
 
 ```
 use easy_ml::distributions::Gaussian;
+use easy_ml::linear_algebra;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Weather {
@@ -216,9 +217,11 @@ fn predict(
 
 let test_data = vec![
     Observation::new(Weather::Sunny, 0.8, Pandemic::NoPandemic, Decision::StayIn),
+    Observation::new(Weather::Sunny, 0.2, Pandemic::NoPandemic, Decision::GoOut),
     Observation::new(Weather::Stormy, 0.2, Pandemic::NoPandemic, Decision::StayIn),
     Observation::new(Weather::Cloudy, 0.3, Pandemic::NoPandemic, Decision::GoOut),
     Observation::new(Weather::Rainy, 0.8, Pandemic::NoPandemic, Decision::GoOut),
+    Observation::new(Weather::Rainy, 0.5, Pandemic::NoPandemic, Decision::GoOut),
     Observation::new(Weather::Stormy, 0.6, Pandemic::Pandemic, Decision::StayIn),
     Observation::new(Weather::Rainy, 0.1, Pandemic::Pandemic, Decision::StayIn),
 ];
@@ -227,7 +230,7 @@ let predictions = test_data.iter()
     .map(|data| predict(&observations, data.weather, data.wind, data.pandemic))
     .collect::<Vec<Decision>>();
 
-println!("{:?}", test_data.iter()
+println!("Test data and predictions\n{:?}", test_data.iter()
     .cloned()
     .zip(predictions.clone())
     .collect::<Vec<(Observation, Decision)>>());
@@ -237,10 +240,82 @@ println!("Accuracy: {:?}", test_data.iter()
     .map(|(data, decision)| if data.decision == decision { 1.0 } else { 0.0 })
     .sum::<f64>() / (test_data.len() as f64));
 
-// TODO recall and precision
+// To compute Recall and Precision it is neccessary to decide which class should be
+// considered the positive and which should be the negative. For medical diagnosis
+// this is always diagnosing something as present. For this example we take GoOut to
+// be the positive case.
+
+// True Positives are where the model predicts the positive class when it is
+// the correct decision, eg in this scenario, going outside when it should
+// decide to go outside
+let true_positives = test_data.iter()
+    .cloned()
+    .zip(predictions.clone())
+    .filter(|(data, _)| data.decision == Decision::GoOut)
+    .filter(|(_, decision)| decision == &Decision::GoOut)
+    .count() as f64;
+
+// False Positives are when the model predicts the positive class when it is
+// not the correct decision, eg in this scenario, going outside when it should
+// decide to stay in
+let false_positives = test_data.iter()
+    .cloned()
+    .zip(predictions.clone())
+    .filter(|(data, _)| data.decision == Decision::StayIn)
+    .filter(|(_, decision)| decision == &Decision::GoOut)
+    .count() as f64;
+
+// True Negatives are when the model predicts the negative class when it is
+// the correct decision, eg in this scenario, staying in when it should
+// decide to stay in
+// there's a pandemic and no good reason to go outside
+let true_negatives = test_data.iter()
+    .cloned()
+    .zip(predictions.clone())
+    .filter(|(data, _)| data.decision == Decision::StayIn)
+    .filter(|(_, decision)| decision == &Decision::StayIn)
+    .count() as f64;
+
+// False Negatives are when the model predicts the negative class when it is
+// not the correct decision, eg in this scenario, staying in when it should
+// decide to go outside
+// there's a pandemic and no good reason to go outside
+let false_negatives = test_data.iter()
+    .cloned()
+    .zip(predictions.clone())
+    .filter(|(data, _)| data.decision == Decision::GoOut)
+    .filter(|(_, decision)| decision == &Decision::StayIn)
+    .count() as f64;
+
+// Precision measures how good the model is at identifying the positive
+// class (you can trivially get 100% precision by never predicting the
+// positive class, as this means you can't get a false positive).
+let precision = true_positives / (true_positives + false_positives);
+
+// Recall is the true positive rate which is how good the model is at
+// identifying the positive class out of all the positive cases (you can
+// trivially get 100% recall by always predicting the positive class).
+let recall = true_positives / (true_positives + false_negatives);
+
+// The F-1 score is the harmonic mean of precision and recall and
+// averages them for an accuracy measure.
+// In this case the two classes are roughly equally likely, so the F-1
+// score and Accuracy are similar. However, if the model had learned
+// to always predict GoOut, then it would still have an accuracy of
+// roughly 50% because of the equal likelihood, whereas its F-1 score
+// would be much lower than 50%.
+let f1_score = linear_algebra::f1_score(precision, recall);
+println!("F1-Score: {:?}", f1_score);
+
+assert!(f1_score > 0.8);
 ```
 
-## 3 Class Naïve Bayes Example
+## [3 Class Naïve Bayes Example](./three_class/index.html)
+*/
+
+pub mod three_class {
+/*!
+# 3 Class Naïve Bayes Example
 
 For this example some population data is generated for a fictional alien race as I didn't
 have any real datasets to hand. This alien race has 3 sexes (mysteriously no individuals
@@ -896,5 +971,7 @@ The above code prints 60% accuracy which isn't amazing as if we learned the clus
 that labelled the data in the first place we should be able to get 100% accuracy but
 60% is still far better than guessing for a three class problem. As Naïve Bayes has no
 hyperparameters it is good for establishing a good baseline to compare other examples such
-as [Logistic Regression](../logistic_regression/index.html) to.
+as [Logistic Regression](../../logistic_regression/index.html) to.
 */
+
+}
