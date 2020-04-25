@@ -1,7 +1,7 @@
 /*!
  * Linear algebra algorithms on numbers and matrices
  *
- * Note that these functions are also exposed as corresponding methods on the Matrix type,
+ * Note that many of these functions are also exposed as corresponding methods on the Matrix type,
  * but in depth documentation is only presented here.
  *
  * It is recommended to favor the corresponding methods on the Matrix type as the
@@ -508,7 +508,7 @@ where I: Iterator<Item = T>, {
  * Accuracy does not. For example, it may be quite easy to create a
  * 95% accurate test for a medical condition, which inuitively seems
  * very good, but if 99.9% of patients are expected to not have the
- * condition then accuracy is a poor way to measure performance, because
+ * condition then accuracy is a poor way to measure performance because
  * it does not consider that the cost of false negatives is very high.
  *
  * Note that Precision and Recall both depend on there being a positive
@@ -519,7 +519,7 @@ where I: Iterator<Item = T>, {
  *
  * In classification, precision is true positives / positive predictions.
  * It measures correct identifications of the positive class compared
- * to all predictions of the positive class. Hence it is trivial to get
+ * to all predictions of the positive class. You can trivially get
  * 100% precision by never predicting the positive class, as this can
  * never result in a false positive.
  *
@@ -529,8 +529,8 @@ where I: Iterator<Item = T>, {
  * # [Recall](https://en.wikipedia.org/wiki/Precision_and_recall)
  *
  * In classification, recall is true positives / actual positives.
- * It measures how many of the positive cases are identified. Hence it
- * is trivial to get 100% recall by always predicting the positive class,
+ * It measures how many of the positive cases are identified. You
+ * can trivially get 100% recall by always predicting the positive class,
  * as this can never result in a false negative.
  *
  * [F scores](https://en.wikipedia.org/wiki/F1_score)
