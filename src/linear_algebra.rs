@@ -7,6 +7,18 @@
  * It is recommended to favor the corresponding methods on the Matrix type as the
  * Rust compiler can get confused with the generics on these functions if you use
  * these methods without turbofish syntax.
+ *
+ * Nearly all of these functions are generic over [Numeric](../numeric/index.html) types,
+ * unfortunately, when using these functions the compiler may get confused about what
+ * type `T` should be and you will get the error:
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ *
+ * In this case you need to manually specify the type of T by using the
+ * turbofish syntax like:
+ * `linear_algebra::inverse::<f32>(&matrix)`
+ *
+ * You might be working with a generic type of T, in which case specify that
+ * `linear_algebra::inverse::<T>(&matrix)`
  */
 
 use crate::matrices::{Matrix, Row, Column};
@@ -63,7 +75,7 @@ where for<'a> &'a T: NumericRef<T> {
     }
 
     // compute the general case for a N x N matrix where N >= 2
-    match determinant(matrix) {
+    match determinant::<T>(matrix) {
         Some(det) => {
             if det == T::zero() {
                 return None;
@@ -73,7 +85,7 @@ where for<'a> &'a T: NumericRef<T> {
             for i in 0..matrix.rows() {
                 for j in 0..matrix.columns() {
                     // this should always return Some due to the earlier checks
-                    let ij_minor = minor(matrix, i, j)?;
+                    let ij_minor = minor::<T>(matrix, i, j)?;
                     // i and j may each be up to the maximum value for usize but
                     // we only need to know if they are even or add as
                     // -1 ^ (i + j) == -1 ^ ((i % 2) + (j % 2))
@@ -114,7 +126,7 @@ where for<'a> &'a T: NumericRef<T> {
  */
 fn minor<T: Numeric>(matrix: &Matrix<T>, i: Row, j: Column) -> Option<T>
 where for<'a> &'a T: NumericRef<T> {
-    minor_mut(&mut matrix.clone(), i, j)
+    minor_mut::<T>(&mut matrix.clone(), i, j)
 }
 
 /**
@@ -137,7 +149,7 @@ where for<'a> &'a T: NumericRef<T> {
     }
     matrix.remove_row(i);
     matrix.remove_column(j);
-    determinant(matrix)
+    determinant::<T>(matrix)
 }
 
 /**

@@ -721,7 +721,7 @@ where for<'a> &'a T: NumericRef<T> {
      * does not have a determinant. See [`linear_algebra`](../linear_algebra/fn.determinant.html)
      */
     pub fn determinant(&self) -> Option<T> {
-        linear_algebra::determinant(self)
+        linear_algebra::determinant::<T>(self)
     }
 
     /**
@@ -731,7 +731,7 @@ where for<'a> &'a T: NumericRef<T> {
     */
     pub fn inverse(&self) -> Option<Matrix<T>>
     where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
-        linear_algebra::inverse(self)
+        linear_algebra::inverse::<T>(self)
     }
 
     /**
@@ -740,7 +740,7 @@ where for<'a> &'a T: NumericRef<T> {
      * [`linear_algebra`](../linear_algebra/fn.covariance_column_features.html)
      */
     pub fn covariance_column_features(&self) -> Matrix<T> {
-        linear_algebra::covariance_column_features(self)
+        linear_algebra::covariance_column_features::<T>(self)
     }
 
     /**
@@ -749,7 +749,7 @@ where for<'a> &'a T: NumericRef<T> {
      * [`linear_algebra`](../linear_algebra/fn.covariance_row_features.html)
      */
     pub fn covariance_row_features(&self) -> Matrix<T> {
-        linear_algebra::covariance_row_features(self)
+        linear_algebra::covariance_row_features::<T>(self)
     }
 }
 

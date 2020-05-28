@@ -13,9 +13,8 @@ use std::num::Wrapping;
  *
  * Importantly this trait is not implemented for Traces, to stop the compiler
  * from trying to evaluate nested Traces of Traces as Numeric types. There is no
- * reason to create a Trace of a Trace, it won't do anything, but without helping
- * the compiler along with this it easily goes into an infinite loop trying to consider
- * it.
+ * reason to create a Trace of a Trace, it won't do anything a Trace can't except
+ * use more memory.
  *
  * The boilerplate implementations for primitives is performed with a macro.
  * If a primitive type is missing from this list, please open an issue to add it in.
@@ -240,27 +239,27 @@ operator_impl_value_value!(impl Sub for Trace { fn sub });
 operator_impl_reference_value!(impl Sub for Trace { fn sub });
 operator_impl_value_reference!(impl Sub for Trace { fn sub });
 
-// /**
-//  * Elementwise division for two referenced traces of the same type.
-//  */
-// impl <T: Numeric + Primitive> Div for &Trace<T>
-// where for<'a> &'a T: NumericRef<T> {
-//     type Output = Trace<T>;
-//     fn div(self, rhs: &Trace<T>) -> Self::Output {
-//         Trace {
-//             number: self.number.clone() / rhs.number.clone(),
-//             // (u'v - uv') / v^2
-//             derivative: (
-//                 (
-//                     (self.derivative.clone() * rhs.number.clone())
-//                     - (self.number.clone() * rhs.derivative.clone())
-//                 )
-//                 / (rhs.number.clone() * rhs.number.clone())
-//             ),
-//         }
-//     }
-// }
-//
-// operator_impl_value_value!(impl Div for Trace { fn div });
-// operator_impl_reference_value!(impl Div for Trace { fn div });
-// operator_impl_value_reference!(impl Div for Trace { fn div });
+/**
+ * Elementwise division for two referenced traces of the same type.
+ */
+impl <T: Numeric + Primitive> Div for &Trace<T>
+where for<'a> &'a T: NumericRef<T> {
+    type Output = Trace<T>;
+    fn div(self, rhs: &Trace<T>) -> Self::Output {
+        Trace {
+            number: self.number.clone() / rhs.number.clone(),
+            // (u'v - uv') / v^2
+            derivative: (
+                (
+                    (self.derivative.clone() * rhs.number.clone())
+                    - (self.number.clone() * rhs.derivative.clone())
+                )
+                / (rhs.number.clone() * rhs.number.clone())
+            ),
+        }
+    }
+}
+
+operator_impl_value_value!(impl Div for Trace { fn div });
+operator_impl_reference_value!(impl Div for Trace { fn div });
+operator_impl_value_reference!(impl Div for Trace { fn div });

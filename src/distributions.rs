@@ -303,7 +303,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
         let normal_distribution = Gaussian::new(T::zero(), T::one());
 
         // hope cholesky works for now and check later
-        let lower_triangular = linear_algebra::cholesky_decomposition(&self.covariance)?;
+        let lower_triangular = linear_algebra::cholesky_decomposition::<T>(&self.covariance)?;
 
         let mut samples = Matrix::empty(T::zero(), (max_samples, self.mean.rows()));
 
