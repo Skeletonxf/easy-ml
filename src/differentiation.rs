@@ -6,6 +6,44 @@
 use crate::numeric::{Numeric, NumericRef};
 use crate::numeric::extra::{Real, RealRef};
 use std::ops::{Add, Sub, Mul, Neg, Div};
+use std::num::Wrapping;
+
+/**
+ * A trait with no methods which is implemented for all primitive types.
+ *
+ * Importantly this trait is not implemented for Traces, to stop the compiler
+ * from trying to evaluate nested Traces of Traces as Numeric types. There is no
+ * reason to create a Trace of a Trace, it won't do anything, but without helping
+ * the compiler along with this it easily goes into an infinite loop trying to consider
+ * it.
+ *
+ * The boilerplate implementations for primitives is performed with a macro.
+ * If a primitive type is missing from this list, please open an issue to add it in.
+ */
+pub trait Primitive {}
+
+macro_rules! impl_primitive {
+    ($T:tt) => {
+        impl Primitive for $T {}
+    }
+}
+
+impl_primitive!(u8);
+impl_primitive!(i8);
+impl_primitive!(u16);
+impl_primitive!(i16);
+impl_primitive!(u32);
+impl_primitive!(i32);
+impl_primitive!(u64);
+impl_primitive!(i64);
+impl_primitive!(u128);
+impl_primitive!(i128);
+impl_primitive!(f32);
+impl_primitive!(f64);
+impl_primitive!(usize);
+impl_primitive!(isize);
+
+impl <T: Primitive> Primitive for Wrapping<T> {}
 
 /**
  * A dual number which traces a real number and keeps track of its derivative.
@@ -27,7 +65,7 @@ use std::ops::{Add, Sub, Mul, Neg, Div};
  * ```
  */
 #[derive(Debug)]
-pub struct Trace<T> {
+pub struct Trace<T: Primitive> {
     /**
      * The real number
      */
@@ -38,7 +76,7 @@ pub struct Trace<T> {
     pub derivative: T
 }
 
-impl <T: Numeric> Trace<T> {
+impl <T: Numeric + Primitive> Trace<T> {
     /**
      * Constants are lifted to Traces with a derivative of 0
      */
@@ -73,7 +111,7 @@ impl <T: Numeric> Trace<T> {
 /**
  * Any trace of a Cloneable type implements clone
  */
-impl <T: Clone> Clone for Trace<T> {
+impl <T: Clone + Primitive> Clone for Trace<T> {
     fn clone(&self) -> Self {
         Trace {
             number: self.number.clone(),
@@ -85,12 +123,12 @@ impl <T: Clone> Clone for Trace<T> {
 /**
  * Any trace of a Copy type implements Copy
  */
-impl <T: Copy> Copy for Trace<T> { }
+impl <T: Copy + Primitive> Copy for Trace<T> { }
 
 /**
  * Any trace of a PartialEq type implements PartialEq
  */
-impl <T: PartialEq> PartialEq for Trace<T> {
+impl <T: PartialEq + Primitive> PartialEq for Trace<T> {
     fn eq(&self, other: &Self) -> bool {
         self.number == other.number && self.derivative == other.derivative
     }
@@ -99,7 +137,7 @@ impl <T: PartialEq> PartialEq for Trace<T> {
 /**
  * Elementwise addition for two traces of the same type with both referenced.
  */
-impl <T: Numeric> Add for &Trace<T>
+impl <T: Numeric + Primitive> Add for &Trace<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Trace<T>;
     #[inline]
@@ -116,7 +154,7 @@ macro_rules! operator_impl_value_value {
         /**
         * Elementwise operation for two traces of the same type.
         */
-        impl <T: Numeric> $op for Trace<T>
+        impl <T: Numeric + Primitive> $op for Trace<T>
         where for<'a> &'a T: NumericRef<T> {
             type Output = Trace<T>;
             #[inline]
@@ -132,7 +170,7 @@ macro_rules! operator_impl_value_reference {
         /**
         * Elementwise operation for two traces of the same type with the right referenced.
         */
-        impl <T: Numeric> $op<&Trace<T>> for Trace<T>
+        impl <T: Numeric + Primitive> $op<&Trace<T>> for Trace<T>
         where for<'a> &'a T: NumericRef<T> {
             type Output = Trace<T>;
             #[inline]
@@ -148,7 +186,7 @@ macro_rules! operator_impl_reference_value {
         /**
         * Elementwise operation for two traces of the same type with the left referenced.
         */
-        impl <T: Numeric> $op<Trace<T>> for &Trace<T>
+        impl <T: Numeric + Primitive> $op<Trace<T>> for &Trace<T>
         where for<'a> &'a T: NumericRef<T> {
             type Output = Trace<T>;
             #[inline]
@@ -166,12 +204,13 @@ operator_impl_value_reference!(impl Add for Trace { fn add });
 /**
  * Elementwise multiplication for two referenced traces of the same type.
  */
-impl <T: Numeric> Mul for &Trace<T>
+impl <T: Numeric + Primitive> Mul for &Trace<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Trace<T>;
     fn mul(self, rhs: &Trace<T>) -> Self::Output {
         Trace {
             number: self.number.clone() * rhs.number.clone(),
+            // u'v + uv'
             derivative: (self.derivative.clone() * rhs.number.clone())
                 + (self.number.clone() * rhs.derivative.clone()),
         }
@@ -181,3 +220,47 @@ where for<'a> &'a T: NumericRef<T> {
 operator_impl_value_value!(impl Mul for Trace { fn mul });
 operator_impl_reference_value!(impl Mul for Trace { fn mul });
 operator_impl_value_reference!(impl Mul for Trace { fn mul });
+
+
+/**
+ * Elementwise subtraction for two referenced traces of the same type.
+ */
+impl <T: Numeric + Primitive> Sub for &Trace<T>
+where for<'a> &'a T: NumericRef<T> {
+    type Output = Trace<T>;
+    fn sub(self, rhs: &Trace<T>) -> Self::Output {
+        Trace {
+            number: self.number.clone() - rhs.number.clone(),
+            derivative: self.derivative.clone() - rhs.derivative.clone(),
+        }
+    }
+}
+
+operator_impl_value_value!(impl Sub for Trace { fn sub });
+operator_impl_reference_value!(impl Sub for Trace { fn sub });
+operator_impl_value_reference!(impl Sub for Trace { fn sub });
+
+// /**
+//  * Elementwise division for two referenced traces of the same type.
+//  */
+// impl <T: Numeric + Primitive> Div for &Trace<T>
+// where for<'a> &'a T: NumericRef<T> {
+//     type Output = Trace<T>;
+//     fn div(self, rhs: &Trace<T>) -> Self::Output {
+//         Trace {
+//             number: self.number.clone() / rhs.number.clone(),
+//             // (u'v - uv') / v^2
+//             derivative: (
+//                 (
+//                     (self.derivative.clone() * rhs.number.clone())
+//                     - (self.number.clone() * rhs.derivative.clone())
+//                 )
+//                 / (rhs.number.clone() * rhs.number.clone())
+//             ),
+//         }
+//     }
+// }
+//
+// operator_impl_value_value!(impl Div for Trace { fn div });
+// operator_impl_reference_value!(impl Div for Trace { fn div });
+// operator_impl_value_reference!(impl Div for Trace { fn div });
