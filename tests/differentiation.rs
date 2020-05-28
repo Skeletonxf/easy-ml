@@ -43,4 +43,25 @@ mod tests {
         let also_dx = 12.0 * x * x;
         assert_eq!(dx, also_dx);
     }
+
+    use easy_ml::numeric::Numeric;
+    // f(x) = (x^5 + x^3 - 1/x) - x
+    // df(x)/dx = 5x^4 + 3x^2 + (1/x^2) - 1
+    fn f<T: Numeric + Copy>(x: T) -> T {
+        ((x * x * x * x * x) + (x * x * x) - (T::one() / x)) - x
+    }
+
+    #[test]
+    fn test_numeric_substitution() {
+        // Tests that the same function written for a float generically with Numeric
+        // can also be used with Trace<float> and both uses compute the same result.
+        let x = -0.75;
+        let result = f(Trace::variable(x));
+        let dx = result.derivative;
+        let y = result.number;
+        let also_y = f(-0.75);
+        assert_eq!(y, also_y);
+        let also_dx = (5.0 * x * x * x * x) + (3.0 * x * x) + (1.0 / (x * x)) - 1.0;
+        assert_eq!(dx, also_dx);
+    }
 }

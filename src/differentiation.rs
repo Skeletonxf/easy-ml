@@ -3,10 +3,13 @@
  * TODO
  */
 
-use crate::numeric::{Numeric, NumericRef};
+use crate::numeric::{Numeric, NumericRef, ZeroOne, FromUsize};
 use crate::numeric::extra::{Real, RealRef};
 use std::ops::{Add, Sub, Mul, Neg, Div};
+use std::cmp::Ordering;
 use std::num::Wrapping;
+use std::iter::Sum;
+
 
 /**
  * A trait with no methods which is implemented for all primitive types.
@@ -98,12 +101,30 @@ impl <T: Numeric + Primitive> Trace<T> {
     }
 
     /**
-     * Computes the derivative of a function with respect to x.
+     * Computes the derivative of a function with respect to its input x.
      *
      * This is a shorthand for `(function(Trace::variable(x))).derivative`
      */
     pub fn derivative(function: impl Fn(Trace<T>) -> Trace<T>, x: T) -> T {
         (function(Trace::variable(x))).derivative
+    }
+}
+
+impl <T: Numeric + Primitive> ZeroOne for Trace<T> {
+    #[inline]
+    fn zero() -> Trace<T> {
+        Trace::constant(T::zero())
+    }
+    #[inline]
+    fn one() -> Trace<T> {
+        Trace::constant(T::one())
+    }
+}
+
+impl <T: Numeric + Primitive> FromUsize for Trace<T> {
+    #[inline]
+    fn from_usize(n: usize) -> Option<Trace<T>> {
+        Some(Trace::constant(T::from_usize(n)?))
     }
 }
 
@@ -126,15 +147,59 @@ impl <T: Copy + Primitive> Copy for Trace<T> { }
 
 /**
  * Any trace of a PartialEq type implements PartialEq
+ *
+ * Note that as a Trace is intended to be substitutable with its
+ * type T only the number parts of the trace are compared.
+ * Hence the following is true
+ * ```
+ * use easy_ml::differentiation::Trace;
+ * assert_eq!(Trace { number: 0, derivative: 1 }, Trace { number: 0, derivative: 2 })
+ * ```
  */
 impl <T: PartialEq + Primitive> PartialEq for Trace<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.number == other.number && self.derivative == other.derivative
+        self.number == other.number
     }
 }
 
 /**
- * Elementwise addition for two traces of the same type with both referenced.
+ * Any trace of a PartialOrd type implements PartialOrd
+ *
+ * Note that as a Trace is intended to be substitutable with its
+ * type T only the number parts of the trace are compared.
+ * Hence the following is true
+ * ```
+ * use easy_ml::differentiation::Trace;
+ * assert!(Trace { number: 1, derivative: 1 } > Trace { number: 0, derivative: 2 })
+ * ```
+ */
+impl <T: PartialOrd + Primitive> PartialOrd for Trace<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.number.partial_cmp(&other.number)
+    }
+}
+
+/**
+ * Any trace of a Numeric type implements Sum, which is
+ * the same as adding a bunch of Trace types together.
+ */
+impl <T: Numeric + Primitive> Sum for Trace<T> {
+    fn sum<I>(mut iter: I) -> Trace<T> where I: Iterator<Item = Trace<T>> {
+        let mut total = Trace::<T>::zero();
+        loop {
+            match iter.next() {
+                None => return total,
+                Some(next) => total = Trace {
+                    number: total.number + next.number,
+                    derivative: total.derivative + next.derivative
+                },
+            }
+        }
+    }
+}
+
+/**
+ * Addition for two traces of the same type with both referenced.
  */
 impl <T: Numeric + Primitive> Add for &Trace<T>
 where for<'a> &'a T: NumericRef<T> {
@@ -151,7 +216,7 @@ where for<'a> &'a T: NumericRef<T> {
 macro_rules! operator_impl_value_value {
     (impl $op:tt for Trace { fn $method:ident }) => {
         /**
-        * Elementwise operation for two traces of the same type.
+        * Operation for two traces of the same type.
         */
         impl <T: Numeric + Primitive> $op for Trace<T>
         where for<'a> &'a T: NumericRef<T> {
@@ -167,7 +232,7 @@ macro_rules! operator_impl_value_value {
 macro_rules! operator_impl_value_reference {
     (impl $op:tt for Trace { fn $method:ident }) => {
         /**
-        * Elementwise operation for two traces of the same type with the right referenced.
+        * Operation for two traces of the same type with the right referenced.
         */
         impl <T: Numeric + Primitive> $op<&Trace<T>> for Trace<T>
         where for<'a> &'a T: NumericRef<T> {
@@ -183,7 +248,7 @@ macro_rules! operator_impl_value_reference {
 macro_rules! operator_impl_reference_value {
     (impl $op:tt for Trace { fn $method:ident }) => {
         /**
-        * Elementwise operation for two traces of the same type with the left referenced.
+        * Operation for two traces of the same type with the left referenced.
         */
         impl <T: Numeric + Primitive> $op<Trace<T>> for &Trace<T>
         where for<'a> &'a T: NumericRef<T> {
@@ -201,7 +266,7 @@ operator_impl_reference_value!(impl Add for Trace { fn add });
 operator_impl_value_reference!(impl Add for Trace { fn add });
 
 /**
- * Elementwise multiplication for two referenced traces of the same type.
+ * Multiplication for two referenced traces of the same type.
  */
 impl <T: Numeric + Primitive> Mul for &Trace<T>
 where for<'a> &'a T: NumericRef<T> {
@@ -222,7 +287,7 @@ operator_impl_value_reference!(impl Mul for Trace { fn mul });
 
 
 /**
- * Elementwise subtraction for two referenced traces of the same type.
+ * Subtraction for two referenced traces of the same type.
  */
 impl <T: Numeric + Primitive> Sub for &Trace<T>
 where for<'a> &'a T: NumericRef<T> {
@@ -240,7 +305,7 @@ operator_impl_reference_value!(impl Sub for Trace { fn sub });
 operator_impl_value_reference!(impl Sub for Trace { fn sub });
 
 /**
- * Elementwise division for two referenced traces of the same type.
+ * Division for two referenced traces of the same type.
  */
 impl <T: Numeric + Primitive> Div for &Trace<T>
 where for<'a> &'a T: NumericRef<T> {
@@ -263,3 +328,25 @@ where for<'a> &'a T: NumericRef<T> {
 operator_impl_value_value!(impl Div for Trace { fn div });
 operator_impl_reference_value!(impl Div for Trace { fn div });
 operator_impl_value_reference!(impl Div for Trace { fn div });
+
+/**
+ * Negation for a referenced Trace of some type.
+ */
+impl <T: Numeric + Primitive> Neg for &Trace<T>
+where for<'a> &'a T: NumericRef<T> {
+    type Output = Trace<T>;
+    fn neg(self) -> Self::Output {
+        Trace::<T>::zero() - self
+    }
+}
+
+/**
+ * Negation for a Trace by value of some type.
+ */
+impl <T: Numeric + Primitive> Neg for Trace<T>
+where for<'a> &'a T: NumericRef<T> {
+    type Output = Trace<T>;
+    fn neg(self) -> Self::Output {
+        Trace::<T>::zero() - self
+    }
+}
