@@ -97,11 +97,12 @@ impl <T: PartialEq> PartialEq for Trace<T> {
 }
 
 /**
- * Elementwise addition for two referenced traces of the same type.
+ * Elementwise addition for two traces of the same type with both referenced.
  */
 impl <T: Numeric> Add for &Trace<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Trace<T>;
+    #[inline]
     fn add(self, rhs: &Trace<T>) -> Self::Output {
         Trace {
             number: self.number.clone() + rhs.number.clone(),
@@ -110,38 +111,57 @@ where for<'a> &'a T: NumericRef<T> {
     }
 }
 
-/**
- * Elementwise addition for two traces of the same type.
- */
-impl <T: Numeric> Add for Trace<T>
-where for<'a> &'a T: NumericRef<T> {
-    type Output = Trace<T>;
-    fn add(self, rhs: Trace<T>) -> Self::Output {
-        &self + &rhs
+macro_rules! operator_impl_value_value {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+        /**
+        * Elementwise operation for two traces of the same type.
+        */
+        impl <T: Numeric> $op for Trace<T>
+        where for<'a> &'a T: NumericRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: Trace<T>) -> Self::Output {
+                (&self).$method(&rhs)
+            }
+        }
     }
 }
 
-/**
- * Elementwise addition for two traces with one referenced
- */
-impl <T: Numeric> Add<&Trace<T>> for Trace<T>
-where for<'a> &'a T: NumericRef<T> {
-    type Output = Trace<T>;
-    fn add(self, rhs: &Trace<T>) -> Self::Output {
-        &self + rhs
+macro_rules! operator_impl_value_reference {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+        /**
+        * Elementwise operation for two traces of the same type with the right referenced.
+        */
+        impl <T: Numeric> $op<&Trace<T>> for Trace<T>
+        where for<'a> &'a T: NumericRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: &Trace<T>) -> Self::Output {
+                (&self).$method(rhs)
+            }
+        }
     }
 }
 
-/**
-* Elementwise addition for two traces with one referenced
-*/
-impl <T: Numeric> Add<Trace<T>> for &Trace<T>
-where for<'a> &'a T: NumericRef<T> {
-    type Output = Trace<T>;
-    fn add(self, rhs: Trace<T>) -> Self::Output {
-        self + &rhs
+macro_rules! operator_impl_reference_value {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+        /**
+        * Elementwise operation for two traces of the same type with the left referenced.
+        */
+        impl <T: Numeric> $op<Trace<T>> for &Trace<T>
+        where for<'a> &'a T: NumericRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: Trace<T>) -> Self::Output {
+                self.$method(&rhs)
+            }
+        }
     }
 }
+
+operator_impl_value_value!(impl Add for Trace { fn add });
+operator_impl_reference_value!(impl Add for Trace { fn add });
+operator_impl_value_reference!(impl Add for Trace { fn add });
 
 /**
  * Elementwise multiplication for two referenced traces of the same type.
@@ -158,13 +178,6 @@ where for<'a> &'a T: NumericRef<T> {
     }
 }
 
-/**
- * Elementwise multiplication for two traces of the same type.
- */
-impl <T: Numeric> Mul for Trace<T>
-where for<'a> &'a T: NumericRef<T> {
-    type Output = Trace<T>;
-    fn mul(self, rhs: Trace<T>) -> Self::Output {
-        &self * &rhs
-    }
-}
+operator_impl_value_value!(impl Mul for Trace { fn mul });
+operator_impl_reference_value!(impl Mul for Trace { fn mul });
+operator_impl_value_reference!(impl Mul for Trace { fn mul });
