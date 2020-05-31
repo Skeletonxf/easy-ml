@@ -350,3 +350,215 @@ where for<'a> &'a T: NumericRef<T> {
         Trace::<T>::zero() - self
     }
 }
+
+
+use std::cell::RefCell;
+
+type Index = usize;
+
+/**
+ * A list tracking the operations performed in a forward pass.
+ */
+// TODO: mention that every method involving this could panic if multiple
+// mutable borrows are attempted at once
+#[derive(Debug)]
+pub struct WengertList<T: Primitive> {
+    // It is neccessary to wrap the vec in a RefCell to allow for mutating
+    // this list from immutable references held by each TODO
+    operations: RefCell<Vec<Operation<T>>>
+}
+
+#[derive(Debug)]
+struct Operation<T: Primitive> {
+    left_parent: Index,
+    right_parent: Index,
+    left_derivative: T,
+    right_derivative: T,
+}
+
+#[derive(Debug)]
+pub struct Record<'a, T: Primitive> {
+    // A record consists of a number used in the forward pass, as
+    // well as a WengertList of operations performed on the numbers
+    // and each record needs to know which point in the history they
+    // are for.
+    pub number: T,
+    history: Option<&'a WengertList<T>>,
+    position: Index,
+}
+
+impl <'a, T: Numeric + Primitive> Record<'a, T> {
+    /*
+     * Creates an untracked Record which has no backing WengertList.
+     *
+     * This is only implemented for satisfying the type level constructors
+     * required by Numeric, and otherwise would not be available.
+     */
+    fn untracked(x: T) -> Record<'a, T> {
+        Record {
+            number: x,
+            history: None,
+            position: 0,
+        }
+    }
+}
+
+impl <T: Primitive> WengertList<T> {
+    pub fn new() -> WengertList<T> {
+        WengertList {
+            operations: RefCell::new(Vec::new())
+        }
+    }
+}
+
+impl <T: Numeric + Primitive> WengertList<T> {
+    /**
+     * Creates a record backed by this WengertList.
+     */
+    pub fn variable<'a>(&'a self, x: T) -> Record<'a, T> {
+        Record {
+            number: x,
+            history: Some(self),
+            position: self.append_nullary(),
+        }
+    }
+
+    /**
+     * Adds a value to the list which does not have any parent values.
+     */
+    fn append_nullary(&self) -> Index {
+        let mut operations = self.operations.borrow_mut();
+        // insert into end of list
+        let index = operations.len();
+        operations.push(Operation {
+            // this index of the child is used for both indexes as these
+            // won't be needed but will always be valid (ie point to a
+            // real entry on the list)
+            left_parent: index,
+            right_parent: index,
+            // for the parents 0 is used to zero out these calculations
+            // as there are no parents
+            left_derivative: T::zero(),
+            right_derivative: T::zero(),
+        });
+        index
+    }
+
+    /**
+     * Adds a value to the list which has one parent.
+     *
+     * For an output w_N which depends on one parent w_N-1
+     * the derivative cached here is δw_N / δw_N-1
+     *
+     * For example, if z = sin(x), then δz/δx = cos(x)
+     */
+    fn append_unary(&self, parent: Index, derivative: T) -> Index {
+        let mut operations = self.operations.borrow_mut();
+        // insert into end of list
+        let index = operations.len();
+        operations.push(Operation {
+            left_parent: parent,
+            // this index of the child is used as this index won't be needed
+            // but will always be valid (ie points to a real entry on the list)
+            right_parent: index,
+            left_derivative: derivative,
+            // for the right parent 0 is used to zero out this calculation
+            // as there is no right parent
+            right_derivative: T::zero(),
+        });
+        index
+    }
+
+    /**
+     * Adds a value to the list which has two parents.
+     *
+     * For an output w_N which depends on two parents w_N-1
+     * and w_N-2 the derivatives cached here are δw_N / δw_N-1
+     * and δw_N / δw_N-2.
+     *
+     * For example, if z = y + x, then δz/δy = 1 and δz/δx = 1
+     * For example, if z = y * x, then δz/δy = x and δz/δ/x = y
+     */
+    fn append_binary(&self,
+            left_parent: Index, left_derivative: T,
+            right_parent: Index, right_derivative: T) -> Index {
+        let mut operations = self.operations.borrow_mut();
+        // insert into end of list
+        let index = operations.len();
+        operations.push(Operation {
+            left_parent: left_parent,
+            right_parent: right_parent,
+            left_derivative: left_derivative,
+            right_derivative: right_derivative,
+        });
+        index
+    }
+}
+
+impl <'a, T: Numeric + Primitive> ZeroOne for Record<'a, T> {
+    #[inline]
+    fn zero() -> Record<'a, T> {
+        Record::untracked(T::zero())
+    }
+    #[inline]
+    fn one() -> Record<'a, T> {
+        Record::untracked(T::one())
+    }
+}
+
+impl <'a, T: Numeric + Primitive> FromUsize for Record<'a, T> {
+    #[inline]
+    fn from_usize(n: usize) -> Option<Record<'a, T>> {
+        Some(Record::untracked(T::from_usize(n)?))
+    }
+}
+
+/**
+ * Any record of a Cloneable type implements clone
+ */
+impl <'a, T: Clone + Primitive> Clone for Record<'a, T> {
+    fn clone(&self) -> Self {
+        Record {
+            number: self.number.clone(),
+            history: self.history.clone(),
+            position: self.position.clone(),
+        }
+    }
+}
+
+/**
+ * Compares two record's referenced WengertLists.
+ *
+ * If either Record is missing a reference to a WengertList then
+ * this is trivially 'true', in so far as if this function is called
+ * we're about to fix those missing references.
+ *
+ * If both records have a WengertList, then checks that the lists are
+ * the same.
+ */
+fn same_list<'a, 'b, T: Primitive>(a: Record<'a, T>, b: Record<'b, T>) -> bool {
+    match (a.history, b.history) {
+        (None, None) => true,
+        (Some(_), None) => true,
+        (None, Some(_)) => true,
+        (Some(list_a), Some(list_b)) => (
+            list_a as *const WengertList<T> == list_b as *const WengertList<T>
+        ),
+    }
+}
+
+// /**
+//  * Addition for two records of the same type with both referenced.
+//  */
+// impl <T: Numeric + Primitive> Add for &Record<T>
+// where for<'a> &'a T: NumericRef<T> {
+//     type Output = Record<T>;
+//     #[inline]
+//     fn add(self, rhs: &Record<T>) -> Self::Output {
+//
+//         Trace {
+//             number: self.number.clone() + rhs.number.clone(),
+//             derivative: self.derivative.clone() + rhs.derivative.clone(),
+//         }
+//     }
+// }
