@@ -86,7 +86,7 @@ mod reverse_tests {
         // Test the differentiation of the function (x^3) with respect to x
         let list = WengertList::new();
         let x = list.record(1.5);
-        let index = x.position;
+        let index = x.index;
         let y = x_cubed(x);
         let gradients = y.gradients();
         let dx = gradients[index];
