@@ -390,6 +390,31 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
     }
 }
 
+// TODO:
+// Rename position to index
+// Hide position again, make proper type for gradients
+// Implement Copy for Record
+// Implement other operators and other ref/value combinations
+// Make Record implement Numeric
+// Add documentation
+// Explain forward/reverse in module level documentation
+// Explain seeds for forward and reverse mode
+// Stress test reverse mode on matrix / NN setups
+// Document panics reverse mode can throw
+// Credit Rufflewind for the tutorial
+// https://rufflewind.com/2016-12-30/reverse-mode-automatic-differentiation
+// https://github.com/Rufflewind/revad/blob/master/src/tape.rs
+// Tutorial source code is MIT licensed
+// Credit other useful webpages:
+// https://medium.com/@marksaroufim/automatic-differentiation-step-by-step-24240f97a6e6
+// https://en.m.wikipedia.org/wiki/Automatic_differentiation
+// https://justindomke.wordpress.com/2009/02/17/automatic-differentiation-the-most-criminally-underused-tool-in-the-potential-machine-learning-toolbox/
+// The webpage about the power of functional composition will make a good basis for NN
+// examples
+// https://blog.jle.im/entry/purely-functional-typed-models-1.html
+// Leakyness of backprop page will make good intro to NN examples
+// https://medium.com/@karpathy/yes-you-should-understand-backprop-e2f06eab496b
+
 #[derive(Debug)]
 pub struct Record<'a, T: Primitive> {
     // A record consists of a number used in the forward pass, as
