@@ -1,7 +1,7 @@
 extern crate easy_ml;
 
 #[cfg(test)]
-mod tests {
+mod forward_tests {
     use easy_ml::differentiation::Trace;
 
     #[test]
@@ -62,6 +62,35 @@ mod tests {
         let also_y = f(-0.75);
         assert_eq!(y, also_y);
         let also_dx = (5.0 * x * x * x * x) + (3.0 * x * x) + (1.0 / (x * x)) - 1.0;
+        assert_eq!(dx, also_dx);
+    }
+}
+
+
+#[cfg(test)]
+mod reverse_tests {
+    use easy_ml::differentiation::Record;
+    use easy_ml::differentiation::WengertList;
+
+    fn x_cubed(x: Record<f32>) -> Record<f32> {
+        &(&x * &x) * &x
+    }
+
+    fn x_cubed_derivative(x: f32) -> f32 {
+        // d (x^3) / dx == 3(x^2)
+        3.0 * x * x
+    }
+
+    #[test]
+    fn test_x_cubed() {
+        // Test the differentiation of the function (x^3) with respect to x
+        let list = WengertList::new();
+        let x = list.record(1.5);
+        let index = x.position;
+        let y = x_cubed(x);
+        let gradients = y.gradients();
+        let dx = gradients[index];
+        let also_dx = x_cubed_derivative(1.5);
         assert_eq!(dx, also_dx);
     }
 }

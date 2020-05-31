@@ -376,6 +376,20 @@ struct Operation<T: Primitive> {
     right_derivative: T,
 }
 
+/**
+ * Any operation of a Cloneable type implements clone
+ */
+impl <T: Clone + Primitive> Clone for Operation<T> {
+    fn clone(&self) -> Self {
+        Operation {
+            left_parent: self.left_parent,
+            right_parent: self.right_parent,
+            left_derivative: self.left_derivative.clone(),
+            right_derivative: self.right_derivative.clone(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Record<'a, T: Primitive> {
     // A record consists of a number used in the forward pass, as
@@ -384,7 +398,7 @@ pub struct Record<'a, T: Primitive> {
     // are for.
     pub number: T,
     history: Option<&'a WengertList<T>>,
-    position: Index,
+    pub position: Index,
 }
 
 impl <'a, T: Numeric + Primitive> Record<'a, T> {
@@ -415,7 +429,7 @@ impl <T: Numeric + Primitive> WengertList<T> {
     /**
      * Creates a record backed by this WengertList.
      */
-    pub fn variable<'a>(&'a self, x: T) -> Record<'a, T> {
+    pub fn record<'a>(&'a self, x: T) -> Record<'a, T> {
         Record {
             number: x,
             history: Some(self),
@@ -530,13 +544,13 @@ impl <'a, T: Clone + Primitive> Clone for Record<'a, T> {
  * Compares two record's referenced WengertLists.
  *
  * If either Record is missing a reference to a WengertList then
- * this is trivially 'true', in so far as if this function is called
- * we're about to fix those missing references.
+ * this is trivially 'true', in so far as we will use the WengertList of
+ * the other one.
  *
  * If both records have a WengertList, then checks that the lists are
  * the same.
  */
-fn same_list<'a, 'b, T: Primitive>(a: Record<'a, T>, b: Record<'b, T>) -> bool {
+fn same_list<'a, 'b, T: Primitive>(a: &Record<'a, T>, b: &Record<'b, T>) -> bool {
     match (a.history, b.history) {
         (None, None) => true,
         (Some(_), None) => true,
@@ -547,18 +561,113 @@ fn same_list<'a, 'b, T: Primitive>(a: Record<'a, T>, b: Record<'b, T>) -> bool {
     }
 }
 
-// /**
-//  * Addition for two records of the same type with both referenced.
-//  */
-// impl <T: Numeric + Primitive> Add for &Record<T>
-// where for<'a> &'a T: NumericRef<T> {
-//     type Output = Record<T>;
-//     #[inline]
-//     fn add(self, rhs: &Record<T>) -> Self::Output {
-//
-//         Trace {
-//             number: self.number.clone() + rhs.number.clone(),
-//             derivative: self.derivative.clone() + rhs.derivative.clone(),
-//         }
-//     }
-// }
+impl <'a, T: Numeric + Primitive> Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    pub fn gradients(&self) -> Vec<T> {
+        let history = match self.history {
+            None => panic!("Record has no WengertList"),
+            Some(h) => h,
+        };
+        let operations = history.operations.borrow();
+
+        let mut derivatives = vec![ T::zero(); operations.len() ];
+
+        // δy/δy = 1
+        derivatives[self.position] = T::one();
+
+        // Go back up the computation graph to the inputs
+        for i in (0..operations.len()).rev() {
+            let operation = operations[i].clone();
+            let derivative = derivatives[i].clone();
+            // The chain rule allows breaking up the derivative of the output y
+            // with respect to the input x into many smaller derivatives that
+            // are summed together.
+            // δy/δx = δy/δw * δw/δx
+            // δy/δx = sum for all i parents of y ( δy/δw_i * δw_i/δx )
+            derivatives[operation.left_parent] =
+                derivatives[operation.left_parent].clone()
+                + derivative.clone() * operation.left_derivative;
+            derivatives[operation.right_parent] =
+                derivatives[operation.right_parent].clone()
+                + derivative * operation.right_derivative;
+        }
+
+        derivatives
+    }
+}
+
+/**
+ * Addition for two records of the same type with both referenced and
+ * both using the same WengertList.
+ */
+impl <'a, T: Numeric + Primitive> Add for &Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    type Output = Record<'a, T>;
+    #[inline]
+    fn add(self, rhs: &Record<'a, T>) -> Self::Output {
+        assert!(same_list(self, rhs), "Records must be using the same WengertList");
+        let history = match (self.history, rhs.history) {
+            // If neither inputs have a WengertList then we don't need to record
+            // the computation graph at this point because neither are inputs to
+            // the overall function.
+            // eg f(x, y) = ((1 + 1) * x) + (2 * (1 + y)) needs the records
+            // for 2x + (2 * (1 + y)) to be stored, but we don't care about the derivatives
+            // for 1 + 1, because neither were inputs to f.
+            (None, None) => return Record {
+                number: self.number.clone() + rhs.number.clone(),
+                history: None,
+                position: 0,
+            },
+            (Some(h), None) => h,
+            (None, Some(h)) => h,
+            (Some(h), Some(_)) => h,
+        };
+        Record {
+            number: self.number.clone() + rhs.number.clone(),
+            history: Some(history),
+            position: history.append_binary(
+                self.position,
+                // δ(self + rhs) / δself = 1
+                T::one(),
+                rhs.position,
+                // δ(self + rhs) / rhs = 1
+                T::one()
+            ),
+        }
+    }
+}
+
+/**
+ * Multiplication for two records of the same type with both referenced and
+ * both using the same WengertList.
+ */
+impl <'a, T: Numeric + Primitive> Mul for &Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    type Output = Record<'a, T>;
+    #[inline]
+    fn mul(self, rhs: &Record<'a, T>) -> Self::Output {
+        assert!(same_list(self, rhs), "Records must be using the same WengertList");
+        let history = match (self.history, rhs.history) {
+            (None, None) => return Record {
+                number: self.number.clone() * rhs.number.clone(),
+                history: None,
+                position: 0,
+            },
+            (Some(h), None) => h,
+            (None, Some(h)) => h,
+            (Some(h), Some(_)) => h,
+        };
+        Record {
+            number: self.number.clone() * rhs.number.clone(),
+            history: Some(history),
+            position: history.append_binary(
+                self.position,
+                // δ(self * rhs) / δself = rhs
+                rhs.number.clone(),
+                rhs.position,
+                // δ(self * rhs) / rhs = self
+                self.number.clone()
+            ),
+        }
+    }
+}
