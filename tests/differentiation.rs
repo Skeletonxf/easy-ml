@@ -128,4 +128,17 @@ mod reverse_tests {
         let also_dx = (4.6 * 0.34) + 1.518;
         assert_eq!(dx, also_dx);
     }
+
+    #[test]
+    fn test_division_numerator() {
+        // Test the differentiation of the function 1 - x/2.5 with respect to x
+        let list = WengertList::new();
+        let x = Record::variable(1.65, &list);
+        let y = Record::constant(1.0) - (x / 2.5);
+        let derivatives = y.derivatives();
+        let dx = derivatives[x.index];
+        // https://www.wolframalpha.com/input/?i=d%281-x%2F2.5%29%2Fdx
+        // dx = -0.4
+        assert_eq!(dx, -0.4);
+    }
 }

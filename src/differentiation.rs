@@ -468,6 +468,25 @@ operator_impl_reference_value!(impl Sub for Trace { fn sub });
 operator_impl_value_reference!(impl Sub for Trace { fn sub });
 
 /**
+ * Subtraction for a trace and a constant of the same type with both referenced.
+ */
+impl <T: Numeric + Primitive> Sub<&T> for &Trace<T>
+where for<'a> &'a T: NumericRef<T> {
+    type Output = Trace<T>;
+    #[inline]
+    fn sub(self, rhs: &T) -> Self::Output {
+        Trace {
+            number: self.number.clone() - rhs.clone(),
+            derivative: self.derivative.clone(),
+        }
+    }
+}
+
+trace_number_operator_impl_value_value!(impl Sub for Trace { fn sub });
+trace_number_operator_impl_reference_value!(impl Sub for Trace { fn sub });
+trace_number_operator_impl_value_reference!(impl Sub for Trace { fn sub });
+
+/**
  * Division for two referenced traces of the same type.
  */
 impl <T: Numeric + Primitive> Div for &Trace<T>
@@ -491,6 +510,27 @@ where for<'a> &'a T: NumericRef<T> {
 operator_impl_value_value!(impl Div for Trace { fn div });
 operator_impl_reference_value!(impl Div for Trace { fn div });
 operator_impl_value_reference!(impl Div for Trace { fn div });
+
+/**
+ * Dvision for a trace and a constant of the same type with both referenced.
+ */
+impl <T: Numeric + Primitive> Div<&T> for &Trace<T>
+where for<'a> &'a T: NumericRef<T> {
+    type Output = Trace<T>;
+    #[inline]
+    fn div(self, rhs: &T) -> Self::Output {
+        Trace {
+            number: self.number.clone() / rhs.clone(),
+            derivative: (
+                (self.derivative.clone() * rhs.clone()) / (rhs.clone() * rhs.clone())
+            ),
+        }
+    }
+}
+
+trace_number_operator_impl_value_value!(impl Div for Trace { fn div });
+trace_number_operator_impl_reference_value!(impl Div for Trace { fn div });
+trace_number_operator_impl_value_reference!(impl Div for Trace { fn div });
 
 /**
  * Negation for a referenced Trace of some type.
@@ -1073,6 +1113,13 @@ where for<'t> &'t T: NumericRef<T> {
     }
 }
 
+record_operator_impl_value_value!(impl Mul for Record { fn mul });
+record_operator_impl_reference_value!(impl Mul for Record { fn mul });
+record_operator_impl_value_reference!(impl Mul for Record { fn mul });
+
+/**
+ * Multiplication for a record and a constant of the same type with both referenced.
+ */
 impl <'a, T: Numeric + Primitive> Mul<&T> for &Record<'a, T>
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
@@ -1099,9 +1146,156 @@ where for<'t> &'t T: NumericRef<T> {
     }
 }
 
-record_operator_impl_value_value!(impl Mul for Record { fn mul });
-record_operator_impl_reference_value!(impl Mul for Record { fn mul });
-record_operator_impl_value_reference!(impl Mul for Record { fn mul });
 record_number_operator_impl_value_value!(impl Mul for Record { fn mul });
 record_number_operator_impl_reference_value!(impl Mul for Record { fn mul });
 record_number_operator_impl_value_reference!(impl Mul for Record { fn mul });
+
+/**
+ * Subtraction for two records of the same type with both referenced and
+ * both using the same WengertList.
+ */
+impl <'a, T: Numeric + Primitive> Sub for &Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    type Output = Record<'a, T>;
+    #[inline]
+    fn sub(self, rhs: &Record<'a, T>) -> Self::Output {
+        assert!(same_list(self, rhs), "Records must be using the same WengertList");
+        match (self.history, rhs.history) {
+            // If neither inputs have a WengertList then we don't need to record
+            // the computation graph at this point because neither are inputs to
+            // the overall function.
+            // eg f(x, y) = ((1 + 1) * x) + (2 * (1 + y)) needs the records
+            // for 2x + (2 * (1 + y)) to be stored, but we don't care about the derivatives
+            // for 1 + 1, because neither were inputs to f.
+            (None, None) => Record {
+                number: self.number.clone() - rhs.number.clone(),
+                history: None,
+                index: 0,
+            },
+            // If only one input has a WengertList treat the other as a constant
+            (Some(_), None) => self - &rhs.number,
+            (None, Some(h)) => Record::variable(self.number.clone(), &h) - rhs,
+            (Some(history), Some(_)) => Record {
+                number: self.number.clone() - rhs.number.clone(),
+                history: Some(history),
+                index: history.append_binary(
+                    self.index,
+                    // δ(self - rhs) / δself = 1
+                    T::one(),
+                    rhs.index,
+                    // δ(self - rhs) / rhs = -1
+                    -T::one()
+                ),
+            },
+        }
+    }
+}
+
+record_operator_impl_value_value!(impl Sub for Record { fn sub });
+record_operator_impl_reference_value!(impl Sub for Record { fn sub });
+record_operator_impl_value_reference!(impl Sub for Record { fn sub });
+
+/**
+ * Subtraction for a record and a constant of the same type with both referenced.
+ */
+impl <'a, T: Numeric + Primitive> Sub<&T> for &Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    type Output = Record<'a, T>;
+    #[inline]
+    fn sub(self, rhs: &T) -> Self::Output {
+        match self.history {
+            None => Record {
+                number: self.number.clone() - rhs.clone(),
+                history: None,
+                index: 0,
+            },
+            Some(history) => {
+                Record {
+                    number: self.number.clone() - rhs.clone(),
+                    history: Some(history),
+                    index: history.append_unary(
+                        self.index,
+                        // δ(self - C) / δself = 1
+                        T::one()
+                    ),
+                }
+            }
+        }
+    }
+}
+
+record_number_operator_impl_value_value!(impl Sub for Record { fn sub });
+record_number_operator_impl_reference_value!(impl Sub for Record { fn sub });
+record_number_operator_impl_value_reference!(impl Sub for Record { fn sub });
+
+/**
+ * Dvision for two records of the same type with both referenced and
+ * both using the same WengertList.
+ */
+impl <'a, T: Numeric + Primitive> Div for &Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    type Output = Record<'a, T>;
+    #[inline]
+    fn div(self, rhs: &Record<'a, T>) -> Self::Output {
+        assert!(same_list(self, rhs), "Records must be using the same WengertList");
+        match (self.history, rhs.history) {
+            (None, None) => Record {
+                number: self.number.clone() / rhs.number.clone(),
+                history: None,
+                index: 0,
+            },
+            // If only one input has a WengertList treat the other as a constant
+            (Some(_), None) => self / &rhs.number,
+            (None, Some(h)) => Record::variable(self.number.clone(), &h) / rhs,
+            (Some(history), Some(_)) => Record {
+                number: self.number.clone() / rhs.number.clone(),
+                history: Some(history),
+                index: history.append_binary(
+                    self.index,
+                    // δ(self / rhs) / δself = 1 / rhs
+                    T::one() / rhs.number.clone(),
+                    rhs.index,
+                    // δ(self / rhs) / rhs = self / rhs^2
+                    self.number.clone() / (rhs.number.clone() * rhs.number.clone())
+                ),
+            },
+        }
+    }
+}
+
+record_operator_impl_value_value!(impl Div for Record { fn div });
+record_operator_impl_reference_value!(impl Div for Record { fn div });
+record_operator_impl_value_reference!(impl Div for Record { fn div });
+
+/**
+ * Division for a record and a constant of the same type with both referenced.
+ */
+impl <'a, T: Numeric + Primitive> Div<&T> for &Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    type Output = Record<'a, T>;
+    #[inline]
+    fn div(self, rhs: &T) -> Self::Output {
+        match self.history {
+            None => Record {
+                number: self.number.clone() / rhs.clone(),
+                history: None,
+                index: 0,
+            },
+            Some(history) => {
+                Record {
+                    number: self.number.clone() / rhs.clone(),
+                    history: Some(history),
+                    index: history.append_unary(
+                        self.index,
+                        // δ(self / C) / δself = 1 / C
+                        T::one() / rhs.clone()
+                    ),
+                }
+            }
+        }
+    }
+}
+
+record_number_operator_impl_value_value!(impl Div for Record { fn div });
+record_number_operator_impl_reference_value!(impl Div for Record { fn div });
+record_number_operator_impl_value_reference!(impl Div for Record { fn div });
