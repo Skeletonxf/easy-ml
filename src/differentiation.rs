@@ -1174,6 +1174,8 @@ where for<'t> &'t T: NumericRef<T> {
             },
             // If only one input has a WengertList treat the other as a constant
             (Some(_), None) => self - &rhs.number,
+            // Record::constant can't be used here as that would cause an infinite loop,
+            // so lift the lhs to a variable and recurse once on this method
             (None, Some(h)) => Record::variable(self.number.clone(), &h) - rhs,
             (Some(history), Some(_)) => Record {
                 number: self.number.clone() - rhs.number.clone(),
@@ -1246,6 +1248,8 @@ where for<'t> &'t T: NumericRef<T> {
             },
             // If only one input has a WengertList treat the other as a constant
             (Some(_), None) => self / &rhs.number,
+            // Record::constant can't be used here as that would cause an infinite loop,
+            // so lift the lhs to a variable and recurse once on this method
             (None, Some(h)) => Record::variable(self.number.clone(), &h) / rhs,
             (Some(history), Some(_)) => Record {
                 number: self.number.clone() / rhs.number.clone(),
@@ -1255,8 +1259,8 @@ where for<'t> &'t T: NumericRef<T> {
                     // δ(self / rhs) / δself = 1 / rhs
                     T::one() / rhs.number.clone(),
                     rhs.index,
-                    // δ(self / rhs) / rhs = self / rhs^2
-                    self.number.clone() / (rhs.number.clone() * rhs.number.clone())
+                    // δ(self / rhs) / δrhs = -(self / rhs^2)
+                    -&self.number / (rhs.number.clone() * rhs.number.clone())
                 ),
             },
         }
