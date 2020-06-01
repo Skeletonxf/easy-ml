@@ -608,8 +608,8 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
 
 // TODO:
 // Make proper type for gradients
-// Implement other operators and other ref/value combinations
-// Make Record implement Numeric
+// Implement Neg and make Record implement Numeric
+// Add way to reset the gradients / replace the WengertList with a new one
 // Add documentation
 // Explain seeds for reverse mode
 // Stress test reverse mode on matrix / NN setups
@@ -662,7 +662,7 @@ impl <'a, T: Numeric + Primitive> Record<'a, T> {
     /**
      * Creates an untracked Record which has no backing WengertList.
      *
-     * This is provided for using constants along with records in operations.
+     * This is provided for using constants along with Records in operations.
      *
      * For example with y = x + 4 the computation graph could be conceived as
      * a y node with parent nodes of x and 4 combined with the operation +.
