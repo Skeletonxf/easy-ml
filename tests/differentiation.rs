@@ -64,6 +64,15 @@ mod forward_tests {
         let also_dx = (5.0 * x * x * x * x) + (3.0 * x * x) + (1.0 / (x * x)) - 1.0;
         assert_eq!(dx, also_dx);
     }
+
+    #[test]
+    fn test_constant_lifting() {
+        let x = 0.23;
+        let y = (Trace::variable(x) + 0.3) * 1.2;
+        let also_y = (Trace::variable(x) + Trace::constant(0.3)) * Trace::constant(1.2);
+        assert_eq!(y.number, also_y.number);
+        assert_eq!(y.derivative, also_y.derivative);
+    }
 }
 
 
@@ -111,7 +120,7 @@ mod reverse_tests {
         // Test the differentiation of the function 2.3(x+0.66)x with respect to x
         let list = WengertList::new();
         let x = Record::variable(0.34, &list);
-        let y = (Record::constant(2.3) * (x + Record::constant(0.66))) * x;
+        let y = (Record::constant(2.3) * (x + 0.66)) * x;
         let derivatives = y.derivatives();
         let dx = derivatives[x.index];
         // https://www.wolframalpha.com/input/?i=d%282.3*%28x%2B0.66%29*x%29%2Fdx

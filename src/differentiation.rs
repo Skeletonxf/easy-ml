@@ -294,7 +294,7 @@ where for<'a> &'a T: NumericRef<T> {
 macro_rules! operator_impl_value_value {
     (impl $op:tt for Trace { fn $method:ident }) => {
         /**
-        * Operation for two traces of the same type.
+        * Operation for a trace and a constant of the same type.
         */
         impl <T: Numeric + Primitive> $op for Trace<T>
         where for<'a> &'a T: NumericRef<T> {
@@ -310,7 +310,7 @@ macro_rules! operator_impl_value_value {
 macro_rules! operator_impl_value_reference {
     (impl $op:tt for Trace { fn $method:ident }) => {
         /**
-        * Operation for two traces of the same type with the right referenced.
+        * Operation for a trace and a constant of the same type with the right referenced.
         */
         impl <T: Numeric + Primitive> $op<&Trace<T>> for Trace<T>
         where for<'a> &'a T: NumericRef<T> {
@@ -326,7 +326,7 @@ macro_rules! operator_impl_value_reference {
 macro_rules! operator_impl_reference_value {
     (impl $op:tt for Trace { fn $method:ident }) => {
         /**
-        * Operation for two traces of the same type with the left referenced.
+        * Operation for a trace and a constant of the same type with the left referenced.
         */
         impl <T: Numeric + Primitive> $op<Trace<T>> for &Trace<T>
         where for<'a> &'a T: NumericRef<T> {
@@ -342,6 +342,73 @@ macro_rules! operator_impl_reference_value {
 operator_impl_value_value!(impl Add for Trace { fn add });
 operator_impl_reference_value!(impl Add for Trace { fn add });
 operator_impl_value_reference!(impl Add for Trace { fn add });
+
+/**
+ * Addition for a trace and a constant of the same type with both referenced.
+ */
+impl <T: Numeric + Primitive> Add<&T> for &Trace<T>
+where for<'a> &'a T: NumericRef<T> {
+    type Output = Trace<T>;
+    #[inline]
+    fn add(self, rhs: &T) -> Self::Output {
+        Trace {
+            number: self.number.clone() + rhs.clone(),
+            derivative: self.derivative.clone(),
+        }
+    }
+}
+
+macro_rules! trace_number_operator_impl_value_value {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+        /**
+         * Operation for two records of the same type.
+         */
+        impl <T: Numeric + Primitive> $op<T> for Trace<T>
+        where for<'a> &'a T: NumericRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: T) -> Self::Output {
+                (&self).$method(&rhs)
+            }
+        }
+    }
+}
+
+macro_rules! trace_number_operator_impl_value_reference {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+        /**
+         * Operation for two records of the same type with the right referenced.
+         */
+        impl <T: Numeric + Primitive> $op<&T> for Trace<T>
+        where for<'a> &'a T: NumericRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: &T) -> Self::Output {
+                (&self).$method(rhs)
+            }
+        }
+    }
+}
+
+macro_rules! trace_number_operator_impl_reference_value {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+        /**
+        * Operation for two records of the same type with the left referenced.
+        */
+        impl <T: Numeric + Primitive> $op<T> for &Trace<T>
+        where for<'a> &'a T: NumericRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.$method(&rhs)
+            }
+        }
+    }
+}
+
+trace_number_operator_impl_value_value!(impl Add for Trace { fn add });
+trace_number_operator_impl_reference_value!(impl Add for Trace { fn add });
+trace_number_operator_impl_value_reference!(impl Add for Trace { fn add });
 
 /**
  * Multiplication for two referenced traces of the same type.
@@ -363,6 +430,24 @@ operator_impl_value_value!(impl Mul for Trace { fn mul });
 operator_impl_reference_value!(impl Mul for Trace { fn mul });
 operator_impl_value_reference!(impl Mul for Trace { fn mul });
 
+/**
+ * Multiplication for a trace and a constant of the same type with both referenced.
+ */
+impl <T: Numeric + Primitive> Mul<&T> for &Trace<T>
+where for<'a> &'a T: NumericRef<T> {
+    type Output = Trace<T>;
+    #[inline]
+    fn mul(self, rhs: &T) -> Self::Output {
+        Trace {
+            number: self.number.clone() * rhs.clone(),
+            derivative: self.derivative.clone() * rhs.clone(),
+        }
+    }
+}
+
+trace_number_operator_impl_value_value!(impl Mul for Trace { fn mul });
+trace_number_operator_impl_reference_value!(impl Mul for Trace { fn mul });
+trace_number_operator_impl_value_reference!(impl Mul for Trace { fn mul });
 
 /**
  * Subtraction for two referenced traces of the same type.
@@ -820,6 +905,9 @@ where for<'t> &'t T: NumericRef<T> {
     }
 }
 
+/**
+ * Addition for a record and a constant of the same type with both referenced.
+ */
 impl <'a, T: Numeric + Primitive> Add<&T> for &Record<'a, T>
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
@@ -898,6 +986,58 @@ record_operator_impl_value_value!(impl Add for Record { fn add });
 record_operator_impl_reference_value!(impl Add for Record { fn add });
 record_operator_impl_value_reference!(impl Add for Record { fn add });
 
+macro_rules! record_number_operator_impl_value_value {
+    (impl $op:tt for Record { fn $method:ident }) => {
+        /**
+         * Operation for a record and a constant of the same type.
+         */
+        impl <'a, T: Numeric + Primitive> $op<T> for Record<'a, T>
+        where for<'t> &'t T: NumericRef<T> {
+            type Output = Record<'a, T>;
+            #[inline]
+            fn $method(self, rhs: T) -> Self::Output {
+                (&self).$method(&rhs)
+            }
+        }
+    }
+}
+
+macro_rules! record_number_operator_impl_value_reference {
+    (impl $op:tt for Record { fn $method:ident }) => {
+        /**
+         * Operation for a record and a constant of the same type with the right referenced.
+         */
+        impl <'a, T: Numeric + Primitive> $op<&T> for Record<'a, T>
+        where for<'t> &'t T: NumericRef<T> {
+            type Output = Record<'a, T>;
+            #[inline]
+            fn $method(self, rhs: &T) -> Self::Output {
+                (&self).$method(rhs)
+            }
+        }
+    }
+}
+
+macro_rules! record_number_operator_impl_reference_value {
+    (impl $op:tt for Record { fn $method:ident }) => {
+        /**
+        * Operation for a record and a constant of the same type with the left referenced.
+        */
+        impl <'a, T: Numeric + Primitive> $op<T> for &Record<'a, T>
+        where for<'t> &'t T: NumericRef<T> {
+            type Output = Record<'a, T>;
+            #[inline]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.$method(&rhs)
+            }
+        }
+    }
+}
+
+record_number_operator_impl_value_value!(impl Add for Record { fn add });
+record_number_operator_impl_reference_value!(impl Add for Record { fn add });
+record_number_operator_impl_value_reference!(impl Add for Record { fn add });
+
 /**
  * Multiplication for two records of the same type with both referenced and
  * both using the same WengertList.
@@ -962,3 +1102,6 @@ where for<'t> &'t T: NumericRef<T> {
 record_operator_impl_value_value!(impl Mul for Record { fn mul });
 record_operator_impl_reference_value!(impl Mul for Record { fn mul });
 record_operator_impl_value_reference!(impl Mul for Record { fn mul });
+record_number_operator_impl_value_value!(impl Mul for Record { fn mul });
+record_number_operator_impl_reference_value!(impl Mul for Record { fn mul });
+record_number_operator_impl_value_reference!(impl Mul for Record { fn mul });
