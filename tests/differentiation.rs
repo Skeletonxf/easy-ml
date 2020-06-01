@@ -93,4 +93,30 @@ mod reverse_tests {
         let also_dx = x_cubed_derivative(1.5);
         assert_eq!(dx, also_dx);
     }
+
+    #[test]
+    fn test_four_x_cubed() {
+        // Test the differentiation of the function 4(x^3) with respect to x
+        let list = WengertList::new();
+        let x = Record::variable(0.75, &list);
+        let y = Record::constant(4.0) * x * x * x;
+        let derivatives = y.derivatives();
+        let dx = derivatives[x.index];
+        let also_dx = 12.0 * 0.75 * 0.75;
+        assert_eq!(dx, also_dx);
+    }
+
+    #[test]
+    fn test_adding_and_multiplying_constants() {
+        // Test the differentiation of the function 2.3(x+0.66)x with respect to x
+        let list = WengertList::new();
+        let x = Record::variable(0.34, &list);
+        let y = (Record::constant(2.3) * (x + Record::constant(0.66))) * x;
+        let derivatives = y.derivatives();
+        let dx = derivatives[x.index];
+        // https://www.wolframalpha.com/input/?i=d%282.3*%28x%2B0.66%29*x%29%2Fdx
+        // dx = 4.6x + 1.518
+        let also_dx = (4.6 * 0.34) + 1.518;
+        assert_eq!(dx, also_dx);
+    }
 }

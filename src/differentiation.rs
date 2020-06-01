@@ -483,7 +483,6 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
 
 // TODO:
 // Make proper type for gradients
-// Implement Copy for Record
 // Implement other operators and other ref/value combinations
 // Make Record implement Numeric
 // Add documentation
@@ -755,6 +754,11 @@ impl <'a, T: Clone + Primitive> Clone for Record<'a, T> {
 }
 
 /**
+ * Any record of a Copy type implements Copy
+ */
+impl <'a, T: Copy + Primitive> Copy for Record<'a, T> { }
+
+/**
  * Compares two record's referenced WengertLists.
  *
  * If either Record is missing a reference to a WengertList then
@@ -785,36 +789,114 @@ where for<'t> &'t T: NumericRef<T> {
     #[inline]
     fn add(self, rhs: &Record<'a, T>) -> Self::Output {
         assert!(same_list(self, rhs), "Records must be using the same WengertList");
-        let history = match (self.history, rhs.history) {
+        match (self.history, rhs.history) {
             // If neither inputs have a WengertList then we don't need to record
             // the computation graph at this point because neither are inputs to
             // the overall function.
             // eg f(x, y) = ((1 + 1) * x) + (2 * (1 + y)) needs the records
             // for 2x + (2 * (1 + y)) to be stored, but we don't care about the derivatives
             // for 1 + 1, because neither were inputs to f.
-            (None, None) => return Record {
+            (None, None) => Record {
                 number: self.number.clone() + rhs.number.clone(),
                 history: None,
                 index: 0,
             },
-            (Some(h), None) => h,
-            (None, Some(h)) => h,
-            (Some(h), Some(_)) => h,
-        };
-        Record {
-            number: self.number.clone() + rhs.number.clone(),
-            history: Some(history),
-            index: history.append_binary(
-                self.index,
-                // δ(self + rhs) / δself = 1
-                T::one(),
-                rhs.index,
-                // δ(self + rhs) / rhs = 1
-                T::one()
-            ),
+            // If only one input has a WengertList treat the other as a constant
+            (Some(_), None) => self + &rhs.number,
+            (None, Some(_)) => rhs + &self.number,
+            (Some(history), Some(_)) => Record {
+                number: self.number.clone() + rhs.number.clone(),
+                history: Some(history),
+                index: history.append_binary(
+                    self.index,
+                    // δ(self + rhs) / δself = 1
+                    T::one(),
+                    rhs.index,
+                    // δ(self + rhs) / rhs = 1
+                    T::one()
+                ),
+            },
         }
     }
 }
+
+impl <'a, T: Numeric + Primitive> Add<&T> for &Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    type Output = Record<'a, T>;
+    #[inline]
+    fn add(self, rhs: &T) -> Self::Output {
+        match self.history {
+            None => Record {
+                number: self.number.clone() + rhs.clone(),
+                history: None,
+                index: 0,
+            },
+            Some(history) => {
+                Record {
+                    number: self.number.clone() + rhs.clone(),
+                    history: Some(history),
+                    index: history.append_unary(
+                        self.index,
+                        // δ(self + C) / δself = 1
+                        T::one()
+                    ),
+                }
+            }
+        }
+    }
+}
+
+macro_rules! record_operator_impl_value_value {
+    (impl $op:tt for Record { fn $method:ident }) => {
+        /**
+         * Operation for two records of the same type.
+         */
+        impl <'a, T: Numeric + Primitive> $op for Record<'a, T>
+        where for<'t> &'t T: NumericRef<T> {
+            type Output = Record<'a, T>;
+            #[inline]
+            fn $method(self, rhs: Record<'a, T>) -> Self::Output {
+                (&self).$method(&rhs)
+            }
+        }
+    }
+}
+
+macro_rules! record_operator_impl_value_reference {
+    (impl $op:tt for Record { fn $method:ident }) => {
+        /**
+         * Operation for two records of the same type with the right referenced.
+         */
+        impl <'a, T: Numeric + Primitive> $op<&Record<'a, T>> for Record<'a, T>
+        where for<'t> &'t T: NumericRef<T> {
+            type Output = Record<'a, T>;
+            #[inline]
+            fn $method(self, rhs: &Record<'a, T>) -> Self::Output {
+                (&self).$method(rhs)
+            }
+        }
+    }
+}
+
+macro_rules! record_operator_impl_reference_value {
+    (impl $op:tt for Record { fn $method:ident }) => {
+        /**
+        * Operation for two records of the same type with the left referenced.
+        */
+        impl <'a, T: Numeric + Primitive> $op<Record<'a, T>> for &Record<'a, T>
+        where for<'t> &'t T: NumericRef<T> {
+            type Output = Record<'a, T>;
+            #[inline]
+            fn $method(self, rhs: Record<'a, T>) -> Self::Output {
+                self.$method(&rhs)
+            }
+        }
+    }
+}
+
+record_operator_impl_value_value!(impl Add for Record { fn add });
+record_operator_impl_reference_value!(impl Add for Record { fn add });
+record_operator_impl_value_reference!(impl Add for Record { fn add });
 
 /**
  * Multiplication for two records of the same type with both referenced and
@@ -826,27 +908,57 @@ where for<'t> &'t T: NumericRef<T> {
     #[inline]
     fn mul(self, rhs: &Record<'a, T>) -> Self::Output {
         assert!(same_list(self, rhs), "Records must be using the same WengertList");
-        let history = match (self.history, rhs.history) {
-            (None, None) => return Record {
+        match (self.history, rhs.history) {
+            (None, None) => Record {
                 number: self.number.clone() * rhs.number.clone(),
                 history: None,
                 index: 0,
             },
-            (Some(h), None) => h,
-            (None, Some(h)) => h,
-            (Some(h), Some(_)) => h,
-        };
-        Record {
-            number: self.number.clone() * rhs.number.clone(),
-            history: Some(history),
-            index: history.append_binary(
-                self.index,
-                // δ(self * rhs) / δself = rhs
-                rhs.number.clone(),
-                rhs.index,
-                // δ(self * rhs) / rhs = self
-                self.number.clone()
-            ),
+            // If only one input has a WengertList treat the other as a constant
+            (Some(_), None) => self * &rhs.number,
+            (None, Some(_)) => rhs * &self.number,
+            (Some(history), Some(_)) => Record {
+                number: self.number.clone() * rhs.number.clone(),
+                history: Some(history),
+                index: history.append_binary(
+                    self.index,
+                    // δ(self * rhs) / δself = rhs
+                    rhs.number.clone(),
+                    rhs.index,
+                    // δ(self * rhs) / rhs = self
+                    self.number.clone()
+                ),
+            },
         }
     }
 }
+
+impl <'a, T: Numeric + Primitive> Mul<&T> for &Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    type Output = Record<'a, T>;
+    #[inline]
+    fn mul(self, rhs: &T) -> Self::Output {
+        match self.history {
+            None => Record {
+                number: self.number.clone() * rhs.clone(),
+                history: None,
+                index: 0,
+            },
+            Some(history) => {
+                Record {
+                    number: self.number.clone() * rhs.clone(),
+                    history: Some(history),
+                    index: history.append_unary(
+                        self.index,
+                        // δ(self * C) / δself = C
+                        rhs.clone()
+                    ),
+                }
+            }
+        }
+    }
+}
+
+record_operator_impl_value_value!(impl Mul for Record { fn mul });
+record_operator_impl_reference_value!(impl Mul for Record { fn mul });
+record_operator_impl_value_reference!(impl Mul for Record { fn mul });
