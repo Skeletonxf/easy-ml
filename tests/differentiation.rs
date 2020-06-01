@@ -85,11 +85,11 @@ mod reverse_tests {
     fn test_x_cubed() {
         // Test the differentiation of the function (x^3) with respect to x
         let list = WengertList::new();
-        let x = list.record(1.5);
+        let x = list.variable(1.5);
         let index = x.index;
         let y = x_cubed(x);
-        let gradients = y.gradients();
-        let dx = gradients[index];
+        let derivatives = y.derivatives();
+        let dx = derivatives[index];
         let also_dx = x_cubed_derivative(1.5);
         assert_eq!(dx, also_dx);
     }

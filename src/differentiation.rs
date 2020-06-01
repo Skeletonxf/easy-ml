@@ -141,6 +141,11 @@ pub struct Trace<T: Primitive> {
     pub derivative: T
 }
 
+/**
+ * The main set of methods for using Trace types for Forward Differentiation.
+ *
+ * TODO: explain worked example here
+ */
 impl <T: Numeric + Primitive> Trace<T> {
     /**
      * Constants are lifted to Traces with a derivative of 0
@@ -173,6 +178,10 @@ impl <T: Numeric + Primitive> Trace<T> {
      * Computes the derivative of a function with respect to its input x.
      *
      * This is a shorthand for `(function(Trace::variable(x))).derivative`
+     *
+     * In the more general case, if you provide a function with an input x
+     * and it returns N outputs y<sub>1</sub> to y<sub>N</sub> then you
+     * have computed all the derivatives δy<sub>i</sub>/δx for i = 1 to N.
      */
     pub fn derivative(function: impl Fn(Trace<T>) -> Trace<T>, x: T) -> T {
         (function(Trace::variable(x))).derivative
@@ -441,9 +450,6 @@ type Index = usize;
  * by storing only some of the intermediate steps of N computational steps, this implementation
  * is not as sophisticated, and will store all of them.
  */
-/**
- * A list tracking the operations performed in a forward pass.
- */
 // TODO: mention that every method involving this could panic if multiple
 // mutable borrows are attempted at once
 #[derive(Debug)]
@@ -523,23 +529,107 @@ pub struct Record<'a, T: Primitive> {
     pub index: Index,
 }
 
+/**
+ * The main set of methods for using Record types for Reverse Differentiation.
+ *
+ * TODO: explain worked example here
+ */
 impl <'a, T: Numeric + Primitive> Record<'a, T> {
-    /*
+    /**
      * Creates an untracked Record which has no backing WengertList.
      *
-     * This is only implemented for satisfying the type level constructors
-     * required by Numeric, and otherwise would not be available.
+     * This is provided for using constants along with records in operations.
+     *
+     * For example with y = x + 4 the computation graph could be conceived as
+     * a y node with parent nodes of x and 4 combined with the operation +.
+     * However there is no need to record the derivatives of a constant, so
+     * instead the computation graph can be conceived as a y node with a single
+     * parent node of x and the unary operation of +4.
+     *
+     * This is also used for the type level constructors required by Numeric
+     * which are also considered constants.
      */
-    fn untracked(x: T) -> Record<'a, T> {
+    pub fn constant(c: T) -> Record<'a, T> {
         Record {
-            number: x,
+            number: c,
             history: None,
             index: 0,
         }
     }
+
+    /**
+     * Creates a record backed by the provided WengertList.
+     *
+     * The record cannot live longer than the WengertList, hence
+     * the following example does not compile
+     *
+     * ```compile_fail
+     * use easy_ml::differentiation::Record;
+     * use easy_ml::differentiation::WengertList;
+     * let record = {
+     *     let list = WengertList::new();
+     *     Record::variable(1.0, &list)
+     * }; // list no longer in scope
+     * ```
+     *
+     * You can alternatively use the [record constructor on the WengertList type](./struct.WengertList.html#method.variable).
+     */
+    pub fn variable(x: T, history: &'a WengertList<T>) -> Record<'a, T> {
+        Record {
+            number: x,
+            history: Some(history),
+            index: history.append_nullary(),
+        }
+    }
+}
+
+impl <'a, T: Numeric + Primitive> Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    /**
+     * Performs a backward pass up this record's WengertList from this
+     * record as the output, computing all the derivatives for the inputs
+     * involving this output.
+     *
+     * If you have N inputs x<sub>1</sub> to x<sub>N</sub>, and this output is y,
+     * then this computes all the derivatives δy/δx<sub>i</sub> for i = 1 to N.
+     */
+    pub fn derivatives(&self) -> Vec<T> {
+        let history = match self.history {
+            None => panic!("Record has no WengertList"),
+            Some(h) => h,
+        };
+        let operations = history.operations.borrow();
+
+        let mut derivatives = vec![ T::zero(); operations.len() ];
+
+        // δy/δy = 1
+        derivatives[self.index] = T::one();
+
+        // Go back up the computation graph to the inputs
+        for i in (0..operations.len()).rev() {
+            let operation = operations[i].clone();
+            let derivative = derivatives[i].clone();
+            // The chain rule allows breaking up the derivative of the output y
+            // with respect to the input x into many smaller derivatives that
+            // are summed together.
+            // δy/δx = δy/δw * δw/δx
+            // δy/δx = sum for all i parents of y ( δy/δw_i * δw_i/δx )
+            derivatives[operation.left_parent] =
+                derivatives[operation.left_parent].clone()
+                + derivative.clone() * operation.left_derivative;
+            derivatives[operation.right_parent] =
+                derivatives[operation.right_parent].clone()
+                + derivative * operation.right_derivative;
+        }
+
+        derivatives
+    }
 }
 
 impl <T: Primitive> WengertList<T> {
+    /**
+     * Creates a new empty WengertList from which Records can be constructed.
+     */
     pub fn new() -> WengertList<T> {
         WengertList {
             operations: RefCell::new(Vec::new())
@@ -550,8 +640,10 @@ impl <T: Primitive> WengertList<T> {
 impl <T: Numeric + Primitive> WengertList<T> {
     /**
      * Creates a record backed by this WengertList.
+     *
+     * You can alternatively use the [record constructor on the Record type](./struct.Record.html#method.variable).
      */
-    pub fn record<'a>(&'a self, x: T) -> Record<'a, T> {
+    pub fn variable<'a>(&'a self, x: T) -> Record<'a, T> {
         Record {
             number: x,
             history: Some(self),
@@ -634,18 +726,18 @@ impl <T: Numeric + Primitive> WengertList<T> {
 impl <'a, T: Numeric + Primitive> ZeroOne for Record<'a, T> {
     #[inline]
     fn zero() -> Record<'a, T> {
-        Record::untracked(T::zero())
+        Record::constant(T::zero())
     }
     #[inline]
     fn one() -> Record<'a, T> {
-        Record::untracked(T::one())
+        Record::constant(T::one())
     }
 }
 
 impl <'a, T: Numeric + Primitive> FromUsize for Record<'a, T> {
     #[inline]
     fn from_usize(n: usize) -> Option<Record<'a, T>> {
-        Some(Record::untracked(T::from_usize(n)?))
+        Some(Record::constant(T::from_usize(n)?))
     }
 }
 
@@ -680,41 +772,6 @@ fn same_list<'a, 'b, T: Primitive>(a: &Record<'a, T>, b: &Record<'b, T>) -> bool
         (Some(list_a), Some(list_b)) => (
             list_a as *const WengertList<T> == list_b as *const WengertList<T>
         ),
-    }
-}
-
-impl <'a, T: Numeric + Primitive> Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
-    pub fn gradients(&self) -> Vec<T> {
-        let history = match self.history {
-            None => panic!("Record has no WengertList"),
-            Some(h) => h,
-        };
-        let operations = history.operations.borrow();
-
-        let mut derivatives = vec![ T::zero(); operations.len() ];
-
-        // δy/δy = 1
-        derivatives[self.index] = T::one();
-
-        // Go back up the computation graph to the inputs
-        for i in (0..operations.len()).rev() {
-            let operation = operations[i].clone();
-            let derivative = derivatives[i].clone();
-            // The chain rule allows breaking up the derivative of the output y
-            // with respect to the input x into many smaller derivatives that
-            // are summed together.
-            // δy/δx = δy/δw * δw/δx
-            // δy/δx = sum for all i parents of y ( δy/δw_i * δw_i/δx )
-            derivatives[operation.left_parent] =
-                derivatives[operation.left_parent].clone()
-                + derivative.clone() * operation.left_derivative;
-            derivatives[operation.right_parent] =
-                derivatives[operation.right_parent].clone()
-                + derivative * operation.right_derivative;
-        }
-
-        derivatives
     }
 }
 
