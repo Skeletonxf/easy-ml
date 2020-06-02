@@ -63,10 +63,127 @@
  * outputs. This is well suited to neural nets because we often have a single output (loss)
  * to differentiate many inputs with respect to. However, reverse mode will be slower than
  * forward mode if the number of inputs is small or there are many outputs.
+ *
+ * # Usage
+ *
+ * Both `Trace` and `Record` for forward and reverse automatic differentiation respectively
+ * implement `Numeric` and can generally be treated as normal numbers just like `f32` and `f64`.
+ *
+ * `Trace` is literally implemented as a dual number, and is more or less a one to one
+ * substitution. `Record` requires dynamically building a computational graph of the values
+ * and dependencies of each operation performed on them. This means performing operations on
+ * records have side effects, they add entries onto a `WengertList`. However, when using
+ * `Record` the side effects are abstracted away, just need to create a `WengertList`
+ * before you start creating Records.
+ *
+ * Given some function from N inputs to M outputs you can pass it `Trace`s or `Record`s
+ * and retrieve the first derivative from the outputs for all combinations of N and M.
+ * If N >> M then you should use `Record` as reverse mode automatic differentiation is
+ * much cheaper. If N << M then you should use `Trace` as it will be much cheaper. If
+ * you have large N and M, or small N and M, you might have to benchmark to find which
+ * method works best. Forward mode could easily be parallelised, and doesn't require
+ * more memory as you perform operations, however most problems are N > M.
+ *
+ * For this example we use a function which takes two inputs, r and a, and returns two
+ * outputs, x and y.
+ *
+ * ## Using Trace
+ *
+ * ```
+ * use easy_ml::differentiation::Trace;
+ * use crate::easy_ml::numeric::extra::Cos;
+ * use crate::easy_ml::numeric::extra::Sin;
+ * fn cartesian(r: Trace<f32>, angle: Trace<f32>) -> (Trace<f32>, Trace<f32>) {
+ *     let x = r * angle.cos();
+ *     let y = r * angle.sin();
+ *     (x, y)
+ * }
+ * // first find dx/dr and dy/dr
+ * let (x, y) = cartesian(Trace::variable(1.0), Trace::constant(2.0));
+ * let dx_dr = x.derivative;
+ * let dy_dr = y.derivative;
+ * // now find dx/da and dy/da
+ * let (x, y) = cartesian(Trace::constant(1.0), Trace::variable(2.0));
+ * let dx_da = x.derivative;
+ * let dy_da = y.derivative;
+ * ```
+ *
+ * ## Using Record
+ *
+ * ```
+ * use easy_ml::differentiation::{Record, WengertList};
+ * use crate::easy_ml::numeric::extra::{Cos, Sin};
+ * // the lifetimes tell the rust compiler that our inputs and outputs
+ * // can all live as long as the WengertList
+ * fn cartesian<'a>(r: Record<'a, f32>, angle: Record<'a, f32>)
+ * -> (Record<'a, f32>, Record<'a, f32>) {
+ *     let x = r * angle.cos();
+ *     let y = r * angle.sin();
+ *     (x, y)
+ * }
+ * // first we must construct a WengertList to create records from
+ * let list = WengertList::new();
+ * let r = Record::variable(1.0, &list);
+ * let a = Record::variable(2.0, &list);
+ * let (x, y) = cartesian(r, a);
+ * // first find dx/dr and dx/da
+ * let x_derivatives = x.derivatives();
+ * let dx_dr = x_derivatives[r.index];
+ * let dx_da = x_derivatives[a.index];
+ * // now find dy/dr and dy/da
+ * let y_derivatives = y.derivatives();
+ * let dy_dr = y_derivatives[r.index];
+ * let dy_da = y_derivatives[a.index];
+ * ```
+ *
+ * ## Differences
+ *
+ * Notice how in the above examples all the same 4 derivatives are found, but in
+ * forward mode we rerun the function with a different input as the sole variable,
+ * the rest as constants, whereas in reverse mode we rerun the `derivatives()` function
+ * on a different output variable. With Reverse mode we would only pass constants into
+ * the `cartesian` function if we didn't want to get their derivatives (and avoid wasting
+ * memory on something we didn't need).
+ *
+ * ## Substitution
+ *
+ * There is no need to rewrite the input functions, as you can use the `Numeric` and `Real`
+ * traits to write a function that will take normal numbers, `Trace`s and `Record`s.
+ *
+ * ```
+ * use easy_ml::differentiation::{Trace, Record, WengertList};
+ * use crate::easy_ml::numeric::extra::{Cos, Sin};
+ * use crate::easy_ml::numeric::Numeric;
+ * fn cartesian<T: Numeric + Sin<Output=T> + Cos<Output=T> + Copy>(r: T, angle: T) -> (T, T) {
+ *     let x = r * angle.cos();
+ *     let y = r * angle.sin();
+ *     (x, y)
+ * }
+ * let list = WengertList::new();
+ * let r_record = Record::variable(1.0, &list);
+ * let a_record = Record::variable(2.0, &list);
+ * let (x_record, y_record) = cartesian(r_record, a_record);
+ * // find dx/dr using reverse mode automatic differentiation
+ * let x_derivatives = x_record.derivatives();
+ * let dx_dr_reverse = x_derivatives[r_record.index];
+ * let (x_trace, y_trace) = cartesian(Trace::variable(1.0), Trace::constant(2.0));
+ * // now find dx/dr with forward automatic differentiation
+ * let dx_dr_forward = x_trace.derivative;
+ * assert_eq!(dx_dr_reverse, dx_dr_forward);
+ * let (x, y) = cartesian(1.0, 2.0);
+ * assert_eq!(x, x_record.number); assert_eq!(x, x_trace.number);
+ * assert_eq!(y, y_record.number); assert_eq!(y, y_trace.number);
+ * ```
+ *
+ * ## Equivalance
+ *
+ * Although in this example the derivatives found are identical, in practise, because
+ * forward and reverse mode compute things differently and floating point numbers have
+ * limited precision, you should not expect the derivatives to be exactly equal.
  */
 
 use crate::numeric::{Numeric, NumericRef, ZeroOne, FromUsize};
-use crate::numeric::extra::{Real, RealRef};
+use crate::numeric::extra::{Real, RealRef, Sin, Cos};
 use std::ops::{Add, Sub, Mul, Neg, Div};
 use std::cmp::Ordering;
 use std::num::Wrapping;
@@ -554,6 +671,57 @@ where for<'a> &'a T: NumericRef<T> {
     }
 }
 
+/**
+ * Sine of a Trace by reference.
+ */
+impl <T: Numeric + Real + Primitive> Sin for &Trace<T>
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    type Output = Trace<T>;
+    #[inline]
+    fn sin(self) -> Self::Output {
+        Trace {
+            number: self.number.clone().sin(),
+            // u' cos(u)
+            derivative: self.derivative.clone() * self.number.clone().cos()
+        }
+    }
+}
+
+macro_rules! trace_trig_operator_impl_value {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+        /**
+        * Operation for a record by value.
+        */
+        impl <T: Numeric + Real + Primitive> $op for Trace<T>
+        where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self) -> Self::Output {
+                (&self).$method()
+            }
+        }
+    }
+}
+
+trace_trig_operator_impl_value!(impl Sin for Trace { fn sin });
+
+/**
+ * Cosine of a Trace by reference.
+ */
+impl <T: Numeric + Real + Primitive> Cos for &Trace<T>
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    type Output = Trace<T>;
+    #[inline]
+    fn cos(self) -> Self::Output {
+        Trace {
+            number: self.number.clone().cos(),
+            // -u' sin(u)
+            derivative: -self.derivative.clone() * self.number.clone().sin()
+        }
+    }
+}
+
+trace_trig_operator_impl_value!(impl Cos for Trace { fn cos });
 
 use std::cell::RefCell;
 
@@ -608,9 +776,9 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
 
 // TODO:
 // Make proper type for gradients
-// Implement Neg and make Record implement Numeric
 // Add way to reset the gradients / replace the WengertList with a new one
-// Add documentation
+// Hide index field from public API
+// Add last bits of documentation
 // Explain seeds for reverse mode
 // Stress test reverse mode on matrix / NN setups
 // Document panics reverse mode can throw
@@ -1571,3 +1739,81 @@ impl <'a, T: Numeric + Primitive> Sum for Record<'a, T> {
         }
     }
 }
+
+/**
+ * Sine of a Record by reference.
+ */
+impl <'a, T: Numeric + Real + Primitive> Sin for &Record<'a, T>
+where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+    type Output = Record<'a, T>;
+    #[inline]
+    fn sin(self) -> Self::Output {
+        match self.history {
+            None => Record {
+                number: self.number.clone().sin(),
+                history: None,
+                index: 0,
+            },
+            Some(history) => {
+                Record {
+                    number: self.number.clone().sin(),
+                    history: Some(history),
+                    index: history.append_unary(
+                        self.index,
+                        // δ(sin(self)) / δself = cos(self)
+                        self.number.clone().cos()
+                    ),
+                }
+            }
+        }
+    }
+}
+
+macro_rules! trace_trig_operator_impl_value {
+    (impl $op:tt for Record { fn $method:ident }) => {
+        /**
+        * Operation for a record by value.
+        */
+        impl <'a, T: Numeric + Real + Primitive> $op for Record<'a, T>
+        where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+            type Output = Record<'a, T>;
+            #[inline]
+            fn $method(self) -> Self::Output {
+                (&self).$method()
+            }
+        }
+    }
+}
+
+trace_trig_operator_impl_value!(impl Sin for Record { fn sin });
+
+/**
+ * Cosine of a Record by reference.
+ */
+impl <'a, T: Numeric + Real + Primitive> Cos for &Record<'a, T>
+where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+    type Output = Record<'a, T>;
+    #[inline]
+    fn cos(self) -> Self::Output {
+        match self.history {
+            None => Record {
+                number: self.number.clone().cos(),
+                history: None,
+                index: 0,
+            },
+            Some(history) => {
+                Record {
+                    number: self.number.clone().cos(),
+                    history: Some(history),
+                    index: history.append_unary(
+                        self.index,
+                        // δ(cos(self)) / δself = -sin(self)
+                        -self.number.clone().sin()
+                    ),
+                }
+            }
+        }
+    }
+}
+
+trace_trig_operator_impl_value!(impl Cos for Record { fn cos });
