@@ -1175,8 +1175,8 @@ where for<'t> &'t T: NumericRef<T> {
             // If only one input has a WengertList treat the other as a constant
             (Some(_), None) => self - &rhs.number,
             // Record::constant can't be used here as that would cause an infinite loop,
-            // so lift the lhs to a variable and recurse once on this method
-            (None, Some(h)) => Record::variable(self.number.clone(), &h) - rhs,
+            // so use the swapped version of Sub
+            (None, Some(_)) => rhs.sub_swapped(self.number.clone()),
             (Some(history), Some(_)) => Record {
                 number: self.number.clone() - rhs.number.clone(),
                 history: Some(history),
@@ -1231,6 +1231,148 @@ record_number_operator_impl_reference_value!(impl Sub for Record { fn sub });
 record_number_operator_impl_value_reference!(impl Sub for Record { fn sub });
 
 /**
+ * A trait which defines subtraction and division with the arguments
+ * swapped around, ie 5.sub_swapped(7) would equal 2. This trait is
+ * only implemented for Records and constant operations.
+ *
+ * Addition and Multiplication are not included because argument order
+ * doesn't matter for those operations, so you can just swap the left and
+ * right and get the same result.
+ *
+ * Implementations for Trace are not included because you can just lift
+ * a constant to a Trace with ease. While you can lift constants to Records
+ * with ease too, these operations allow for the avoidance of storing the
+ * constant on the WengertList which saves memory.
+ */
+pub trait SwappedOperations<Lhs = Self> {
+    type Output;
+    fn sub_swapped(self, lhs: Lhs) -> Self::Output;
+    fn div_swapped(self, lhs: Lhs) -> Self::Output;
+}
+
+impl <'a, T: Numeric + Primitive> SwappedOperations<&T> for &Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    type Output = Record<'a, T>;
+    /**
+     * Subtraction for a record and a constant, where the constant
+     * is the left hand side, ie C - record.
+     */
+    #[inline]
+    fn sub_swapped(self, lhs: &T) -> Self::Output {
+        match self.history {
+            None => Record {
+                number: lhs.clone() - self.number.clone(),
+                history: None,
+                index: 0,
+            },
+            Some(history) => {
+                Record {
+                    number: lhs.clone() - self.number.clone(),
+                    history: Some(history),
+                    index: history.append_unary(
+                        self.index,
+                        // δ(C - self) / δself = -1
+                        -T::one()
+                    ),
+                }
+            }
+        }
+    }
+
+    /**
+     * Division for a record and a constant, where the constant
+     * is the left hand side, ie C / record.
+     */
+    #[inline]
+    fn div_swapped(self, lhs: &T) -> Self::Output {
+        match self.history {
+            None => Record {
+                number: lhs.clone() / self.number.clone(),
+                history: None,
+                index: 0,
+            },
+            Some(history) => {
+                Record {
+                    number: lhs.clone() / self.number.clone(),
+                    history: Some(history),
+                    index: history.append_unary(
+                        self.index,
+                        // δ(C / self) / δself = -(C / self^2)
+                        -&lhs.clone() / (self.number.clone() * self.number.clone())
+                    ),
+                }
+            }
+        }
+    }
+}
+
+impl <'a, T: Numeric + Primitive> SwappedOperations<T> for &Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    type Output = Record<'a, T>;
+    /**
+     * Subtraction for a record and a constant, where the constant
+     * is the left hand side, ie C - record.
+     */
+    #[inline]
+    fn sub_swapped(self, lhs: T) -> Self::Output {
+        self.sub_swapped(&lhs)
+    }
+
+    /**
+     * Division for a record and a constant, where the constant
+     * is the left hand side, ie C / record.
+     */
+    #[inline]
+    fn div_swapped(self, lhs: T) -> Self::Output {
+        self.div_swapped(&lhs)
+    }
+}
+
+impl <'a, T: Numeric + Primitive> SwappedOperations<T> for Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    type Output = Record<'a, T>;
+    /**
+     * Subtraction for a record and a constant, where the constant
+     * is the left hand side, ie C - record.
+     */
+    #[inline]
+    fn sub_swapped(self, lhs: T) -> Self::Output {
+        (&self).sub_swapped(&lhs)
+    }
+
+    /**
+     * Division for a record and a constant, where the constant
+     * is the left hand side, ie C / record.
+     */
+    #[inline]
+    fn div_swapped(self, lhs: T) -> Self::Output {
+        (&self).div_swapped(&lhs)
+    }
+}
+
+impl <'a, T: Numeric + Primitive> SwappedOperations<&T> for Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    type Output = Record<'a, T>;
+    /**
+     * Subtraction for a record and a constant, where the constant
+     * is the left hand side, ie C - record.
+     */
+    #[inline]
+    fn sub_swapped(self, lhs: &T) -> Self::Output {
+        (&self).sub_swapped(lhs)
+    }
+
+    /**
+     * Division for a record and a constant, where the constant
+     * is the left hand side, ie C / record.
+     */
+    #[inline]
+    fn div_swapped(self, lhs: &T) -> Self::Output {
+        (&self).div_swapped(lhs)
+    }
+}
+
+/**
  * Dvision for two records of the same type with both referenced and
  * both using the same WengertList.
  */
@@ -1249,8 +1391,8 @@ where for<'t> &'t T: NumericRef<T> {
             // If only one input has a WengertList treat the other as a constant
             (Some(_), None) => self / &rhs.number,
             // Record::constant can't be used here as that would cause an infinite loop,
-            // so lift the lhs to a variable and recurse once on this method
-            (None, Some(h)) => Record::variable(self.number.clone(), &h) / rhs,
+            // so use the swapped version of Div
+            (None, Some(_)) => rhs.div_swapped(self.number.clone()),
             (Some(history), Some(_)) => Record {
                 number: self.number.clone() / rhs.number.clone(),
                 history: Some(history),
@@ -1303,3 +1445,45 @@ where for<'t> &'t T: NumericRef<T> {
 record_number_operator_impl_value_value!(impl Div for Record { fn div });
 record_number_operator_impl_reference_value!(impl Div for Record { fn div });
 record_number_operator_impl_value_reference!(impl Div for Record { fn div });
+
+/**
+ * Negation of a record by reference.
+ */
+impl <'a, T: Numeric + Primitive> Neg for &Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    type Output = Record<'a, T>;
+    #[inline]
+    fn neg(self) -> Self::Output {
+        match self.history {
+            None => Record {
+                number: -self.number.clone(),
+                history: None,
+                index: 0,
+            },
+            Some(_) => {
+                Record::constant(T::zero()) - self
+            }
+        }
+    }
+}
+
+/**
+ * Negation of a record by value.
+ */
+impl <'a, T: Numeric + Primitive> Neg for Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    type Output = Record<'a, T>;
+    #[inline]
+    fn neg(self) -> Self::Output {
+        match self.history {
+            None => Record {
+                number: -self.number.clone(),
+                history: None,
+                index: 0,
+            },
+            Some(_) => {
+                Record::constant(T::zero()) - self
+            }
+        }
+    }
+}
