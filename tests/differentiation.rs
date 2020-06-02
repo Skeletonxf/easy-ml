@@ -161,4 +161,67 @@ mod reverse_tests {
         let also_dx = 2.5 / (0.25 * 0.25);
         assert_eq!(dx, also_dx);
     }
+
+    #[test]
+    fn test_sum() {
+        // Test summation gives the same derivatives as explicit adding
+        let list = WengertList::new();
+        let x = Record::variable(0.5, &list);
+        let y = Record::variable(2.0, &list);
+        let z = Record::variable(2.0, &list);
+        let result = [ x * 3.0, (y * y) / z, (z * y) - 5.0 ].iter().cloned().sum::<Record<f32>>();
+        let derivatives = result.derivatives();
+        let dx = derivatives[x.index];
+        let dy = derivatives[y.index];
+        let dz = derivatives[z.index];
+        let also_list = WengertList::<f32>::new();
+        let also_x = Record::variable(0.5, &also_list);
+        let also_y = Record::variable(2.0, &also_list);
+        let also_z = Record::variable(2.0, &also_list);
+        let also_result = (also_x * 3.0) + ((also_y * also_y) / also_z) + ((also_z * also_y) - 5.0);
+        let also_derivatives = also_result.derivatives();
+        let also_dx = also_derivatives[also_x.index];
+        let also_dy = also_derivatives[also_y.index];
+        let also_dz = also_derivatives[also_z.index];
+        assert_eq!(dx, also_dx);
+        assert_eq!(dy, also_dy);
+        assert_eq!(dz, also_dz);
+    }
+
+    use easy_ml::numeric::Numeric;
+    // f(x) = (x^5 + x^3 - 1/x) - x
+    // df(x)/dx = 5x^4 + 3x^2 + (1/x^2) - 1
+    fn f<T: Numeric + Copy>(x: T) -> T {
+        ((x * x * x * x * x) + (x * x * x) - (T::one() / x)) - x
+    }
+
+    #[test]
+    fn test_numeric_substitution() {
+        // Tests that the same function written for a float generically with Numeric
+        // can also be used with Record<float> and both uses compute the same result.
+        let list = WengertList::new();
+        let x = -0.75;
+        let result = f(Record::variable(x, &list));
+        let derivatives = result.derivatives();
+        let dx = derivatives[0]; // index of the Record wrapped x is 0
+        let y = result.number;
+        let also_y = f(-0.75);
+        assert_eq!(y, also_y);
+        let also_dx = (5.0 * x * x * x * x) + (3.0 * x * x) + (1.0 / (x * x)) - 1.0;
+        assert_eq!(dx, also_dx);
+    }
+
+    #[test]
+    fn test_constant_lifting_and_reusing_list() {
+        let list = WengertList::new();
+        let _x = 0.23;
+        let x = Record::variable(_x, &list);
+        let y = (x + 0.3) * 1.2;
+        let also_x = Record::variable(_x, &list);
+        let also_y = (also_x + Record::constant(0.3)) * Record::constant(1.2);
+        let derivatives = y.derivatives();
+        let also_derivatives = also_y.derivatives();
+        assert_eq!(y.number, also_y.number);
+        assert_eq!(derivatives[x.index], also_derivatives[also_x.index]);
+    }
 }

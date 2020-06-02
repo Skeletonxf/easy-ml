@@ -1487,3 +1487,87 @@ where for<'t> &'t T: NumericRef<T> {
         }
     }
 }
+
+/**
+ * Any record of a PartialEq type implements PartialEq
+ *
+ * Note that as a Record is intended to be substitutable with its
+ * type T only the number parts of the record are compared.
+ */
+impl <'a, T: PartialEq + Primitive> PartialEq for Record<'a, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.number == other.number
+    }
+}
+
+/**
+ * Any record of a PartialOrd type implements PartialOrd
+ *
+ * Note that as a Record is intended to be substitutable with its
+ * type T only the number parts of the record are compared.
+ */
+impl <'a, T: PartialOrd + Primitive> PartialOrd for Record<'a, T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.number.partial_cmp(&other.number)
+    }
+}
+
+/**
+ * Any record of a Numeric type implements Sum, which is
+ * the same as adding a bunch of Record types together.
+ */
+impl <'a, T: Numeric + Primitive> Sum for Record<'a, T> {
+    fn sum<I>(mut iter: I) -> Record<'a, T> where I: Iterator<Item = Record<'a, T>> {
+        let mut total = Record::<'a, T>::zero();
+        loop {
+            match iter.next() {
+                None => return total,
+                Some(next) => total = match (total.history, next.history) {
+                    (None, None) => Record {
+                        number: total.number.clone() + next.number.clone(),
+                        history: None,
+                        index: 0,
+                    },
+                    // If only one input has a WengertList treat the other as a constant
+                    (Some(history), None) => {
+                        Record {
+                            number: total.number.clone() + next.number.clone(),
+                            history: Some(history),
+                            index: history.append_unary(
+                                total.index,
+                                // δ(total + next) / δtotal = 1
+                                T::one()
+                            ),
+                        }
+                    },
+                    (None, Some(history)) => {
+                        Record {
+                            number: total.number.clone() + next.number.clone(),
+                            history: Some(history),
+                            index: history.append_unary(
+                                next.index,
+                                // δ(next + total) / δnext = 1
+                                T::one()
+                            ),
+                        }
+                    }
+                    (Some(history), Some(_)) => {
+                        assert!(same_list(&total, &next), "Records must be using the same WengertList");
+                        Record {
+                            number: total.number.clone() + next.number.clone(),
+                            history: Some(history),
+                            index: history.append_binary(
+                                total.index,
+                                // δ(total + next) / δtotal = 1
+                                T::one(),
+                                next.index,
+                                // δ(total + next) / δnext = 1
+                                T::one()
+                            ),
+                        }
+                    },
+                },
+            }
+        }
+    }
+}
