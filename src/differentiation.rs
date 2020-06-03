@@ -128,12 +128,12 @@
  * let (x, y) = cartesian(r, a);
  * // first find dx/dr and dx/da
  * let x_derivatives = x.derivatives();
- * let dx_dr = x_derivatives[r.index];
- * let dx_da = x_derivatives[a.index];
+ * let dx_dr = x_derivatives[&r];
+ * let dx_da = x_derivatives[&a];
  * // now find dy/dr and dy/da
  * let y_derivatives = y.derivatives();
- * let dy_dr = y_derivatives[r.index];
- * let dy_da = y_derivatives[a.index];
+ * let dy_dr = y_derivatives[&r];
+ * let dy_da = y_derivatives[&a];
  * ```
  *
  * ## Differences
@@ -165,7 +165,7 @@
  * let (x_record, y_record) = cartesian(r_record, a_record);
  * // find dx/dr using reverse mode automatic differentiation
  * let x_derivatives = x_record.derivatives();
- * let dx_dr_reverse = x_derivatives[r_record.index];
+ * let dx_dr_reverse = x_derivatives[&r_record];
  * let (x_trace, y_trace) = cartesian(Trace::variable(1.0), Trace::constant(2.0));
  * // now find dx/dr with forward automatic differentiation
  * let dx_dr_forward = x_trace.derivative;
@@ -761,6 +761,61 @@ struct Operation<T: Primitive> {
 }
 
 /**
+ * TODO
+ */
+#[derive(Debug)]
+pub struct Derivatives<T: Primitive> {
+    derivatives: Vec<T>
+}
+
+/**
+ * Any derivatives of a Cloneable type implements clone
+ */
+impl <T: Clone + Primitive> Clone for Derivatives<T> {
+    fn clone(&self) -> Self {
+        Derivatives {
+            derivatives: self.derivatives.clone()
+        }
+    }
+}
+
+impl <T: Clone + Primitive> Derivatives<T> {
+    /**
+     * Quries the derivative at the provided record as input.
+     *
+     * If you construct a Derivatives object for some output y,
+     * and call .at(&x) on it for some input x, this returns dy/dx.
+     */
+    pub fn at(&self, input: &Record<T>) -> T {
+        self.derivatives[input.index].clone()
+    }
+}
+
+impl <'a, T: Primitive> std::ops::Index<&Record<'a, T>> for Derivatives<T> {
+    type Output = T;
+    /**
+     * Quries the derivative at the provided record as input.
+     *
+     * If you construct a Derivatives object for some output y,
+     * and call .at(&x) on it for some input x, this returns dy/dx.
+     */
+    fn index(&self, input: &Record<'a, T>) -> &Self::Output {
+        &self.derivatives[input.index]
+    }
+}
+
+impl <T: Primitive> std::convert::From<Derivatives<T>> for Vec<T> {
+    /**
+     * Converts the Derivatives struct into a Vec of derivatives that
+     * can be indexed with `usize`s. The indexes correspond to the
+     * index field on Records.
+     */
+    fn from(derivatives: Derivatives<T>) -> Self {
+        derivatives.derivatives
+    }
+}
+
+/**
  * Any operation of a Cloneable type implements clone
  */
 impl <T: Clone + Primitive> Clone for Operation<T> {
@@ -812,11 +867,11 @@ pub struct Record<'a, T: Primitive> {
     pub number: T,
     history: Option<&'a WengertList<T>>,
     /**
-     * The index of this number in its WengertList.
+     * The index of this number in its WengertList. The first entry will be 0,
+     * they next 1 and so on.
      *
-     * After computing gradients on the WengertList you
-     * can index into the gradients to get the derivative
-     * for each record.
+     * In normal use cases you should not need to read this field,
+     * you can index Derivatives directly with Records.
      */
     pub index: Index,
 }
@@ -885,7 +940,7 @@ where for<'t> &'t T: NumericRef<T> {
      * If you have N inputs x<sub>1</sub> to x<sub>N</sub>, and this output is y,
      * then this computes all the derivatives δy/δx<sub>i</sub> for i = 1 to N.
      */
-    pub fn derivatives(&self) -> Vec<T> {
+    pub fn derivatives(&self) -> Derivatives<T> {
         let history = match self.history {
             None => panic!("Record has no WengertList"),
             Some(h) => h,
@@ -914,7 +969,7 @@ where for<'t> &'t T: NumericRef<T> {
                 + derivative * operation.right_derivative;
         }
 
-        derivatives
+        Derivatives { derivatives }
     }
 }
 
@@ -1012,6 +1067,17 @@ impl <T: Numeric + Primitive> WengertList<T> {
             right_derivative: right_derivative,
         });
         index
+    }
+}
+
+/**
+ * Any Wengert list of a Cloneable type implements clone
+ */
+impl <T: Clone + Primitive> Clone for WengertList<T> {
+    fn clone(&self) -> Self {
+        WengertList {
+            operations: RefCell::new(self.operations.borrow().clone())
+        }
     }
 }
 

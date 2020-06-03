@@ -95,10 +95,9 @@ mod reverse_tests {
         // Test the differentiation of the function (x^3) with respect to x
         let list = WengertList::new();
         let x = list.variable(1.5);
-        let index = x.index;
         let y = x_cubed(x);
         let derivatives = y.derivatives();
-        let dx = derivatives[index];
+        let dx = derivatives[&x];
         let also_dx = x_cubed_derivative(1.5);
         assert_eq!(dx, also_dx);
     }
@@ -110,7 +109,7 @@ mod reverse_tests {
         let x = Record::variable(0.75, &list);
         let y = Record::constant(4.0) * x * x * x;
         let derivatives = y.derivatives();
-        let dx = derivatives[x.index];
+        let dx = derivatives[&x];
         let also_dx = 12.0 * 0.75 * 0.75;
         assert_eq!(dx, also_dx);
     }
@@ -122,7 +121,7 @@ mod reverse_tests {
         let x = Record::variable(0.34, &list);
         let y = (Record::constant(2.3) * (x + 0.66)) * x;
         let derivatives = y.derivatives();
-        let dx = derivatives[x.index];
+        let dx = derivatives[&x];
         // https://www.wolframalpha.com/input/?i=d%282.3*%28x%2B0.66%29*x%29%2Fdx
         // dx = 4.6x + 1.518
         let also_dx = (4.6 * 0.34) + 1.518;
@@ -136,7 +135,7 @@ mod reverse_tests {
         let x = Record::variable(1.65, &list);
         let y = Record::constant(1.0) - (x / 2.5);
         let derivatives = y.derivatives();
-        let dx = derivatives[x.index];
+        let dx = derivatives[&x];
         // https://www.wolframalpha.com/input/?i=d%281-x%2F2.5%29%2Fdx
         // dx = -0.4
         assert_eq!(dx, -0.4);
@@ -149,14 +148,14 @@ mod reverse_tests {
         let x = Record::variable(0.25, &list);
         let y = Record::constant(2.5) / x;
         let derivatives = y.derivatives();
-        let dx = derivatives[x.index];
+        let dx = derivatives[&x];
         // https://www.wolframalpha.com/input/?i=d%281-%282.5%2Fx%29%29%2Fdx
         // dx = -(2.5 / x^2)
         let also_dx = -2.5 / (0.25 * 0.25);
         assert_eq!(dx, also_dx);
         let z = Record::constant(1.0) - y;
         let derivatives = z.derivatives();
-        let dx = derivatives[x.index];
+        let dx = derivatives[&x];
         // dx = 2.5 / x^2
         let also_dx = 2.5 / (0.25 * 0.25);
         assert_eq!(dx, also_dx);
@@ -171,18 +170,18 @@ mod reverse_tests {
         let z = Record::variable(2.0, &list);
         let result = [ x * 3.0, (y * y) / z, (z * y) - 5.0 ].iter().cloned().sum::<Record<f32>>();
         let derivatives = result.derivatives();
-        let dx = derivatives[x.index];
-        let dy = derivatives[y.index];
-        let dz = derivatives[z.index];
+        let dx = derivatives[&x];
+        let dy = derivatives[&y];
+        let dz = derivatives[&z];
         let also_list = WengertList::<f32>::new();
         let also_x = Record::variable(0.5, &also_list);
         let also_y = Record::variable(2.0, &also_list);
         let also_z = Record::variable(2.0, &also_list);
         let also_result = (also_x * 3.0) + ((also_y * also_y) / also_z) + ((also_z * also_y) - 5.0);
         let also_derivatives = also_result.derivatives();
-        let also_dx = also_derivatives[also_x.index];
-        let also_dy = also_derivatives[also_y.index];
-        let also_dz = also_derivatives[also_z.index];
+        let also_dx = also_derivatives[&also_x];
+        let also_dy = also_derivatives[&also_y];
+        let also_dz = also_derivatives[&also_z];
         assert_eq!(dx, also_dx);
         assert_eq!(dy, also_dy);
         assert_eq!(dz, also_dz);
@@ -202,7 +201,7 @@ mod reverse_tests {
         let list = WengertList::new();
         let x = -0.75;
         let result = f(Record::variable(x, &list));
-        let derivatives = result.derivatives();
+        let derivatives: Vec<_> = result.derivatives().into();
         let dx = derivatives[0]; // index of the Record wrapped x is 0
         let y = result.number;
         let also_y = f(-0.75);
@@ -222,6 +221,6 @@ mod reverse_tests {
         let derivatives = y.derivatives();
         let also_derivatives = also_y.derivatives();
         assert_eq!(y.number, also_y.number);
-        assert_eq!(derivatives[x.index], also_derivatives[also_x.index]);
+        assert_eq!(derivatives[&x], also_derivatives[&also_x]);
     }
 }
