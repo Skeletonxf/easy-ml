@@ -394,6 +394,15 @@ impl <T: Numeric + Primitive> Sum for Trace<T> {
 }
 
 /**
+ * A trace is displayed by showing its number component.
+ */
+impl <T: std::fmt::Display + Primitive> std::fmt::Display for Trace<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.number)
+    }
+}
+
+/**
  * Addition for two traces of the same type with both referenced.
  */
 impl <'l, 'r, T: Numeric + Primitive> Add<&'r Trace<T>> for &'l Trace<T>
@@ -746,14 +755,14 @@ type Index = usize;
 // TODO: mention that every method involving this could panic if multiple
 // mutable borrows are attempted at once
 #[derive(Debug)]
-pub struct WengertList<T: Primitive> {
+pub struct WengertList<T> {
     // It is neccessary to wrap the vec in a RefCell to allow for mutating
     // this list from immutable references held by each TODO
     operations: RefCell<Vec<Operation<T>>>
 }
 
 #[derive(Debug)]
-struct Operation<T: Primitive> {
+struct Operation<T> {
     left_parent: Index,
     right_parent: Index,
     left_derivative: T,
@@ -764,14 +773,14 @@ struct Operation<T: Primitive> {
  * TODO
  */
 #[derive(Debug)]
-pub struct Derivatives<T: Primitive> {
+pub struct Derivatives<T> {
     derivatives: Vec<T>
 }
 
 /**
  * Any derivatives of a Cloneable type implements clone
  */
-impl <T: Clone + Primitive> Clone for Derivatives<T> {
+impl <T: Clone> Clone for Derivatives<T> {
     fn clone(&self) -> Self {
         Derivatives {
             derivatives: self.derivatives.clone()
@@ -804,7 +813,7 @@ impl <'a, T: Primitive> std::ops::Index<&Record<'a, T>> for Derivatives<T> {
     }
 }
 
-impl <T: Primitive> std::convert::From<Derivatives<T>> for Vec<T> {
+impl <T> std::convert::From<Derivatives<T>> for Vec<T> {
     /**
      * Converts the Derivatives struct into a Vec of derivatives that
      * can be indexed with `usize`s. The indexes correspond to the
@@ -926,6 +935,19 @@ impl <'a, T: Numeric + Primitive> Record<'a, T> {
             index: history.append_nullary(),
         }
     }
+
+    /**
+     * Resets this Record to place it back on its WengertList, for use
+     * in performing another derivation after clearing the WengertList.
+     */
+    pub fn reset(&mut self) {
+        match self.history {
+            None => (), // noop
+            Some(history) => {
+                self.index = history.append_nullary()
+            },
+        };
+    }
 }
 
 impl <'a, T: Numeric + Primitive> Record<'a, T>
@@ -940,7 +962,7 @@ where for<'t> &'t T: NumericRef<T> {
      */
     pub fn derivatives(&self) -> Derivatives<T> {
         let history = match self.history {
-            None => panic!("Record has no WengertList"),
+            None => panic!("Record has no WengertList to find derivatives from"),
             Some(h) => h,
         };
         let operations = history.operations.borrow();
@@ -971,6 +993,15 @@ where for<'t> &'t T: NumericRef<T> {
     }
 }
 
+/**
+ * A record is displayed by showing its number component.
+ */
+impl <'a, T: std::fmt::Display + Primitive> std::fmt::Display for Record<'a, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.number)
+    }
+}
+
 impl <T: Primitive> WengertList<T> {
     /**
      * Creates a new empty WengertList from which Records can be constructed.
@@ -979,6 +1010,17 @@ impl <T: Primitive> WengertList<T> {
         WengertList {
             operations: RefCell::new(Vec::new())
         }
+    }
+}
+
+impl <T> WengertList<T> {
+    /**
+     * Clears a WengertList to make it empty again. After clearing a WengertList
+     * you must reset all the Records still using that list. Then you can perform
+     * another computation and get new gradients.
+     */
+    pub fn clear(&self) {
+        self.operations.borrow_mut().clear();
     }
 }
 
