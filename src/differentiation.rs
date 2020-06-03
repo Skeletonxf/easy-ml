@@ -396,7 +396,7 @@ impl <T: Numeric + Primitive> Sum for Trace<T> {
 /**
  * Addition for two traces of the same type with both referenced.
  */
-impl <T: Numeric + Primitive> Add for &Trace<T>
+impl <'l, 'r, T: Numeric + Primitive> Add<&'r Trace<T>> for &'l Trace<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Trace<T>;
     #[inline]
@@ -530,7 +530,7 @@ trace_number_operator_impl_value_reference!(impl Add for Trace { fn add });
 /**
  * Multiplication for two referenced traces of the same type.
  */
-impl <T: Numeric + Primitive> Mul for &Trace<T>
+impl <'l, 'r, T: Numeric + Primitive> Mul<&'r Trace<T>> for &'l Trace<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Trace<T>;
     fn mul(self, rhs: &Trace<T>) -> Self::Output {
@@ -569,7 +569,7 @@ trace_number_operator_impl_value_reference!(impl Mul for Trace { fn mul });
 /**
  * Subtraction for two referenced traces of the same type.
  */
-impl <T: Numeric + Primitive> Sub for &Trace<T>
+impl <'l, 'r, T: Numeric + Primitive> Sub<&'r Trace<T>> for &'l Trace<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Trace<T>;
     fn sub(self, rhs: &Trace<T>) -> Self::Output {
@@ -606,7 +606,7 @@ trace_number_operator_impl_value_reference!(impl Sub for Trace { fn sub });
 /**
  * Division for two referenced traces of the same type.
  */
-impl <T: Numeric + Primitive> Div for &Trace<T>
+impl <'l, 'r, T: Numeric + Primitive> Div<&'r Trace<T>> for &'l Trace<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Trace<T>;
     fn div(self, rhs: &Trace<T>) -> Self::Output {
@@ -830,9 +830,7 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
 }
 
 // TODO:
-// Make proper type for gradients
 // Add way to reset the gradients / replace the WengertList with a new one
-// Hide index field from public API
 // Add last bits of documentation
 // Explain seeds for reverse mode
 // Stress test reverse mode on matrix / NN setups
@@ -1142,7 +1140,7 @@ fn same_list<'a, 'b, T: Primitive>(a: &Record<'a, T>, b: &Record<'b, T>) -> bool
  * Addition for two records of the same type with both referenced and
  * both using the same WengertList.
  */
-impl <'a, T: Numeric + Primitive> Add for &Record<'a, T>
+impl <'a, 'l, 'r, T: Numeric + Primitive> Add<&'r Record<'a, T>> for &'l Record<'a, T>
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
     #[inline]
@@ -1316,7 +1314,7 @@ record_number_operator_impl_value_reference!(impl Add for Record { fn add });
  * Multiplication for two records of the same type with both referenced and
  * both using the same WengertList.
  */
-impl <'a, T: Numeric + Primitive> Mul for &Record<'a, T>
+impl <'a, 'l, 'r, T: Numeric + Primitive> Mul<&'r Record<'a, T>> for &'l Record<'a, T>
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
     #[inline]
@@ -1388,7 +1386,7 @@ record_number_operator_impl_value_reference!(impl Mul for Record { fn mul });
  * Subtraction for two records of the same type with both referenced and
  * both using the same WengertList.
  */
-impl <'a, T: Numeric + Primitive> Sub for &Record<'a, T>
+impl <'a, 'l, 'r, T: Numeric + Primitive> Sub<&'r Record<'a, T>> for &'l Record<'a, T>
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
     #[inline]
@@ -1610,7 +1608,7 @@ where for<'t> &'t T: NumericRef<T> {
  * Dvision for two records of the same type with both referenced and
  * both using the same WengertList.
  */
-impl <'a, T: Numeric + Primitive> Div for &Record<'a, T>
+impl <'a, 'l, 'r, T: Numeric + Primitive> Div<&'r Record<'a, T>> for &'l Record<'a, T>
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
     #[inline]
