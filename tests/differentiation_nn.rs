@@ -69,7 +69,7 @@ mod neural_net_tests {
      */
     #[test]
     fn test_gradient_descent() {
-        let mut list = WengertList::new();
+        let list = WengertList::new();
         let mut w1 = Matrix::from(vec![
             vec![ 0.1, -0.1, -0.1 ],
             vec![ 0.5, 0.4, -0.1 ],

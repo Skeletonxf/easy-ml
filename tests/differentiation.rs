@@ -223,4 +223,71 @@ mod reverse_tests {
         assert_eq!(y.number, also_y.number);
         assert_eq!(derivatives[&x], also_derivatives[&also_x]);
     }
+
+    use crate::easy_ml::numeric::extra::Pow;
+
+    #[test]
+    fn test_pow_equivalents_dx() {
+        let mut x_derivatives = Vec::with_capacity(3);
+        let x = 1.35;
+        let y = 2.5;
+        {
+            let list = WengertList::new();
+            let x = Record::variable(x, &list);
+            let y = Record::variable(y, &list);
+            let z = x.pow(y);
+            x_derivatives.push(z.derivatives()[&x]);
+        }
+        {
+            let list = WengertList::new();
+            let x = Record::variable(x, &list);
+            let z = x.pow(y);
+            x_derivatives.push(z.derivatives()[&x]);
+        }
+        {
+            let list = WengertList::new();
+            let x = Record::variable(x, &list);
+            let y = Record::constant(y);
+            let z = x.pow(y);
+            x_derivatives.push(z.derivatives()[&x]);
+        }
+        // d(x^y)/dx = y*x^(y-1)
+        let also_dx = y * x.pow(y - 1.0);
+        assert!(x_derivatives.iter().all(|&dx| dx == also_dx));
+    }
+
+    use crate::easy_ml::numeric::extra::Ln;
+
+    #[test]
+    fn test_pow_equivalents_dy() {
+        let mut y_derivatives = Vec::with_capacity(3);
+        let x = 1.35;
+        let y = 2.5;
+        {
+            let list = WengertList::new();
+            let x = Record::variable(x, &list);
+            let y = Record::variable(y, &list);
+            let z = x.pow(y);
+            y_derivatives.push(z.derivatives()[&y]);
+        }
+        {
+            let list = WengertList::new();
+            let y = Record::variable(y, &list);
+            let z = x.pow(y);
+            y_derivatives.push(z.derivatives()[&y]);
+        }
+        {
+            let list = WengertList::new();
+            let x = Record::constant(x);
+            let y = Record::variable(y, &list);
+            println!("made it to computing z");
+            let z = x.pow(y);
+            println!("computed z");
+            y_derivatives.push(z.derivatives()[&y]);
+            println!("computed dy");
+        }
+        // d(x^y)/dy = x^y * ln(x)
+        let also_dy = x.pow(y) * x.ln();
+        assert!(y_derivatives.iter().all(|&dy| dy == also_dy));
+    }
 }
