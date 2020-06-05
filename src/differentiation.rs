@@ -420,8 +420,8 @@ where for<'a> &'a T: NumericRef<T> {
 macro_rules! operator_impl_value_value {
     (impl $op:tt for Trace { fn $method:ident }) => {
         /**
-        * Operation for a trace and a constant of the same type.
-        */
+         * Operation for two traces of the same type.
+         */
         impl <T: Numeric + Primitive> $op for Trace<T>
         where for<'a> &'a T: NumericRef<T> {
             type Output = Trace<T>;
@@ -436,8 +436,8 @@ macro_rules! operator_impl_value_value {
 macro_rules! operator_impl_value_reference {
     (impl $op:tt for Trace { fn $method:ident }) => {
         /**
-        * Operation for a trace and a constant of the same type with the right referenced.
-        */
+         * Operation for two traces of the same type with the right referenced.
+         */
         impl <T: Numeric + Primitive> $op<&Trace<T>> for Trace<T>
         where for<'a> &'a T: NumericRef<T> {
             type Output = Trace<T>;
@@ -452,7 +452,7 @@ macro_rules! operator_impl_value_reference {
 macro_rules! operator_impl_reference_value {
     (impl $op:tt for Trace { fn $method:ident }) => {
         /**
-        * Operation for a trace and a constant of the same type with the left referenced.
+        * Operation for two traces of the same type with the left referenced.
         */
         impl <T: Numeric + Primitive> $op<Trace<T>> for &Trace<T>
         where for<'a> &'a T: NumericRef<T> {
@@ -487,8 +487,8 @@ where for<'a> &'a T: NumericRef<T> {
 macro_rules! trace_number_operator_impl_value_value {
     (impl $op:tt for Trace { fn $method:ident }) => {
         /**
-         * Operation for two records of the same type.
-         */
+        * Operation for a trace and a constant of the same type.
+        */
         impl <T: Numeric + Primitive> $op<T> for Trace<T>
         where for<'a> &'a T: NumericRef<T> {
             type Output = Trace<T>;
@@ -502,8 +502,8 @@ macro_rules! trace_number_operator_impl_value_value {
 
 macro_rules! trace_number_operator_impl_value_reference {
     (impl $op:tt for Trace { fn $method:ident }) => {
-        /**
-         * Operation for two records of the same type with the right referenced.
+         /**
+         * Operation for a trace and a constant of the same type with the right referenced.
          */
         impl <T: Numeric + Primitive> $op<&T> for Trace<T>
         where for<'a> &'a T: NumericRef<T> {
@@ -519,7 +519,7 @@ macro_rules! trace_number_operator_impl_value_reference {
 macro_rules! trace_number_operator_impl_reference_value {
     (impl $op:tt for Trace { fn $method:ident }) => {
         /**
-        * Operation for two records of the same type with the left referenced.
+        * Operation for a trace and a constant of the same type with the left referenced.
         */
         impl <T: Numeric + Primitive> $op<T> for &Trace<T>
         where for<'a> &'a T: NumericRef<T> {
@@ -699,7 +699,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
 macro_rules! trace_real_operator_impl_value {
     (impl $op:tt for Trace { fn $method:ident }) => {
         /**
-        * Operation for a record by value.
+        * Operation for a trace by value.
         */
         impl <T: Numeric + Real + Primitive> $op for Trace<T>
         where for<'a> &'a T: NumericRef<T> + RealRef<T> {
@@ -788,6 +788,223 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
 }
 
 trace_real_operator_impl_value!(impl Sqrt for Trace { fn sqrt });
+
+/**
+ * Power of one Trace to another, ie self^rhs for two traces of
+ * the same type with both referenced.
+ */
+impl <'l, 'r, T: Numeric + Real + Primitive> Pow<&'r Trace<T>> for &'l Trace<T>
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    type Output = Trace<T>;
+    #[inline]
+    fn pow(self, rhs: &Trace<T>) -> Self::Output {
+        Trace {
+            number: self.number.clone().pow(rhs.number.clone()),
+            // (u' * d(u^v)/du) + (v' * d(u^v)/dv) ==
+            // (u' * v * u^(v-1)) + (v' * u^v * ln(u))
+            derivative: (
+                (self.derivative.clone() * rhs.number.clone()
+                    * (self.number.clone().pow(rhs.number.clone() - T::one())))
+                + (rhs.derivative.clone()
+                    * (self.number.clone().pow(rhs.number.clone())) * self.number.clone().ln())
+            )
+        }
+    }
+}
+
+macro_rules! trace_real_operator_impl_value_value {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+        /**
+         * Operation for two traces of the same type.
+         */
+        impl <T: Numeric + Real + Primitive> $op for Trace<T>
+        where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: Trace<T>) -> Self::Output {
+                (&self).$method(&rhs)
+            }
+        }
+    }
+}
+
+macro_rules! trace_real_operator_impl_value_reference {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+        /**
+         * Operation for two traces of the same type with the right referenced.
+         */
+        impl <T: Numeric + Real + Primitive> $op<&Trace<T>> for Trace<T>
+        where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: &Trace<T>) -> Self::Output {
+                (&self).$method(rhs)
+            }
+        }
+    }
+}
+
+macro_rules! trace_real_operator_impl_reference_value {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+        /**
+        * Operation for two traces of the same type with the left referenced.
+        */
+        impl <T: Numeric + Real + Primitive> $op<Trace<T>> for &Trace<T>
+        where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: Trace<T>) -> Self::Output {
+                self.$method(&rhs)
+            }
+        }
+    }
+}
+
+trace_real_operator_impl_value_value!(impl Pow for Trace { fn pow });
+trace_real_operator_impl_reference_value!(impl Pow for Trace { fn pow });
+trace_real_operator_impl_value_reference!(impl Pow for Trace { fn pow });
+
+/**
+ * Power of a trace to a constant of the same type with both referenced.
+ */
+impl <T: Numeric + Real + Primitive> Pow<&T> for &Trace<T>
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    type Output = Trace<T>;
+    #[inline]
+    fn pow(self, rhs: &T) -> Self::Output {
+        Trace {
+            number: self.number.clone().pow(rhs.clone()),
+            // (u' * d(u^v)/du) == (u' * v * u^(v-1))
+            derivative: (
+                (self.derivative.clone() * rhs.clone()
+                    * (self.number.clone().pow(rhs.clone() - T::one())))
+            )
+        }
+    }
+}
+
+macro_rules! trace_real_number_operator_impl_value_value {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+        /**
+         * Operation for a trace and a constant of the same type.
+         */
+        impl <T: Numeric + Real + Primitive> $op<T> for Trace<T>
+        where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: T) -> Self::Output {
+                (&self).$method(&rhs)
+            }
+        }
+    }
+}
+
+macro_rules! trace_real_number_operator_impl_value_reference {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+         /**
+          * Operation for a trace and a constant of the same type with the right referenced.
+          */
+        impl <T: Numeric + Real + Primitive> $op<&T> for Trace<T>
+        where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: &T) -> Self::Output {
+                (&self).$method(rhs)
+            }
+        }
+    }
+}
+
+macro_rules! trace_real_number_operator_impl_reference_value {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+        /**
+         * Operation for a trace and a constant of the same type with the left referenced.
+         */
+        impl <T: Numeric + Real + Primitive> $op<T> for &Trace<T>
+        where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.$method(&rhs)
+            }
+        }
+    }
+}
+
+trace_real_number_operator_impl_value_value!(impl Pow for Trace { fn pow });
+trace_real_number_operator_impl_reference_value!(impl Pow for Trace { fn pow });
+trace_real_number_operator_impl_value_reference!(impl Pow for Trace { fn pow });
+
+/**
+ * Power of a constant to a trace of the same type with both referenced.
+ */
+impl <T: Numeric + Real + Primitive> Pow<&Trace<T>> for &T
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    type Output = Trace<T>;
+    #[inline]
+    fn pow(self, rhs: &Trace<T>) -> Self::Output {
+        Trace {
+            number: self.clone().pow(rhs.number.clone()),
+            // (v' * d(u^v)/dv) == (v' * u^v * ln(u))
+            derivative: (
+                (rhs.derivative.clone()
+                    * (self.clone().pow(rhs.number.clone())) * self.clone().ln())
+            )
+        }
+    }
+}
+
+macro_rules! real_number_trace_operator_impl_value_value {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+        /**
+         * Operation for a trace and a constant of the same type.
+         */
+        impl <T: Numeric + Real + Primitive> $op<Trace<T>> for T
+        where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: Trace<T>) -> Self::Output {
+                (&self).$method(&rhs)
+            }
+        }
+    }
+}
+
+macro_rules! real_number_trace_operator_impl_value_reference {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+         /**
+          * Operation for a trace and a constant of the same type with the right referenced.
+          */
+        impl <T: Numeric + Real + Primitive> $op<&Trace<T>> for T
+        where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: &Trace<T>) -> Self::Output {
+                (&self).$method(rhs)
+            }
+        }
+    }
+}
+
+macro_rules! real_number_trace_operator_impl_reference_value {
+    (impl $op:tt for Trace { fn $method:ident }) => {
+        /**
+         * Operation for a trace and a constant of the same type with the left referenced.
+         */
+        impl <T: Numeric + Real + Primitive> $op<Trace<T>> for &T
+        where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+            type Output = Trace<T>;
+            #[inline]
+            fn $method(self, rhs: Trace<T>) -> Self::Output {
+                self.$method(&rhs)
+            }
+        }
+    }
+}
+
+real_number_trace_operator_impl_value_value!(impl Pow for Trace { fn pow });
+real_number_trace_operator_impl_reference_value!(impl Pow for Trace { fn pow });
+real_number_trace_operator_impl_value_reference!(impl Pow for Trace { fn pow });
 
 use std::cell::RefCell;
 
@@ -896,8 +1113,12 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
 }
 
 // TODO:
-// Add way to reset the gradients / replace the WengertList with a new one
-// Add last bits of documentation
+// Add helper for mapping record resets
+// Implement rest of Real on Traces and Records
+// Test Exp, Ln, Sqrt on Traces and Records
+// Add 'l and 'r seperate lifetimes to all binary ops like Pow and the with constant versions
+// Breakup into definitions file and the operator implementations in a different file
+// Add notes onto Numeric that these structs implement the traits
 // Explain seeds for reverse mode
 // Stress test reverse mode on matrix / NN setups
 // Document panics reverse mode can throw
