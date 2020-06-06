@@ -39,7 +39,9 @@ pub trait NumericByValue<Rhs = Self, Output = Self>:
 /**
  * Anything which implements all the super traits will automatically implement this trait too.
  * This covers primitives such as f32, f64, signed integers and
- * [Wrapped unsigned integers](https://doc.rust-lang.org/std/num/struct.Wrapping.html).
+ * [Wrapped unsigned integers](https://doc.rust-lang.org/std/num/struct.Wrapping.html)
+ * as well as [Traces](../differentiation/struct.Trace.html) and
+ * [Records](../differentiation/struct.Record.html) of those types.
  *
  * It will not include Matrix because Matrix does not implement Div.
  * Similarly, unwrapped unsigned integers do not implement Neg so are not included.
@@ -84,7 +86,9 @@ pub trait NumericRef<T>:
 
 /**
  * Anything which implements all the super traits will automatically implement this trait too.
- * This covers primitives such as `&f32`, `&f64`, ie a type like `&u8` is `NumericRef<u8>`.
+ * This covers primitives such as `&f32`, `&f64`, ie a type like `&u8` is `NumericRef<u8>`,
+ * as well as [Traces](../differentiation/struct.Trace.html) and
+ * [Records](../differentiation/struct.Record.html) of those types.
  */
 impl <RefT, T> NumericRef<T> for RefT where
     RefT: NumericByValue<T, T>
@@ -129,7 +133,9 @@ pub trait Numeric:
  * side type by reference are Numeric.
  *
  * This covers primitives such as f32, f64, signed integers and
- * [Wrapped unsigned integers](https://doc.rust-lang.org/std/num/struct.Wrapping.html).
+ * [Wrapped unsigned integers](https://doc.rust-lang.org/std/num/struct.Wrapping.html),
+ * as well as [Traces](../differentiation/struct.Trace.html) and
+ * [Records](../differentiation/struct.Record.html) of those types.
  */
 impl <T> Numeric for T where T:
     NumericByValue
@@ -266,7 +272,9 @@ pub mod extra {
 /**
  * A type which can be square rooted.
  *
- * This is implemented by `f32` and `f64` by value and by reference.
+ * This is implemented by `f32` and `f64` by value and by reference, as well as
+ * [Traces](../../differentiation/struct.Trace.html)
+ * and [Records](../../differentiation/struct.Record.html) of these.
  */
 pub trait Sqrt {
     type Output;
@@ -298,7 +306,9 @@ sqrt_float!(f64);
 /**
  * A type which can compute e^self.
  *
- * This is implemented by `f32` and `f64` by value and by reference.
+ * This is implemented by `f32` and `f64` by value and by reference, as well as
+ * [Traces](../../differentiation/struct.Trace.html)
+ * and [Records](../../differentiation/struct.Record.html) of these.
  */
 pub trait Exp {
     type Output;
@@ -332,7 +342,12 @@ exp_float!(f64);
  * A type which can compute self^rhs.
  *
  * This is implemented by `f32` and `f64` for all combinations of
- * by value and by reference.
+ * by value and by reference, as well as
+ * [Traces](../../differentiation/struct.Trace.html)
+ * and [Records](../../differentiation/struct.Record.html) of these.
+ *
+ * The Trace and Record implementations also implement versions with the other
+ * argument being a raw `f32` or `f64`, for convenience.
  */
 pub trait Pow<Rhs = Self> {
     type Output;
@@ -402,7 +417,9 @@ impl Pi for f64 {
 /**
  * A type which can compute the natural logarithm of itself: ln(self).
  *
- * This is implemented by `f32` and `f64` by value and by reference.
+ * This is implemented by `f32` and `f64` by value and by reference, as well as
+ * [Traces](../../differentiation/struct.Trace.html)
+ * and [Records](../../differentiation/struct.Record.html) of these.
  */
 pub trait Ln {
     type Output;
@@ -434,7 +451,9 @@ ln_float!(f64);
 /**
  * A type which can compute the sine of itself: sin(self)
  *
- * This is implemented by `f32` and `f64` by value and by reference.
+ * This is implemented by `f32` and `f64` by value and by reference, as well as
+ * [Traces](../../differentiation/struct.Trace.html)
+ * and [Records](../../differentiation/struct.Record.html) of these.
  */
 pub trait Sin {
     type Output;
@@ -467,7 +486,9 @@ sin_float!(f64);
 /**
  * A type which can compute the cosine of itself: cos(self)
  *
- * This is implemented by `f32` and `f64` by value and by reference.
+ * This is implemented by `f32` and `f64` by value and by reference, as well as
+ * [Traces](../../differentiation/struct.Trace.html)
+ * and [Records](../../differentiation/struct.Record.html) of these.
  */
 pub trait Cos {
     type Output;
@@ -514,7 +535,9 @@ pub trait RealByValue<Rhs = Self, Output = Self>:
 
 /**
  * Anything which implements all the super traits will automatically implement this trait too.
- * This covers primitives such as f32 & f64
+ * This covers primitives such as f32 & f64 as well as
+ * [Traces](../../differentiation/struct.Trace.html) and
+ * [Records](../../differentiation/struct.Record.html) of those types.
  */
 impl <T, Rhs, Output> RealByValue<Rhs, Output> for T where
     T: Sqrt<Output = Output>
@@ -551,7 +574,9 @@ pub trait RealRef<T>:
 
 /**
  * Anything which implements all the super traits will automatically implement this trait too.
- * This covers primitives such as `&f32` & `&f64`, ie a type like `&f64` is `RealRef<&f64>`.
+ * This covers primitives such as `&f32` & `&f64`, ie a type like `&f64` is `RealRef<&f64>`
+ * as well as [Traces](../../differentiation/struct.Trace.html) and
+ * [Records](../../differentiation/struct.Record.html) of those types.
  */
 impl <RefT, T> RealRef<T> for RefT where
     RefT: RealByValue<T, T>
@@ -591,7 +616,9 @@ pub trait Real:
  * All types implemeting the operations in RealByValue with a right hand
  * side type by reference are Real.
  *
- * This covers primitives such as f32 & f64.
+ * This covers primitives such as f32 & f64 as well as
+ * [Traces](../../differentiation/struct.Trace.html) and
+ * [Records](../../differentiation/struct.Record.html) of those types.
  */
 impl <T> Real for T where T:
     RealByValue

@@ -391,7 +391,6 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
 // Add helper for mapping record resets
 // Test Exp, Ln, Sqrt on Traces and Records
 // Add 'l and 'r seperate lifetimes to all binary ops like Pow and the with constant versions
-// Add notes onto Numeric that these structs implement the traits
 // Explain seeds for reverse mode
 // Stress test reverse mode on matrix / NN setups
 // Document panics reverse mode can throw
@@ -427,7 +426,7 @@ pub struct Record<'a, T: Primitive> {
     history: Option<&'a WengertList<T>>,
     /**
      * The index of this number in its WengertList. The first entry will be 0,
-     * they next 1 and so on.
+     * the next 1 and so on.
      *
      * In normal use cases you should not need to read this field,
      * you can index Derivatives directly with Records.
