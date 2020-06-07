@@ -237,7 +237,15 @@ pub struct Trace<T: Primitive> {
 /**
  * The main set of methods for using Trace types for Forward Differentiation.
  *
- * TODO: explain worked example here
+ * The general steps are
+ * 1. create one variable
+ * 2. create as many constants as needed
+ * 3. do operations on the variable and constants
+ * 4. the outputs will have derivatives computed which can be accessed from
+ * the `.derivative` field, with each derivative being the output with respect
+ * to the input variable.
+ * 5. if you need derivatives for a different input then do everything all over again
+ * or do them all in parallel
  */
 impl <T: Numeric + Primitive> Trace<T> {
     /**
@@ -367,7 +375,7 @@ type Index = usize;
  *
  * This is dynamic, as in, you build the [Wengert list](https://en.wikipedia.org/wiki/Automatic_differentiation#Reverse_accumulation)
  * at runtime by performing operations like addition and multiplication on
- * Records that were created with a Wengert list.
+ * Records that were created with that Wengert list.
  *
  * When you perform a backward pass to obtain the gradients you travel back up the
  * computational graph using the stored intermediate values from this list to compute
@@ -382,10 +390,19 @@ type Index = usize;
 #[derive(Debug)]
 pub struct WengertList<T> {
     // It is neccessary to wrap the vec in a RefCell to allow for mutating
-    // this list from immutable references held by each TODO
+    // this list from immutable references held by each
     operations: RefCell<Vec<Operation<T>>>
 }
 
+/**
+ * A binary operation to record on a WengertList. For unary operations the
+ * right derivative is set to 0, and for nullary operations both derivatives
+ * are set to 0.
+ *
+ * Each operation acts like a node in an upside down binary tree, with two parents that
+ * each node was computed from. The main difference is that the numerical
+ * index of those parents in the WengertList is stored, rather than any pointers.
+ */
 #[derive(Debug)]
 struct Operation<T> {
     left_parent: Index,
@@ -395,7 +412,13 @@ struct Operation<T> {
 }
 
 /**
- * TODO
+ * Computed derivatives of a computational graph for some output Record variable.
+ *
+ * This can be indexed by any Record used in the computational graph to get
+ * the derivative with respect to that input.
+ *
+ * Indexing using Records not involved in the computational graph, or involved
+ * in a different one will return nonsense or index out of bounds and panic.
  */
 #[derive(Debug)]
 pub struct Derivatives<T> {
@@ -467,7 +490,6 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
 // Add helper for mapping record resets
 // Test Exp, Ln, Sqrt on Traces and Records
 // Add 'l and 'r seperate lifetimes to all binary ops like Pow and the with constant versions
-// Explain seeds for reverse mode
 // Stress test reverse mode on matrix / NN setups
 // Document panics reverse mode can throw
 // Credit Rufflewind for the tutorial
@@ -513,7 +535,19 @@ pub struct Record<'a, T: Primitive> {
 /**
  * The main set of methods for using Record types for Reverse Differentiation.
  *
- * TODO: explain worked example here
+ * The general steps are
+ * 1. create a `WengertList`
+ * 2. create variables from this list
+ * 3. do operations on the variables
+ * 4. from the output you want to compute derivatives for call `.derivatives()`
+ * 5. index the `Derivatives` object with the index variables to get the derivatives
+ * with respect to each input
+ * 6. if you want to make another pass call `clear()` on the `WengertList`
+ * and then call `reset()` on all of the variables to forget the gradients already
+ * computed (the order of `clear` then `reset` is very important!).
+ *
+ * Constants can be used to save memory if you have numbers that
+ * you do not need to compute the gradients with respect to.
  */
 impl <'a, T: Numeric + Primitive> Record<'a, T> {
     /**
