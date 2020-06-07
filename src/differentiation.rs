@@ -487,8 +487,7 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
 }
 
 // TODO:
-// Add helper for mapping record resets
-// Test Exp, Ln, Sqrt on Traces and Records
+// Test Sqrt on Traces and Records
 // Add 'l and 'r seperate lifetimes to all binary ops like Pow and the with constant versions
 // Stress test reverse mode on matrix / NN setups
 // Document panics reverse mode can throw
@@ -608,6 +607,15 @@ impl <'a, T: Numeric + Primitive> Record<'a, T> {
                 self.index = history.append_nullary()
             },
         };
+    }
+
+    /**
+     * A convenience helper function which takes a Record by value and
+     * calls [reset](./struct.Record.html#method.reset) on it.
+     */
+    pub fn do_reset(mut x: Record<T>) -> Record<T> {
+        x.reset();
+        x
     }
 }
 

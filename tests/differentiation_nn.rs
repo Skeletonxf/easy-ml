@@ -51,14 +51,8 @@ mod neural_net_tests {
         w2.map_mut(|x| x - (derivatives[&x] * learning_rate));
         // reset gradients
         list.clear();
-        w1.map_mut(|mut x| {
-            x.reset();
-            x
-        });
-        w2.map_mut(|mut x| {
-            x.reset();
-            x
-        });
+        w1.map_mut(Record::do_reset);
+        w2.map_mut(Record::do_reset);
         loss.number
     }
 

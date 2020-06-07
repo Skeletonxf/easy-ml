@@ -119,6 +119,54 @@ mod forward_tests {
         let also_dy = x.pow(y) * x.ln();
         assert!(y_derivatives.iter().all(|&dy| dy == also_dy));
     }
+
+    #[test]
+    fn test_ln_gradient_descent() {
+        // ln(x) approaches -inf as x goes to 0
+        let mut x = Trace::variable(3.0);
+        let steps = 10;
+        let mut epochs = Vec::with_capacity(steps + 1);
+        epochs.push(x.number);
+        for _ in 0..steps {
+            let y = x.ln();
+            x = Trace::variable(x.number - (0.1 * y.derivative));
+            epochs.push(x.number);
+        }
+        // check every epoch gave a smaller x value
+        assert!(epochs.iter().enumerate().fold(true, |_, (i, &x)| {
+            if i > 0 {
+                x < epochs[i - 1]
+            } else {
+                true
+            }
+        }));
+        // check x never went negative
+        assert!(x.number > 0.0);
+    }
+
+    use crate::easy_ml::numeric::extra::Exp;
+
+    #[test]
+    fn test_exp_gradient_descent() {
+        // e^x approaches 0 as x goes to -inf
+        let mut x = Trace::variable(3.0);
+        let steps = 10;
+        let mut epochs = Vec::with_capacity(steps + 1);
+        epochs.push(x.number);
+        for _ in 0..steps {
+            let y = x.exp();
+            x = Trace::variable(x.number - (0.1 * y.derivative));
+            epochs.push(x.number);
+        }
+        // check every epoch gave a smaller x value
+        assert!(epochs.iter().enumerate().fold(true, |_, (i, &x)| {
+            if i > 0 {
+                x < epochs[i - 1]
+            } else {
+                true
+            }
+        }));
+    }
 }
 
 
@@ -335,5 +383,59 @@ mod reverse_tests {
         // d(x^y)/dy = x^y * ln(x)
         let also_dy = x.pow(y) * x.ln();
         assert!(y_derivatives.iter().all(|&dy| dy == also_dy));
+    }
+
+    #[test]
+    fn test_ln_gradient_descent() {
+        let list = WengertList::new();
+        // ln(x) approaches -inf as x goes to 0
+        let mut x = Record::variable(3.0, &list);
+        let steps = 10;
+        let mut epochs = Vec::with_capacity(steps + 1);
+        epochs.push(x.number);
+        for _ in 0..steps {
+            let y = x.ln();
+            x = Record::variable(x.number - (0.1 * y.derivatives()[&x]), &list);
+            epochs.push(x.number);
+            list.clear();
+            x.reset();
+        }
+        // check every epoch gave a smaller x value
+        assert!(epochs.iter().enumerate().fold(true, |_, (i, &x)| {
+            if i > 0 {
+                x < epochs[i - 1]
+            } else {
+                true
+            }
+        }));
+        // check x never went negative
+        assert!(x.number > 0.0);
+    }
+
+    use crate::easy_ml::numeric::extra::Exp;
+
+    #[test]
+    fn test_exp_gradient_descent() {
+        let list = WengertList::new();
+        // e^x approaches 0 as x goes to -inf
+        let mut x = Record::variable(3.0, &list);
+        let steps = 10;
+        let mut epochs = Vec::with_capacity(steps + 1);
+        epochs.push(x.number);
+        for _ in 0..steps {
+            let y = x.exp();
+            x = Record::variable(x.number - (0.1 * y.derivatives()[&x]), &list);
+            epochs.push(x.number);
+            list.clear();
+            x.reset();
+        }
+        // check every epoch gave a smaller x value
+        assert!(epochs.iter().enumerate().fold(true, |_, (i, &x)| {
+            if i > 0 {
+                x < epochs[i - 1]
+            } else {
+                true
+            }
+        }));
     }
 }
