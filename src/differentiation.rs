@@ -281,6 +281,82 @@ impl <T: Numeric + Primitive> Trace<T> {
     }
 }
 
+impl <T: Numeric + Primitive> Trace<T>
+where for<'a> &'a T: NumericRef<T> {
+    /**
+     * Creates a new Trace from a reference to an existing Trace by applying
+     * some unary function to it which operates on the type the Trace wraps.
+     *
+     * To compute the new trace, the unary function of some input x to some
+     * output y is needed along with its derivative with respect to its input x.
+     *
+     * For example, tanh is a commonly used activation function, but the Real trait
+     * does not include this operation and Trace has no operations for it specifically.
+     * However, you can use this function to compute the tanh of a Trace like so:
+     *
+     * ```
+     * use easy_ml::differentiation::Trace;
+     * let x = Trace::variable(0.7f32);
+     * // the derivative of tanh(x) is sech(x) * sech(x) which is equivalent to
+     * // 1 / (cosh(x) * cosh(x))
+     * let y = x.unary(|x| x.tanh(), |x| 1.0 / (x.cosh() * x.cosh()));
+     * assert_eq!(y.derivative, 1.0f32 / (0.7f32.cosh() * 0.7f32.cosh()));
+     * ```
+     */
+    #[inline]
+    pub fn unary(&self, fx: impl Fn(T) -> T, dfx_dx: impl Fn(T) -> T) -> Trace<T> {
+        Trace {
+            number: fx(self.number.clone()),
+            derivative: self.derivative.clone() * dfx_dx(self.number.clone()),
+        }
+    }
+
+    /**
+     * Creates a new Trace from a reference to two existing Traces by applying
+     * some binary function to them which operates on two arguments of the type
+     * the Traces wrap.
+     *
+     * To compute the new trace, the binary function of some inputs x and y to some
+     * output z is needed along with its derivative with respect to its first input x and
+     * its derivative with respect to its second input y.
+     *
+     * For example, atan2 takes two arguments, but the Real trait
+     * does not include this operation and Trace has no operations for it specifically.
+     * However, you can use this function to compute the atan2 of two Traces like so:
+     *
+     * ```
+     * use easy_ml::differentiation::Trace;
+     * let x = Trace::variable(3.0f32);
+     * let y = Trace::variable(3.0f32);
+     * // the derivative of atan2 with respect to x is y/(x*x + y*y)
+     * // https://www.wolframalpha.com/input/?i=d%28atan2%28x%2Cy%29%29%2Fdx
+     * // the derivative of atan2 with respect to y is -x/(x*x + y*y)
+     * // https://www.wolframalpha.com/input/?i=d%28atan2%28x%2Cy%29%29%2Fdy
+     * let z = x.binary(&y,
+     *     |x, y| x.atan2(y),
+     *     |x, y| y/((x*x) + (y*y)),
+     *     |x, y| -x/((x*x) + (y*y))
+     * );
+     * ```
+     */
+    #[inline]
+    pub fn binary(
+            &self,
+            rhs: &Trace<T>,
+            fxy: impl Fn(T, T) -> T,
+            dfxy_dx: impl Fn(T, T) -> T,
+            dfxy_dy: impl Fn(T, T) -> T
+        ) -> Trace<T> {
+        Trace {
+            number: fxy(self.number.clone(), rhs.number.clone()),
+            derivative: (
+                (self.derivative.clone() * dfxy_dx(self.number.clone(), rhs.number.clone()))
+                + (rhs.derivative.clone() * dfxy_dy(self.number.clone(), rhs.number.clone()))
+            ),
+        }
+    }
+}
+
 use std::cell::RefCell;
 
 type Index = usize;
@@ -659,6 +735,129 @@ impl <T: Clone + Primitive> Clone for WengertList<T> {
     fn clone(&self) -> Self {
         WengertList {
             operations: RefCell::new(self.operations.borrow().clone())
+        }
+    }
+}
+
+impl <'a, T: Numeric + Primitive> Record<'a, T>
+where for<'t> &'t T: NumericRef<T> {
+    /**
+     * Creates a new Record from a reference to an existing Record by applying
+     * some unary function to it which operates on the type the Record wraps.
+     *
+     * To compute the new record, the unary function of some input x to some
+     * output y is needed along with its derivative with respect to its input x.
+     *
+     * For example, tanh is a commonly used activation function, but the Real trait
+     * does not include this operation and Record has no operations for it specifically.
+     * However, you can use this function to compute the tanh of a Record like so:
+     *
+     * ```
+     * use easy_ml::differentiation::{Record, WengertList};
+     * let list = WengertList::new();
+     * let x = Record::variable(0.7f32, &list);
+     * // the derivative of tanh(x) is sech(x) * sech(x) which is equivalent to
+     * // 1 / (cosh(x) * cosh(x))
+     * let y = x.unary(|x| x.tanh(), |x| 1.0 / (x.cosh() * x.cosh()));
+     * assert_eq!(y.derivatives()[&x], 1.0f32 / (0.7f32.cosh() * 0.7f32.cosh()));
+     * ```
+     */
+    #[inline]
+    pub fn unary(&self, fx: impl Fn(T) -> T, dfx_dx: impl Fn(T) -> T) -> Record<T> {
+        match self.history {
+            None => Record {
+                number: fx(self.number.clone()),
+                history: None,
+                index: 0,
+            },
+            Some(history) => {
+                Record {
+                    number: fx(self.number.clone()),
+                    history: Some(history),
+                    index: history.append_unary(
+                        self.index,
+                        dfx_dx(self.number.clone())
+                    )
+                }
+            },
+        }
+    }
+
+    /**
+     * Creates a new Record from a reference to two existing Records by applying
+     * some binary function to them which operates on two arguments of the type
+     * the Records wrap.
+     *
+     * To compute the new record, the binary function of some inputs x and y to some
+     * output z is needed along with its derivative with respect to its first input x and
+     * its derivative with respect to its second input y.
+     *
+     * For example, atan2 takes two arguments, but the Real trait
+     * does not include this operation and Record has no operations for it specifically.
+     * However, you can use this function to compute the atan2 of two Records like so:
+     *
+     * ```
+     * use easy_ml::differentiation::{Record, WengertList};
+     * let list = WengertList::new();
+     * let x = Record::variable(3.0f32, &list);
+     * let y = Record::variable(3.0f32, &list);
+     * // the derivative of atan2 with respect to x is y/(x*x + y*y)
+     * // https://www.wolframalpha.com/input/?i=d%28atan2%28x%2Cy%29%29%2Fdx
+     * // the derivative of atan2 with respect to y is -x/(x*x + y*y)
+     * // https://www.wolframalpha.com/input/?i=d%28atan2%28x%2Cy%29%29%2Fdy
+     * let z = x.binary(&y,
+     *     |x, y| x.atan2(y),
+     *     |x, y| y/((x*x) + (y*y)),
+     *     |x, y| -x/((x*x) + (y*y))
+     * );
+     * let derivatives = z.derivatives();
+     * let dx = derivatives[&x];
+     * let dy = derivatives[&y];
+     * ```
+     */
+    #[inline]
+    pub fn binary(
+            &self,
+            rhs: &Record<'a, T>,
+            fxy: impl Fn(T, T) -> T,
+            dfxy_dx: impl Fn(T, T) -> T,
+            dfxy_dy: impl Fn(T, T) -> T
+        ) -> Record<T> {
+        assert!(record_operations::same_list(self, rhs), "Records must be using the same WengertList");
+        match (self.history, rhs.history) {
+            (None, None) => Record {
+                number: fxy(self.number.clone(), rhs.number.clone()),
+                history: None,
+                index: 0,
+            },
+            (Some(history), None) => Record {
+                number: fxy(self.number.clone(), rhs.number.clone()),
+                history: Some(history),
+                index: history.append_unary(
+                    // if rhs didn't have a history, don't track that derivative
+                    self.index,
+                    dfxy_dx(self.number.clone(), rhs.number.clone())
+                ),
+            },
+            (None, Some(history)) => Record {
+                number: fxy(self.number.clone(), rhs.number.clone()),
+                history: Some(history),
+                index: history.append_unary(
+                    // if self didn't have a history, don't track that derivative
+                    rhs.index,
+                    dfxy_dy(self.number.clone(), rhs.number.clone())
+                ),
+            },
+            (Some(history), Some(_)) => Record {
+                number: fxy(self.number.clone(), rhs.number.clone()),
+                history: Some(history),
+                index: history.append_binary(
+                    self.index,
+                    dfxy_dx(self.number.clone(), rhs.number.clone()),
+                    rhs.index,
+                    dfxy_dy(self.number.clone(), rhs.number.clone())
+                ),
+            },
         }
     }
 }
