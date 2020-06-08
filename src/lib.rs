@@ -8,6 +8,7 @@
  * - [k-means Clustering](./k_means/index.html)
  * - [Logistic Regression](./logistic_regression/index.html)
  * - [Naïve Bayes](./naive_bayes/index.html)
+ * - [Neural Network XOR Problem](./neural_network/index.html)
  */
 
 pub mod numeric;
@@ -22,3 +23,4 @@ pub mod using_custom_types;
 pub mod k_means;
 pub mod logistic_regression;
 pub mod naive_bayes;
+pub mod neural_networks;

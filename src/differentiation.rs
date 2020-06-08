@@ -488,8 +488,6 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
 
 // TODO:
 // Test Sqrt on Traces and Records
-// Add 'l and 'r seperate lifetimes to all binary ops like Pow and the with constant versions
-// Stress test reverse mode on matrix / NN setups
 // Document panics reverse mode can throw
 // Credit Rufflewind for the tutorial
 // https://rufflewind.com/2016-12-30/reverse-mode-automatic-differentiation
