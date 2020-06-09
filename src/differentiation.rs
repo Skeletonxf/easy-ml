@@ -717,7 +717,7 @@ impl <T: Numeric + Primitive> WengertList<T> {
      *
      * You can alternatively use the [record constructor on the Record type](./struct.Record.html#method.variable).
      */
-    pub fn variable<'a>(&'a self, x: T) -> Record<'a, T> {
+    pub fn variable(&self, x: T) -> Record<T> {
         Record {
             number: x,
             history: Some(self),
@@ -788,10 +788,10 @@ impl <T: Numeric + Primitive> WengertList<T> {
         // insert into end of list
         let index = operations.len();
         operations.push(Operation {
-            left_parent: left_parent,
-            right_parent: right_parent,
-            left_derivative: left_derivative,
-            right_derivative: right_derivative,
+            left_parent,
+            right_parent,
+            left_derivative,
+            right_derivative,
         });
         index
     }

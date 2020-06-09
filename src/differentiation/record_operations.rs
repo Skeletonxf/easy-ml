@@ -75,7 +75,7 @@ impl <'a, T: Clone + Primitive> Clone for Record<'a, T> {
     fn clone(&self) -> Self {
         Record {
             number: self.number.clone(),
-            history: self.history.clone(),
+            history: self.history,
             index: self.index,
         }
     }
@@ -680,7 +680,7 @@ where for<'t> &'t T: NumericRef<T> {
     fn neg(self) -> Self::Output {
         match self.history {
             None => Record {
-                number: -self.number.clone(),
+                number: -self.number,
                 history: None,
                 index: 0,
             },
