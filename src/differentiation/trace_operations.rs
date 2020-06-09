@@ -516,7 +516,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
             // u'/(2*sqrt(u))
             derivative: (
                 self.derivative.clone()
-                / (T::one() + T::one() * self.number.clone().sqrt())
+                / ((T::one() + T::one()) * self.number.clone().sqrt())
             )
         }
     }

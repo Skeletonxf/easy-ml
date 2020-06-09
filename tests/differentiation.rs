@@ -167,6 +167,18 @@ mod forward_tests {
             }
         }));
     }
+
+    use crate::easy_ml::numeric::extra::Sqrt;
+
+    #[test]
+    fn test_sqrt() {
+        // sqrt is essentially pow, so the two gradients should be the same
+        let x = Trace::variable(3.0);
+        let y = x.sqrt();
+        let also_y = x.pow(0.5);
+        assert!((y.derivative - also_y.derivative) < std::f64::EPSILON);
+        assert!((y.number - also_y.number) < std::f64::EPSILON);
+    }
 }
 
 
@@ -437,5 +449,20 @@ mod reverse_tests {
                 true
             }
         }));
+    }
+
+    use crate::easy_ml::numeric::extra::Sqrt;
+
+    #[test]
+    fn test_sqrt() {
+        // sqrt is essentially pow, so the two gradients should be the same
+        let list = WengertList::new();
+        let x = Record::variable(3.0, &list);
+        let y = x.sqrt();
+        let also_y = x.pow(0.5);
+        let dx = y.derivatives()[&x];
+        let also_dx = also_y.derivatives()[&x];
+        assert!(dx - also_dx < std::f64::EPSILON);
+        assert!((y.number - also_y.number) < std::f64::EPSILON);
     }
 }

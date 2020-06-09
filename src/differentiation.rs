@@ -3,6 +3,8 @@
  *
  * # Automatic Differentiation
  *
+ * This module provides structs for performing Forward and Reverse Automatic Differentiation
+ *
  * ## Automatic Differentiation is not [Numerical Differentiation](https://en.wikipedia.org/wiki/Numerical_differentiation)
  *
  * You were probably introduced to differentiation as numeric differentiation,
@@ -73,16 +75,15 @@
  * substitution. `Record` requires dynamically building a computational graph of the values
  * and dependencies of each operation performed on them. This means performing operations on
  * records have side effects, they add entries onto a `WengertList`. However, when using
- * `Record` the side effects are abstracted away, just need to create a `WengertList`
- * before you start creating Records.
+ * `Record` the side effects are abstracted away, just create a `WengertList` before you
+ * start creating Records.
  *
  * Given some function from N inputs to M outputs you can pass it `Trace`s or `Record`s
  * and retrieve the first derivative from the outputs for all combinations of N and M.
  * If N >> M then you should use `Record` as reverse mode automatic differentiation is
  * much cheaper. If N << M then you should use `Trace` as it will be much cheaper. If
  * you have large N and M, or small N and M, you might have to benchmark to find which
- * method works best. Forward mode could easily be parallelised, and doesn't require
- * more memory as you perform operations, however most problems are N > M.
+ * method works best. However, most problems are N > M.
  *
  * For this example we use a function which takes two inputs, r and a, and returns two
  * outputs, x and y.
@@ -180,6 +181,14 @@
  * Although in this example the derivatives found are identical, in practise, because
  * forward and reverse mode compute things differently and floating point numbers have
  * limited precision, you should not expect the derivatives to be exactly equal.
+ *
+ * # Further information
+ *
+ * - [Automatic Differentiation Step by Step](https://medium.com/@marksaroufim/automatic-differentiation-step-by-step-24240f97a6e6)
+ * - [Forward Mode Automatic Differentiation](https://en.wikipedia.org/wiki/Automatic_differentiation#Automatic_differentiation_using_dual_numbers)
+ * - [Reverse Mode Automatic Differentiation](https://rufflewind.com/2016-12-30/reverse-mode-automatic-differentiation)
+ * - [Automatic Differentiation: The most criminally underused tool in the potential machine learning toolbox?](https://justindomke.wordpress.com/2009/02/17/automatic-differentiation-the-most-criminally-underused-tool-in-the-potential-machine-learning-toolbox/)
+ * - [Yes you should understand backprop](https://medium.com/@karpathy/yes-you-should-understand-backprop-e2f06eab496b)
  */
 
 pub mod operations;
@@ -221,6 +230,12 @@ pub trait Primitive {}
  *
  * Why the one for the starting derivative? Because δx/δx = 1, as with symbolic
  * differentiation.
+ *
+ * # Acknowledgments
+ *
+ * The wikipedia page on Automatic Differentiation provided a very useful overview and
+ * explanation for understanding Forward Mode Automatic Differentiation as well as the
+ * implementation rules.
  */
 #[derive(Debug)]
 pub struct Trace<T: Primitive> {
@@ -384,9 +399,20 @@ type Index = usize;
  * Although sophisticated implementations can make the Wengert list only log(N) in length
  * by storing only some of the intermediate steps of N computational steps, this implementation
  * is not as sophisticated, and will store all of them.
+ *
+ * # Panics
+ *
+ * Every operation and nearly every method a Record has involves manipulating the
+ * record's history on its referenced WengertList. This WengertList itself maintains
+ * a [RefCell](https://doc.rust-lang.org/std/cell/struct.RefCell.html) which tracks
+ * borrows at runtime rather than compile time. This is neccessary to maintain the
+ * illusion that Records are just ordinary numbers, and the side effects of doing
+ * arithmetic with Records are limited to their referenced WengertList. This also means
+ * that it may be possible to construct code which would attempt to make multiple
+ * mutable borrows of this WengertList at once, which would result in a panic. In
+ * practise, because each borrow is scoped to inside the methods of Record or WengertList,
+ * I don't think this can/will occur.
  */
-// TODO: mention that every method involving this could panic if multiple
-// mutable borrows are attempted at once
 #[derive(Debug)]
 pub struct WengertList<T> {
     // It is neccessary to wrap the vec in a RefCell to allow for mutating
@@ -418,7 +444,8 @@ struct Operation<T> {
  * the derivative with respect to that input.
  *
  * Indexing using Records not involved in the computational graph, or involved
- * in a different one will return nonsense or index out of bounds and panic.
+ * in a different one will return nonsense or index out of bounds and panic. In
+ * the future this may be changed to always panic.
  */
 #[derive(Debug)]
 pub struct Derivatives<T> {
@@ -486,27 +513,29 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
     }
 }
 
-// TODO:
-// Test Sqrt on Traces and Records
-// Document panics reverse mode can throw
-// Credit Rufflewind for the tutorial
-// https://rufflewind.com/2016-12-30/reverse-mode-automatic-differentiation
-// https://github.com/Rufflewind/revad/blob/master/src/tape.rs
-// Tutorial source code is MIT licensed
-// Credit other useful webpages:
-// https://medium.com/@marksaroufim/automatic-differentiation-step-by-step-24240f97a6e6
-// https://en.m.wikipedia.org/wiki/Automatic_differentiation
-// https://justindomke.wordpress.com/2009/02/17/automatic-differentiation-the-most-criminally-underused-tool-in-the-potential-machine-learning-toolbox/
-// The webpage about the power of functional composition will make a good basis for NN
-// examples
-// https://blog.jle.im/entry/purely-functional-typed-models-1.html
-// Leakyness of backprop page will make good intro to NN examples
-// https://medium.com/@karpathy/yes-you-should-understand-backprop-e2f06eab496b
-// Also do the constant ops for the Matrix type
-
 /**
  * A wrapper around a real number which records it going through the computational
  * graph. This is used to perform Reverse Mode Automatic Differentiation.
+ *
+ * # Panics
+ *
+ * Every operation and nearly every method a Record has involves manipulating the
+ * record's history on its referenced WengertList. The WengertList itself maintains
+ * a [RefCell](https://doc.rust-lang.org/std/cell/struct.RefCell.html) which tracks
+ * borrows at runtime rather than compile time. This is neccessary to maintain the
+ * illusion that Records are just ordinary numbers, and the side effects of doing
+ * arithmetic with Records are limited to their referenced WengertList. This also means
+ * that it may be possible to construct code which would attempt to make multiple
+ * mutable borrows of the WengertList at once, which would result in a panic. In
+ * practise, because each borrow is scoped to inside the methods of Record or WengertList,
+ * I don't think this can/will occur.
+ *
+ * # Acknowledgments
+ *
+ * A [tutorial by Rufflewind](https://rufflewind.com/2016-12-30/reverse-mode-automatic-differentiation)
+ * and the associated [MIT licensed](http://opensource.org/licenses/MIT)
+ * [soure code](https://github.com/Rufflewind/revad/blob/master/src/tape.rs) were invaluable
+ * in providing understanding on how to implement Reverse Mode Automatic Differentiation.
  */
 #[derive(Debug)]
 pub struct Record<'a, T: Primitive> {
