@@ -14,13 +14,14 @@ This is a pure Rust library which makes heavy use of passing closures, iterators
 - Logistic Regression
 - Naïve Bayes
 - Feedforward neural networks
+- Backprop with Automatic Differentiation
 - using a custom numeric type such as `num_bigint::BigInt`
 
 This library is not designed for deep learning. I have not tried to optimise much of anything. The implementations of everything are more or less textbook mathematical definitions. You might find that you need to use a faster library once you've explored your problem, or that you need something that's not implemented here and have to switch. I hope that being able to at least start here may be of use.
 
 ## State of library
 
-This library is currently usable for simple linear algebra tasks like linear regression and for storing 2 dimensional data. This library also has support for forward and reverse automatic differentiation. Currently there is no support for 3d or higher dimensional data, though matrices can be nested into each other.
+This library is currently usable for simple linear algebra tasks like linear regression and for storing 2 dimensional data. This library also has support for forward and reverse automatic differentiation and can train simple feedforward neural networks. Currently there is no support for 3d or higher dimensional data, though matrices can be nested into each other.
 
 ## Level of abstraction
 
