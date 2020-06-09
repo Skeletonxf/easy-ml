@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 1.3
+
+Added Forward and Reverse mode Automatic Differentiation wrapper structs.
+Added example for solving the XOR problem with a neural net using Automatic
+Differentiation.
+
 ## Version 1.2
 
 Added a simpler Naïve Bayes example and supporting library code for
