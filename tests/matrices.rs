@@ -60,6 +60,34 @@ mod tests {
     }
 
     #[test]
+    fn check_row_major_iterator() {
+        let matrix = Matrix::from(vec![vec![1, 2], vec![3, 4], vec![5, 6]]);
+        println!("{:?}", matrix);
+        let mut iterator = matrix.row_major_iter();
+        assert_eq!(iterator.next(), Some(1));
+        assert_eq!(iterator.next(), Some(2));
+        assert_eq!(iterator.next(), Some(3));
+        assert_eq!(iterator.next(), Some(4));
+        assert_eq!(iterator.next(), Some(5));
+        assert_eq!(iterator.next(), Some(6));
+        assert_eq!(iterator.next(), None);
+    }
+
+    #[test]
+    fn check_row_major_reference_iterator() {
+        let matrix = Matrix::from(vec![vec![1, 2], vec![3, 4], vec![5, 6]]);
+        println!("{:?}", matrix);
+        let mut iterator = matrix.row_major_reference_iter();
+        assert_eq!(iterator.next(), Some(&1));
+        assert_eq!(iterator.next(), Some(&2));
+        assert_eq!(iterator.next(), Some(&3));
+        assert_eq!(iterator.next(), Some(&4));
+        assert_eq!(iterator.next(), Some(&5));
+        assert_eq!(iterator.next(), Some(&6));
+        assert_eq!(iterator.next(), None);
+    }
+
+    #[test]
     fn check_matrix_multiplication() {
         let matrix1 = Matrix::from(vec![vec![1, 2], vec![3, 4], vec![5, 6]]);
         let matrix2 = Matrix::from(vec![vec![1, 2, 3], vec![4, 5, 6]]);

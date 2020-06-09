@@ -11,8 +11,10 @@ pub mod iterators;
 pub mod slices;
 
 use crate::matrices::iterators::{
-    ColumnIterator, RowIterator, ColumnMajorIterator,
-    ColumnReferenceIterator, RowReferenceIterator, ColumnMajorReferenceIterator};
+    ColumnIterator, RowIterator,
+    ColumnMajorIterator, RowMajorIterator,
+    ColumnReferenceIterator, RowReferenceIterator,
+    ColumnMajorReferenceIterator, RowMajorReferenceIterator};
 use crate::matrices::slices::Slice2D;
 use crate::numeric::{Numeric, NumericRef};
 use crate::numeric::extra::{Real, RealRef};
@@ -211,6 +213,14 @@ impl <T> Matrix<T> {
     }
 
     /**
+     * Returns a row major iterator over references to all values in this matrix,
+     * proceeding through each row in order.
+     */
+    pub fn row_major_reference_iter(&self) -> RowMajorReferenceIterator<T> {
+        RowMajorReferenceIterator::new(self)
+    }
+
+    /**
      * Shrinks this matrix down from its current MxN size down to
      * some new size OxP where O and P are determined by the kind of
      * slice given and 1 <= O <= M and 1 <= P <= N.
@@ -366,6 +376,24 @@ impl <T: Clone> Matrix<T> {
      */
     pub fn column_major_iter(&self) -> ColumnMajorIterator<T> {
         ColumnMajorIterator::new(self)
+    }
+
+    /**
+     * Returns a row major iterator over all values in this matrix, proceeding through each
+     * row in order.
+     *
+     * If you have a matrix such as:
+     * ```ignore
+     * [
+     *    1, 2
+     *    3, 4
+     * ]
+     * ```
+     * then the iterator will yield [1, 2, 3, 4]. If you do not need to copy the
+     * elements use `row_major_reference_iter` instead.
+     */
+    pub fn row_major_iter(&self) -> RowMajorIterator<T> {
+        RowMajorIterator::new(self)
     }
 
     /**

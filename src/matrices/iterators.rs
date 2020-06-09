@@ -146,7 +146,7 @@ impl <'a, T: Clone> Iterator for RowIterator<'a, T> {
 }
 
 /**
- * An column major iterator over all values in a matrix.
+ * A column major iterator over all values in a matrix.
  *
  * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
  * ```ignore
@@ -201,6 +201,68 @@ impl <'a, T: Clone> Iterator for ColumnMajorIterator<'a, T> {
         } else {
             // keep incrementing through this column
             self.row_counter += 1;
+        }
+
+        value
+    }
+}
+
+/**
+ * A row major iterator over all values in a matrix.
+ *
+ * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
+ * ```ignore
+ * [
+ *   1, 2
+ *   3, 4
+ * ]
+ * ```
+ * The elements will be iterated through as 1, 2, 3, 4
+ */
+pub struct RowMajorIterator<'a, T: Clone> {
+    matrix: &'a Matrix<T>,
+    column_counter: Column,
+    row_counter: Row,
+    finished: bool,
+}
+
+impl <'a, T: Clone> RowMajorIterator<'a, T> {
+    /**
+     * Constructs a row major iterator over this matrix.
+     */
+    pub fn new(matrix: &Matrix<T>) -> RowMajorIterator<T> {
+        RowMajorIterator {
+            matrix,
+            column_counter: 0,
+            row_counter: 0,
+            finished: false,
+        }
+    }
+}
+
+impl <'a, T: Clone> Iterator for RowMajorIterator<'a, T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None
+        }
+
+        let value = Some(self.matrix.get(self.row_counter, self.column_counter));
+
+        if self.column_counter == self.matrix.columns() - 1
+                && self.row_counter == self.matrix.rows() -1 {
+            // reached end of matrix for next iteration
+            self.finished = true;
+        }
+
+        if self.column_counter == self.matrix.columns() - 1 {
+            // reached end of a row, need to reset to first element in next row
+            self.column_counter = 0;
+            self.row_counter += 1;
+        } else {
+            // keep incrementing through this row
+            self.column_counter += 1;
         }
 
         value
@@ -316,7 +378,7 @@ impl <'a, T> Iterator for RowReferenceIterator<'a, T> {
 }
 
 /**
- * An column major iterator over references to all values in a matrix.
+ * A column major iterator over references to all values in a matrix.
  *
  * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
  * ```ignore
@@ -371,6 +433,68 @@ impl <'a, T> Iterator for ColumnMajorReferenceIterator<'a, T> {
         } else {
             // keep incrementing through this column
             self.row_counter += 1;
+        }
+
+        value
+    }
+}
+
+/**
+ * A row major iterator over references to all values in a matrix.
+ *
+ * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
+ * ```ignore
+ * [
+ *   1, 2
+ *   3, 4
+ * ]
+ * ```
+ * The elements will be iterated through as &1, &2, &3, &4
+ */
+    pub struct RowMajorReferenceIterator<'a, T> {
+    matrix: &'a Matrix<T>,
+    column_counter: Column,
+    row_counter: Row,
+    finished: bool,
+}
+
+impl <'a, T> RowMajorReferenceIterator<'a, T> {
+    /**
+     * Constructs a column major iterator over this matrix.
+     */
+    pub fn new(matrix: &Matrix<T>) -> RowMajorReferenceIterator<T> {
+        RowMajorReferenceIterator {
+            matrix,
+            column_counter: 0,
+            row_counter: 0,
+            finished: false,
+        }
+    }
+}
+
+impl <'a, T> Iterator for RowMajorReferenceIterator<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None
+        }
+
+        let value = Some(self.matrix.get_reference(self.row_counter, self.column_counter));
+
+        if self.column_counter == self.matrix.columns() - 1
+                && self.row_counter == self.matrix.rows() -1 {
+            // reached end of matrix for next iteration
+            self.finished = true;
+        }
+
+        if self.column_counter == self.matrix.columns() - 1 {
+            // reached end of a row, need to reset to first element in next row
+            self.column_counter = 0;
+            self.row_counter += 1;
+        } else {
+            // keep incrementing through this row
+            self.column_counter += 1;
         }
 
         value
