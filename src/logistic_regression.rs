@@ -237,7 +237,7 @@ fn update_function(
     for i in 0..prediction_errors.rows() {
         // compute diff * x_i
         let diff = prediction_errors.get(i, 0);
-        let ith_error = Matrix::column(class2_inputs.row_iter(i).collect()).map(|x| x * diff);
+        let ith_error = Matrix::column(class2_inputs.row_iter(i).collect()) * diff;
         derivative = derivative + ith_error;
     }
 
@@ -253,7 +253,7 @@ let mut log_likelihood_progress = Vec::with_capacity(25);
 // you would stop once the updates for the weights become 0 or very close to 0.
 for i in 0..25 {
     let update = update_function(&weights, &class1_inputs, &class2_inputs);
-    weights = weights + update.map(|w| w * learning_rate);
+    weights = weights + (update * learning_rate);
     log_likelihood_progress.push(
         (i as f32, log_likelihood(&weights, &class1_inputs, &class2_inputs) as f32)
     );
