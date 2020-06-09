@@ -6,7 +6,7 @@ edition = "2018"
 homepage = "https://github.com/Skeletonxf/easy-ml"
 repository = "https://github.com/Skeletonxf/easy-ml"
 description = "Matrix and linear algebra library aimed at being easy to use"
-keywords = ["machine-learning", "machine", "learning", "matrices", "linear-algebra", "automatic-differentiation"]
+keywords = ["machine-learning", "machine", "learning", "matrices", "linear-algebra"]
 readme = "README.md"
 license = "MPL-2.0"
 
