@@ -6,11 +6,11 @@ Fixed broken link to XOR example in documentation.
 
 ## Version 1.3
 
-Added Forward and Reverse mode Automatic Differentiation wrapper structs.
+Added Forward and Reverse mode Automatic Differentiation wrapper structs.  
 Added example for solving the XOR problem with a neural net using Automatic
-Differentiation.
-Added RowMajor versions for matrix iterators
-Added matrix and scalar operations to Matrix
+Differentiation.  
+Added RowMajor versions for matrix iterators  
+Added matrix and scalar operations to Matrix  
 
 ## Version 1.2
 
