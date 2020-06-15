@@ -83,6 +83,8 @@ impl Iterator for EndlessRandomGenerator {
 // now pass this instance to Gaussian functions that accept a &mut Iterator
 let mut random_numbers = EndlessRandomGenerator { rng: random_generator };
 ```
+
+# [Example of creating an infinite iterator for web assembly targets](../web_assembly/index.html)
  */
 
 use crate::numeric::{Numeric, NumericRef};

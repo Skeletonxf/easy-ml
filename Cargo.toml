@@ -7,6 +7,7 @@ homepage = "https://github.com/Skeletonxf/easy-ml"
 repository = "https://github.com/Skeletonxf/easy-ml"
 description = "Matrix and linear algebra library aimed at being easy to use"
 keywords = ["machine-learning", "machine", "learning", "matrices", "linear-algebra"]
+categories = ["science", "wasm"]
 readme = "README.md"
 license = "MPL-2.0"
 
@@ -18,3 +19,4 @@ rand_chacha = "0.2"
 textplots = "0.5"
 num-bigint = "0.2.4"
 num-traits = "0.2.7"
+js-sys = "0.3"

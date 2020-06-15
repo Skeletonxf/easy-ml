@@ -24,3 +24,4 @@ pub mod k_means;
 pub mod logistic_regression;
 pub mod naive_bayes;
 pub mod neural_networks;
+pub mod web_assembly;
