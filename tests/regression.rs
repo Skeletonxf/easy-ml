@@ -24,13 +24,14 @@ mod tests {
         // by inserting a column of 1s
         let mut X = x.clone();
         X.insert_column(0, 1.0);
-        println!("{:?}", &X);
+        println!("X = {}", &X);
 
         // w is given by inverse(XT*X) * (XT * y)
         let w = linear_algebra::inverse::<f32>(&(X.transpose() * &X)).unwrap() * (X.transpose() * &y);
         let error = error_function(&w, &X, &y);
         println!("error {:?}", error);
-        println!("y = {:?}\nprediction = {:?}", y, (&X * &w));
+        println!("w = {}", w);
+        println!("y = {}\nprediction = {}", y, (&X * &w));
         assert!(error < 3.7);
         assert!(error > 3.5);
     }

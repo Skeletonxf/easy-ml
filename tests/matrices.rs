@@ -152,8 +152,22 @@ mod tests {
         assert_eq!(None, iterator.next());
         assert_eq!((3, 1), matrix.size());
         matrix.insert_column(1, 3);
+        let mut iterator = matrix.row_major_iter();
+        assert_eq!(Some(5), iterator.next());
+        assert_eq!(Some(3), iterator.next());
+        assert_eq!(Some(2), iterator.next());
+        assert_eq!(Some(3), iterator.next());
+        assert_eq!(Some(4), iterator.next());
+        assert_eq!(Some(3), iterator.next());
+        assert_eq!(None, iterator.next());
         assert_eq!((3, 2), matrix.size());
         matrix.remove_row(1);
+        let mut iterator = matrix.row_major_iter();
+        assert_eq!(Some(5), iterator.next());
+        assert_eq!(Some(3), iterator.next());
+        assert_eq!(Some(4), iterator.next());
+        assert_eq!(Some(3), iterator.next());
+        assert_eq!(None, iterator.next());
         assert_eq!((2, 2), matrix.size());
     }
 }

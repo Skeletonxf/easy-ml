@@ -49,8 +49,8 @@ pub enum Slice {
  * A kind of slice that can be taken on a matrix, over its rows and columns.
  */
 pub struct Slice2D {
-    rows: Slice,
-    columns: Slice,
+    pub(crate) rows: Slice,
+    pub(crate) columns: Slice,
 }
 
 impl Slice {

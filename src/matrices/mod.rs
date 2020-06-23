@@ -49,7 +49,9 @@ use crate::linear_algebra;
  */
 #[derive(Debug)]
 pub struct Matrix<T> {
-    data: Vec<Vec<T>>
+    data: Vec<T>,
+    rows: Row,
+    columns: Column,
 }
 
 /// The maximum row and column lengths are usize, due to the internal storage being backed by
@@ -66,7 +68,9 @@ impl <T> Matrix<T> {
      */
     pub fn from_scalar(value: T) -> Matrix<T> {
         Matrix {
-            data: vec![vec![value]]
+            data: vec![value],
+            rows: 1,
+            columns: 1,
         }
     }
 
@@ -75,7 +79,9 @@ impl <T> Matrix<T> {
      */
     pub fn row(values: Vec<T>) -> Matrix<T> {
         Matrix {
-            data: vec![values]
+            columns: values.len(),
+            data: values,
+            rows: 1,
         }
     }
 
@@ -84,7 +90,9 @@ impl <T> Matrix<T> {
      */
     pub fn column(values: Vec<T>) -> Matrix<T> {
         Matrix {
-            data: values.into_iter().map(|x| vec![x]).collect()
+            rows: values.len(),
+            data: values,
+            columns: 1,
         }
     }
 
@@ -107,14 +115,28 @@ impl <T> Matrix<T> {
      *     vec![ 8, 9, 3 ]]);
      * ```
      */
-    pub fn from(values: Vec<Vec<T>>) -> Matrix<T> {
+    pub fn from(mut values: Vec<Vec<T>>) -> Matrix<T> {
         assert!(!values.is_empty(), "No rows defined");
         // check length of first row is > 1
         assert!(!values[0].is_empty(), "No column defined");
         // check length of each row is the same
         assert!(values.iter().map(|x| x.len()).all(|x| x == values[0].len()), "Inconsistent size");
+        // flatten the data into a row major layout
+        let rows = values.len();
+        let columns = values[0].len();
+        let mut data = Vec::with_capacity(rows * columns);
+        let mut value_stream = values.drain(..);
+        for _ in 0..rows {
+            let mut value_row_stream = value_stream.next().unwrap();
+            let mut row_of_values = value_row_stream.drain(..);
+            for _ in 0..columns {
+                data.push(row_of_values.next().unwrap());
+            }
+        }
         Matrix {
-            data: values
+            data,
+            rows,
+            columns,
         }
     }
 
@@ -127,21 +149,34 @@ impl <T> Matrix<T> {
      * Returns the dimensionality of this matrix in Row, Column format
      */
     pub fn size(&self) -> (Row, Column) {
-        (self.data.len(), self.data[0].len())
+        (self.rows, self.columns)
     }
 
     /**
      * Gets the number of rows in this matrix.
      */
     pub fn rows(&self) -> Row {
-        self.data.len()
+        self.rows
     }
 
     /**
      * Gets the number of columns in this matrix.
      */
     pub fn columns(&self) -> Column {
-        self.data[0].len()
+        self.columns
+    }
+
+    /**
+     * Matrix data is stored as row major, so each row is stored as
+     * adjacent items going through the different columns. Therefore,
+     * to index this flattened representation we jump down in row sized
+     * blocks to reach the correct row, and then jump further equal to
+     * the column. The confusing thing is that the number of columns
+     * this matrix has is the length of each of the rows in this matrix,
+     * and vice versa.
+     */
+    fn get_index(&self, row: Row, column: Column) -> usize {
+        column + (row * self.columns())
     }
 
     /**
@@ -150,7 +185,7 @@ impl <T> Matrix<T> {
     pub fn get_reference(&self, row: Row, column: Column) -> &T {
         assert!(row < self.rows(), "Row out of index");
         assert!(column < self.columns(), "Column out of index");
-        &self.data[row][column]
+        &self.data[self.get_index(row, column)]
     }
 
     /**
@@ -159,7 +194,8 @@ impl <T> Matrix<T> {
     pub fn set(&mut self, row: Row, column: Column, value: T) {
         assert!(row < self.rows(), "Row out of index");
         assert!(column < self.columns(), "Column out of index");
-        self.data[row][column] = value;
+        let columns = self.columns();
+        self.data[column + (row * columns)] = value;
     }
 
     /**
@@ -171,7 +207,21 @@ impl <T> Matrix<T> {
      */
     pub fn remove_row(&mut self, row: Row) {
         assert!(self.rows() > 1);
-        self.data.remove(row);
+        let mut r = 0;
+        let mut c = 0;
+        // drop the values at the specified row
+        let columns = self.columns();
+        self.data.retain(|_| {
+            let keep = r != row;
+            if c < (columns - 1) {
+                c += 1;
+            } else {
+                r += 1;
+                c = 0;
+            }
+            keep
+        });
+        self.rows -= 1;
     }
 
     /**
@@ -183,9 +233,21 @@ impl <T> Matrix<T> {
      */
     pub fn remove_column(&mut self, column: Column) {
         assert!(self.columns() > 1);
-        for row in 0..self.rows() {
-            self.data[row].remove(column);
-        }
+        let mut r = 0;
+        let mut c = 0;
+        // drop the values at the specified column
+        let columns = self.columns();
+        self.data.retain(|_| {
+            let keep = c != column;
+            if c < (columns - 1) {
+                c += 1;
+            } else {
+                r += 1;
+                c = 0;
+            }
+            keep
+        });
+        self.columns -= 1;
     }
 
     /**
@@ -239,25 +301,52 @@ impl <T> Matrix<T> {
      * from this matrix, ie the resulting matrix must be at least 1x1.
      */
     pub fn retain_mut(&mut self, slice: Slice2D) {
-        // iterate through rows and columns backwards so removing entries doesn't
-        // invalidate the index
-        for row in (0..self.rows()).rev() {
-            for column in (0..self.columns()).rev() {
-                if !slice.accepts(row, column) {
-                    self.data[row].remove(column);
+        let mut r = 0;
+        let mut c = 0;
+        // drop the values rejected by the slice
+        let columns = self.columns();
+        self.data.retain(|_| {
+            let keep = slice.accepts(r, c);
+            if c < (columns - 1) {
+                c += 1;
+            } else {
+                r += 1;
+                c = 0;
+            }
+            keep
+        });
+        // work out the resulting size of this matrix by using the non
+        // public fields of the Slice2D to handle each row and column
+        // seperately.
+        let remaining_rows = {
+            let mut accepted = 0;
+            for i in 0..self.rows() {
+                if slice.rows.accepts(i) {
+                    accepted += 1;
                 }
             }
-            // delete empty rows
-            if self.data[row].is_empty() {
-                self.data.remove(row);
+            accepted
+        };
+        let remaining_columns = {
+            let mut accepted = 0;
+            for i in 0..self.columns() {
+                if slice.columns.accepts(i) {
+                    accepted += 1;
+                }
             }
-        }
+            accepted
+        };
         assert!(
-            !self.data.is_empty(),
+            remaining_rows > 0,
             "Provided slice must leave at least 1 row in the retained matrix");
         assert!(
-            !self.data[0].is_empty(),
+            remaining_columns > 0,
             "Provided slice must leave at least 1 column in the retained matrix");
+        assert!(
+            !self.data.is_empty(),
+            "Provided slice must leave at least 1 row and 1 column in the retained matrix");
+        self.rows = remaining_rows;
+        self.columns = remaining_columns
         // By construction jagged slices should be impossible, if this
         // invariant later changes by accident it would be possible to break the
         // rectangle shape invariant on a matrix object
@@ -320,6 +409,9 @@ impl <T: Clone> Matrix<T> {
                 self.set(j, i, temp);
             }
         }
+        let rows = self.rows();
+        self.rows = self.columns();
+        self.columns = rows;
     }
 
     /**
@@ -401,7 +493,9 @@ impl <T: Clone> Matrix<T> {
      */
     pub fn empty(value: T, size: (Row, Column)) -> Matrix<T> {
         Matrix {
-            data: vec![vec![value; size.1]; size.0]
+            data: vec![value; size.0 * size.1],
+            rows: size.0,
+            columns: size.1,
         }
     }
 
@@ -413,7 +507,7 @@ impl <T: Clone> Matrix<T> {
             "Row out of index, only have {} rows", self.rows());
         assert!(column < self.columns(),
             "Column out of index, only have {} columns", self.columns());
-        self.data[row][column].clone()
+        self.data[self.get_index(row, column)].clone()
     }
 
     /**
@@ -540,8 +634,10 @@ impl <T: Clone> Matrix<T> {
      */
     pub fn insert_row(&mut self, row: Row, value: T) {
         assert!(row <= self.rows(), "Row to insert must be <= to {}", self.rows());
-        let new_row = vec![value; self.columns()];
-        self.data.insert(row, new_row);
+        for column in 0..self.columns() {
+            self.data.insert(self.get_index(row, column), value.clone());
+        }
+        self.rows += 1;
     }
 
     /**
@@ -570,11 +666,16 @@ impl <T: Clone> Matrix<T> {
      * assert_eq!(None, values.next());
      * ```
      */
-    pub fn insert_row_with<I>(&mut self, row: Row, values: I)
+    pub fn insert_row_with<I>(&mut self, row: Row, mut values: I)
     where I: Iterator<Item = T> {
         assert!(row <= self.rows(), "Row to insert must be <= to {}", self.rows());
-        let new_row = values.take(self.columns()).collect();
-        self.data.insert(row, new_row);
+        for column in 0..self.columns() {
+            self.data.insert(
+                self.get_index(row, column),
+                values.next().expect(
+                    &format!("At least {} values must be provided", self.columns())));
+        }
+        self.rows += 1;
     }
 
     /**
@@ -586,9 +687,10 @@ impl <T: Clone> Matrix<T> {
      */
     pub fn insert_column(&mut self, column: Column, value: T) {
         assert!(column <= self.columns(), "Column to insert must be <= to {}", self.columns());
-        for row in 0..self.rows() {
-            self.data[row].insert(column, value.clone());
+        for row in (0..self.rows()).rev() {
+            self.data.insert(self.get_index(row, column), value.clone());
         }
+        self.columns += 1;
     }
 
     /**
@@ -617,12 +719,18 @@ impl <T: Clone> Matrix<T> {
      * assert_eq!(None, values.next());
      * ```
      */
-    pub fn insert_column_with<I>(&mut self, column: Column, mut values: I)
+    pub fn insert_column_with<I>(&mut self, column: Column, values: I)
     where I: Iterator<Item = T> {
         assert!(column <= self.columns(), "Column to insert must be <= to {}", self.columns());
-        for row in 0..self.rows() {
-            self.data[row].insert(column, values.next().unwrap());
+        let mut array_values = values.collect::<Vec<T>>();
+        assert!(array_values.len() >= self.rows(),
+            "At least {} values must be provided", self.rows());
+        for row in (0..self.rows()).rev() {
+            self.data.insert(
+                self.get_index(row, column),
+                array_values.pop().unwrap());
         }
+        self.columns += 1;
     }
 
     /**
@@ -859,9 +967,7 @@ impl <T: Numeric> Matrix<T> {
      */
     pub fn diagonal(value: T, size: (Row, Column)) -> Matrix<T> {
         assert!(size.0 == size.1);
-        let mut matrix = Matrix {
-            data: vec![vec![T::zero(); size.1]; size.0]
-        };
+        let mut matrix = Matrix::empty(T::zero(), size);
         for i in 0..size.0 {
             matrix.set(i, i, value.clone());
         }
@@ -885,7 +991,7 @@ impl <T: PartialEq> PartialEq for Matrix<T> {
         // each matrix is the same
         self.data.iter()
             .zip(other.data.iter())
-            .all(|(x, y)| x.iter().zip(y.iter()).all(|(a, b)| a == b))
+            .all(|(x, y)| x == y)
     }
 }
 
