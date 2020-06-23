@@ -27,19 +27,6 @@ This library is currently usable for simple linear algebra tasks like linear reg
 
 Where as other machine learning libraries often create objects/structs to represent algorithms like linear regression or k-means, Easy ML instead only represents the data in structs and the consuming code determines all of the control flow. While this may take more effort to write for consuming code initially making changes to the algorithm is much easier.
 
-## Roadmap
-
-- Implement more linear algebra, examples and supporting functions
-  - computer vision with mnist dataset
-  - bayesian regression WIP
-
-Planned but unlikely to happen any time soon:
-
-- Views and slicing on matrices and named tensors to cut down on copies and looping in consuming code
-- Const generics for matrices, records, (and named tensors?) to move a lot of runtime errors into compile time
-- Named tensors that will support arbitary numbers of dimensions
-- Eigenvalue decomposition and PCA support
-
 *****
 
 1 - If you need to freeze your rust compiler version you should specify a minor version such as `easy-ml = "1.3"`. Easy ML will not introduce breaking API changes between minor versions, but does follow the latest stable version of rust, and thus may introduce dependencies on newer language features (eg const generics) in minor version updates.
