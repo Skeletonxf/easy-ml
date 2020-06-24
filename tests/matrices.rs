@@ -170,4 +170,76 @@ mod tests {
         assert_eq!(None, iterator.next());
         assert_eq!((2, 2), matrix.size());
     }
+
+    #[test]
+    fn check_growing_matrix() {
+        let mut matrix = Matrix::from_scalar(5);
+        matrix.insert_row(1, 3);
+        assert_eq!(matrix, Matrix::from(vec![
+            vec![ 5 ],
+            vec![ 3 ]
+        ]));
+        matrix.insert_column(0, 4);
+        assert_eq!(matrix, Matrix::from(vec![
+            vec![ 4, 5 ],
+            vec![ 4, 3 ]
+        ]));
+        matrix.insert_row_with(0, [1, 2].iter().cloned());
+        assert_eq!(matrix, Matrix::from(vec![
+            vec![ 1, 2 ],
+            vec![ 4, 5 ],
+            vec![ 4, 3 ]
+        ]));
+        matrix.insert_row_with(2, [7, 8, 9].iter().cloned());
+        assert_eq!(matrix, Matrix::from(vec![
+            vec![ 1, 2 ],
+            vec![ 4, 5 ],
+            vec![ 7, 8 ],
+            vec![ 4, 3 ]
+        ]));
+        matrix.insert_column_with(2, [6, 0, 3, 7].iter().cloned());
+        assert_eq!(matrix, Matrix::from(vec![
+            vec![ 1, 2, 6 ],
+            vec![ 4, 5, 0 ],
+            vec![ 7, 8, 3 ],
+            vec![ 4, 3, 7 ]
+        ]));
+    }
+
+    #[test]
+    #[should_panic]
+    fn check_insert_column_with_too_few_elements() {
+        let mut matrix = Matrix::column(vec![ 1, 2, 3 ]);
+        matrix.insert_column_with(1, [4, 5].iter().cloned());
+    }
+
+    #[test]
+    #[should_panic]
+    fn check_insert_row_with_too_few_elements() {
+        let mut matrix = Matrix::row(vec![ 1, 2, 3 ]);
+        matrix.insert_row_with(0, [4, 5].iter().cloned());
+    }
+
+    #[test]
+    fn check_shrinking_matrix() {
+        let mut matrix = Matrix::from(vec![
+            vec![ 1, 2, 6 ],
+            vec![ 4, 5, 0 ],
+            vec![ 7, 8, 3 ],
+            vec![ 4, 3, 7 ]
+        ]);
+        matrix.remove_column(0);
+        assert_eq!(matrix, Matrix::from(vec![
+            vec![ 2, 6 ],
+            vec![ 5, 0 ],
+            vec![ 8, 3 ],
+            vec![ 3, 7 ]
+        ]));
+        matrix.remove_row(1);
+        assert_eq!(matrix, Matrix::from(vec![
+            vec![ 2, 6 ],
+            vec![ 8, 3 ],
+            vec![ 3, 7 ]
+        ]));
+    }
 }
