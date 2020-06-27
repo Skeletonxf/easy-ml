@@ -1,5 +1,5 @@
 /*!
-Naïve Bayes Examples
+Naïve Bayes examples
 
 # Naïve Bayes
 
@@ -310,7 +310,8 @@ println!("F1-Score: {:?}", f1_score);
 assert!(f1_score > 0.8);
 ```
 
-## [3 Class Naïve Bayes Example](./three_class/index.html)
+## 3 Class Naïve Bayes Example
+[See submodule for 3 Class Naïve Bayes Example](./three_class/index.html)
 */
 
 pub mod three_class {

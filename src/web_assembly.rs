@@ -1,5 +1,7 @@
 /*!
-# Example of creating an infinite iterator when targeting web assembly
+# Web Assembly examples
+
+## Example of creating an infinite iterator when targeting web assembly
 
 Because Easy ML uses randomness only via the calling code providing a source of random numbers,
 you can easily swap out the source of the randomness when targeting more restrictive environments.

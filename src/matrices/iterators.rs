@@ -33,6 +33,37 @@
  * assert_eq!(matrix.get(1, 2), 8.0 * 1.0);
  * assert_eq!(matrix.get(2, 2), 2.0 * 9.0);
  * ```
+ *
+ * # Matrix layout and iterator performance
+ *
+ * Internally the Matrix type uses a flattened array with [row major storage](https://en.wikipedia.org/wiki/Row-_and_column-major_order)
+ * of the data. Due to [CPU cache lines](https://stackoverflow.com/questions/3928995/how-do-cache-lines-work)
+ * this means row major access of elements is likely to be faster than column major indexing,
+ * once a matrix is large enough, so you should favor iterating through each row.
+ *
+ * ```
+ * use easy_ml::matrices::Matrix;
+ * let matrix = Matrix::from(vec![
+ *    vec![ 1, 2 ],
+ *    vec![ 3, 4 ]]);
+ * // storage of elements is [1, 2, 3, 4]
+ *
+ * // row major access
+ * for row in 0..2 {
+ *     for column in 0..2 {
+ *         println!("{}", matrix.get(row, column));
+ *     }
+ * } // -> 1 2 3 4
+ * matrix.row_major_iter().for_each(|e| println!("{}", e)); // -> 1 2 3 4
+ *
+ * // column major access
+ * for column in 0..2 {
+ *     for row in 0..2 {
+ *         println!("{}", matrix.get(row, column));
+ *     }
+ * } // -> 1 3 2 4
+ * matrix.column_major_iter().for_each(|e| println!("{}", e)); // -> 1 3 2 4
+ * ```
  */
 
 use crate::matrices::{Matrix, Row, Column};

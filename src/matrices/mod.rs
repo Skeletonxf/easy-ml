@@ -41,11 +41,15 @@ use crate::linear_algebra;
  * in a way that would construct a 0x1, 1x0, or 0x0 matrix. The maximum size of a matrix
  * is dependent on the platform's `std::usize::MAX` value. Matrices with dimensions NxM
  * such that N * M < `std::usize::MAX` should not cause any errors in this library, but
- * expanding their size further may cause panics and or errors. At the time of writing it
- * is theoretically possible to construct and use matrices where the product of their number
- * of rows and columns exceed `std::usize::MAX` but this should not be relied upon and may
- * become an error in the future. Concerned readers should note that on a 64 bit computer this
- * maximum value is 18,446,744,073,709,551,615 so running out of memory is likely to occur first.
+ * attempting to expand their size further may cause panics and or errors. At the time of
+ * writing it is no longer possible to construct or use matrices where the product of their
+ * number of rows and columns exceed `std::usize::MAX`, but some constructor methods may be used
+ * to attempt this. Concerned readers should note that on a 64 bit computer this maximum
+ * value is 18,446,744,073,709,551,615 so running out of memory is likely to occur first.
+ *
+ * # Matrix layout and iterator performance
+ *
+ * [See iterators submodule for Matrix layout and iterator performance](./iterators/index.html#matrix-layout-and-iterator-performance)
  */
 #[derive(Debug)]
 pub struct Matrix<T> {
@@ -137,6 +141,40 @@ impl <T> Matrix<T> {
             data,
             rows,
             columns,
+        }
+    }
+
+    /**
+     * Creates a matrix with the specified size from a row major vec of data.
+     * The length of the vec must match the size of the matrix or the constructor
+     * will panic.
+     *
+     * Example of a 2 x 3 matrix in both notations:
+     * ```ignore
+     *   [
+     *      1, 2, 4
+     *      8, 9, 3
+     *   ]
+     * ```
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * Matrix::from_flat_row_major((2, 3), vec![
+     *     1, 2, 4,
+     *     8, 9, 3]);
+     * ```
+     *
+     * This method is more efficient than [`Matrix::from`](./struct.Matrix.html#method.from)
+     * but requires specifying the size explicitly and manually keeping track of where rows
+     * start and stop.
+     */
+    pub fn from_flat_row_major(size: (Row, Column), values: Vec<T>) -> Matrix<T> {
+        assert!(size.0 * size.1 == values.len(),
+            "Inconsistent size, attempted to construct a {}x{} matrix but provided with {} elements.",
+            size.0, size.1, values.len());
+        Matrix {
+            data: values,
+            rows: size.0,
+            columns: size.1,
         }
     }
 
