@@ -23,7 +23,7 @@
 
 use crate::matrices::{Matrix, Row, Column};
 use crate::numeric::{Numeric, NumericRef};
-use crate::numeric::extra::Sqrt;
+use crate::numeric::extra::{Real, Sqrt};
 
 /**
  * Computes the inverse of a matrix provided that it exists. To have an inverse
@@ -502,6 +502,43 @@ where I: Iterator<Item = T>, {
     let m = mean(list.iter().cloned());
     // use drain here as we no longer need to keep list
     mean(list.drain(..).map(|x| (x.clone() - m.clone()) * (x - m.clone())))
+}
+
+/**
+ * Computes the softmax of the values in an iterator, consuming the iterator.
+ *
+ * softmax(z)[i] = e<sup>z<sub>i</sub></sup> / the sum of e<sup>z<sub>j</sub></sup> for all j
+ * where z is a list of elements
+ *
+ * Softmax normalises an input of numbers into a probability distribution, such
+ * that they will sum to 1. This is often used to make a neural network
+ * output a single number.
+ *
+ * The implementation shifts the inputs by the maximum value in the iterator,
+ * to make numerical overflow less of a problem. As per the definition of softmax,
+ * softmax(z) = softmax(z-max(z)).
+ *
+ * [Further information](https://en.wikipedia.org/wiki/Softmax_function)
+ *
+ * # Panics
+ *
+ * If the iterator contains NaN values, or any value for which PartialOrd fails.
+ *
+ * This function will also fail if the length of the iterator or sum of all the values
+ * in the iterator exceeds the maximum or minimum number the type can represent.
+ */
+pub fn softmax<I, T: Numeric + Real>(data: I) -> Vec<T>
+where I: Iterator<Item = T>, {
+    let list = data.collect::<Vec<T>>();
+    if list.is_empty() {
+        return Vec::with_capacity(0);
+    }
+    let max = list.iter().max_by(|a, b| a.partial_cmp(b).expect("NaN should not be in list")).unwrap();
+
+    let denominator: T = list.iter().cloned().map(|x| (x - max).exp()).sum();
+    list.iter().cloned().map(|x| {
+        (x - max).exp() / denominator.clone()
+    }).collect()
 }
 
 /**

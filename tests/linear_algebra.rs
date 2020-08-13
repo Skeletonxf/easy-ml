@@ -156,4 +156,61 @@ mod tests {
         let mean_squared = (data.iter().cloned().sum::<f64>() / 4.0).powi(2);
         assert_eq!(linear_algebra::variance(data.iter().cloned()), squared_mean - mean_squared);
     }
+
+    #[test]
+    fn test_softmax_positive() {
+        let input: Vec<f64> = vec![2.0, 3.0, 4.0, 2.0];
+        let softmax = linear_algebra::softmax(input.iter().cloned());
+        let expected: Vec<f64> = vec![
+            2.0_f64.exp() / (2.0_f64.exp() + 3.0_f64.exp() + 4.0_f64.exp() + 2.0_f64.exp()),
+            3.0_f64.exp() / (2.0_f64.exp() + 3.0_f64.exp() + 4.0_f64.exp() + 2.0_f64.exp()),
+            4.0_f64.exp() / (2.0_f64.exp() + 3.0_f64.exp() + 4.0_f64.exp() + 2.0_f64.exp()),
+            2.0_f64.exp() / (2.0_f64.exp() + 3.0_f64.exp() + 4.0_f64.exp() + 2.0_f64.exp()),
+        ];
+        assert_eq!(softmax.len(), expected.len());
+        let absolute_difference: f64 = softmax.iter().zip(expected.iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        assert!(absolute_difference < 0.0001);
+    }
+
+    #[test]
+    fn test_softmax_negative() {
+        let input: Vec<f64> = vec![-2.0, -7.0, -9.0];
+        let softmax = linear_algebra::softmax(input.iter().cloned());
+        let expected: Vec<f64> = vec![
+            (-2.0_f64).exp() / ((-2.0_f64).exp() + (-7.0_f64).exp() + (-9.0_f64).exp()),
+            (-7.0_f64).exp() / ((-2.0_f64).exp() + (-7.0_f64).exp() + (-9.0_f64).exp()),
+            (-9.0_f64).exp() / ((-2.0_f64).exp() + (-7.0_f64).exp() + (-9.0_f64).exp()),
+        ];
+        assert_eq!(softmax.len(), expected.len());
+        let absolute_difference: f64 = softmax.iter().zip(expected.iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        assert!(absolute_difference < 0.0001);
+    }
+
+    #[test]
+    fn test_softmax_mixed() {
+        let input: Vec<f64> = vec![-2.0, 2.0];
+        let softmax = linear_algebra::softmax(input.iter().cloned());
+        let expected: Vec<f64> = vec![
+            (-2.0_f64).exp() / ((-2.0_f64).exp() + (2.0_f64).exp()),
+            (2.0_f64).exp() / ((-2.0_f64).exp() + (2.0_f64).exp()),
+        ];
+        assert_eq!(softmax.len(), expected.len());
+        let absolute_difference: f64 = softmax.iter().zip(expected.iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        assert!(absolute_difference < 0.0001);
+    }
+
+    #[test]
+    fn test_softmax_empty_list() {
+        let input: Vec<f32> = Vec::with_capacity(0);
+        assert_eq!(
+            linear_algebra::softmax(input.iter().cloned()),
+            input
+        );
+    }
 }
