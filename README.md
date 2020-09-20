@@ -21,11 +21,11 @@ This library is not designed for deep learning. I have not tried to optimise muc
 
 ## State of library
 
-This library is currently usable for simple linear algebra tasks like linear regression and for storing 2 dimensional data. This library also has support for forward and reverse automatic differentiation and can train simple feedforward neural networks. Currently there is no support for 3d or higher dimensional data, though matrices can be nested into each other.
+This library is currently usable for simple linear algebra tasks like linear regression and for storing 2 dimensional data. This library also has support for forward and reverse automatic differentiation and can train simple feedforward neural networks. Currently there is no support for 3d or higher dimensional data, though matrices can be nested into each other. This library supports compilation to Web Assembly.
 
 ## Level of abstraction
 
-Where as other machine learning libraries often create objects/structs to represent algorithms like linear regression or k-means, Easy ML instead only represents the data in structs and the consuming code determines all of the control flow. While this may take more effort to write for consuming code initially making changes to the algorithm is much easier.
+Where as other machine learning libraries often create objects/structs to represent algorithms like linear regression or k-means, Easy ML instead only represents the data in structs and the consuming code determines all of the control flow. While this may take more effort to write for consuming code initially, it means making changes to the algorithms are much easier.
 
 *****
 
