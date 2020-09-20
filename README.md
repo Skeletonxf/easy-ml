@@ -16,6 +16,7 @@ This is a pure Rust library which makes heavy use of passing closures, iterators
 - Feedforward neural networks
 - Backprop with Automatic Differentiation
 - using a custom numeric type such as `num_bigint::BigInt`
+- Handwritten digit recognition in the browser
 
 This library is not designed for deep learning. I have not tried to optimise much of anything. The implementations of everything are more or less textbook mathematical definitions. You might find that you need to use a faster library once you've explored your problem, or that you need something that's not implemented here and have to switch. I hope that being able to at least start here may be of use.
 
