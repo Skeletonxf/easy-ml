@@ -20,4 +20,9 @@ impl Iterator for EndlessRandomGenerator {
     }
 }
 ```
+
+## Handwritten Digit Recognition on the MNIST dataset
+
+[Easy ML is used in an example for training a neural network to do handwritten digit recognition
+here](https://github.com/Skeletonxf/easy-ml-mnist-wasm-example).
  */

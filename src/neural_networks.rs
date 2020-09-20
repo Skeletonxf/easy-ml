@@ -189,4 +189,6 @@ println!("0 1: {:?}", model::<f32>(&inputs[1].map(|x| x.number), &w1_final, &w2_
 println!("1 0: {:?}", model::<f32>(&inputs[2].map(|x| x.number), &w1_final, &w2_final, &w3_final));
 println!("1 1: {:?}", model::<f32>(&inputs[3].map(|x| x.number), &w1_final, &w2_final, &w3_final));
 ```
+
+# [Handwritten digit recognition on the MNIST dataset](../web_assembly/index.html#handwritten-digit-recognition-on-the-mnist-dataset)
  */

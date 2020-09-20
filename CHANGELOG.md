@@ -1,5 +1,16 @@
 # Changelog
 
+## Version 1.4
+
+Flattened the internal storage of data in Matrices. This will make further
+library changes easier in the future, and may provide a slight performance
+improvement. The caveat to this change is that code which extensively adds
+or removes columns from Matrices may run more slowly, however code which
+reads or writes data in a row major format should be much more cache friendly.
+
+Added explicit support for Web Assembly going forward, with a supporting
+example on the MNIST dataset.
+
 ## Version 1.3.1
 
 Fixed broken link to XOR example in documentation.
