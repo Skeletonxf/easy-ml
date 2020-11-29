@@ -6,7 +6,7 @@ Linear regression examples
 # Linear regression to fit a polynomial line
 The code below is a method for [minimising the sum of squares error](https://en.wikipedia.org/wiki/Least_squares)
 in choosing weights to learn to predict a polynomial ine. The method creates a design matrix
-from the inputs x, expanding each row from [x] to [1, x, x^2] to allow the model
+from the inputs x, expanding each row from \[x\] to [1, x, x^2] to allow the model
 to represent the non linear relationship between x and y. To model more complex
 x and f(x), more complex basis functions are needed (ie to model a n-degree polynomial
 you will probably need n + 1 polynomial basis functions from x^0 to x^N).

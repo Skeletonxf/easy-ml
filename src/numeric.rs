@@ -108,8 +108,10 @@ impl <RefT, T> NumericRef<T> for RefT where
  * operations using the following syntax:
  *
  * ```ignore
- *  fn function_name<T: Numeric>()
- *  where for<'a> &'a T: NumericRef<T> {
+ * fn function_name<T: Numeric>()
+ * where for<'a> &'a T: NumericRef<T> {
+ *
+ * }
  * ```
  *
  * This pair of constraints is used nearly everywhere some numeric
@@ -596,8 +598,10 @@ impl <RefT, T> RealRef<T> for RefT where
  * operations using the following syntax:
  *
  * ```ignore
- *  fn function_name<T: Numeric + Real>()
- *  where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+ * fn function_name<T: Numeric + Real>()
+ * where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+ *
+ * }
  * ```
  *
  * This pair of constraints is used where any real number type is needed, so although

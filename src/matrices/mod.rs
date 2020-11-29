@@ -61,6 +61,8 @@ pub struct Matrix<T> {
 /// The maximum row and column lengths are usize, due to the internal storage being backed by
 /// Vec
 pub type Row = usize;
+/// The maximum row and column lengths are usize, due to the internal storage being backed by
+/// Vec
 pub type Column = usize;
 
 /**
@@ -710,8 +712,12 @@ impl <T: Clone> Matrix<T> {
         for column in 0..self.columns() {
             self.data.insert(
                 self.get_index(row, column),
-                values.next().expect(
-                    &format!("At least {} values must be provided", self.columns())));
+                values.next()
+                    .unwrap_or_else(|| panic!(
+                        "At least {} values must be provided",
+                        self.columns()
+                    ))
+            );
         }
         self.rows += 1;
     }
@@ -810,7 +816,7 @@ impl <T: std::fmt::Display + Clone> std::fmt::Display for Matrix<T> {
                 }
             }
             if row < self.rows() - 1 {
-                write!(f, "\n")?;
+                writeln!(f)?;
             }
         }
         write!(f, " ]")

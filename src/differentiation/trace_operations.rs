@@ -605,6 +605,7 @@ trace_real_operator_impl_value_reference!(impl Pow for Trace { fn pow });
 impl <T: Numeric + Real + Primitive> Pow<&T> for &Trace<T>
 where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     type Output = Trace<T>;
+    #[allow(clippy::double_parens)]
     #[inline]
     fn pow(self, rhs: &T) -> Self::Output {
         Trace {
@@ -676,6 +677,7 @@ trace_real_number_operator_impl_value_reference!(impl Pow for Trace { fn pow });
 impl <T: Numeric + Real + Primitive> Pow<&Trace<T>> for &T
 where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     type Output = Trace<T>;
+    #[allow(clippy::double_parens)]
     #[inline]
     fn pow(self, rhs: &Trace<T>) -> Self::Output {
         Trace {

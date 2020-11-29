@@ -407,11 +407,13 @@ type Index = usize;
  * a [RefCell](https://doc.rust-lang.org/std/cell/struct.RefCell.html) which tracks
  * borrows at runtime rather than compile time. This is neccessary to maintain the
  * illusion that Records are just ordinary numbers, and the side effects of doing
- * arithmetic with Records are limited to their referenced WengertList. This also means
- * that it may be possible to construct code which would attempt to make multiple
- * mutable borrows of this WengertList at once, which would result in a panic. In
- * practise, because each borrow is scoped to inside the methods of Record or WengertList,
- * I don't think this can/will occur.
+ * arithmetic with Records are limited to their referenced WengertList. Hence, the Rust
+ * compiler infers that it is not safe to share references to WengertLists between threads,
+ * nor transfer Records across threads. If you called a method on two Records that both
+ * mutably borrowed from the same WengertList at once, which could be trivially done with
+ * multiple threads, then the code would panic. I don't think this API allows you to do this
+ * in safe Rust because each mutable borrow of the WengertList is dropped at the end of each
+ * Record method call, and you can't call two methods simulatenously without threading.
  */
 #[derive(Debug)]
 pub struct WengertList<T> {
@@ -520,15 +522,17 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
  * # Panics
  *
  * Every operation and nearly every method a Record has involves manipulating the
- * record's history on its referenced WengertList. The WengertList itself maintains
+ * record's history on its referenced WengertList. This WengertList itself maintains
  * a [RefCell](https://doc.rust-lang.org/std/cell/struct.RefCell.html) which tracks
  * borrows at runtime rather than compile time. This is neccessary to maintain the
  * illusion that Records are just ordinary numbers, and the side effects of doing
- * arithmetic with Records are limited to their referenced WengertList. This also means
- * that it may be possible to construct code which would attempt to make multiple
- * mutable borrows of the WengertList at once, which would result in a panic. In
- * practise, because each borrow is scoped to inside the methods of Record or WengertList,
- * I don't think this can/will occur.
+ * arithmetic with Records are limited to their referenced WengertList. Hence, the Rust
+ * compiler infers that it is not safe to share references to WengertLists between threads,
+ * nor transfer Records across threads. If you called a method on two Records that both
+ * mutably borrowed from the same WengertList at once, which could be trivially done with
+ * multiple threads, then the code would panic. I don't think this API allows you to do this
+ * in safe Rust because each mutable borrow of the WengertList is dropped at the end of each
+ * Record method call, and you can't call two methods simulatenously without threading.
  *
  * # Acknowledgments
  *
@@ -697,6 +701,12 @@ impl <T: Primitive> WengertList<T> {
         WengertList {
             operations: RefCell::new(Vec::new())
         }
+    }
+}
+
+impl <T: Primitive> Default for WengertList<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

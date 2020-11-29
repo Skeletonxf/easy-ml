@@ -496,7 +496,7 @@ where I: Iterator<Item = T> {
 pub fn variance<I, T: Numeric>(data: I) -> T
 where I: Iterator<Item = T>, {
     let mut list = data.collect::<Vec<T>>();
-    assert!(list.len() > 0, "Provided iterator must not be empty");
+    assert!(!list.is_empty(), "Provided iterator must not be empty");
 
     // copy the list as we need to keep it as well as getting the mean
     let m = mean(list.iter().cloned());
@@ -507,7 +507,7 @@ where I: Iterator<Item = T>, {
 /**
  * Computes the softmax of the values in an iterator, consuming the iterator.
  *
- * softmax(z)[i] = e<sup>z<sub>i</sub></sup> / the sum of e<sup>z<sub>j</sub></sup> for all j
+ * softmax(z)\[i\] = e<sup>z<sub>i</sub></sup> / the sum of e<sup>z<sub>j</sub></sup> for all j
  * where z is a list of elements
  *
  * Softmax normalises an input of numbers into a probability distribution, such
