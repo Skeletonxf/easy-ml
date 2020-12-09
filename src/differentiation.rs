@@ -659,7 +659,13 @@ where for<'t> &'t T: NumericRef<T> {
      *
      * If you have N inputs x<sub>1</sub> to x<sub>N</sub>, and this output is y,
      * then this computes all the derivatives δy/δx<sub>i</sub> for i = 1 to N.
+     *
+     * # Panics
+     *
+     * Panics if the Record has no backing WengertList, ie it was created as a
+     * constant.
      */
+    #[track_caller]
     pub fn derivatives(&self) -> Derivatives<T> {
         let history = match self.history {
             None => panic!("Record has no WengertList to find derivatives from"),
@@ -895,6 +901,7 @@ where for<'t> &'t T: NumericRef<T> {
      * ```
      */
     #[inline]
+    #[track_caller]
     pub fn binary(
             &self,
             rhs: &Record<'a, T>,
@@ -939,4 +946,11 @@ where for<'t> &'t T: NumericRef<T> {
             },
         }
     }
+}
+
+#[should_panic]
+#[test]
+fn test_record_derivatives_when_no_history() {
+    let record = Record::constant(1.0);
+    record.derivatives();
 }

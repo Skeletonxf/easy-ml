@@ -115,6 +115,7 @@ impl <'a, 'l, 'r, T: Numeric + Primitive> Add<&'r Record<'a, T>> for &'l Record<
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
     #[inline]
+    #[track_caller]
     fn add(self, rhs: &Record<'a, T>) -> Self::Output {
         assert!(same_list(self, rhs), "Records must be using the same WengertList");
         match (self.history, rhs.history) {
@@ -289,6 +290,7 @@ impl <'a, 'l, 'r, T: Numeric + Primitive> Mul<&'r Record<'a, T>> for &'l Record<
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
     #[inline]
+    #[track_caller]
     fn mul(self, rhs: &Record<'a, T>) -> Self::Output {
         assert!(same_list(self, rhs), "Records must be using the same WengertList");
         match (self.history, rhs.history) {
@@ -361,6 +363,7 @@ impl <'a, 'l, 'r, T: Numeric + Primitive> Sub<&'r Record<'a, T>> for &'l Record<
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
     #[inline]
+    #[track_caller]
     fn sub(self, rhs: &Record<'a, T>) -> Self::Output {
         assert!(same_list(self, rhs), "Records must be using the same WengertList");
         match (self.history, rhs.history) {
@@ -583,6 +586,7 @@ impl <'a, 'l, 'r, T: Numeric + Primitive> Div<&'r Record<'a, T>> for &'l Record<
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
     #[inline]
+    #[track_caller]
     fn div(self, rhs: &Record<'a, T>) -> Self::Output {
         assert!(same_list(self, rhs), "Records must be using the same WengertList");
         match (self.history, rhs.history) {
@@ -720,6 +724,7 @@ impl <'a, T: PartialOrd + Primitive> PartialOrd for Record<'a, T> {
  * the same as adding a bunch of Record types together.
  */
 impl <'a, T: Numeric + Primitive> Sum for Record<'a, T> {
+    #[track_caller]
     fn sum<I>(mut iter: I) -> Record<'a, T> where I: Iterator<Item = Record<'a, T>> {
         let mut total = Record::<'a, T>::zero();
         loop {
@@ -954,6 +959,7 @@ impl <'a, 'l, 'r, T: Numeric + Real + Primitive> Pow<&'r Record<'a, T>> for &'l 
 where for<'t> &'t T: NumericRef<T> + RealRef<T> {
     type Output = Record<'a, T>;
     #[inline]
+    #[track_caller]
     fn pow(self, rhs: &Record<'a, T>) -> Self::Output {
         assert!(same_list(self, rhs), "Records must be using the same WengertList");
         match (self.history, rhs.history) {

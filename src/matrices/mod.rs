@@ -9,6 +9,9 @@ use std::ops::{Add, Sub, Mul, Neg, Div};
 
 pub mod iterators;
 pub mod slices;
+mod errors;
+
+pub use errors::ScalarConversionError;
 
 use crate::matrices::iterators::{
     ColumnIterator, RowIterator,
@@ -120,7 +123,12 @@ impl <T> Matrix<T> {
      *     vec![ 1, 2, 4 ],
      *     vec![ 8, 9, 3 ]]);
      * ```
+     *
+     * # Panics
+     *
+     * Panics if the input is jagged or rows or column length is 0.
      */
+    #[track_caller]
     pub fn from(mut values: Vec<Vec<T>>) -> Matrix<T> {
         assert!(!values.is_empty(), "No rows defined");
         // check length of first row is > 1
@@ -168,7 +176,12 @@ impl <T> Matrix<T> {
      * This method is more efficient than [`Matrix::from`](./struct.Matrix.html#method.from)
      * but requires specifying the size explicitly and manually keeping track of where rows
      * start and stop.
+     *
+     * # Panics
+     *
+     * Panics if the length of the vec does not match the size of the matrix.
      */
+    #[track_caller]
     pub fn from_flat_row_major(size: (Row, Column), values: Vec<T>) -> Matrix<T> {
         assert!(size.0 * size.1 == values.len(),
             "Inconsistent size, attempted to construct a {}x{} matrix but provided with {} elements.",
@@ -221,7 +234,12 @@ impl <T> Matrix<T> {
 
     /**
      * Gets a reference to the value at this row and column. Rows and Columns are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the index is out of range.
      */
+    #[track_caller]
     pub fn get_reference(&self, row: Row, column: Column) -> &T {
         assert!(row < self.rows(), "Row out of index");
         assert!(column < self.columns(), "Column out of index");
@@ -230,7 +248,12 @@ impl <T> Matrix<T> {
 
     /**
      * Sets a new value to this row and column. Rows and Columns are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the index is out of range.
      */
+    #[track_caller]
     pub fn set(&mut self, row: Row, column: Column, value: T) {
         assert!(row < self.rows(), "Row out of index");
         assert!(column < self.columns(), "Column out of index");
@@ -242,9 +265,11 @@ impl <T> Matrix<T> {
      * Removes a row from this Matrix, shifting all other rows to the left.
      * Rows are 0 indexed.
      *
-     * This will panic if the row does not exist or the matrix only has
-     * one row.
+     * # Panics
+     *
+     * This will panic if the row does not exist or the matrix only has one row.
      */
+    #[track_caller]
     pub fn remove_row(&mut self, row: Row) {
         assert!(self.rows() > 1);
         let mut r = 0;
@@ -268,9 +293,11 @@ impl <T> Matrix<T> {
      * Removes a column from this Matrix, shifting all other columns to the left.
      * Columns are 0 indexed.
      *
-     * This will panic if the column does not exist or the matrix only has
-     * one column.
+     * # Panics
+     *
+     * This will panic if the column does not exist or the matrix only has one column.
      */
+    #[track_caller]
     pub fn remove_column(&mut self, column: Column) {
         assert!(self.columns() > 1);
         let mut r = 0;
@@ -340,6 +367,7 @@ impl <T> Matrix<T> {
      * This function will panic if the slice would delete all rows or all columns
      * from this matrix, ie the resulting matrix must be at least 1x1.
      */
+    #[track_caller]
     pub fn retain_mut(&mut self, slice: Slice2D) {
         let mut r = 0;
         let mut c = 0;
@@ -392,6 +420,28 @@ impl <T> Matrix<T> {
         // rectangle shape invariant on a matrix object
         // As Slice2D should prevent the construction of jagged slices no
         // check is here to detect if all rows are still the same length
+    }
+
+    /**
+     * Consumes a 1x1 matrix and converts it into a scalar without copying the data.
+     *
+     * # Example
+     *
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * # fn main() -> Result<(), Box<dyn std::error::Error>> {
+     * let x = Matrix::column(vec![ 1.0, 2.0, 3.0 ]);
+     * let sum_of_squares: f64 = (x.transpose() * x).into_scalar()?;
+     * # Ok(())
+     * # }
+     * ```
+     */
+    pub fn into_scalar(self) -> Result<T, ScalarConversionError> {
+        if self.size() == (1,1) {
+            Ok(self.data.into_iter().next().unwrap())
+        } else {
+            Err(ScalarConversionError {})
+        }
     }
 }
 
@@ -541,7 +591,12 @@ impl <T: Clone> Matrix<T> {
 
     /**
      * Gets a copy of the value at this row and column. Rows and Columns are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the index is out of range.
      */
+    #[track_caller]
     pub fn get(&self, row: Row, column: Column) -> T {
         assert!(row < self.rows(),
             "Row out of index, only have {} rows", self.rows());
@@ -565,7 +620,12 @@ impl <T: Clone> Matrix<T> {
      * let x = Matrix::column(vec![ 1.0, 2.0, 3.0 ]);
      * let sum_of_squares: f64 = (x.transpose() * x).scalar();
      * ```
+     *
+     * # Panics
+     *
+     * Panics if the matrix is not 1x1
      */
+    #[track_caller]
     pub fn scalar(&self) -> T {
         assert!(self.rows() == 1, "Cannot treat matrix as scalar as it has more than one row");
         assert!(self.columns() == 1, "Cannot treat matrix as scalar as it has more than one column");
@@ -670,8 +730,11 @@ impl <T: Clone> Matrix<T> {
      * shifting other rows to the right and filling all entries with the
      * provided value. Rows are 0 indexed.
      *
+     * # Panics
+     *
      * This will panic if the row is greater than the number of rows in the matrix.
      */
+    #[track_caller]
     pub fn insert_row(&mut self, row: Row, value: T) {
         assert!(row <= self.rows(), "Row to insert must be <= to {}", self.rows());
         for column in 0..self.columns() {
@@ -684,6 +747,8 @@ impl <T: Clone> Matrix<T> {
      * Inserts a new row into the Matrix at the provided index, shifting other rows
      * to the right and filling all entries with the values from the iterator in sequence.
      * Rows are 0 indexed.
+     *
+     * # Panics
      *
      * This will panic if the row is greater than the number of rows in the matrix,
      * or if the iterator has fewer elements than `self.columns()`.
@@ -706,6 +771,7 @@ impl <T: Clone> Matrix<T> {
      * assert_eq!(None, values.next());
      * ```
      */
+    #[track_caller]
     pub fn insert_row_with<I>(&mut self, row: Row, mut values: I)
     where I: Iterator<Item = T> {
         assert!(row <= self.rows(), "Row to insert must be <= to {}", self.rows());
@@ -727,8 +793,11 @@ impl <T: Clone> Matrix<T> {
      * columns to the right and filling all entries with the provided value.
      * Columns are 0 indexed.
      *
+     * # Panics
+     *
      * This will panic if the column is greater than the number of columns in the matrix.
      */
+    #[track_caller]
     pub fn insert_column(&mut self, column: Column, value: T) {
         assert!(column <= self.columns(), "Column to insert must be <= to {}", self.columns());
         for row in (0..self.rows()).rev() {
@@ -741,6 +810,8 @@ impl <T: Clone> Matrix<T> {
      * Inserts a new column into the Matrix at the provided index, shifting other columns
      * to the right and filling all entries with the values from the iterator in sequence.
      * Columns are 0 indexed.
+     *
+     * # Panics
      *
      * This will panic if the column is greater than the number of columns in the matrix,
      * or if the iterator has fewer elements than `self.rows()`.
@@ -763,6 +834,7 @@ impl <T: Clone> Matrix<T> {
      * assert_eq!(None, values.next());
      * ```
      */
+    #[track_caller]
     pub fn insert_column_with<I>(&mut self, column: Column, values: I)
     where I: Iterator<Item = T> {
         assert!(column <= self.columns(), "Column to insert must be <= to {}", self.columns());
@@ -822,26 +894,6 @@ impl <T: std::fmt::Display + Clone> std::fmt::Display for Matrix<T> {
         write!(f, " ]")
     }
 }
-
-// FIXME: conflicting implementations of trait `std::convert::TryInto<_>` for type `matrices::Matrix<_>`
-// /**
-//  * An error indicating failure to convert a matrix to a scalar because it is not a unit matrix.
-//  */
-// pub struct ScalarConversionError;
-//
-// impl <T: Clone> std::convert::TryInto<T> for Matrix<T> {
-//     /**
-//      * Attempts to convert a unit matrix into a scalar. If the matrix is not 1x1 then
-//      * an error is returned.
-//      */
-//     fn try_into(&self) -> Result<T, ScalarConversionError> {
-//         if self.rows() == 1 && self.columns() == 1 {
-//             Ok(self.get(0, 0))
-//         } else {
-//             Err(ScalarConversionError)
-//         }
-//     }
-// }
 
 /**
  * Methods for matrices with numerical types, such as f32 or f64.
@@ -975,6 +1027,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
      * If the matrix is not a vector, ie if it has more than one row and more than one
      * column.
      */
+    #[track_caller]
     pub fn euclidean_length(&self) -> T {
         if self.columns() == 1 {
             // column vector
@@ -1008,7 +1061,12 @@ impl <T: Numeric> Matrix<T> {
      *   0, 0, 1
      * ]
      * ```
+     *
+     * # Panics
+     *
+     * If the provided size is not square.
      */
+    #[track_caller]
     pub fn diagonal(value: T, size: (Row, Column)) -> Matrix<T> {
         assert!(size.0 == size.1);
         let mut matrix = Matrix::empty(T::zero(), size);
@@ -1056,6 +1114,7 @@ where for<'a> &'a T: NumericRef<T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
+    #[track_caller]
     fn mul(self, rhs: Self) -> Self::Output {
         // LxM * MxN -> LxN
         assert!(self.columns() == rhs.rows(),
@@ -1118,6 +1177,7 @@ where for<'a> &'a T: NumericRef<T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
+    #[track_caller]
     fn add(self, rhs: Self) -> Self::Output {
         // LxM + LxM -> LxM
         assert!(self.size() == rhs.size(),
@@ -1175,6 +1235,7 @@ where for<'a> &'a T: NumericRef<T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
+    #[track_caller]
     fn sub(self, rhs: Self) -> Self::Output {
         // LxM - LxM -> LxM
         assert!(self.size() == rhs.size(),
