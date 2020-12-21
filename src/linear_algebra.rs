@@ -303,6 +303,7 @@ where F: FnMut(&mut Vec<T>, bool) {
     });
 }
 
+#[cfg(test)]
 #[test]
 fn test_permutations() {
     // Exhaustively test permutation even/oddness for an input

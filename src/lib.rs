@@ -9,6 +9,17 @@
  * - [Logistic Regression](logistic_regression)
  * - [Naïve Bayes](naive_bayes)
  * - [Neural Network XOR Problem](neural_networks)
+ *
+ * # API Modules
+ * - [Matrices](matrices)
+ * - [Linear Algebra](linear_algebra)
+ * - [Distributions](distributions)
+ * - [(Automatic) Differentiation](differentiation)
+ * - [Numerical type definitions](numeric)
+ *
+ * # Miscellaneous
+ * - [Web Assembly](web_assembly)
+ * - [Using custom numeric types](using_custom_types)
  */
 
 pub mod numeric;

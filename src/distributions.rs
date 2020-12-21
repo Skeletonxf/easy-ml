@@ -2,7 +2,7 @@
 Models of distributions that samples can be drawn from.
 
 These structs and methods require numerical types that can be treated as real numbers, ie
-unsigned and signed numbers cannot be used here.
+unsigned and signed integers cannot be used here.
 
 # Example of plotting a Gaussian
 
@@ -33,7 +33,7 @@ for _ in 0..SAMPLES {
 }
 
 // draw samples from the normal distribution
-let samples: Vec<f64> = normal_distribution.draw(&mut random_numbers.drain(..), SAMPLES)
+let samples: Vec<f64> = normal_distribution.draw(&mut random_numbers.into_iter(), SAMPLES)
     // unwrap is perfectly save if and only if we know we have supplied enough random numbers
     .unwrap();
 
@@ -42,7 +42,7 @@ let histogram_points = {
     let x = 0..SAMPLES;
     let mut y = samples;
     let mut points = Vec::with_capacity(SAMPLES);
-    for (x, y) in y.drain(..).zip(x).map(|(y, x)| (x as f32, y as f32)) {
+    for (x, y) in y.into_iter().zip(x).map(|(y, x)| (x as f32, y as f32)) {
         points.push((x, y));
     }
     points
@@ -272,6 +272,13 @@ impl <T: Numeric + Real> MultivariateGaussian<T> {
      * This function does not check that the provided covariance matrix
      * is actually a covariance matrix. If a square matrix that is not
      * symmetric is supplied the gaussian is not defined.
+     *
+     * # Panics
+     *
+     * Panics if the covariance matrix is not square, or the column vector
+     * is not the same length as the covariance matrix size. Does not currently
+     * panic if the covariance matrix is symmetric, but this could be checked
+     * in the future.
      */
     pub fn new(mean: Matrix<T>, covariance: Matrix<T>) -> MultivariateGaussian<T> {
         assert!(mean.columns() == 1, "Mean must be a column vector");

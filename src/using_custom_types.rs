@@ -6,8 +6,8 @@ Using custom numeric types examples.
 The following example shows how to make a type defined outside this crate implement Numeric
 so it can be used by this library for matrix operations.
 
-In this case the type is `BigInt` from `num_bigint` but as this type is also
-outside this crate we need to wrap it in another struct first so we can
+In this case the type is `BigInt` from [`num_bigint`](https://docs.rs/num-bigint/0.3.1/num_bigint/)
+but as the type is also outside this crate we need to wrap it in another struct first so we can
 implement traits on it due to Rust's orphan rules.
 
 ```
@@ -215,5 +215,21 @@ println!("Unwrapped:\n{:?}", unwrapped);
 let matrix: Matrix<BigInt> = Matrix::from_scalar(ToBigInt::to_bigint(&-3).unwrap());
 let wrapped: Matrix<BigIntWrapper> = matrix.map(|unwrapped| BigIntWrapper(unwrapped));
 println!("Wrapped:\n{:?}", wrapped);
+
+// For completeness conversions between our wrapper type and BigInt are included
+// so they can be converted with .into()
+impl From<BigInt> for BigIntWrapper {
+    #[inline]
+    fn from(number: BigInt) -> Self {
+        BigIntWrapper(number)
+    }
+}
+
+impl From<BigIntWrapper> for BigInt {
+    #[inline]
+    fn from(number: BigIntWrapper) -> Self {
+        number.0
+    }
+}
 ```
 */

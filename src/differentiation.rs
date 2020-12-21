@@ -390,7 +390,7 @@ type Index = usize;
  *
  * This is dynamic, as in, you build the [Wengert list](https://en.wikipedia.org/wiki/Automatic_differentiation#Reverse_accumulation)
  * at runtime by performing operations like addition and multiplication on
- * Records that were created with that Wengert list.
+ * [Records](Record) that were created with that Wengert list.
  *
  * When you perform a backward pass to obtain the gradients you travel back up the
  * computational graph using the stored intermediate values from this list to compute
@@ -411,7 +411,7 @@ type Index = usize;
  * compiler infers that it is not safe to share references to WengertLists between threads,
  * nor transfer Records across threads. If you called a method on two Records that both
  * mutably borrowed from the same WengertList at once, which could be trivially done with
- * multiple threads, then the code would panic. I don't think this API allows you to do this
+ * multiple threads, then the code would panic. Easy ML shouldn't allow you to do this
  * in safe Rust because each mutable borrow of the WengertList is dropped at the end of each
  * Record method call, and you can't call two methods simulatenously without threading.
  */
@@ -440,7 +440,7 @@ struct Operation<T> {
 }
 
 /**
- * Computed derivatives of a computational graph for some output Record variable.
+ * Computed derivatives of a computational graph for some output [Record] variable.
  *
  * This can be indexed by any Record used in the computational graph to get
  * the derivative with respect to that input.
@@ -522,7 +522,7 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
  * # Panics
  *
  * Every operation and nearly every method a Record has involves manipulating the
- * record's history on its referenced WengertList. This WengertList itself maintains
+ * record's history on its referenced [WengertList]. This WengertList itself maintains
  * a [RefCell](std::cell::RefCell) which tracks
  * borrows at runtime rather than compile time. This is neccessary to maintain the
  * illusion that Records are just ordinary numbers, and the side effects of doing
@@ -530,7 +530,7 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
  * compiler infers that it is not safe to share references to WengertLists between threads,
  * nor transfer Records across threads. If you called a method on two Records that both
  * mutably borrowed from the same WengertList at once, which could be trivially done with
- * multiple threads, then the code would panic. I don't think this API allows you to do this
+ * multiple threads, then the code would panic. Easy ML shouldn't allow you to do this
  * in safe Rust because each mutable borrow of the WengertList is dropped at the end of each
  * Record method call, and you can't call two methods simulatenously without threading.
  *
@@ -553,11 +553,11 @@ pub struct Record<'a, T: Primitive> {
     pub number: T,
     history: Option<&'a WengertList<T>>,
     /**
-     * The index of this number in its WengertList. The first entry will be 0,
+     * The index of this number in its [WengertList]. The first entry will be 0,
      * the next 1 and so on.
      *
      * In normal use cases you should not need to read this field,
-     * you can index Derivatives directly with Records.
+     * you can index [Derivatives] directly with Records.
      */
     pub index: Index,
 }
@@ -948,6 +948,7 @@ where for<'t> &'t T: NumericRef<T> {
     }
 }
 
+#[cfg(test)]
 #[should_panic]
 #[test]
 fn test_record_derivatives_when_no_history() {
