@@ -311,7 +311,7 @@ assert!(f1_score > 0.8);
 ```
 
 ## 3 Class Naïve Bayes Example
-[See submodule for 3 Class Naïve Bayes Example](./three_class/index.html)
+[See submodule for 3 Class Naïve Bayes Example](three_class)
 */
 
 pub mod three_class {
@@ -972,7 +972,7 @@ The above code prints 60% accuracy which isn't amazing as if we learned the clus
 that labelled the data in the first place we should be able to get 100% accuracy but
 60% is still far better than guessing for a three class problem. As Naïve Bayes has no
 hyperparameters it is good for establishing a good baseline to compare other examples such
-as [Logistic Regression](../../logistic_regression/index.html) to.
+as [Logistic Regression](super::super::logistic_regression) to.
 */
 
 }

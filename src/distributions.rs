@@ -85,7 +85,7 @@ let mut random_numbers = EndlessRandomGenerator { rng: random_generator };
 ```
 
 # Example of creating an infinite iterator for web assembly targets
-[See web_assembly module for Example of creating an infinite iterator for web assembly targets](../web_assembly/index.html)
+[See web_assembly module for Example of creating an infinite iterator for web assembly targets](super::web_assembly)
  */
 
 use crate::numeric::{Numeric, NumericRef};
@@ -181,7 +181,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
      * and will always compute the same samples given the same random source
      * of numbers.
      *
-     * [Example of generating and feeding random numbers](./index.html)
+     * [Example of generating and feeding random numbers](self)
      */
     pub fn draw<I>(&self, source: &mut I, max_samples: usize) -> Option<Vec<T>>
     where I: Iterator<Item = T> {
@@ -233,7 +233,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
  *
  * # Invariants
  *
- * The mean [Matrix](./../matrices/struct.Matrix.html) must always be a column vector, and
+ * The mean [Matrix](..::matrices::Matrix) must always be a column vector, and
  * must be the same length as the covariance matrix.
  */
 #[derive(Debug)]
@@ -297,7 +297,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
      * the cholesky decomposition cannot be taken on this Gaussian's
      * covariance matrix then `None` is also returned.
      *
-     * [Example of generating and feeding random numbers](../k_means/index.html)
+     * [Example of generating and feeding random numbers](super::k_means)
      */
     pub fn draw<I>(&self, source: &mut I, max_samples: usize) -> Option<Matrix<T>>
     where I: Iterator<Item = T> {

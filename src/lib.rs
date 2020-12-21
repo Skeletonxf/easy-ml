@@ -1,14 +1,14 @@
 /*!
  * If this is your first time using Easy ML you should check out some of the examples
  * to get an overview of how to use matrices then study the
- * [Matrix](./matrices/struct.Matrix.html) type for what you need.
+ * [Matrix](matrices::Matrix) type for what you need.
  *
  * # Examples
- * - [Linear Regression](./linear_regression/index.html)
- * - [k-means Clustering](./k_means/index.html)
- * - [Logistic Regression](./logistic_regression/index.html)
- * - [Naïve Bayes](./naive_bayes/index.html)
- * - [Neural Network XOR Problem](./neural_networks/index.html)
+ * - [Linear Regression](linear_regression)
+ * - [k-means Clustering](k_means)
+ * - [Logistic Regression](logistic_regression)
+ * - [Naïve Bayes](naive_bayes)
+ * - [Neural Network XOR Problem](neural_networks)
  */
 
 pub mod numeric;

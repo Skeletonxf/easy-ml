@@ -404,7 +404,7 @@ type Index = usize;
  *
  * Every operation and nearly every method a Record has involves manipulating the
  * record's history on its referenced WengertList. This WengertList itself maintains
- * a [RefCell](https://doc.rust-lang.org/std/cell/struct.RefCell.html) which tracks
+ * a [RefCell](std::cell::RefCell) which tracks
  * borrows at runtime rather than compile time. This is neccessary to maintain the
  * illusion that Records are just ordinary numbers, and the side effects of doing
  * arithmetic with Records are limited to their referenced WengertList. Hence, the Rust
@@ -523,7 +523,7 @@ impl <T: Clone + Primitive> Clone for Operation<T> {
  *
  * Every operation and nearly every method a Record has involves manipulating the
  * record's history on its referenced WengertList. This WengertList itself maintains
- * a [RefCell](https://doc.rust-lang.org/std/cell/struct.RefCell.html) which tracks
+ * a [RefCell](std::cell::RefCell) which tracks
  * borrows at runtime rather than compile time. This is neccessary to maintain the
  * illusion that Records are just ordinary numbers, and the side effects of doing
  * arithmetic with Records are limited to their referenced WengertList. Hence, the Rust
@@ -617,7 +617,7 @@ impl <'a, T: Numeric + Primitive> Record<'a, T> {
      * }; // list no longer in scope
      * ```
      *
-     * You can alternatively use the [record constructor on the WengertList type](./struct.WengertList.html#method.variable).
+     * You can alternatively use the [record constructor on the WengertList type](WengertList::variable()).
      */
     pub fn variable(x: T, history: &'a WengertList<T>) -> Record<'a, T> {
         Record {
@@ -642,7 +642,7 @@ impl <'a, T: Numeric + Primitive> Record<'a, T> {
 
     /**
      * A convenience helper function which takes a Record by value and
-     * calls [reset](./struct.Record.html#method.reset) on it.
+     * calls [reset](Record::reset()) on it.
      */
     pub fn do_reset(mut x: Record<T>) -> Record<T> {
         x.reset();
@@ -731,7 +731,7 @@ impl <T: Numeric + Primitive> WengertList<T> {
     /**
      * Creates a record backed by this WengertList.
      *
-     * You can alternatively use the [record constructor on the Record type](./struct.Record.html#method.variable).
+     * You can alternatively use the [record constructor on the Record type](Record::variable()).
      */
     pub fn variable(&self, x: T) -> Record<T> {
         Record {

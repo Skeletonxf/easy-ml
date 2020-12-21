@@ -1,7 +1,7 @@
 /*!
  * Generic matrix type.
  *
- * Matrices are generic over some type `T`. If `T` is [Numeric](../numeric/index.html) then
+ * Matrices are generic over some type `T`. If `T` is [Numeric](super::numeric) then
  * the matrix can be used in a mathematical way.
  */
 
@@ -26,9 +26,9 @@ use crate::linear_algebra;
 /**
  * A general purpose matrix of some type. This type may implement
  * no traits, in which case the matrix will be rather useless. If the
- * type implements [`Clone`](https://doc.rust-lang.org/std/clone/trait.Clone.html)
+ * type implements [`Clone`](std::clone::Clone)
  * most storage and accessor methods are defined and if the type implements
- * [`Numeric`](../numeric/index.html) then the matrix can be used in
+ * [`Numeric`](super::numeric) then the matrix can be used in
  * a mathematical way.
  *
  * When doing numeric operations with Matrices you should be careful to not
@@ -52,7 +52,7 @@ use crate::linear_algebra;
  *
  * # Matrix layout and iterator performance
  *
- * [See iterators submodule for Matrix layout and iterator performance](./iterators/index.html#matrix-layout-and-iterator-performance)
+ * [See iterators submodule for Matrix layout and iterator performance](iterators#matrix-layout-and-iterator-performance)
  */
 #[derive(Debug)]
 pub struct Matrix<T> {
@@ -173,7 +173,7 @@ impl <T> Matrix<T> {
      *     8, 9, 3]);
      * ```
      *
-     * This method is more efficient than [`Matrix::from`](./struct.Matrix.html#method.from)
+     * This method is more efficient than [`Matrix::from`](Matrix::from())
      * but requires specifying the size explicitly and manually keeping track of where rows
      * start and stop.
      *
@@ -360,7 +360,7 @@ impl <T> Matrix<T> {
      * modified matrix will be no bigger than 2x3 and contain up to the first two
      * rows and first three columns that it previously had.
      *
-     * See [Slice](./slices/enum.Slice.html) for constructing slices.
+     * See [Slice](slices::Slice) for constructing slices.
      *
      * # Panics
      *
@@ -851,7 +851,7 @@ impl <T: Clone> Matrix<T> {
 
     /**
      * Makes a copy of this matrix shrunk down in size according to the slice. See
-     * [retain_mut](#method.retain_mut).
+     * [retain_mut](Matrix::retain_mut()).
      */
     pub fn retain(&self, slice: Slice2D) -> Matrix<T> {
         let mut retained = self.clone();
@@ -899,8 +899,8 @@ impl <T: std::fmt::Display + Clone> std::fmt::Display for Matrix<T> {
  * Methods for matrices with numerical types, such as f32 or f64.
  *
  * Note that unsigned integers are not Numeric because they do not
- * implement [Neg](https://doc.rust-lang.org/std/ops/trait.Neg.html). You must first
- * wrap unsigned integers via [Wrapping](https://doc.rust-lang.org/std/num/struct.Wrapping.html).
+ * implement [Neg](std::ops::Neg). You must first
+ * wrap unsigned integers via [Wrapping](std::num::Wrapping).
  *
  * While these methods will all be defined on signed integer types as well, such as i16 or i32,
  * in many cases integers cannot be used sensibly in these computations. If you
@@ -951,7 +951,7 @@ impl <T: Numeric> Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     /**
      * Returns the determinant of this square matrix, or None if the matrix
-     * does not have a determinant. See [`linear_algebra`](../linear_algebra/fn.determinant.html)
+     * does not have a determinant. See [`linear_algebra`](super::linear_algebra::determinant())
      */
     pub fn determinant(&self) -> Option<T> {
         linear_algebra::determinant::<T>(self)
@@ -960,7 +960,7 @@ where for<'a> &'a T: NumericRef<T> {
     /**
     * Computes the inverse of a matrix provided that it exists. To have an inverse a
     * matrix must be square (same number of rows and columns) and it must also have a
-    * non zero determinant. See [`linear_algebra`](../linear_algebra/fn.inverse.html)
+    * non zero determinant. See [`linear_algebra`](super::linear_algebra::inverse())
     */
     pub fn inverse(&self) -> Option<Matrix<T>>
     where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
@@ -970,7 +970,7 @@ where for<'a> &'a T: NumericRef<T> {
     /**
      * Computes the covariance matrix for this NxM feature matrix, in which
      * each N'th row has M features to find the covariance and variance of. See
-     * [`linear_algebra`](../linear_algebra/fn.covariance_column_features.html)
+     * [`linear_algebra`](super::linear_algebra::covariance_column_features())
      */
     pub fn covariance_column_features(&self) -> Matrix<T> {
         linear_algebra::covariance_column_features::<T>(self)
@@ -979,7 +979,7 @@ where for<'a> &'a T: NumericRef<T> {
     /**
      * Computes the covariance matrix for this NxM feature matrix, in which
      * each M'th column has N features to find the covariance and variance of. See
-     * [`linear_algebra`](../linear_algebra/fn.covariance_row_features.html)
+     * [`linear_algebra`](super::linear_algebra::covariance_row_features())
      */
     pub fn covariance_row_features(&self) -> Matrix<T> {
         linear_algebra::covariance_row_features::<T>(self)
@@ -993,7 +993,7 @@ where for<'a> &'a T: NumericRef<T> {
  * precision and hence can't be used for operations like square roots.
  *
  * Third party fixed precision and infinite precision decimal types should
- * be able to implement all of the methods for [Real](../numeric/extra/trait.Real.html)
+ * be able to implement all of the methods for [Real](super::numeric::extra::Real)
  * and then utilise these functions.
  */
 impl <T: Numeric + Real> Matrix<T>

@@ -9,8 +9,8 @@ is very important, as without them the network would not be able to remap the
 inputs into a new space that can be linearly seperated.
 
 Rather than symbolically differentiate the model y = sigmoid(sigmoid(x * w1) * w2) * w3
-the [Record](../differentiation/struct.Record.html) struct is used to perform reverse
-[automatic differentiation](../differentiation/index.html). This adds a slight
+the [Record](super::differentiation::Record) struct is used to perform reverse
+[automatic differentiation](super::differentiation). This adds a slight
 memory overhead but also makes it easy to experiment with adding or tweaking layers
 of the network or trying different activation functions like ReLu or tanh.
 
@@ -190,5 +190,5 @@ println!("1 0: {:?}", model::<f32>(&inputs[2].map(|x| x.number), &w1_final, &w2_
 println!("1 1: {:?}", model::<f32>(&inputs[3].map(|x| x.number), &w1_final, &w2_final, &w3_final));
 ```
 
-# [Handwritten digit recognition on the MNIST dataset](../web_assembly/index.html#handwritten-digit-recognition-on-the-mnist-dataset)
+# [Handwritten digit recognition on the MNIST dataset](super::web_assembly#handwritten-digit-recognition-on-the-mnist-dataset)
  */

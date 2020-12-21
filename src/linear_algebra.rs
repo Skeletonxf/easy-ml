@@ -8,7 +8,7 @@
  * Rust compiler can get confused with the generics on these functions if you use
  * these methods without turbofish syntax.
  *
- * Nearly all of these functions are generic over [Numeric](../numeric/index.html) types,
+ * Nearly all of these functions are generic over [Numeric](super::numeric) types,
  * unfortunately, when using these functions the compiler may get confused about what
  * type `T` should be and you will get the error:
  * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`

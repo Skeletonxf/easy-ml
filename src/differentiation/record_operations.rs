@@ -2,10 +2,10 @@
  * Operator implementations for Records.
  *
  * These implementations are written here but Rust docs will display them on the
- * [Record](../struct.Record.html) struct page.
+ * [Record](super::Record) struct page.
  *
  * Records of any Numeric type (provided the type also implements the operations by reference
- * as described in the [numeric](../../numeric/index.html) module) implement all the standard
+ * as described in the [numeric](super::super::numeric) module) implement all the standard
  * library traits for addition, subtraction, multiplication and division, so you can
  * use the normal `+ - * /` operators as you can with normal number types. As a convenience,
  * these operations can also be used with a Record on the left hand side and a the same type
@@ -27,9 +27,9 @@
  * assert_eq!((Record::variable(2.0, &WengertList::new()) * 2.0).number, 4.0);
  * ```
  *
- * Records of a [Real](../../numeric/extra/trait.Real.html) type (provided the type also
+ * Records of a [Real](super::super::numeric::extra::Real) type (provided the type also
  * implements the operations by reference as described in the
- * [numeric](../../numeric/extra/index.html) module) also implement
+ * [numeric](super::super::numeric::extra) module) also implement
  * all of those extra traits and operations. Note that to use a method defined in a trait
  * you have to import the trait as well as have a type that implements it!
  */

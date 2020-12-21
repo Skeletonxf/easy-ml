@@ -15,7 +15,7 @@ range. If we assume a simple linear model over two inputs x1 and x2 then:
 
 <pre>log(p / (1 - p)) = w0 + w1*x1 + w2*x2</pre>
 
-For more complex data [basis functions](../linear_regression/index.html)
+For more complex data [basis functions](super::linear_regression)
 can be used on the inputs to model non linearity. Once we have a model we can define the
 objective function to maximise to learn the weights for. Once we have fixed weights
 we can estimate the probability of new data by taking the inverse of the logit function

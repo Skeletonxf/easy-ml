@@ -180,5 +180,5 @@ Chart::new(180, 60, -8.0, 8.0)
 
 # 5 Dimensional K-means
 
-See [naive_bayes](../naive_bayes/three_class/index.html)
+See [naive_bayes](super::naive_bayes::three_class)
 */

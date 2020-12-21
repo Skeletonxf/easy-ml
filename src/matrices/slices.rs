@@ -2,8 +2,8 @@
  * Ways to transform and access matrices
  *
  * At the moment slicing is not very usable and can only be used to downsize
- * matrices with [retain](../struct.Matrix.html#method.retain) and
- * [retain_mut](../struct.Matrix.html#method.retain_mut). In the future it will be available
+ * matrices with [retain](super::Matrix::retain()) and
+ * [retain_mut](super::Matrix::retain_mut()). In the future it will be available
  * for iterating through matrices and indexing into matrices to get values.
  */
 
