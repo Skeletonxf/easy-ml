@@ -15,7 +15,7 @@ license = "MPL-2.0"
 [dev-dependencies]
 rand = "0.7"
 rand_chacha = "0.2"
-textplots = "0.5"
+textplots = "=0.5.2" # compile errors are introduced with later 0.5.x versions
 num-bigint = "0.3"
 num-traits = "0.2"
 js-sys = "0.3"
