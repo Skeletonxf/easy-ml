@@ -14,3 +14,15 @@ impl fmt::Display for ScalarConversionError {
         write!(f, "Matrix cannot be converted to a scalar because it is not 1x1")
     }
 }
+
+#[test]
+fn test_sync() {
+    fn assert_sync<T: Sync>() {}
+    assert_sync::<ScalarConversionError>();
+}
+
+#[test]
+fn test_send() {
+    fn assert_send<T: Send>() {}
+    assert_send::<ScalarConversionError>();
+}

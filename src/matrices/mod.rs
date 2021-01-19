@@ -7,6 +7,9 @@
 
 use std::ops::{Add, Sub, Mul, Neg, Div};
 
+#[cfg(feature = "serde")]
+use serde::{Serialize, Deserialize};
+
 pub mod iterators;
 pub mod slices;
 mod errors;
@@ -55,17 +58,16 @@ use crate::linear_algebra;
  * [See iterators submodule for Matrix layout and iterator performance](iterators#matrix-layout-and-iterator-performance)
  */
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Matrix<T> {
     data: Vec<T>,
     rows: Row,
     columns: Column,
 }
 
-/// The maximum row and column lengths are usize, due to the internal storage being backed by
-/// Vec
+/// The maximum row and column lengths are usize, due to the internal storage being backed by Vec
 pub type Row = usize;
-/// The maximum row and column lengths are usize, due to the internal storage being backed by
-/// Vec
+/// The maximum row and column lengths are usize, due to the internal storage being backed by Vec
 pub type Column = usize;
 
 /**
@@ -431,12 +433,12 @@ impl <T> Matrix<T> {
      * use easy_ml::matrices::Matrix;
      * # fn main() -> Result<(), Box<dyn std::error::Error>> {
      * let x = Matrix::column(vec![ 1.0, 2.0, 3.0 ]);
-     * let sum_of_squares: f64 = (x.transpose() * x).into_scalar()?;
+     * let sum_of_squares: f64 = (x.transpose() * x).try_into_scalar()?;
      * # Ok(())
      * # }
      * ```
      */
-    pub fn into_scalar(self) -> Result<T, ScalarConversionError> {
+    pub fn try_into_scalar(self) -> Result<T, ScalarConversionError> {
         if self.size() == (1,1) {
             Ok(self.data.into_iter().next().unwrap())
         } else {
@@ -1394,3 +1396,29 @@ matrix_scalar_reference_reference!(impl Div for Matrix { fn div });
 matrix_scalar_value_reference!(impl Div for Matrix { fn div });
 matrix_scalar_reference_value!(impl Div for Matrix { fn div });
 matrix_scalar_value_value!(impl Div for Matrix { fn div });
+
+#[test]
+fn test_sync() {
+    fn assert_sync<T: Sync>() {}
+    assert_sync::<Matrix<f64>>();
+}
+
+#[test]
+fn test_send() {
+    fn assert_send<T: Send>() {}
+    assert_send::<Matrix<f64>>();
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn test_serialize() {
+    fn assert_serialize<T: Serialize>() {}
+    assert_serialize::<Matrix<f64>>();
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn test_deserialize() {
+    fn assert_deserialize<'de, T: Deserialize<'de>>() {}
+    assert_deserialize::<Matrix<f64>>();
+}
