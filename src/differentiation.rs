@@ -299,7 +299,7 @@ impl <T: Numeric + Primitive> Trace<T> {
      * and it returns N outputs y<sub>1</sub> to y<sub>N</sub> then you
      * have computed all the derivatives δy<sub>i</sub>/δx for i = 1 to N.
      */
-    pub fn derivative(function: impl Fn(Trace<T>) -> Trace<T>, x: T) -> T {
+    pub fn derivative(function: impl FnOnce(Trace<T>) -> Trace<T>, x: T) -> T {
         (function(Trace::variable(x))).derivative
     }
 }
