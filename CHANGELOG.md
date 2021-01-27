@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 1.5
+
+Added opt in serde support for `Matrix` and `Trace` behind the `serde` feature.
+Improved documentation in various places, updated to use inter doc links,
+updated the versions of dependencies to latest version, and added
+`#[track_caller]` to many functions that could panic to provide better error
+messages.
+
 ## Version 1.4
 
 Flattened the internal storage of data in Matrices. This will make further

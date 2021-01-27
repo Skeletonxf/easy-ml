@@ -30,4 +30,4 @@ Where as other machine learning libraries often create objects/structs to repres
 
 *****
 
-1 - If you need to freeze your rust compiler version you should specify a minor version such as `easy-ml = "1.4"`. Easy ML will not introduce breaking API changes between minor versions, but does follow the latest stable version of rust, and thus may introduce dependencies on newer language features (eg const generics) in minor version updates.
+1 - If you need to freeze your rust compiler version you should specify a minor version such as `easy-ml = "1.5"`. Easy ML will not introduce breaking API changes between minor versions, but does follow the latest stable version of rust, and thus may introduce dependencies on newer language features (eg const generics) in minor version updates.
