@@ -197,6 +197,9 @@ pub mod trace_operations;
 
 use crate::numeric::{Numeric, NumericRef};
 
+#[cfg(feature = "serde")]
+use serde::{Serialize, Deserialize};
+
 /**
  * A trait with no methods which is implemented for all primitive types.
  *
@@ -233,11 +236,12 @@ pub trait Primitive {}
  *
  * # Acknowledgments
  *
- * The wikipedia page on Automatic Differentiation provided a very useful overview and
- * explanation for understanding Forward Mode Automatic Differentiation as well as the
- * implementation rules.
+ * The wikipedia page on [Automatic Differentiation](https://en.wikipedia.org/wiki/Automatic_differentiation)
+ * provided a very useful overview and explanation for understanding Forward Mode Automatic
+ * Differentiation as well as the implementation rules.
  */
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Trace<T: Primitive> {
     /**
      * The real number
@@ -954,4 +958,16 @@ where for<'t> &'t T: NumericRef<T> {
 fn test_record_derivatives_when_no_history() {
     let record = Record::constant(1.0);
     record.derivatives();
+}
+
+#[test]
+fn test_sync() {
+    fn assert_sync<T: Sync>() {}
+    assert_sync::<Trace<f64>>();
+}
+
+#[test]
+fn test_send() {
+    fn assert_send<T: Send>() {}
+    assert_send::<Trace<f64>>();
 }
