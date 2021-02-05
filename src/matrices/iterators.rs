@@ -78,7 +78,7 @@ use crate::matrices::{Matrix, Row, Column};
  *   3, 4
  * ]
  * ```
- * Depending on the row iterator you want to obtain,
+ * Depending on the column iterator you want to obtain,
  * can either iterate through 1, 3 or 2, 4.
  */
 pub struct ColumnIterator<'a, T: Clone> {
