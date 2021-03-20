@@ -22,8 +22,9 @@
  */
 
 use crate::matrices::{Matrix, Row, Column};
+use crate::matrices::slices::{Slice, Slice2D};
 use crate::numeric::{Numeric, NumericRef};
-use crate::numeric::extra::{Real, Sqrt};
+use crate::numeric::extra::{Real, RealRef, Sqrt};
 
 /**
  * Computes the inverse of a matrix provided that it exists. To have an inverse
@@ -649,4 +650,68 @@ where for<'a> &'a T: NumericRef<T> {
         }
     }
     Some(lower_triangular)
+}
+
+struct QRDecomposition<T> {
+    q: Matrix<T>,
+    r: Matrix<T>,
+}
+
+fn qr_decomposition<T: Numeric + Real>(matrix: &Matrix<T>) -> QRDecomposition<T>
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    // The computation steps are outlined nicely at https://rosettacode.org/wiki/QR_decomposition
+    let mut householder_matrices = Vec::with_capacity(matrix.columns());
+    for column in 0..matrix.columns() {
+        // as we loop through the columns of the matrix, ignore the left and top
+        // FIXME: Pad the matrix with zeros if it has fewer rows than columns
+        let submatrix = matrix.retain(
+            Slice2D::new()
+                .rows(Slice::Range(column..matrix.columns()))
+                .columns(Slice::Range(column..matrix.columns()))
+        );
+        let rows = submatrix.rows();
+        let column_vector = Matrix::column(submatrix.column_iter(0).collect());
+        let householder_matrix = {
+            let column_vector_length = column_vector.euclidean_length();
+            let v = {
+                // all entries but the first in u become zero, so just set the first entry
+                let mut u = Matrix::empty(T::zero(), (rows, 1));
+                let sign = column_vector.get(0, 0) > T::zero();
+                match sign {
+                    true => u.set(0, 0, column_vector.get(0, 0) + column_vector_length),
+                    false => u.set(0, 0, column_vector.get(0, 0) - column_vector_length),
+                }
+                // normalise by the first element
+                u.map(|x| x / u.get(0, 0))
+            };
+            let identity_matrix = Matrix::diagonal(T::one(), (rows, rows));
+            let b = (T::one() + T::one()) / (v.transpose() * &v).scalar();
+            identity_matrix - ((&v * v.transpose()) * b)
+        };
+        // TODO: Embed each H into an identity matrix before pushing onto here
+        householder_matrices.push(householder_matrix);
+    }
+    // R = H_n * ... H_3 * H_2 * H_1 * A
+    let r = {
+        let mut r = matrix.clone();
+        for h_n in householder_matrices.iter() {
+            r = h_n * r;
+        }
+        r
+    };
+    // Q = H_1 * H_2 * H_3 .. H_n
+    let q = {
+        let mut q = None;
+        for h_n in householder_matrices.into_iter() {
+            match q {
+                None => q = Some(h_n),
+                Some(h) => q = Some(h * h_n),
+            }
+        }
+        q.unwrap() // TODO: This should always be Some because the matrix has to be at least 1x1
+    };
+    QRDecomposition {
+        q,
+        r,
+    }
 }
