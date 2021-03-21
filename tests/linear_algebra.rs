@@ -213,4 +213,37 @@ mod tests {
             input
         );
     }
+
+    #[test]
+    fn test_qr_decomposition_3_by_3() {
+        // Test input from https://rosettacode.org/wiki/QR_decomposition
+        let input = Matrix::from(vec![
+            vec![ 12.0, -51.0, 4.0 ],
+            vec![ 6.0, 167.0, -68.0 ],
+            vec![ -4.0, 24.0, -41.0 ],
+        ]);
+        let output = linear_algebra::qr_decomposition::<f64>(&input);
+        println!("Q:\n{}", output.q);
+        println!("R:\n{}", output.r);
+        let q = Matrix::from(vec![
+            vec![ -0.857, 0.384, -0.344 ],
+            vec![ -0.429, -0.901, 0.063 ],
+            vec![ 0.286, -0.201, -0.937 ],
+        ]);
+        let r = Matrix::from(vec![
+            vec![ -14.000, -21.000, 14.000 ],
+            vec![ -0.000, -174.912, 71.075 ],
+            vec![ -0.000, 5.553, 32.761 ],
+        ]);
+        assert_eq!(q.size(), output.q.size());
+        assert_eq!(r.size(), output.r.size());
+        assert!(q
+            .row_major_iter()
+            .zip(output.q.row_major_iter())
+            .all(|(expected, actual)| expected - actual < 0.001));
+        assert!(r
+            .row_major_iter()
+            .zip(output.r.row_major_iter())
+            .all(|(expected, actual)| expected - actual < 0.001));
+    }
 }

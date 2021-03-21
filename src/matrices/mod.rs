@@ -1144,6 +1144,7 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Mul for Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
     fn mul(self, rhs: Self) -> Self::Output {
         &self * &rhs
     }
@@ -1155,6 +1156,7 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Mul<&Matrix<T>> for Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
     fn mul(self, rhs: &Self) -> Self::Output {
         &self * rhs
     }
@@ -1166,6 +1168,7 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Mul<Matrix<T>> for &Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
     fn mul(self, rhs: Matrix<T>) -> Self::Output {
         self * &rhs
     }
@@ -1202,6 +1205,7 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Add for Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
     fn add(self, rhs: Self) -> Self::Output {
         &self + &rhs
     }
@@ -1213,6 +1217,7 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Add<&Matrix<T>> for Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
     fn add(self, rhs: &Self) -> Self::Output {
         &self + rhs
     }
@@ -1224,6 +1229,7 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Add<Matrix<T>> for &Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
     fn add(self, rhs: Matrix<T>) -> Self::Output {
         self + &rhs
     }
@@ -1260,6 +1266,7 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Sub for Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
     fn sub(self, rhs: Self) -> Self::Output {
         &self - &rhs
     }
@@ -1271,6 +1278,7 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Sub<&Matrix<T>> for Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
     fn sub(self, rhs: &Self) -> Self::Output {
         &self - rhs
     }
@@ -1282,6 +1290,7 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Sub<Matrix<T>> for &Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
     fn sub(self, rhs: Matrix<T>) -> Self::Output {
         self - &rhs
     }
