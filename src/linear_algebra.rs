@@ -736,3 +736,21 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
         r,
     }
 }
+
+fn eigens<T: Numeric + Real>(matrix: &Matrix<T>)
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    unimplemented!()
+}
+
+fn principle_component_analysis<T: Numeric + Real>(matrix: &Matrix<T>)
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    // TODO: Add option for scaling input variance to 1 in each feature
+    let samples = T::from_usize(matrix.rows()).expect(
+        "The maximum value of the matrix type T cannot represent this many samples");
+    assert!(samples > T::one(), "Cannot compute PCA for only one sample");
+    let bessels_correction = samples.clone() / (samples - T::one());
+    let mut covariance_matrix = covariance_column_features::<T>(matrix);
+    covariance_matrix.map_mut(|x| bessels_correction.clone() * x);
+    eigens::<T>(&covariance_matrix);
+    unimplemented!()
+}
