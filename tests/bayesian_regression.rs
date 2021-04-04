@@ -128,8 +128,10 @@ mod tests {
         // plot x and y to see the true line and the approximate line from
         // the noisy data
         println!("True x and f(x) and noisy version");
-        let lines = Shape::Lines(&merge_for_plotting(&x, &y));
-        let points = Shape::Points(&sort_and_merge_for_plotting(&observations, &targets));
+        let lines = merge_for_plotting(&x, &y);
+        let lines = Shape::Lines(&lines);
+        let points = sort_and_merge_for_plotting(&observations, &targets);
+        let points = Shape::Points(&points);
         Chart::new(180, 60, -1.0, 1.0)
             .lineplot(&lines)
             .lineplot(&points)
@@ -162,15 +164,21 @@ mod tests {
         // over the whole data range
         println!("True x and f(x) and 5 lines of the parameters drawn from the prior");
         let mut chart = Chart::new(180, 60, -1.0, 1.0);
-        let lines = Shape::Lines(&merge_for_plotting(&x, &y));
+        let lines = merge_for_plotting(&x, &y);
+        let lines = Shape::Lines(&lines);
         chart.lineplot(&lines);
-        for i in 0..LINES_TO_DRAW {
-            let lines = Shape::Lines(&merge_for_plotting(
+        let all_lines_0: Vec<_> = (0..LINES_TO_DRAW).map(|i| {
+            merge_for_plotting(
                 &x,
-                &Matrix::column(predicted_targets.column_iter(i).collect())));
+                &Matrix::column(predicted_targets.column_iter(i).collect()))
+        }).collect();
+        let all_lines_1: Vec<_>  = (0..LINES_TO_DRAW).map(|i| {
+            Shape::Lines(&all_lines_0[i])
+        }).collect();
+        for i in 0..LINES_TO_DRAW {
             // slice into each column of the predicted_targets matrix to
             // get the predictions for each set of paramters drawn from the posterior
-            chart.lineplot(&lines);
+            chart.lineplot(&all_lines_1[i]);
         }
         chart.display();
 
@@ -179,7 +187,8 @@ mod tests {
         let mut random_numbers = n_random_numbers(&mut random_generator, SAMPLES_FOR_DISTRIBUTION * 2);
         let weights = prior.draw(&mut random_numbers.drain(..), SAMPLES_FOR_DISTRIBUTION).unwrap();
         let mut chart = Chart::new(80, 80, -3.0, 3.0);
-        let points = Shape::Points(&split_for_plotting(&weights));
+        let points = split_for_plotting(&weights);
+        let points = Shape::Points(&points);
         chart.lineplot(&points);
         chart.display();
 
@@ -204,7 +213,8 @@ mod tests {
                     .columns(Slice::All()));
 
             println!("Observations for N={}", training_size);
-            let points = Shape::Points(&sort_and_merge_for_plotting(&observations_n, &targets_n));
+            let points = sort_and_merge_for_plotting(&observations_n, &targets_n);
+            let points = Shape::Points(&points);
             Chart::new(180, 60, -1.0, 1.0)
                 .lineplot(&points)
                 .display();
@@ -233,15 +243,21 @@ mod tests {
             // over the whole data range
             println!("True x and f(x) and 5 lines of the parameters drawn from the posterior of N={}", training_size);
             let mut chart = Chart::new(180, 60, -1.0, 1.0);
-            let lines = Shape::Lines(&merge_for_plotting(&x, &y));
+            let lines = merge_for_plotting(&x, &y);
+            let lines = Shape::Lines(&lines);
             chart.lineplot(&lines);
-            for i in 0..LINES_TO_DRAW {
-                let lines = Shape::Lines(&merge_for_plotting(
+            let all_lines_0: Vec<_> = (0..LINES_TO_DRAW).map(|i| {
+                merge_for_plotting(
                     &x,
-                    &Matrix::column(predicted_targets.column_iter(i).collect())));
+                    &Matrix::column(predicted_targets.column_iter(i).collect()))
+            }).collect();
+            let all_lines_1: Vec<_>  = (0..LINES_TO_DRAW).map(|i| {
+                Shape::Lines(&all_lines_0[i])
+            }).collect();
+            for i in 0..LINES_TO_DRAW {
                 // slice into each column of the predicted_targets matrix to
                 // get the predictions for each set of paramters drawn from the posterior
-                chart.lineplot(&lines);
+                chart.lineplot(&all_lines_1[i]);
             }
             chart.display();
 
@@ -250,7 +266,8 @@ mod tests {
             let mut random_numbers = n_random_numbers(&mut random_generator, SAMPLES_FOR_DISTRIBUTION * 2);
             let weights = posterior.draw(&mut random_numbers.drain(..), SAMPLES_FOR_DISTRIBUTION).unwrap();
             let mut chart = Chart::new(80, 80, 2.0, 4.0);
-            let points = Shape::Points(&split_for_plotting(&weights));
+            let points = split_for_plotting(&weights);
+            let points = Shape::Points(&points);
             chart.lineplot(&points);
             chart.display();
 

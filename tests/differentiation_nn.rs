@@ -90,7 +90,7 @@ mod neural_net_tests {
         }
         let mut chart = Chart::new(180, 60, 0.0, epochs as f32);
         chart.lineplot(
-            Shape::Lines(&losses.iter()
+            &Shape::Lines(&losses.iter()
                 .cloned()
                 .enumerate()
                 .map(|(i, x)| (i as f32, x))
