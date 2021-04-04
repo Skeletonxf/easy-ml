@@ -166,7 +166,7 @@ mod tests {
         let mut chart = Chart::new(180, 60, -1.0, 1.0);
         let lines = merge_for_plotting(&x, &y);
         let lines = Shape::Lines(&lines);
-        chart.lineplot(&lines);
+        let chart = chart.lineplot(&lines);
         let all_lines_0: Vec<_> = (0..LINES_TO_DRAW).map(|i| {
             merge_for_plotting(
                 &x,
@@ -189,7 +189,7 @@ mod tests {
         let mut chart = Chart::new(80, 80, -3.0, 3.0);
         let points = split_for_plotting(&weights);
         let points = Shape::Points(&points);
-        chart.lineplot(&points);
+        let chart = chart.lineplot(&points);
         chart.display();
 
         for training_size in vec![1, 2, 5, 20] {
@@ -245,7 +245,7 @@ mod tests {
             let mut chart = Chart::new(180, 60, -1.0, 1.0);
             let lines = merge_for_plotting(&x, &y);
             let lines = Shape::Lines(&lines);
-            chart.lineplot(&lines);
+            let chart = chart.lineplot(&lines);
             let all_lines_0: Vec<_> = (0..LINES_TO_DRAW).map(|i| {
                 merge_for_plotting(
                     &x,
@@ -268,7 +268,7 @@ mod tests {
             let mut chart = Chart::new(80, 80, 2.0, 4.0);
             let points = split_for_plotting(&weights);
             let points = Shape::Points(&points);
-            chart.lineplot(&points);
+            let chart = chart.lineplot(&points);
             chart.display();
 
             // From inspecting the distributions of the final N=20 posterior we
