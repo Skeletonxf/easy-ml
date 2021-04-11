@@ -26,6 +26,10 @@ use crate::matrices::slices::{Slice, Slice2D};
 use crate::numeric::{Numeric, NumericRef};
 use crate::numeric::extra::{Real, RealRef, Sqrt};
 
+pub mod eigens;
+
+pub use eigens::EigenvalueAlgorithm;
+
 /**
  * Computes the inverse of a matrix provided that it exists. To have an inverse
  * a matrix must be square (same number of rows and columns) and it must also
@@ -652,15 +656,43 @@ where for<'a> &'a T: NumericRef<T> {
     Some(lower_triangular)
 }
 
+/**
+ * The result of a QR Decomposition of some matrix A such that QR = A.
+ */
+#[derive(Clone, Debug)]
 pub struct QRDecomposition<T> {
     pub q: Matrix<T>,
     pub r: Matrix<T>,
+    _private: (),
+}
+
+impl <T: std::fmt::Display + Clone> std::fmt::Display for QRDecomposition<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "Q: {}", &self.q)?;
+        write!(f, "R: {}", &self.r)
+    }
+}
+
+impl <T> QRDecomposition<T> {
+    /**
+     * Creates a QR Decomposition struct from two matrices without checking that QR = A
+     * or that Q and R have the intended properties.
+     *
+     * This is provided for assistance with unit testing.
+     */
+    pub fn from_unchecked(q: Matrix<T>, r: Matrix<T>) -> QRDecomposition<T> {
+        QRDecomposition {
+            q,
+            r,
+            _private: (),
+        }
+    }
 }
 
 /**
  * Computes the householder matrix along the first column of the input matrix.
  *
- * For an NxM input, the householder matrix output will be NxN
+ * For an MxN input, the householder matrix output will be MxM
  */
 fn householder_matrix<T: Numeric + Real>(matrix: &Matrix<T>) -> Matrix<T>
 where for<'a> &'a T: NumericRef<T> + RealRef<T> {
@@ -687,6 +719,28 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     identity_matrix - ((&v * v.transpose()) * b)
 }
 
+/**
+ * Computes the QR decomposition of a matrix.
+ *
+ * For an input matrix A, decomposes this matrix into a product of QR, where Q is an
+ * [orthogonal matrix](https://en.wikipedia.org/wiki/Orthogonal_matrix) and R is an
+ * upper triangular matrix (all entries below the diagonal are 0).
+ *
+ * QR = A
+ *
+ * If the input matrix has more columns than rows then the input will be padded with
+ * zero rows.
+ *
+ * # Warning
+ *
+ * With some uses of this function the Rust compiler gets confused about what type `T`
+ * should be and you will get the error:
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ *
+ * In this case you need to manually specify the type of T by using the
+ * turbofish syntax like:
+ * `linear_algebra::qr_decomposition::<f32>(&matrix)`
+ */
 pub fn qr_decomposition<T: Numeric + Real>(matrix: &Matrix<T>) -> QRDecomposition<T>
 where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     // The computation steps are outlined nicely at https://rosettacode.org/wiki/QR_decomposition
@@ -734,16 +788,14 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
         // This should always be Some because the input matrix has to be at least 1x1
         q: q.unwrap(),
         r,
+        _private: (),
     }
 }
 
-fn eigens<T: Numeric + Real>(matrix: &Matrix<T>)
-where for<'a> &'a T: NumericRef<T> + RealRef<T> {
-    unimplemented!()
-}
-
-fn principle_component_analysis<T: Numeric + Real>(matrix: &Matrix<T>)
-where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+fn principle_component_analysis<T: Numeric + Real, E>(matrix: &Matrix<T>, solver: E)
+where
+    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    E: EigenvalueAlgorithm<T> {
     // TODO: Add option for scaling input variance to 1 in each feature
     let samples = T::from_usize(matrix.rows()).expect(
         "The maximum value of the matrix type T cannot represent this many samples");
@@ -751,6 +803,6 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     let bessels_correction = samples.clone() / (samples - T::one());
     let mut covariance_matrix = covariance_column_features::<T>(matrix);
     covariance_matrix.map_mut(|x| bessels_correction.clone() * x);
-    eigens::<T>(&covariance_matrix);
+    let eigens = solver.solve(&covariance_matrix);
     unimplemented!()
 }
