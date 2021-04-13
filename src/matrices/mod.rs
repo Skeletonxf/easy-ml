@@ -1084,6 +1084,7 @@ impl <T: Numeric> Matrix<T> {
  * are equal and they have the same size.
  */
 impl <T: PartialEq> PartialEq for Matrix<T> {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         if self.rows() != other.rows() {
             return false;
@@ -1117,6 +1118,7 @@ where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
 
     #[track_caller]
+    #[inline]
     fn mul(self, rhs: Self) -> Self::Output {
         // LxM * MxN -> LxN
         assert!(self.columns() == rhs.rows(),
@@ -1144,6 +1146,8 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Mul for Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
+    #[inline]
     fn mul(self, rhs: Self) -> Self::Output {
         &self * &rhs
     }
@@ -1155,6 +1159,8 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Mul<&Matrix<T>> for Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
+    #[inline]
     fn mul(self, rhs: &Self) -> Self::Output {
         &self * rhs
     }
@@ -1166,6 +1172,8 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Mul<Matrix<T>> for &Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
+    #[inline]
     fn mul(self, rhs: Matrix<T>) -> Self::Output {
         self * &rhs
     }
@@ -1180,6 +1188,7 @@ where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
 
     #[track_caller]
+    #[inline]
     fn add(self, rhs: Self) -> Self::Output {
         // LxM + LxM -> LxM
         assert!(self.size() == rhs.size(),
@@ -1202,6 +1211,8 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Add for Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
+    #[inline]
     fn add(self, rhs: Self) -> Self::Output {
         &self + &rhs
     }
@@ -1213,6 +1224,8 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Add<&Matrix<T>> for Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
+    #[inline]
     fn add(self, rhs: &Self) -> Self::Output {
         &self + rhs
     }
@@ -1224,6 +1237,8 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Add<Matrix<T>> for &Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
+    #[inline]
     fn add(self, rhs: Matrix<T>) -> Self::Output {
         self + &rhs
     }
@@ -1238,6 +1253,7 @@ where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
 
     #[track_caller]
+    #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
         // LxM - LxM -> LxM
         assert!(self.size() == rhs.size(),
@@ -1260,6 +1276,8 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Sub for Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
+    #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
         &self - &rhs
     }
@@ -1271,6 +1289,8 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Sub<&Matrix<T>> for Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
+    #[inline]
     fn sub(self, rhs: &Self) -> Self::Output {
         &self - rhs
     }
@@ -1282,6 +1302,8 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric> Sub<Matrix<T>> for &Matrix<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Matrix<T>;
+    #[track_caller]
+    #[inline]
     fn sub(self, rhs: Matrix<T>) -> Self::Output {
         self - &rhs
     }
@@ -1295,6 +1317,7 @@ where for<'a> &'a T: NumericRef<T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
+    #[inline]
     fn neg(self) -> Self::Output {
         self.map(|v| -v)
     }
@@ -1308,6 +1331,7 @@ where for<'a> &'a T: NumericRef<T> {
     // Tell the compiler our output type is another matrix of type T
     type Output = Matrix<T>;
 
+    #[inline]
     fn neg(self) -> Self::Output {
         - &self
     }
@@ -1322,6 +1346,7 @@ macro_rules! matrix_scalar_reference_reference {
          impl <T: Numeric> $op<&T> for &Matrix<T>
          where for<'a> &'a T: NumericRef<T> {
              type Output = Matrix<T>;
+             #[inline]
              fn $method(self, rhs: &T) -> Self::Output {
                  self.map(|x| (x).$method(rhs.clone()))
              }
@@ -1338,6 +1363,7 @@ macro_rules! matrix_scalar_value_value {
          impl <T: Numeric> $op<T> for Matrix<T>
          where for<'a> &'a T: NumericRef<T> {
              type Output = Matrix<T>;
+             #[inline]
              fn $method(self, rhs: T) -> Self::Output {
                  self.map(|x| (x).$method(rhs.clone()))
              }
@@ -1354,6 +1380,7 @@ macro_rules! matrix_scalar_value_reference {
          impl <T: Numeric> $op<&T> for Matrix<T>
          where for<'a> &'a T: NumericRef<T> {
              type Output = Matrix<T>;
+             #[inline]
              fn $method(self, rhs: &T) -> Self::Output {
                  self.map(|x| (x).$method(rhs.clone()))
              }
@@ -1370,6 +1397,7 @@ macro_rules! matrix_scalar_reference_value {
          impl <T: Numeric> $op<T> for &Matrix<T>
          where for<'a> &'a T: NumericRef<T> {
              type Output = Matrix<T>;
+             #[inline]
              fn $method(self, rhs: T) -> Self::Output {
                  self.map(|x| (x).$method(rhs.clone()))
              }

@@ -72,6 +72,7 @@ impl <'a, T: Numeric + Primitive> FromUsize for Record<'a, T> {
  * Any record of a Cloneable type implements clone
  */
 impl <'a, T: Clone + Primitive> Clone for Record<'a, T> {
+    #[inline]
     fn clone(&self) -> Self {
         Record {
             number: self.number.clone(),
@@ -114,8 +115,8 @@ pub(crate) fn same_list<'a, 'b, T: Primitive>(a: &Record<'a, T>, b: &Record<'b, 
 impl <'a, 'l, 'r, T: Numeric + Primitive> Add<&'r Record<'a, T>> for &'l Record<'a, T>
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
-    #[inline]
     #[track_caller]
+    #[inline]
     fn add(self, rhs: &Record<'a, T>) -> Self::Output {
         assert!(same_list(self, rhs), "Records must be using the same WengertList");
         match (self.history, rhs.history) {
@@ -155,6 +156,7 @@ where for<'t> &'t T: NumericRef<T> {
 impl <'a, T: Numeric + Primitive> Add<&T> for &Record<'a, T>
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
+    #[track_caller]
     #[inline]
     fn add(self, rhs: &T) -> Self::Output {
         match self.history {
@@ -186,6 +188,7 @@ macro_rules! record_operator_impl_value_value {
         impl <'a, T: Numeric + Primitive> $op for Record<'a, T>
         where for<'t> &'t T: NumericRef<T> {
             type Output = Record<'a, T>;
+            #[track_caller]
             #[inline]
             fn $method(self, rhs: Record<'a, T>) -> Self::Output {
                 (&self).$method(&rhs)
@@ -202,6 +205,7 @@ macro_rules! record_operator_impl_value_reference {
         impl <'a, T: Numeric + Primitive> $op<&Record<'a, T>> for Record<'a, T>
         where for<'t> &'t T: NumericRef<T> {
             type Output = Record<'a, T>;
+            #[track_caller]
             #[inline]
             fn $method(self, rhs: &Record<'a, T>) -> Self::Output {
                 (&self).$method(rhs)
@@ -218,6 +222,7 @@ macro_rules! record_operator_impl_reference_value {
         impl <'a, T: Numeric + Primitive> $op<Record<'a, T>> for &Record<'a, T>
         where for<'t> &'t T: NumericRef<T> {
             type Output = Record<'a, T>;
+            #[track_caller]
             #[inline]
             fn $method(self, rhs: Record<'a, T>) -> Self::Output {
                 self.$method(&rhs)
@@ -289,8 +294,8 @@ record_number_operator_impl_value_reference!(impl Add for Record { fn add });
 impl <'a, 'l, 'r, T: Numeric + Primitive> Mul<&'r Record<'a, T>> for &'l Record<'a, T>
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
-    #[inline]
     #[track_caller]
+    #[inline]
     fn mul(self, rhs: &Record<'a, T>) -> Self::Output {
         assert!(same_list(self, rhs), "Records must be using the same WengertList");
         match (self.history, rhs.history) {
@@ -328,6 +333,7 @@ record_operator_impl_value_reference!(impl Mul for Record { fn mul });
 impl <'a, T: Numeric + Primitive> Mul<&T> for &Record<'a, T>
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
+    #[track_caller]
     #[inline]
     fn mul(self, rhs: &T) -> Self::Output {
         match self.history {
@@ -362,8 +368,8 @@ record_number_operator_impl_value_reference!(impl Mul for Record { fn mul });
 impl <'a, 'l, 'r, T: Numeric + Primitive> Sub<&'r Record<'a, T>> for &'l Record<'a, T>
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
-    #[inline]
     #[track_caller]
+    #[inline]
     fn sub(self, rhs: &Record<'a, T>) -> Self::Output {
         assert!(same_list(self, rhs), "Records must be using the same WengertList");
         match (self.history, rhs.history) {
@@ -585,8 +591,8 @@ where for<'t> &'t T: NumericRef<T> {
 impl <'a, 'l, 'r, T: Numeric + Primitive> Div<&'r Record<'a, T>> for &'l Record<'a, T>
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
-    #[inline]
     #[track_caller]
+    #[inline]
     fn div(self, rhs: &Record<'a, T>) -> Self::Output {
         assert!(same_list(self, rhs), "Records must be using the same WengertList");
         match (self.history, rhs.history) {
@@ -626,6 +632,7 @@ record_operator_impl_value_reference!(impl Div for Record { fn div });
 impl <'a, T: Numeric + Primitive> Div<&T> for &Record<'a, T>
 where for<'t> &'t T: NumericRef<T> {
     type Output = Record<'a, T>;
+    #[track_caller]
     #[inline]
     fn div(self, rhs: &T) -> Self::Output {
         match self.history {
@@ -702,6 +709,7 @@ where for<'t> &'t T: NumericRef<T> {
  * type T only the number parts of the record are compared.
  */
 impl <'a, T: PartialEq + Primitive> PartialEq for Record<'a, T> {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.number == other.number
     }
@@ -714,6 +722,7 @@ impl <'a, T: PartialEq + Primitive> PartialEq for Record<'a, T> {
  * type T only the number parts of the record are compared.
  */
 impl <'a, T: PartialOrd + Primitive> PartialOrd for Record<'a, T> {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.number.partial_cmp(&other.number)
     }
@@ -995,6 +1004,7 @@ macro_rules! record_real_operator_impl_value_value {
         impl <'a, T: Numeric + Real + Primitive> $op for Record<'a, T>
         where for<'t> &'t T: NumericRef<T> + RealRef<T> {
             type Output = Record<'a, T>;
+            #[track_caller]
             #[inline]
             fn $method(self, rhs: Record<'a, T>) -> Self::Output {
                 (&self).$method(&rhs)
@@ -1011,6 +1021,7 @@ macro_rules! record_real_operator_impl_value_reference {
         impl <'a, T: Numeric + Real + Primitive> $op<&Record<'a, T>> for Record<'a, T>
         where for<'t> &'t T: NumericRef<T> + RealRef<T> {
             type Output = Record<'a, T>;
+            #[track_caller]
             #[inline]
             fn $method(self, rhs: &Record<'a, T>) -> Self::Output {
                 (&self).$method(rhs)
@@ -1027,6 +1038,7 @@ macro_rules! record_real_operator_impl_reference_value {
         impl <'a, T: Numeric + Real + Primitive> $op<Record<'a, T>> for &Record<'a, T>
         where for<'t> &'t T: NumericRef<T> + RealRef<T> {
             type Output = Record<'a, T>;
+            #[track_caller]
             #[inline]
             fn $method(self, rhs: Record<'a, T>) -> Self::Output {
                 self.$method(&rhs)

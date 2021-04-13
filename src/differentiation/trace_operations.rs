@@ -71,6 +71,7 @@ impl <T: Numeric + Primitive> FromUsize for Trace<T> {
  * Any trace of a Cloneable type implements clone
  */
 impl <T: Clone + Primitive> Clone for Trace<T> {
+    #[inline]
     fn clone(&self) -> Self {
         Trace {
             number: self.number.clone(),
@@ -96,6 +97,7 @@ impl <T: Copy + Primitive> Copy for Trace<T> { }
  * ```
  */
 impl <T: PartialEq + Primitive> PartialEq for Trace<T> {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.number == other.number
     }
@@ -113,6 +115,7 @@ impl <T: PartialEq + Primitive> PartialEq for Trace<T> {
  * ```
  */
 impl <T: PartialOrd + Primitive> PartialOrd for Trace<T> {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.number.partial_cmp(&other.number)
     }
@@ -123,6 +126,7 @@ impl <T: PartialOrd + Primitive> PartialOrd for Trace<T> {
  * the same as adding a bunch of Trace types together.
  */
 impl <T: Numeric + Primitive> Sum for Trace<T> {
+    #[inline]
     fn sum<I>(mut iter: I) -> Trace<T> where I: Iterator<Item = Trace<T>> {
         let mut total = Trace::<T>::zero();
         loop {
@@ -277,6 +281,7 @@ trace_number_operator_impl_value_reference!(impl Add for Trace { fn add });
 impl <'l, 'r, T: Numeric + Primitive> Mul<&'r Trace<T>> for &'l Trace<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Trace<T>;
+    #[inline]
     fn mul(self, rhs: &Trace<T>) -> Self::Output {
         Trace {
             number: self.number.clone() * rhs.number.clone(),
@@ -316,6 +321,7 @@ trace_number_operator_impl_value_reference!(impl Mul for Trace { fn mul });
 impl <'l, 'r, T: Numeric + Primitive> Sub<&'r Trace<T>> for &'l Trace<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Trace<T>;
+    #[inline]
     fn sub(self, rhs: &Trace<T>) -> Self::Output {
         Trace {
             number: self.number.clone() - rhs.number.clone(),
@@ -353,6 +359,7 @@ trace_number_operator_impl_value_reference!(impl Sub for Trace { fn sub });
 impl <'l, 'r, T: Numeric + Primitive> Div<&'r Trace<T>> for &'l Trace<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Trace<T>;
+    #[inline]
     fn div(self, rhs: &Trace<T>) -> Self::Output {
         Trace {
             number: self.number.clone() / rhs.number.clone(),
@@ -399,6 +406,7 @@ trace_number_operator_impl_value_reference!(impl Div for Trace { fn div });
 impl <T: Numeric + Primitive> Neg for &Trace<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Trace<T>;
+    #[inline]
     fn neg(self) -> Self::Output {
         Trace::<T>::zero() - self
     }
@@ -410,6 +418,7 @@ where for<'a> &'a T: NumericRef<T> {
 impl <T: Numeric + Primitive> Neg for Trace<T>
 where for<'a> &'a T: NumericRef<T> {
     type Output = Trace<T>;
+    #[inline]
     fn neg(self) -> Self::Output {
         Trace::<T>::zero() - self
     }
