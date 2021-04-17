@@ -87,7 +87,7 @@ where for<'a> &'a T: NumericRef<T> {
                     // this should always return Some due to the earlier checks
                     let ij_minor = minor::<T>(matrix, i, j)?;
                     // i and j may each be up to the maximum value for usize but
-                    // we only need to know if they are even or add as
+                    // we only need to know if they are even or odd as
                     // -1 ^ (i + j) == -1 ^ ((i % 2) + (j % 2))
                     // by taking modulo of both before adding we ensure there
                     // is no overflow
