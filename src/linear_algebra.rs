@@ -25,6 +25,7 @@ use crate::matrices::{Matrix, Row, Column};
 use crate::matrices::slices::{Slice, Slice2D};
 use crate::numeric::{Numeric, NumericRef};
 use crate::numeric::extra::{Real, RealRef, Sqrt};
+use eigens::{Eigens, EigenvalueAlgorithmError};
 
 pub mod eigens;
 
@@ -724,9 +725,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
  *
  * For an input matrix A, decomposes this matrix into a product of QR, where Q is an
  * [orthogonal matrix](https://en.wikipedia.org/wiki/Orthogonal_matrix) and R is an
- * upper triangular matrix (all entries below the diagonal are 0).
- *
- * QR = A
+ * upper triangular matrix (all entries below the diagonal are 0), and QR = A.
  *
  * If the input matrix has more columns than rows then the input will be padded with
  * zero rows.
@@ -792,7 +791,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     }
 }
 
-fn principle_component_analysis<T: Numeric + Real, E>(matrix: &Matrix<T>, solver: E)
+fn principle_component_analysis<T: Numeric + Real, E>(matrix: &Matrix<T>, solver: E) -> Result<Eigens<T>, EigenvalueAlgorithmError>
 where
     for<'a> &'a T: NumericRef<T> + RealRef<T>,
     E: EigenvalueAlgorithm<T> {
@@ -803,6 +802,7 @@ where
     let bessels_correction = samples.clone() / (samples - T::one());
     let mut covariance_matrix = covariance_column_features::<T>(matrix);
     covariance_matrix.map_mut(|x| bessels_correction.clone() * x);
-    let eigens = solver.solve(&covariance_matrix);
-    unimplemented!()
+    let eigens = solver.solve(&covariance_matrix)?;
+    // TODO: Wrap this in a PCA level API struct
+    Ok(eigens)
 }
