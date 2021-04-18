@@ -235,6 +235,19 @@ impl <T> Matrix<T> {
     }
 
     /**
+     * The reverse of [get_index], converts from the flattened storage
+     * in memory into the row and column to index at this position.
+     *
+     * Matrix data is stored as row major, so each multiple of the number
+     * of columns starts a new row, and each index modulo the columns
+     * gives the column.
+     */
+    #[allow(dead_code)]
+    fn get_row_column(&self, index: usize) -> (Row, Column) {
+        (index / self.columns(), index % self.columns())
+    }
+
+    /**
      * Gets a reference to the value at this row and column. Rows and Columns are 0 indexed.
      *
      * # Panics
@@ -639,10 +652,8 @@ impl <T: Clone> Matrix<T> {
      * the matrix in place.
      */
     pub fn map_mut(&mut self, mapping_function: impl Fn(T) -> T) {
-        for i in 0..self.rows() {
-            for j in 0..self.columns() {
-                self.set(i, j, mapping_function(self.get(i, j).clone()));
-            }
+        for value in self.data.iter_mut() {
+            *value = mapping_function(value.clone());
         }
     }
 
@@ -653,7 +664,7 @@ impl <T: Clone> Matrix<T> {
     pub fn map_mut_with_index(&mut self, mapping_function: impl Fn(T, Row, Column) -> T) {
         for i in 0..self.rows() {
             for j in 0..self.columns() {
-                self.set(i, j, mapping_function(self.get(i, j).clone(), i, j));
+                self.set(i, j, mapping_function(self.get(i, j), i, j));
             }
         }
     }
@@ -676,16 +687,8 @@ impl <T: Clone> Matrix<T> {
      */
     pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Matrix<U>
             where U: Clone {
-        // compute the first mapped value so we have a value of type U
-        // to initialise the mapped matrix with
-        let first_value: U = mapping_function(self.get(0, 0));
-        let mut mapped = Matrix::empty(first_value, self.size());
-        for i in 0..self.rows() {
-            for j in 0..self.columns() {
-                mapped.set(i, j, mapping_function(self.get(i, j).clone()));
-            }
-        }
-        mapped
+        let mapped = self.data.iter().map(|x| mapping_function(x.clone())).collect();
+        Matrix::from_flat_row_major(self.size(), mapped)
     }
 
     /**
@@ -721,7 +724,7 @@ impl <T: Clone> Matrix<T> {
         let mut mapped = Matrix::empty(first_value, self.size());
         for i in 0..self.rows() {
             for j in 0..self.columns() {
-                mapped.set(i, j, mapping_function(self.get(i, j).clone(), i, j));
+                mapped.set(i, j, mapping_function(self.get(i, j), i, j));
             }
         }
         mapped
@@ -1195,13 +1198,12 @@ where for<'a> &'a T: NumericRef<T> {
             "Mismatched Matrices, left is {}x{}, right is {}x{}, + is only defined for MxN + MxN",
             self.rows(), self.columns(), rhs.rows(), rhs.columns());
 
-        let mut result = Matrix::empty(self.get(0, 0), self.size());
-        for i in 0..self.rows() {
-            for j in 0..self.columns() {
-                result.set(i, j, self.get_reference(i, j) + rhs.get_reference(i, j));
-            }
-        }
-        result
+        let values = self.data
+            .iter()
+            .zip(rhs.data.iter())
+            .map(|(x, y)| x + y)
+            .collect();
+        Matrix::from_flat_row_major(self.size(), values)
     }
 }
 
@@ -1260,13 +1262,12 @@ where for<'a> &'a T: NumericRef<T> {
             "Mismatched Matrices, left is {}x{}, right is {}x{}, - is only defined for MxN - MxN",
             self.rows(), self.columns(), rhs.rows(), rhs.columns());
 
-        let mut result = Matrix::empty(self.get(0, 0), self.size());
-        for i in 0..self.rows() {
-            for j in 0..self.columns() {
-                result.set(i, j, self.get_reference(i, j) - rhs.get_reference(i, j));
-            }
-        }
-        result
+        let values = self.data
+            .iter()
+            .zip(rhs.data.iter())
+            .map(|(x, y)| x - y)
+            .collect();
+        Matrix::from_flat_row_major(self.size(), values)
     }
 }
 
@@ -1449,4 +1450,30 @@ fn test_serialize() {
 fn test_deserialize() {
     fn assert_deserialize<'de, T: Deserialize<'de>>() {}
     assert_deserialize::<Matrix<f64>>();
+}
+
+#[test]
+fn test_indexing() {
+    let a = Matrix::from(vec![vec![1, 2], vec![3, 4]]);
+    assert_eq!(a.get_index(0, 1), 1);
+    assert_eq!(a.get_row_column(1), (0, 1));
+    assert_eq!(a.get(0, 1), 2);
+    let b = Matrix::from(vec![vec![1, 2, 3], vec![5, 6, 7]]);
+    assert_eq!(b.get_index(1, 2), 5);
+    assert_eq!(b.get_row_column(5), (1, 2));
+    assert_eq!(b.get(1, 2), 7);
+    assert_eq!(
+        Matrix::from(vec![
+            vec![0, 0],
+            vec![0, 0],
+            vec![0, 0]
+        ])
+        .map_with_index(|_, r, c| format!("{:?}x{:?}", r, c)),
+        Matrix::from(vec![
+            vec!["0x0", "0x1"],
+            vec!["1x0", "1x1"],
+            vec!["2x0", "2x1"]
+        ])
+        .map(|x| x.to_owned())
+    );
 }

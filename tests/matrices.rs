@@ -242,4 +242,35 @@ mod tests {
             vec![ 3, 7 ]
         ]));
     }
+
+    #[test]
+    fn check_mapping() {
+        let mut matrix = Matrix::from(vec![
+            vec![ 0, 1, 2 ],
+            vec![ 3, 4, 5 ],
+            vec![ 6, 7, 8 ],
+            vec![ 9, 0, 1 ]
+        ]);
+        matrix.map_mut(|_| 0);
+        assert!(matrix.column_major_iter().all(|x| x == 0));
+        matrix.map_mut_with_index(|_, r, c| r + c);
+        assert_eq!(
+            matrix,
+            Matrix::from(vec![
+                vec![ 0, 1, 2 ],
+                vec![ 1, 2, 3 ],
+                vec![ 2, 3, 4 ],
+                vec![ 3, 4, 5 ]
+            ])
+        );
+        assert_eq!(
+            matrix,
+            Matrix::from(vec![
+                vec![ 9, 6, 5 ],
+                vec![ 0, 2, 5 ],
+                vec![ 5, 1, 2 ],
+                vec![ 7, 7, 8 ]
+            ]).map_with_index(|_, r, c| r + c)
+        )
+    }
 }
