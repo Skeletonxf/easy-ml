@@ -136,3 +136,39 @@ pub enum EigenvalueAlgorithmError {
      */
     Failed(Box<dyn std::error::Error>),
 }
+//
+// /**
+//  * The input matrix is not a supported size by [FormulaEigenvalueSolver]
+//  */
+// #[derive(Clone, Debug, PartialEq)]
+// pub struct UnsupportedInput {
+//     size: (usize, usize)
+// }
+//
+// impl fmt::Display for UnsupportedInput {
+//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//         write!(f, "FormulaEigenvalueSolver only supports solving for a 2x2 or 3x3 matrix, input was: {}x{}", self.size.0, self.size.1)
+//     }
+// }
+//
+// impl error::Error for UnsupportedInput {}
+//
+// pub struct FormulaEigenvalueSolver {
+//
+// }
+//
+// // This seems like a lot of work for a non general solution, may be best to just implement the qr algorithm instead
+//
+// impl <T: Numeric + Real> EigenvalueAlgorithm<T> for FormulaEigenvalueSolver
+// where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+//     fn solve(&self, matrix: &Matrix<T>) -> Result<Eigens<T>, EigenvalueAlgorithmError> {
+//         if matrix.size() != (2, 2) {
+//             return Err(EigenvalueAlgorithmError::InvalidInput(Box::new(UnsupportedInput { size: matrix.size() })));
+//         }
+//
+//         let determinant = matrix.determinant();
+//         let trace = unimplemented!(); // https://en.wikipedia.org/wiki/Trace_(linear_algebra)
+//
+//         unimplemented!()
+//     }
+// }

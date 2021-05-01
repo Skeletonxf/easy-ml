@@ -702,6 +702,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     let column_vector = Matrix::column(matrix.column_iter(0).collect());
     let column_vector_length = column_vector.euclidean_length();
     let v = {
+        // e is [1 0 0 0 ... 0]^T
         let e = {
             let mut e = Matrix::empty(T::zero(), (rows, 1));
             e.set(0, 0, T::one());
@@ -721,14 +722,13 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
 }
 
 /**
- * Computes the QR decomposition of a matrix.
+ * Computes the QR decomposition of a MxN matrix where M >= N.
  *
  * For an input matrix A, decomposes this matrix into a product of QR, where Q is an
  * [orthogonal matrix](https://en.wikipedia.org/wiki/Orthogonal_matrix) and R is an
  * upper triangular matrix (all entries below the diagonal are 0), and QR = A.
  *
- * If the input matrix has more columns than rows then the input will be padded with
- * zero rows.
+ * If the input matrix has more columns than rows, returns None.
  *
  * # Warning
  *
@@ -740,19 +740,12 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
  * turbofish syntax like:
  * `linear_algebra::qr_decomposition::<f32>(&matrix)`
  */
-pub fn qr_decomposition<T: Numeric + Real>(matrix: &Matrix<T>) -> QRDecomposition<T>
+pub fn qr_decomposition<T: Numeric + Real>(matrix: &Matrix<T>) -> Option<QRDecomposition<T>>
 where for<'a> &'a T: NumericRef<T> + RealRef<T> {
-    // The computation steps are outlined nicely at https://rosettacode.org/wiki/QR_decomposition
     if matrix.columns() > matrix.rows() {
-        // if the input is square there's no problems, if the input has more rows than columns
-        // we will just ignore the bottom rows, but if the input has more columns than rows we
-        // need to pad the rows with zeros so we don't run off the bottom of the matrix
-        let mut padded = matrix.clone();
-        for _ in 0..(matrix.columns() - matrix.rows()) {
-            padded.insert_row(padded.rows(), T::zero());
-        }
-        return qr_decomposition::<T>(&padded);
+        return None;
     }
+    // The computation steps are outlined nicely at https://rosettacode.org/wiki/QR_decomposition
     let mut q = None;
     let mut r = matrix.clone();
     for column in 0..matrix.columns() {
@@ -760,7 +753,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
         // the householder for the submatrix in the bottom right corner
         let submatrix = matrix.retain(
             Slice2D::new()
-                .rows(Slice::Range(column..matrix.columns()))
+                .rows(Slice::Range(column..matrix.rows()))
                 .columns(Slice::Range(column..matrix.columns()))
         );
         let householder_matrix = householder_matrix::<T>(&submatrix);
@@ -769,7 +762,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
         // 1 0 0
         // 0 H H
         // 0 H H
-        let mut h = Matrix::diagonal(T::one(), (matrix.columns(), matrix.columns()));
+        let mut h = Matrix::diagonal(T::one(), (matrix.rows(), matrix.rows()));
         for i in 0..householder_matrix.rows() {
             for j in 0..householder_matrix.columns() {
                 h.set(column + i, column + j, householder_matrix.get(i, j))
@@ -783,12 +776,12 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
             Some(h_previous) => q = Some(h_previous * h),
         }
     }
-    QRDecomposition {
+    Some(QRDecomposition {
         // This should always be Some because the input matrix has to be at least 1x1
         q: q.unwrap(),
         r,
         _private: (),
-    }
+    })
 }
 
 fn principle_component_analysis<T: Numeric + Real, E>(matrix: &Matrix<T>, solver: E) -> Result<Eigens<T>, EigenvalueAlgorithmError>
