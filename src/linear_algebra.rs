@@ -712,17 +712,28 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
             true => T::one(),
             false => -T::one(),
         };
+        // We take the opposite sign of the length of the input because we use + instead of -
+        // for this step, as the actual formula is u = x - (sign * length * e)
+        // As per Rosetta and Wikipedia, this is done to avoid loss of significance.
         let u = column_vector + (e * (sign * column_vector_length));
-        // normalise by the first element
-        u.map(|x| x / u.get(0, 0))
+        // normalise by the length
+        &u / u.euclidean_length()
     };
+    // Wikipedia and other sources use I - 2 v v^T and normalise v to unit length
+    // Rosettacode uses b = 2 / v^T v instead of b = 2 and normalises v by the first entry only
+    // These seem to be equivalent in terms of computed results, presumably because v^T v is
+    // similar to euclidean length anyway. We use the steps on Wikipedia:
+    // https://en.wikipedia.org/w/index.php?title=QR_decomposition#Using_Householder_reflections
+    // for the householder reflection since they seem more simple and avoid division by zero
+    // as long as the input length is not zero (whereas the Rosetta code example can divide by
+    // zero if just the first element in the `column_vector` is zero.).
     let identity_matrix = Matrix::diagonal(T::one(), (rows, rows));
-    let b = (T::one() + T::one()) / (v.transpose() * &v).scalar();
+    let b = T::one() + T::one();
     identity_matrix - ((&v * v.transpose()) * b)
 }
 
 /**
- * Computes the QR decomposition of a MxN matrix where M >= N.
+ * Computes a QR decomposition of a MxN matrix where M >= N.
  *
  * For an input matrix A, decomposes this matrix into a product of QR, where Q is an
  * [orthogonal matrix](https://en.wikipedia.org/wiki/Orthogonal_matrix) and R is an
@@ -740,7 +751,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
  * turbofish syntax like:
  * `linear_algebra::qr_decomposition::<f32>(&matrix)`
  */
-pub fn qr_decomposition<T: Numeric + Real>(matrix: &Matrix<T>) -> Option<QRDecomposition<T>>
+pub fn qr_decomposition<T: Numeric + Real + std::fmt::Display>(matrix: &Matrix<T>) -> Option<QRDecomposition<T>>
 where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     if matrix.columns() > matrix.rows() {
         return None;
@@ -757,6 +768,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
                 .columns(Slice::Range(column..matrix.columns()))
         );
         let householder_matrix = householder_matrix::<T>(&submatrix);
+        println!("Qx=\n{}", &householder_matrix * Matrix::column(submatrix.column_iter(0).collect()));
         // embed the householder matrix into the bottom right of an identity matrix
         // like so:
         // 1 0 0
@@ -768,6 +780,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
                 h.set(column + i, column + j, householder_matrix.get(i, j))
             }
         }
+        println!("H:\n{}", h);
         // R = H_n * ... H_3 * H_2 * H_1 * A
         r = &h * r;
         // Q = H_1 * H_2 * H_3 .. H_n
