@@ -224,7 +224,7 @@ mod tests {
             vec![ 6.0, 167.0, -68.0 ],
             vec![ -4.0, 24.0, -41.0 ],
         ]);
-        let output = linear_algebra::qr_decomposition_2::<f64>(&input).unwrap();
+        let output = linear_algebra::qr_decomposition::<f64>(&input).unwrap();
         println!("Q:\n{}", output.q);
         println!("R:\n{}", output.r);
         let q = Matrix::from(vec![
@@ -256,7 +256,7 @@ mod tests {
             let mut data = vec![0.0; r * c];
             random_generator.fill(data.as_mut_slice());
             let matrix = Matrix::from_flat_row_major((*r, *c), data);
-            let output = linear_algebra::qr_decomposition_2::<f64>(&matrix).unwrap();
+            let output = linear_algebra::qr_decomposition::<f64>(&matrix).unwrap();
             let q = output.q;
             let r = output.r;
             // Q should be orthogonal

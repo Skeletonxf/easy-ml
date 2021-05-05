@@ -690,11 +690,17 @@ impl <T> QRDecomposition<T> {
     }
 }
 
-fn householder<T: Numeric + Real + std::fmt::Display>(matrix: &Matrix<T>) -> Matrix<T>
+/**
+ * Computes the householder matrix along the first column of the input matrix.
+ *
+ * For an MxN input, the householder matrix output will be MxM
+ */
+fn householder_matrix<T: Numeric + Real>(matrix: &Matrix<T>) -> Matrix<T>
 where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    // The computation steps are outlined nicely at https://en.wikipedia.org/wiki/QR_decomposition#Using_Householder_reflections
+    // Supporting reference implementations are on Rosettacode https://rosettacode.org/wiki/QR_decomposition
     // we hardcode to taking the first column vector of the input matrix
     let x = Matrix::column(matrix.column_iter(0).collect());
-    println!("x:\n{}", x);
     let rows = x.rows();
     let length = x.euclidean_length();
     let a = {
@@ -706,7 +712,6 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
             -length
         }
     };
-    println!("a: {}", a);
     let u = {
         // u = x - ae, where e is [1 0 0 0 ... 0]^T, and x is the column vector so
         // u is x except for the first element.
@@ -715,106 +720,15 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
         u.set(0, 0, u.get(0, 0) + a);
         u
     };
-    println!("u: {}", u);
     // v = u / ||u||
     let v = {
         let length = u.euclidean_length();
         u / length
     };
-    println!("v: {}", v);
     let identity = Matrix::diagonal(T::one(), (rows, rows));
     let two = T::one() + T::one();
     // I - 2 v v^T
     identity - ((&v * v.transpose()) * two)
-}
-
-pub fn qr_decomposition_2<T: Numeric + Real + std::fmt::Display>(matrix: &Matrix<T>) -> Option<QRDecomposition<T>>
-where for<'a> &'a T: NumericRef<T> + RealRef<T> {
-    if matrix.columns() > matrix.rows() {
-        return None;
-    }
-    let iterations = std::cmp::min(matrix.rows() - 1, matrix.columns());
-    let mut q = None;
-    let mut r = matrix.clone();
-    for column in 0..iterations {
-        // on each iteration take a minor to leave the bottom right, with one fewer row/column
-        // since that will have already been zeroed
-        let submatrix = r.retain(
-            Slice2D::new()
-                .rows(Slice::Range(column..matrix.rows()))
-                .columns(Slice::Range(column..matrix.columns()))
-        );
-        // compute the M-column x M-column householder matrix
-        let h = householder::<T>(&submatrix);
-        // pad the h into the bottom right of an identity matrix so it is MxM
-        let h = {
-            let mut identity = Matrix::diagonal(T::one(), (matrix.rows(), matrix.rows()));
-            for i in 0..h.rows() {
-                for j in 0..h.columns() {
-                    identity.set(column + i, column + j, h.get(i, j));
-                }
-            }
-            identity
-        };
-        println!("H_{}:\n{}", column, h);
-        // R = H_n * ... H_3 * H_2 * H_1 * A
-        r = &h * r;
-        println!("R_{}:\n{}", column, r);
-        // Q = H_1 * H_2 * H_3 .. H_n
-        match q {
-            None => q = Some(h),
-            Some(h_previous) => q = Some(h_previous * h),
-        }
-    }
-    Some(QRDecomposition {
-        // This should always be Some because the input matrix has to be at least 1x1
-        q: q.unwrap(),
-        r,
-        _private: (),
-    })
-}
-
-
-/**
- * Computes the householder matrix along the first column of the input matrix.
- *
- * For an MxN input, the householder matrix output will be MxM
- */
-fn householder_matrix<T: Numeric + Real>(matrix: &Matrix<T>) -> Matrix<T>
-where for<'a> &'a T: NumericRef<T> + RealRef<T> {
-    // The computation steps are outlined nicely at https://rosettacode.org/wiki/QR_decomposition
-    let rows = matrix.rows();
-    let column_vector = Matrix::column(matrix.column_iter(0).collect());
-    let column_vector_length = column_vector.euclidean_length();
-    let v = {
-        // e is [1 0 0 0 ... 0]^T
-        let e = {
-            let mut e = Matrix::empty(T::zero(), (rows, 1));
-            e.set(0, 0, T::one());
-            e
-        };
-        let sign = match column_vector.get(0, 0) > T::zero() {
-            true => T::one(),
-            false => -T::one(),
-        };
-        // We take the opposite sign of the length of the input because we use + instead of -
-        // for this step, as the actual formula is u = x - (sign * length * e)
-        // As per Rosetta and Wikipedia, this is done to avoid loss of significance.
-        let u = column_vector + (e * (sign * column_vector_length));
-        // normalise by the length
-        &u / u.euclidean_length()
-    };
-    // Wikipedia and other sources use I - 2 v v^T and normalise v to unit length
-    // Rosettacode uses b = 2 / v^T v instead of b = 2 and normalises v by the first entry only
-    // These seem to be equivalent in terms of computed results, presumably because v^T v is
-    // similar to euclidean length anyway. We use the steps on Wikipedia:
-    // https://en.wikipedia.org/w/index.php?title=QR_decomposition#Using_Householder_reflections
-    // for the householder reflection since they seem more simple and avoid division by zero
-    // as long as the input length is not zero (whereas the Rosetta code example can divide by
-    // zero if just the first element in the `column_vector` is zero.).
-    let identity_matrix = Matrix::diagonal(T::one(), (rows, rows));
-    let b = T::one() + T::one();
-    identity_matrix - ((&v * v.transpose()) * b)
 }
 
 /**
@@ -836,36 +750,40 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
  * turbofish syntax like:
  * `linear_algebra::qr_decomposition::<f32>(&matrix)`
  */
-pub fn qr_decomposition<T: Numeric + Real + std::fmt::Display>(matrix: &Matrix<T>) -> Option<QRDecomposition<T>>
+pub fn qr_decomposition<T: Numeric + Real>(matrix: &Matrix<T>) -> Option<QRDecomposition<T>>
 where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     if matrix.columns() > matrix.rows() {
         return None;
     }
-    // The computation steps are outlined nicely at https://rosettacode.org/wiki/QR_decomposition
+    // The computation steps are outlined nicely at https://en.wikipedia.org/wiki/QR_decomposition#Using_Householder_reflections
+    // Supporting reference implementations are at Rosettacode https://rosettacode.org/wiki/QR_decomposition
+    let iterations = std::cmp::min(matrix.rows() - 1, matrix.columns());
     let mut q = None;
     let mut r = matrix.clone();
-    for column in 0..matrix.columns() {
-        // as we loop through the columns of the matrix, ignore the left and top and compute
-        // the householder for the submatrix in the bottom right corner
+    for column in 0..iterations {
+        // on each iteration take a minor to leave the bottom right, with one fewer row/column
+        // since that will have already been zeroed
         let submatrix = r.retain(
             Slice2D::new()
                 .rows(Slice::Range(column..matrix.rows()))
                 .columns(Slice::Range(column..matrix.columns()))
         );
-        let householder_matrix = householder_matrix::<T>(&submatrix);
-        println!("Qx=\n{}", &householder_matrix * Matrix::column(submatrix.column_iter(0).collect()));
-        // embed the householder matrix into the bottom right of an identity matrix
+        // compute the M-column x M-column householder matrix
+        let h = householder_matrix::<T>(&submatrix);
+        // pad the h into the bottom right of an identity matrix so it is MxM
         // like so:
         // 1 0 0
         // 0 H H
         // 0 H H
-        let mut h = Matrix::diagonal(T::one(), (matrix.rows(), matrix.rows()));
-        for i in 0..householder_matrix.rows() {
-            for j in 0..householder_matrix.columns() {
-                h.set(column + i, column + j, householder_matrix.get(i, j))
+        let h = {
+            let mut identity = Matrix::diagonal(T::one(), (matrix.rows(), matrix.rows()));
+            for i in 0..h.rows() {
+                for j in 0..h.columns() {
+                    identity.set(column + i, column + j, h.get(i, j));
+                }
             }
-        }
-        println!("H:\n{}", h);
+            identity
+        };
         // R = H_n * ... H_3 * H_2 * H_1 * A
         r = &h * r;
         // Q = H_1 * H_2 * H_3 .. H_n
