@@ -690,6 +690,91 @@ impl <T> QRDecomposition<T> {
     }
 }
 
+fn householder<T: Numeric + Real + std::fmt::Display>(matrix: &Matrix<T>) -> Matrix<T>
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    // we hardcode to taking the first column vector of the input matrix
+    let x = Matrix::column(matrix.column_iter(0).collect());
+    println!("x:\n{}", x);
+    let rows = x.rows();
+    let length = x.euclidean_length();
+    let a = {
+        // we hardcode to wanting to zero all elements below the first
+        let sign = x.get(0, 0);
+        if sign > T::zero() {
+            length
+        } else {
+            -length
+        }
+    };
+    println!("a: {}", a);
+    let u = {
+        // u = x - ae, where e is [1 0 0 0 ... 0]^T, and x is the column vector so
+        // u is x except for the first element.
+        // Also, we invert the sign of a to avoid loss of significance, so u[0] becomes x + a
+        let mut u = x;
+        u.set(0, 0, u.get(0, 0) + a);
+        u
+    };
+    println!("u: {}", u);
+    // v = u / ||u||
+    let v = {
+        let length = u.euclidean_length();
+        u / length
+    };
+    println!("v: {}", v);
+    let identity = Matrix::diagonal(T::one(), (rows, rows));
+    let two = T::one() + T::one();
+    // I - 2 v v^T
+    identity - ((&v * v.transpose()) * two)
+}
+
+pub fn qr_decomposition_2<T: Numeric + Real + std::fmt::Display>(matrix: &Matrix<T>) -> Option<QRDecomposition<T>>
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    if matrix.columns() > matrix.rows() {
+        return None;
+    }
+    let iterations = std::cmp::min(matrix.rows() - 1, matrix.columns());
+    let mut q = None;
+    let mut r = matrix.clone();
+    for column in 0..iterations {
+        // on each iteration take a minor to leave the bottom right, with one fewer row/column
+        // since that will have already been zeroed
+        let submatrix = r.retain(
+            Slice2D::new()
+                .rows(Slice::Range(column..matrix.rows()))
+                .columns(Slice::Range(column..matrix.columns()))
+        );
+        // compute the M-column x M-column householder matrix
+        let h = householder::<T>(&submatrix);
+        // pad the h into the bottom right of an identity matrix so it is MxM
+        let h = {
+            let mut identity = Matrix::diagonal(T::one(), (matrix.rows(), matrix.rows()));
+            for i in 0..h.rows() {
+                for j in 0..h.columns() {
+                    identity.set(column + i, column + j, h.get(i, j));
+                }
+            }
+            identity
+        };
+        println!("H_{}:\n{}", column, h);
+        // R = H_n * ... H_3 * H_2 * H_1 * A
+        r = &h * r;
+        println!("R_{}:\n{}", column, r);
+        // Q = H_1 * H_2 * H_3 .. H_n
+        match q {
+            None => q = Some(h),
+            Some(h_previous) => q = Some(h_previous * h),
+        }
+    }
+    Some(QRDecomposition {
+        // This should always be Some because the input matrix has to be at least 1x1
+        q: q.unwrap(),
+        r,
+        _private: (),
+    })
+}
+
+
 /**
  * Computes the householder matrix along the first column of the input matrix.
  *
@@ -762,7 +847,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     for column in 0..matrix.columns() {
         // as we loop through the columns of the matrix, ignore the left and top and compute
         // the householder for the submatrix in the bottom right corner
-        let submatrix = matrix.retain(
+        let submatrix = r.retain(
             Slice2D::new()
                 .rows(Slice::Range(column..matrix.rows()))
                 .columns(Slice::Range(column..matrix.columns()))
