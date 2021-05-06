@@ -13,6 +13,8 @@ extern crate textplots;
 extern crate easy_ml;
 
 use rand::{Rng, SeedableRng};
+use rand::distributions::{DistIter, Standard};
+use rand_chacha::ChaCha8Rng;
 use textplots::{Chart, Plot, Shape};
 use easy_ml::distributions::Gaussian;
 
@@ -23,17 +25,13 @@ const SAMPLES: usize = 10000;
 let normal_distribution = Gaussian::new(0.0, 1.0);
 
 // first create random numbers between 0 and 1
-// using a fixed seed non cryptographically secure random
-// generator from the rand crate
-let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(10);
-
-let mut random_numbers = Vec::with_capacity(SAMPLES);
-for _ in 0..SAMPLES {
-    random_numbers.push(random_generator.gen::<f64>());
-}
+// using a fixed seed random generator from the rand crate
+let mut random_generator = ChaCha8Rng::seed_from_u64(10);
+let mut random_numbers: DistIter<Standard, &mut ChaCha8Rng, f64> =
+    (&mut random_generator).sample_iter(Standard);
 
 // draw samples from the normal distribution
-let samples: Vec<f64> = normal_distribution.draw(&mut random_numbers.into_iter(), SAMPLES)
+let samples: Vec<f64> = normal_distribution.draw(&mut random_numbers, SAMPLES)
     // unwrap is perfectly save if and only if we know we have supplied enough random numbers
     .unwrap();
 
@@ -56,15 +54,32 @@ Chart::new(180, 60, -3.0, 3.0)
     .nice();
 ```
 
-# Example of creating an infinite iterator using the rand crate
+# Getting an infinite iterator using the rand crate
 
 It may be convenient to create an infinite iterator for random numbers so you don't need
 to populate lists of random numbers when using these types.
 
 ```
 use rand::{Rng, SeedableRng};
+use rand::distributions::{DistIter, Standard};
+use rand_chacha::ChaCha8Rng;
 
-// use a fixed seed non cryptographically secure random generator from the rand crate
+// using a fixed seed random generator from the rand crate
+let mut random_generator = ChaCha8Rng::seed_from_u64(16);
+// now pass this Iterator to Gaussian functions that accept a &mut Iterator
+let mut random_numbers: DistIter<Standard, &mut ChaCha8Rng, f64> =
+    (&mut random_generator).sample_iter(Standard);
+```
+
+# Example of creating an infinite iterator
+
+The below example is for reference, don't actually do this if you're using rand because rand
+can give you an infinite iterator already (see above example).
+
+```
+use rand::{Rng, SeedableRng};
+
+// using a fixed seed random generator from the rand crate
 let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(16);
 
 struct EndlessRandomGenerator {
@@ -80,7 +95,7 @@ impl Iterator for EndlessRandomGenerator {
     }
 }
 
-// now pass this instance to Gaussian functions that accept a &mut Iterator
+// now pass this Iterator to Gaussian functions that accept a &mut Iterator
 let mut random_numbers = EndlessRandomGenerator { rng: random_generator };
 ```
 

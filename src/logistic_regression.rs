@@ -86,22 +86,13 @@ use easy_ml::matrices::slices::{Slice2D, Slice};
 use easy_ml::distributions::MultivariateGaussian;
 
 use rand::{Rng, SeedableRng};
+use rand::distributions::{DistIter, Standard};
+use rand_chacha::ChaCha8Rng;
 
 use textplots::{Chart, Plot, Shape};
 
-// use a fixed seed non cryptographically secure random generator from the rand crate
-let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(13);
-
-/**
- * Utility function to create a list of random numbers.
- */
-fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f64> {
-    let mut random_numbers = Vec::with_capacity(n);
-    for _ in 0..n {
-        random_numbers.push(random_generator.gen::<f64>());
-    }
-    random_numbers
-}
+// use a fixed seed random generator from the rand crate
+let mut random_generator = ChaCha8Rng::seed_from_u64(13);
 
 // define two cluster centres using two 2d gaussians, making sure they overlap a bit
 let class1 = MultivariateGaussian::new(
@@ -120,10 +111,11 @@ let class2 = MultivariateGaussian::new(
 
 // Generate 200 points for each cluster
 let points = 200;
-let mut random_numbers = n_random_numbers(&mut random_generator, points * 2);
-let class1_points = class1.draw(&mut random_numbers.drain(..), points).unwrap();
-let mut random_numbers = n_random_numbers(&mut random_generator, points * 2);
-let class2_points = class2.draw(&mut random_numbers.drain(..), points).unwrap();
+let mut random_numbers: DistIter<Standard, &mut ChaCha8Rng, f64> =
+    (&mut random_generator).sample_iter(Standard);
+// unwrap is perfectly save if and only if we know we have supplied enough random numbers
+let class1_points = class1.draw(&mut random_numbers, points).unwrap();
+let class2_points = class2.draw(&mut random_numbers, points).unwrap();
 
 // Plot each class of the generated data in a scatter plot
 println!("Generated data points");

@@ -348,6 +348,8 @@ use easy_ml::linear_algebra;
 use easy_ml::distributions::Gaussian;
 
 use rand::{Rng, SeedableRng};
+use rand::distributions::{DistIter, Standard};
+use rand_chacha::ChaCha8Rng;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 struct Alien {
@@ -379,28 +381,15 @@ enum AlienSex {
 // between alien charateristics instead the samples are generated without an assigned sex
 // and then clustered using k-means
 
-// use a fixed seed non cryptographically secure random generator from the rand crate
-let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(16);
-
-// an infinite iterator is used for convenience as shown in the distributions module
-struct EndlessRandomGenerator {
-    rng: rand_chacha::ChaCha8Rng
-}
-
-impl Iterator for EndlessRandomGenerator {
-    type Item = f64;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        Some(self.rng.gen::<f64>())
-    }
-}
-
-let mut random_numbers = EndlessRandomGenerator { rng: random_generator };
+// use a fixed seed random generator from the rand crate
+let mut random_generator = ChaCha8Rng::seed_from_u64(16);
+let mut random_numbers: DistIter<Standard, &mut ChaCha8Rng, f64> =
+    (&mut random_generator).sample_iter(Standard);
 
 /**
  * Generates height data for creating the alien dataset.
  */
-fn generate_heights(samples: usize, random_numbers: &mut EndlessRandomGenerator) -> Vec<f64> {
+fn generate_heights(samples: usize, random_numbers: &mut impl Iterator<Item = f64>) -> Vec<f64> {
     // the average height shall be 1.5 meters with a standard deviation of 0.25
     let heights_distribution = Gaussian::new(1.5, 0.25 * 0.25);
     let mut heights = heights_distribution.draw(random_numbers, samples).unwrap();
@@ -411,7 +400,7 @@ fn generate_heights(samples: usize, random_numbers: &mut EndlessRandomGenerator)
 /**
  * Generates tail length data for creating the alien dataset.
  */
-fn generate_tail_length(samples: usize, random_numbers: &mut EndlessRandomGenerator) -> Vec<f64> {
+fn generate_tail_length(samples: usize, random_numbers: &mut impl Iterator<Item = f64>) -> Vec<f64> {
     // the average length shall be 1.25 meters with more variation in tail length
     let tails_distribution = Gaussian::new(1.25, 0.5 * 0.5);
     let mut tails = tails_distribution.draw(random_numbers, samples).unwrap();
@@ -425,7 +414,7 @@ fn generate_tail_length(samples: usize, random_numbers: &mut EndlessRandomGenera
  * Note that floats are still returned despite this being a category because we need all the
  * data types to be the same for clustering
  */
-fn generate_colors(samples: usize, random_numbers: &mut EndlessRandomGenerator) -> Vec<f64> {
+fn generate_colors(samples: usize, random_numbers: &mut impl Iterator<Item = f64>) -> Vec<f64> {
     let mut colors = Vec::with_capacity(samples);
     for i in 0..samples {
         let x = random_numbers.next().unwrap();
@@ -488,7 +477,7 @@ fn recover_generated_color(color: f64) -> AlienMarkingColor {
  * Generates metabolic rate data for creating the alien dataset.
  */
 fn generate_metabolic_rate(
-    samples: usize, random_numbers: &mut EndlessRandomGenerator
+    samples: usize, random_numbers: &mut impl Iterator<Item = f64>
 ) -> Vec<f64> {
     // the average rate shall be 100 heart beats per minute with a standard deviation of 20
     let metabolic_rate_distribution = Gaussian::new(100.0, 20.0 * 20.0);
@@ -509,7 +498,7 @@ fn generate_metabolic_rate(
  * Generates spiked tailness data for creating the alien dataset.
  */
 fn generate_spiked_tail(
-    samples: usize, random_numbers: &mut EndlessRandomGenerator
+    samples: usize, random_numbers: &mut impl Iterator<Item = f64>
 ) -> Vec<f64> {
     let mut spikes = Vec::with_capacity(samples);
     for i in 0..samples {

@@ -27,6 +27,7 @@ use easy_ml::numeric::extra::{Real, RealRef, Exp};
 use easy_ml::differentiation::{Record, WengertList};
 
 use rand::{Rng, SeedableRng};
+use rand::distributions::Standard;
 
 use textplots::{Chart, Plot, Shape};
 
@@ -34,11 +35,7 @@ use textplots::{Chart, Plot, Shape};
  * Utility function to create a list of random numbers.
  */
 fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f32> {
-    let mut random_numbers = Vec::with_capacity(n);
-    for _ in 0..n {
-        random_numbers.push(random_generator.gen::<f32>());
-    }
-    random_numbers
+    random_generator.sample_iter(Standard).take(n).collect()
 }
 
 /**
@@ -109,7 +106,7 @@ fn step_gradient(
     loss.number
 }
 
-// use a fixed seed non cryptographically secure random generator from the rand crate
+// use a fixed seed random generator from the rand crate
 let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(25);
 
 // randomly initalise the weights using the fixed seed generator for reproducibility
