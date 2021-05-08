@@ -22,7 +22,6 @@
  */
 
 use crate::matrices::{Matrix, Row, Column};
-use crate::matrices::slices::{Slice, Slice2D};
 use crate::numeric::{Numeric, NumericRef};
 use crate::numeric::extra::{Real, RealRef, Sqrt};
 use eigens::{Eigens, EigenvalueAlgorithmError};
@@ -691,16 +690,17 @@ impl <T> QRDecomposition<T> {
 }
 
 /**
- * Computes the householder matrix along the first column of the input matrix.
+ * Computes the householder matrix along the column vector input.
  *
- * For an MxN input, the householder matrix output will be MxM
+ * For an Mx1 input, the householder matrix output will be MxM
  */
-fn householder_matrix<T: Numeric + Real>(matrix: &Matrix<T>) -> Matrix<T>
+fn householder_matrix<T: Numeric + Real>(matrix: Matrix<T>) -> Matrix<T>
 where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     // The computation steps are outlined nicely at https://en.wikipedia.org/wiki/QR_decomposition#Using_Householder_reflections
     // Supporting reference implementations are on Rosettacode https://rosettacode.org/wiki/QR_decomposition
     // we hardcode to taking the first column vector of the input matrix
-    let x = Matrix::column(matrix.column_iter(0).collect());
+    assert_eq!(matrix.columns(), 1, "Input must be a column vector");
+    let x = matrix;
     let rows = x.rows();
     let length = x.euclidean_length();
     let a = {
@@ -714,8 +714,8 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     };
     let u = {
         // u = x - ae, where e is [1 0 0 0 ... 0]^T, and x is the column vector so
-        // u is x except for the first element.
-        // Also, we invert the sign of a to avoid loss of significance, so u[0] becomes x + a
+        // u is equal to x except for the first element.
+        // Also, we invert the sign of a to avoid loss of significance, so u[0] becomes x[0] + a
         let mut u = x;
         u.set(0, 0, u.get(0, 0) + a);
         u
@@ -761,15 +761,20 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     let mut q = None;
     let mut r = matrix.clone();
     for column in 0..iterations {
-        // on each iteration take a minor to leave the bottom right, with one fewer row/column
-        // since that will have already been zeroed
-        let submatrix = r.retain(
-            Slice2D::new()
-                .rows(Slice::Range(column..matrix.rows()))
-                .columns(Slice::Range(column..matrix.columns()))
-        );
+        // Conceptually, on each iteration we take a minor of r to retain the bottom right of
+        // the matrix, with one fewer row/column on each iteration since that will have already
+        // been zeroed. However, we then immediately discard all but the first column of that
+        // minor, so we skip the minor step and compute directly the first column of the minor
+        // we would have taken.
+        // let submatrix = r.retain(
+        //     Slice2D::new()
+        //         .rows(Slice::Range(column..matrix.rows()))
+        //         .columns(Slice::Range(column..matrix.columns()))
+        // );
+        // let submatrix_first_column = Matrix::column(submatrix.column_iter(0).collect());
+        let submatrix_first_column = Matrix::column(r.column_iter(column).skip(column).collect());
         // compute the M-column x M-column householder matrix
-        let h = householder_matrix::<T>(&submatrix);
+        let h = householder_matrix::<T>(submatrix_first_column);
         // pad the h into the bottom right of an identity matrix so it is MxM
         // like so:
         // 1 0 0
