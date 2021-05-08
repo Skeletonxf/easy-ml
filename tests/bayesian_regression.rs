@@ -8,6 +8,7 @@ extern crate easy_ml;
 #[cfg(test)]
 mod tests {
     use rand::{Rng, SeedableRng};
+    use rand::distributions::Standard;
 
     use textplots::{Chart, Plot, Shape};
 
@@ -75,11 +76,7 @@ mod tests {
     }
 
     fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f64> {
-        let mut random_numbers = Vec::with_capacity(n);
-        for _ in 0..n {
-            random_numbers.push(random_generator.gen::<f64>());
-        }
-        random_numbers
+        random_generator.sample_iter(Standard).take(n).collect()
     }
 
     fn merge_for_plotting(x: &Matrix<f64>, fx: &Matrix<f64>) -> Vec<(f32, f32)> {
@@ -111,8 +108,7 @@ mod tests {
 
     #[test]
     fn test_bayesian_regression() {
-        // use a fixed seed non cryptographically secure random
-        // generator from the rand crate
+        // use a fixed seed random generator from the rand crate
         let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(10);
 
         // Start by defining the precision (β) (the inverse of variance (σ^2)) of the gaussian
