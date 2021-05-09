@@ -35,14 +35,23 @@ mod tests {
         let matrix = Matrix::from(vec![vec![1, 2], vec![3, 4], vec![5, 6]]);
         println!("{:?}", matrix);
         let mut iterator = matrix.row_iter(1);
+        assert_eq!(iterator.size_hint(), (2, Some(2)));
         assert_eq!(iterator.next(), Some(3));
+        assert_eq!(iterator.size_hint(), (1, Some(1)));
         assert_eq!(iterator.next(), Some(4));
+        assert_eq!(iterator.size_hint(), (0, Some(0)));
         assert_eq!(iterator.next(), None);
+        assert_eq!(iterator.size_hint(), (0, Some(0)));
         let mut iterator = matrix.column_iter(0);
+        assert_eq!(iterator.size_hint(), (3, Some(3)));
         assert_eq!(iterator.next(), Some(1));
+        assert_eq!(iterator.size_hint(), (2, Some(2)));
         assert_eq!(iterator.next(), Some(3));
+        assert_eq!(iterator.size_hint(), (1, Some(1)));
         assert_eq!(iterator.next(), Some(5));
+        assert_eq!(iterator.size_hint(), (0, Some(0)));
         assert_eq!(iterator.next(), None);
+        assert_eq!(iterator.size_hint(), (0, Some(0)));
     }
 
     #[test]
@@ -50,13 +59,21 @@ mod tests {
         let matrix = Matrix::from(vec![vec![1, 4], vec![2, 5], vec![3, 6]]);
         println!("{:?}", matrix);
         let mut iterator = matrix.column_major_iter();
+        assert_eq!(iterator.size_hint(), (6, Some(6)));
         assert_eq!(iterator.next(), Some(1));
+        assert_eq!(iterator.size_hint(), (5, Some(5)));
         assert_eq!(iterator.next(), Some(2));
+        assert_eq!(iterator.size_hint(), (4, Some(4)));
         assert_eq!(iterator.next(), Some(3));
+        assert_eq!(iterator.size_hint(), (3, Some(3)));
         assert_eq!(iterator.next(), Some(4));
+        assert_eq!(iterator.size_hint(), (2, Some(2)));
         assert_eq!(iterator.next(), Some(5));
+        assert_eq!(iterator.size_hint(), (1, Some(1)));
         assert_eq!(iterator.next(), Some(6));
+        assert_eq!(iterator.size_hint(), (0, Some(0)));
         assert_eq!(iterator.next(), None);
+        assert_eq!(iterator.size_hint(), (0, Some(0)));
     }
 
     #[test]
@@ -64,13 +81,21 @@ mod tests {
         let matrix = Matrix::from(vec![vec![1, 2], vec![3, 4], vec![5, 6]]);
         println!("{:?}", matrix);
         let mut iterator = matrix.row_major_iter();
+        assert_eq!(iterator.size_hint(), (6, Some(6)));
         assert_eq!(iterator.next(), Some(1));
+        assert_eq!(iterator.size_hint(), (5, Some(5)));
         assert_eq!(iterator.next(), Some(2));
+        assert_eq!(iterator.size_hint(), (4, Some(4)));
         assert_eq!(iterator.next(), Some(3));
+        assert_eq!(iterator.size_hint(), (3, Some(3)));
         assert_eq!(iterator.next(), Some(4));
+        assert_eq!(iterator.size_hint(), (2, Some(2)));
         assert_eq!(iterator.next(), Some(5));
+        assert_eq!(iterator.size_hint(), (1, Some(1)));
         assert_eq!(iterator.next(), Some(6));
+        assert_eq!(iterator.size_hint(), (0, Some(0)));
         assert_eq!(iterator.next(), None);
+        assert_eq!(iterator.size_hint(), (0, Some(0)));
     }
 
     #[test]

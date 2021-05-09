@@ -66,6 +66,8 @@
  * ```
  */
 
+use std::iter::{ExactSizeIterator, FusedIterator};
+
 use crate::matrices::{Matrix, Row, Column};
 
 /**
@@ -120,7 +122,15 @@ impl <'a, T: Clone> Iterator for ColumnIterator<'a, T> {
 
         value
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.matrix.rows() - self.counter;
+        (remaining, Some(remaining))
+    }
 }
+
+impl <'a, T: Clone> FusedIterator for ColumnIterator<'a, T> {}
+impl <'a, T: Clone> ExactSizeIterator for ColumnIterator<'a, T> {}
 
 /**
  * An iterator over a row in a matrix.
@@ -174,7 +184,15 @@ impl <'a, T: Clone> Iterator for RowIterator<'a, T> {
 
         value
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.matrix.columns() - self.counter;
+        (remaining, Some(remaining))
+    }
 }
+
+impl <'a, T: Clone> FusedIterator for RowIterator<'a, T> {}
+impl <'a, T: Clone> ExactSizeIterator for RowIterator<'a, T> {}
 
 /**
  * A column major iterator over all values in a matrix.
@@ -236,7 +254,32 @@ impl <'a, T: Clone> Iterator for ColumnMajorIterator<'a, T> {
 
         value
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining_columns = self.matrix.columns() - self.column_counter;
+        match remaining_columns {
+            0 => (0, Some(0)),
+            1 => {
+                // we're on the last column, so return how many items are left for us to
+                // go through with the row counter
+                let remaining_rows = self.matrix.rows() - self.row_counter;
+                (remaining_rows, Some(remaining_rows))
+            }
+            x => {
+                // we still have at least one full column left in addition to what's left
+                // for this column's row counter
+                let remaining_rows = self.matrix.rows() - self.row_counter;
+                // each full column takes as many iterations as the matrix has rows
+                let remaining_full_columns = (x - 1) * self.matrix.rows();
+                let remaining = remaining_rows + remaining_full_columns;
+                (remaining, Some(remaining))
+            }
+        }
+    }
 }
+
+impl <'a, T: Clone> FusedIterator for ColumnMajorIterator<'a, T> {}
+impl <'a, T: Clone> ExactSizeIterator for ColumnMajorIterator<'a, T> {}
 
 /**
  * A row major iterator over all values in a matrix.
@@ -298,7 +341,32 @@ impl <'a, T: Clone> Iterator for RowMajorIterator<'a, T> {
 
         value
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining_rows = self.matrix.rows() - self.row_counter;
+        match remaining_rows {
+            0 => (0, Some(0)),
+            1 => {
+                // we're on the last row, so return how many items are left for us to
+                // go through with the column counter
+                let remaining_columns = self.matrix.columns() - self.column_counter;
+                (remaining_columns, Some(remaining_columns))
+            }
+            x => {
+                // we still have at least one full row left in addition to what's left
+                // for this row's column counter
+                let remaining_columns = self.matrix.columns() - self.column_counter;
+                // each full row takes as many iterations as the matrix has columns
+                let remaining_full_rows = (x - 1) * self.matrix.columns();
+                let remaining = remaining_columns + remaining_full_rows;
+                (remaining, Some(remaining))
+            }
+        }
+    }
 }
+
+impl <'a, T: Clone> FusedIterator for RowMajorIterator<'a, T> {}
+impl <'a, T: Clone> ExactSizeIterator for RowMajorIterator<'a, T> {}
 
 /**
  * An iterator over references to a column in a matrix.
@@ -352,7 +420,15 @@ impl <'a, T> Iterator for ColumnReferenceIterator<'a, T> {
 
         value
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.matrix.rows() - self.counter;
+        (remaining, Some(remaining))
+    }
 }
+
+impl <'a, T> FusedIterator for ColumnReferenceIterator<'a, T> {}
+impl <'a, T> ExactSizeIterator for ColumnReferenceIterator<'a, T> {}
 
 /**
  * An iterator over references to a row in a matrix.
@@ -406,7 +482,15 @@ impl <'a, T> Iterator for RowReferenceIterator<'a, T> {
 
         value
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.matrix.columns() - self.counter;
+        (remaining, Some(remaining))
+    }
 }
+
+impl <'a, T> FusedIterator for RowReferenceIterator<'a, T> {}
+impl <'a, T> ExactSizeIterator for RowReferenceIterator<'a, T> {}
 
 /**
  * A column major iterator over references to all values in a matrix.
@@ -468,7 +552,32 @@ impl <'a, T> Iterator for ColumnMajorReferenceIterator<'a, T> {
 
         value
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining_columns = self.matrix.columns() - self.column_counter;
+        match remaining_columns {
+            0 => (0, Some(0)),
+            1 => {
+                // we're on the last column, so return how many items are left for us to
+                // go through with the row counter
+                let remaining_rows = self.matrix.rows() - self.row_counter;
+                (remaining_rows, Some(remaining_rows))
+            }
+            x => {
+                // we still have at least one full column left in addition to what's left
+                // for this column's row counter
+                let remaining_rows = self.matrix.rows() - self.row_counter;
+                // each full column takes as many iterations as the matrix has rows
+                let remaining_full_columns = (x - 1) * self.matrix.rows();
+                let remaining = remaining_rows + remaining_full_columns;
+                (remaining, Some(remaining))
+            }
+        }
+    }
 }
+
+impl <'a, T> FusedIterator for ColumnMajorReferenceIterator<'a, T> {}
+impl <'a, T> ExactSizeIterator for ColumnMajorReferenceIterator<'a, T> {}
 
 /**
  * A row major iterator over references to all values in a matrix.
@@ -530,4 +639,29 @@ impl <'a, T> Iterator for RowMajorReferenceIterator<'a, T> {
 
         value
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining_rows = self.matrix.rows() - self.row_counter;
+        match remaining_rows {
+            0 => (0, Some(0)),
+            1 => {
+                // we're on the last row, so return how many items are left for us to
+                // go through with the column counter
+                let remaining_columns = self.matrix.columns() - self.column_counter;
+                (remaining_columns, Some(remaining_columns))
+            }
+            x => {
+                // we still have at least one full row left in addition to what's left
+                // for this row's column counter
+                let remaining_columns = self.matrix.columns() - self.column_counter;
+                // each full row takes as many iterations as the matrix has columns
+                let remaining_full_rows = (x - 1) * self.matrix.columns();
+                let remaining = remaining_columns + remaining_full_rows;
+                (remaining, Some(remaining))
+            }
+        }
+    }
 }
+
+impl <'a, T> FusedIterator for RowMajorReferenceIterator<'a, T> {}
+impl <'a, T> ExactSizeIterator for RowMajorReferenceIterator<'a, T> {}
