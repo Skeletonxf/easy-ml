@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 1.6
+
+Added QR decomposition function. Improved documentation examples using rand.
+Added `#[track_caller]` to some functions that were missed in 1.5. Added
+size_hint implementations to all the matrix iterators.
+
 ## Version 1.5
 
 Added opt in serde support for `Matrix` and `Trace` behind the `serde` feature.
