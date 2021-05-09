@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 1.6.1
+
+Fixed README versions still referring  to 1.5
+
 ## Version 1.6
 
 Added QR decomposition function. Improved documentation examples using rand.

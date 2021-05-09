@@ -4,7 +4,7 @@ A completely deterministic matrix and linear algebra library over generic number
 
 ## Usage
 
-Add `easy-ml = "1.5"` to your `[dependencies]`<sup>1</sup>.
+Add `easy-ml = "1.6"` to your `[dependencies]`<sup>1</sup>.
 
 ## Overview
 This is a pure Rust library which makes heavy use of passing closures, iterators, generic types, and other rust idioms that machine learning libraries which wrap around another language backend could never provide easily. This library tries to provide adequate documentation to explain what the functions compute, what the computations mean, and examples of tasks you might want to do with this library:
