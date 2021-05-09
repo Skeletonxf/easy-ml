@@ -23,7 +23,7 @@
 
 use crate::matrices::{Matrix, Row, Column};
 use crate::numeric::{Numeric, NumericRef};
-use crate::numeric::extra::{Real, Sqrt};
+use crate::numeric::extra::{Real, RealRef, Sqrt};
 
 /**
  * Computes the inverse of a matrix provided that it exists. To have an inverse
@@ -649,4 +649,153 @@ where for<'a> &'a T: NumericRef<T> {
         }
     }
     Some(lower_triangular)
+}
+
+/**
+ * The result of a QR Decomposition of some matrix A such that QR = A.
+ */
+#[derive(Clone, Debug)]
+pub struct QRDecomposition<T> {
+    pub q: Matrix<T>,
+    pub r: Matrix<T>,
+    _private: (),
+}
+
+impl <T: std::fmt::Display + Clone> std::fmt::Display for QRDecomposition<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "Q:\n{}", &self.q)?;
+        write!(f, "R:\n{}", &self.r)
+    }
+}
+
+impl <T> QRDecomposition<T> {
+    /**
+     * Creates a QR Decomposition struct from two matrices without checking that QR = A
+     * or that Q and R have the intended properties.
+     *
+     * This is provided for assistance with unit testing.
+     */
+    pub fn from_unchecked(q: Matrix<T>, r: Matrix<T>) -> QRDecomposition<T> {
+        QRDecomposition {
+            q,
+            r,
+            _private: (),
+        }
+    }
+}
+
+/**
+ * Computes the householder matrix along the column vector input.
+ *
+ * For an Mx1 input, the householder matrix output will be MxM
+ */
+fn householder_matrix<T: Numeric + Real>(matrix: Matrix<T>) -> Matrix<T>
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    // The computation steps are outlined nicely at https://en.wikipedia.org/wiki/QR_decomposition#Using_Householder_reflections
+    // Supporting reference implementations are on Rosettacode https://rosettacode.org/wiki/QR_decomposition
+    // we hardcode to taking the first column vector of the input matrix
+    assert_eq!(matrix.columns(), 1, "Input must be a column vector");
+    let x = matrix;
+    let rows = x.rows();
+    let length = x.euclidean_length();
+    let a = {
+        // we hardcode to wanting to zero all elements below the first
+        let sign = x.get(0, 0);
+        if sign > T::zero() {
+            length
+        } else {
+            -length
+        }
+    };
+    let u = {
+        // u = x - ae, where e is [1 0 0 0 ... 0]^T, and x is the column vector so
+        // u is equal to x except for the first element.
+        // Also, we invert the sign of a to avoid loss of significance, so u[0] becomes x[0] + a
+        let mut u = x;
+        u.set(0, 0, u.get(0, 0) + a);
+        u
+    };
+    // v = u / ||u||
+    let v = {
+        let length = u.euclidean_length();
+        u / length
+    };
+    let identity = Matrix::diagonal(T::one(), (rows, rows));
+    let two = T::one() + T::one();
+    // I - 2 v v^T
+    identity - ((&v * v.transpose()) * two)
+}
+
+/**
+ * Computes a QR decomposition of a MxN matrix where M >= N.
+ *
+ * For an input matrix A, decomposes this matrix into a product of QR, where Q is an
+ * [orthogonal matrix](https://en.wikipedia.org/wiki/Orthogonal_matrix) and R is an
+ * upper triangular matrix (all entries below the diagonal are 0), and QR = A.
+ *
+ * If the input matrix has more columns than rows, returns None.
+ *
+ * # Warning
+ *
+ * With some uses of this function the Rust compiler gets confused about what type `T`
+ * should be and you will get the error:
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ *
+ * In this case you need to manually specify the type of T by using the
+ * turbofish syntax like:
+ * `linear_algebra::qr_decomposition::<f32>(&matrix)`
+ */
+pub fn qr_decomposition<T: Numeric + Real>(matrix: &Matrix<T>) -> Option<QRDecomposition<T>>
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    if matrix.columns() > matrix.rows() {
+        return None;
+    }
+    // The computation steps are outlined nicely at https://en.wikipedia.org/wiki/QR_decomposition#Using_Householder_reflections
+    // Supporting reference implementations are at Rosettacode https://rosettacode.org/wiki/QR_decomposition
+    let iterations = std::cmp::min(matrix.rows() - 1, matrix.columns());
+    let mut q = None;
+    let mut r = matrix.clone();
+    for column in 0..iterations {
+        // Conceptually, on each iteration we take a minor of r to retain the bottom right of
+        // the matrix, with one fewer row/column on each iteration since that will have already
+        // been zeroed. However, we then immediately discard all but the first column of that
+        // minor, so we skip the minor step and compute directly the first column of the minor
+        // we would have taken.
+        // let submatrix = r.retain(
+        //     Slice2D::new()
+        //         .rows(Slice::Range(column..matrix.rows()))
+        //         .columns(Slice::Range(column..matrix.columns()))
+        // );
+        // let submatrix_first_column = Matrix::column(submatrix.column_iter(0).collect());
+        let submatrix_first_column = Matrix::column(r.column_iter(column).skip(column).collect());
+        // compute the (M-column)x(M-column) householder matrix
+        let h = householder_matrix::<T>(submatrix_first_column);
+        // pad the h into the bottom right of an identity matrix so it is MxM
+        // like so:
+        // 1 0 0
+        // 0 H H
+        // 0 H H
+        let h = {
+            let mut identity = Matrix::diagonal(T::one(), (matrix.rows(), matrix.rows()));
+            for i in 0..h.rows() {
+                for j in 0..h.columns() {
+                    identity.set(column + i, column + j, h.get(i, j));
+                }
+            }
+            identity
+        };
+        // R = H_n * ... H_3 * H_2 * H_1 * A
+        r = &h * r;
+        // Q = H_1 * H_2 * H_3 .. H_n
+        match q {
+            None => q = Some(h),
+            Some(h_previous) => q = Some(h_previous * h),
+        }
+    }
+    Some(QRDecomposition {
+        // This should always be Some because the input matrix has to be at least 1x1
+        q: q.unwrap(),
+        r,
+        _private: (),
+    })
 }

@@ -5,6 +5,8 @@ mod tests {
     use easy_ml::matrices::Matrix;
     use easy_ml::linear_algebra;
 
+    use rand::{Rng, SeedableRng};
+
     #[test]
     fn check_determinant_2_by_2() {
         let matrix = Matrix::from(vec![vec![1.0, 2.0], vec![3.0, 4.0]]);
@@ -212,5 +214,84 @@ mod tests {
             linear_algebra::softmax(input.iter().cloned()),
             input
         );
+    }
+
+    #[test]
+    fn test_qr_decomposition_3_by_3() {
+        // Test input from https://rosettacode.org/wiki/QR_decomposition
+        let input = Matrix::from(vec![
+            vec![ 12.0, -51.0, 4.0 ],
+            vec![ 6.0, 167.0, -68.0 ],
+            vec![ -4.0, 24.0, -41.0 ],
+        ]);
+        let output = linear_algebra::qr_decomposition::<f64>(&input).unwrap();
+        println!("Q:\n{}", output.q);
+        println!("R:\n{}", output.r);
+        let q = Matrix::from(vec![
+            vec![ -0.857, 0.394, 0.331 ],
+            vec![ -0.429, -0.903, -0.034 ],
+            vec![ 0.286, -0.171, 0.943 ],
+        ]);
+        let r = Matrix::from(vec![
+            vec![ -14.000, -21.000, 14.000 ],
+            vec![ -0.000, -175.000, 70.000 ],
+            vec![ -0.000, 0.0000, -35.000 ],
+        ]);
+        assert_eq!(q.size(), output.q.size());
+        assert_eq!(r.size(), output.r.size());
+        assert!(q
+            .row_major_iter()
+            .zip(output.q.row_major_iter())
+            .all(|(expected, actual)| expected - actual < 0.001));
+        assert!(r
+            .row_major_iter()
+            .zip(output.r.row_major_iter())
+            .all(|(expected, actual)| expected - actual < 0.001));
+    }
+
+    #[test]
+    fn test_qr_decomposition_fuzzing() {
+        let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(55);
+        for (r, c) in &[(2,2), (3,2), (3,3), (4,4), (5,3), (5, 5), (6, 6)] {
+            let mut data = vec![0.0; r * c];
+            random_generator.fill(data.as_mut_slice());
+            let matrix = Matrix::from_flat_row_major((*r, *c), data);
+            let output = linear_algebra::qr_decomposition::<f64>(&matrix).unwrap();
+            let q = output.q;
+            let r = output.r;
+            // Q should be orthogonal
+            let identity = q.transpose() * &q;
+            println!("Q:\n{}\nR:\n{}\nA:\n{}", q, r, matrix);
+            println!("Q^TQ:\n{}", identity);
+            for row in 0..identity.rows() {
+                for column in 0..identity.columns() {
+                    if row == column {
+                        // diagonal should be 1
+                        assert!((1.0 - identity.get(row, column)).abs() < 0.00001);
+                    } else {
+                        // non diagonal should be 0
+                        assert!(identity.get(row, column).abs() < 0.00001);
+                    }
+                }
+            }
+            // All entries below diagonal on R should be zero
+            for row in 0..r.rows() {
+                for column in 0..r.columns() {
+                    if row > column {
+                        assert!(r.get(row, column).abs() < 0.00001);
+                    }
+                }
+            }
+            // QR should return the input
+            let a = q * r;
+            println!("A:\n{}", matrix);
+            println!("Reconstructed A:\n{}", a);
+            assert!(
+                a.row_major_iter()
+                    .zip(matrix.row_major_iter())
+                    .map(|(x, y)| x - y)
+                    .all(|x| x.abs() < 0.00001)
+            );
+        }
     }
 }
