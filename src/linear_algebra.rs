@@ -24,11 +24,6 @@
 use crate::matrices::{Matrix, Row, Column};
 use crate::numeric::{Numeric, NumericRef};
 use crate::numeric::extra::{Real, RealRef, Sqrt};
-use eigens::{Eigens, EigenvalueAlgorithmError};
-
-pub mod eigens;
-
-pub use eigens::EigenvalueAlgorithm;
 
 /**
  * Computes the inverse of a matrix provided that it exists. To have an inverse
@@ -668,8 +663,8 @@ pub struct QRDecomposition<T> {
 
 impl <T: std::fmt::Display + Clone> std::fmt::Display for QRDecomposition<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "Q: {}", &self.q)?;
-        write!(f, "R: {}", &self.r)
+        writeln!(f, "Q:\n{}", &self.q)?;
+        write!(f, "R:\n{}", &self.r)
     }
 }
 
@@ -773,7 +768,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
         // );
         // let submatrix_first_column = Matrix::column(submatrix.column_iter(0).collect());
         let submatrix_first_column = Matrix::column(r.column_iter(column).skip(column).collect());
-        // compute the M-column x M-column householder matrix
+        // compute the (M-column)x(M-column) householder matrix
         let h = householder_matrix::<T>(submatrix_first_column);
         // pad the h into the bottom right of an identity matrix so it is MxM
         // like so:
@@ -803,20 +798,4 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
         r,
         _private: (),
     })
-}
-
-fn principle_component_analysis<T: Numeric + Real, E>(matrix: &Matrix<T>, solver: E) -> Result<Eigens<T>, EigenvalueAlgorithmError>
-where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
-    E: EigenvalueAlgorithm<T> {
-    // TODO: Add option for scaling input variance to 1 in each feature
-    let samples = T::from_usize(matrix.rows()).expect(
-        "The maximum value of the matrix type T cannot represent this many samples");
-    assert!(samples > T::one(), "Cannot compute PCA for only one sample");
-    let bessels_correction = samples.clone() / (samples - T::one());
-    let mut covariance_matrix = covariance_column_features::<T>(matrix);
-    covariance_matrix.map_mut(|x| bessels_correction.clone() * x);
-    let eigens = solver.solve(&covariance_matrix)?;
-    // TODO: Wrap this in a PCA level API struct
-    Ok(eigens)
 }
