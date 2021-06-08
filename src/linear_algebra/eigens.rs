@@ -9,6 +9,7 @@ use crate::numeric::extra::{Real, RealRef};
 
 use std::fmt;
 use std::error;
+use std::marker::PhantomData;
 
 /**
  * The interface for Eigenvalue Algorithms.
@@ -95,7 +96,7 @@ impl <T> Eigens<T> {
  */
 #[derive(Clone, Debug, PartialEq)]
 pub struct EigenvectorsNotSquare {
-    size: (usize, usize),
+    pub size: (usize, usize),
 }
 
 impl fmt::Display for EigenvectorsNotSquare {
@@ -111,8 +112,8 @@ impl error::Error for EigenvectorsNotSquare {}
  */
 #[derive(Clone, Debug, PartialEq)]
 pub struct EigensMismatched {
-    values: usize,
-    vectors: (usize, usize),
+    pub values: usize,
+    pub vectors: (usize, usize),
 }
 
 impl fmt::Display for EigensMismatched {
@@ -127,6 +128,7 @@ impl error::Error for EigensMismatched {}
  * An enumeration of reasons an [EigenvalueAlgorithm] solver may have failed.
  */
 #[non_exhaustive]
+#[derive(Debug)]
 pub enum EigenvalueAlgorithmError {
     /**
      * The input was invalid or is unsupported by this solver.
@@ -144,13 +146,15 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
 }
 
 pub struct FixedIterations {
-    remaining: u64,
+    pub remaining: u64,
+    _private: (),
 }
 
 impl FixedIterations {
     pub fn new(count: u64) -> FixedIterations {
         FixedIterations {
             remaining: count,
+            _private: (),
         }
     }
 }
@@ -163,13 +167,13 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     }
 }
 
-pub struct QRAlgorithm<C> {
-    convergence: C,
-    _private: (),
+pub struct QRAlgorithm<T, C> {
+    pub convergence: C,
+    marker: PhantomData<T>,
 }
 
-impl <C> QRAlgorithm<C> {
-    pub fn new<T>(convergence: C) -> QRAlgorithm<C>
+impl <T, C> QRAlgorithm<T, C> {
+    pub fn new(convergence: C) -> QRAlgorithm<T, C>
     where
         T: Numeric + Real,
         for<'a> &'a T: NumericRef<T> + RealRef<T>,
@@ -177,7 +181,7 @@ impl <C> QRAlgorithm<C> {
     {
         QRAlgorithm {
             convergence,
-            _private: (),
+            marker: PhantomData,
         }
     }
 }
@@ -193,7 +197,7 @@ impl fmt::Display for UnableToDecomposeMatrix {
 
 impl error::Error for UnableToDecomposeMatrix {}
 
-impl<C, T> EigenvalueAlgorithm<T> for QRAlgorithm<C>
+impl<T, C> EigenvalueAlgorithm<T> for QRAlgorithm<T, C>
 where
     T: Numeric + Real,
     for<'a> &'a T: NumericRef<T> + RealRef<T>,
