@@ -20,7 +20,8 @@ use crate::matrices::iterators::{
     ColumnIterator, RowIterator,
     ColumnMajorIterator, RowMajorIterator,
     ColumnReferenceIterator, RowReferenceIterator,
-    ColumnMajorReferenceIterator, RowMajorReferenceIterator};
+    ColumnMajorReferenceIterator, RowMajorReferenceIterator,
+    DiagonalIterator, DiagonalReferenceIterator};
 use crate::matrices::slices::Slice2D;
 use crate::numeric::{Numeric, NumericRef};
 use crate::numeric::extra::{Real, RealRef};
@@ -365,6 +366,13 @@ impl <T> Matrix<T> {
     }
 
     /**
+     * Returns an iterator over references to the main diagonal in this matrix.
+     */
+    pub fn diagonal_reference_iter(&self) -> DiagonalReferenceIterator<T> {
+        DiagonalReferenceIterator::new(self)
+    }
+
+    /**
      * Shrinks this matrix down from its current MxN size down to
      * some new size OxP where O and P are determined by the kind of
      * slice given and 1 <= O <= M and 1 <= P <= N.
@@ -531,8 +539,8 @@ impl <T: Clone> Matrix<T> {
      * ]
      * ```
      * then a column of 0, 1, and 2 will yield [1, 4, 7], [2, 5, 8] and [3, 6, 9]
-     * respectively. If you do not need to copy the elements use `column_reference_iter`
-     * instead.
+     * respectively. If you do not need to copy the elements use
+     * [`column_reference_iter`](Matrix::column_reference_iter) instead.
      */
     pub fn column_iter(&self, column: Column) -> ColumnIterator<T> {
         ColumnIterator::new(self, column)
@@ -550,8 +558,8 @@ impl <T: Clone> Matrix<T> {
      * ]
      * ```
      * then a row of 0, 1, and 2 will yield [1, 2, 3], [4, 5, 6] and [7, 8, 9]
-     * respectively. If you do not need to copy the elements use `row_reference_iter`
-     * instead.
+     * respectively. If you do not need to copy the elements use
+     * [`row_reference_iter`](Matrix::row_reference_iter) instead.
      */
     pub fn row_iter(&self, row: Row) -> RowIterator<T> {
         RowIterator::new(self, row)
@@ -569,7 +577,7 @@ impl <T: Clone> Matrix<T> {
      * ]
      * ```
      * then the iterator will yield [1, 3, 2, 4]. If you do not need to copy the
-     * elements use `column_major_reference_iter` instead.
+     * elements use [`column_major_reference_iter`](Matrix::column_major_reference_iter) instead.
      */
     pub fn column_major_iter(&self) -> ColumnMajorIterator<T> {
         ColumnMajorIterator::new(self)
@@ -587,10 +595,41 @@ impl <T: Clone> Matrix<T> {
      * ]
      * ```
      * then the iterator will yield [1, 2, 3, 4]. If you do not need to copy the
-     * elements use `row_major_reference_iter` instead.
+     * elements use [`row_major_reference_iter`](Matrix::row_major_reference_iter) instead.
      */
     pub fn row_major_iter(&self) -> RowMajorIterator<T> {
         RowMajorIterator::new(self)
+    }
+
+    /**
+     * Returns a iterator over the main diagonal of this matrix.
+     *
+     * If you have a matrix such as:
+     * ```ignore
+     * [
+     *    1, 2
+     *    3, 4
+     * ]
+     * ```
+     * then the iterator will yield [1, 4]. If you do not need to copy the
+     * elements use [`diagonal_reference_iter`](Matrix::diagonal_reference_iter) instead.
+     *
+     * # Examples
+     *
+     * Computing a [trace](https://en.wikipedia.org/wiki/Trace_(linear_algebra))
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * let matrix = Matrix::from(vec![
+     *     vec![ 1, 2, 3 ],
+     *     vec![ 4, 5, 6 ],
+     *     vec![ 7, 8, 9 ],
+     * ]);
+     * let trace: i32 = matrix.diagonal_iter().sum();
+     * assert_eq!(trace, 1 + 5 + 9);
+     * ```
+     */
+    pub fn diagonal_iter(&self) -> DiagonalIterator<T> {
+        DiagonalIterator::new(self)
     }
 
     /**
@@ -1077,6 +1116,34 @@ impl <T: Numeric> Matrix<T> {
         let mut matrix = Matrix::empty(T::zero(), size);
         for i in 0..size.0 {
             matrix.set(i, i, value.clone());
+        }
+        matrix
+    }
+
+    /**
+     * Creates a diagonal matrix with the elements along the diagonal set to the
+     * provided values and all other elements in the matrix set to 0.
+     * A diagonal matrix is always square.
+     *
+     * Examples
+     *
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * let matrix = Matrix::from_diagonal(vec![ 1, 1, 1 ]);
+     * assert_eq!(matrix.size(), (3, 3));
+     * let copy = Matrix::from_diagonal(matrix.diagonal_iter().collect());
+     * assert_eq!(matrix, copy);
+     * assert_eq!(matrix, Matrix::from(vec![
+     *     vec![ 1, 0, 0 ],
+     *     vec![ 0, 1, 0 ],
+     *     vec![ 0, 0, 1 ],
+     * ]))
+     * ```
+     */
+    pub fn from_diagonal(values: Vec<T>) -> Matrix<T> {
+        let mut matrix = Matrix::empty(T::zero(), (values.len(), values.len()));
+        for (i, element) in values.into_iter().enumerate() {
+            matrix.set(i, i, element);
         }
         matrix
     }

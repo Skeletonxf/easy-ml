@@ -83,6 +83,7 @@ use crate::matrices::{Matrix, Row, Column};
  * Depending on the column iterator you want to obtain,
  * can either iterate through 1, 3 or 2, 4.
  */
+#[derive(Debug)]
 pub struct ColumnIterator<'a, T: Clone> {
     matrix: &'a Matrix<T>,
     column: Column,
@@ -145,6 +146,7 @@ impl <'a, T: Clone> ExactSizeIterator for ColumnIterator<'a, T> {}
  * Depending on the row iterator you want to obtain,
  * can either iterate through 1, 2 or 3, 4.
  */
+#[derive(Debug)]
 pub struct RowIterator<'a, T: Clone> {
     matrix: &'a Matrix<T>,
     row: Row,
@@ -206,6 +208,7 @@ impl <'a, T: Clone> ExactSizeIterator for RowIterator<'a, T> {}
  * ```
  * The elements will be iterated through as 1, 3, 2, 4
  */
+#[derive(Debug)]
 pub struct ColumnMajorIterator<'a, T: Clone> {
     matrix: &'a Matrix<T>,
     column_counter: Column,
@@ -293,6 +296,7 @@ impl <'a, T: Clone> ExactSizeIterator for ColumnMajorIterator<'a, T> {}
  * ```
  * The elements will be iterated through as 1, 2, 3, 4
  */
+#[derive(Debug)]
 pub struct RowMajorIterator<'a, T: Clone> {
     matrix: &'a Matrix<T>,
     column_counter: Column,
@@ -381,6 +385,7 @@ impl <'a, T: Clone> ExactSizeIterator for RowMajorIterator<'a, T> {}
  * Depending on the row iterator you want to obtain,
  * can either iterate through &1, &3 or &2, &4.
  */
+#[derive(Debug)]
 pub struct ColumnReferenceIterator<'a, T> {
     matrix: &'a Matrix<T>,
     column: Column,
@@ -443,6 +448,7 @@ impl <'a, T> ExactSizeIterator for ColumnReferenceIterator<'a, T> {}
  * Depending on the row iterator you want to obtain,
  * can either iterate through &1, &2 or &3, &4.
  */
+#[derive(Debug)]
 pub struct RowReferenceIterator<'a, T> {
     matrix: &'a Matrix<T>,
     row: Row,
@@ -504,6 +510,7 @@ impl <'a, T> ExactSizeIterator for RowReferenceIterator<'a, T> {}
  * ```
  * The elements will be iterated through as &1, &3, &2, &4
  */
+#[derive(Debug)]
 pub struct ColumnMajorReferenceIterator<'a, T> {
     matrix: &'a Matrix<T>,
     column_counter: Column,
@@ -591,7 +598,8 @@ impl <'a, T> ExactSizeIterator for ColumnMajorReferenceIterator<'a, T> {}
  * ```
  * The elements will be iterated through as &1, &2, &3, &4
  */
-    pub struct RowMajorReferenceIterator<'a, T> {
+#[derive(Debug)]
+pub struct RowMajorReferenceIterator<'a, T> {
     matrix: &'a Matrix<T>,
     column_counter: Column,
     row_counter: Row,
@@ -665,3 +673,131 @@ impl <'a, T> Iterator for RowMajorReferenceIterator<'a, T> {
 
 impl <'a, T> FusedIterator for RowMajorReferenceIterator<'a, T> {}
 impl <'a, T> ExactSizeIterator for RowMajorReferenceIterator<'a, T> {}
+
+/**
+ * An iterator over the main diagonal in a matrix.
+ *
+ * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
+ * ```ignore
+ * [
+ *   1, 2
+ *   3, 4
+ * ]
+ * ```
+ * The elements will be iterated through as 1, 4
+ *
+ * If the matrix is not square this will stop at whichever row/colum is shorter.
+ */
+#[derive(Debug)]
+pub struct DiagonalIterator<'a, T: Clone> {
+    matrix: &'a Matrix<T>,
+    counter: usize,
+    final_index: usize,
+    finished: bool,
+}
+
+impl <'a, T: Clone> DiagonalIterator<'a, T> {
+    /**
+     * Constructs a diagonal iterator over this matrix.
+     */
+    pub fn new(matrix: &Matrix<T>) -> DiagonalIterator<T> {
+        DiagonalIterator {
+            matrix,
+            counter: 0,
+            final_index: std::cmp::min(matrix.rows(), matrix.columns()),
+            finished: false,
+        }
+    }
+}
+
+impl <'a, T: Clone> Iterator for DiagonalIterator<'a, T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None
+        }
+
+        let value = Some(self.matrix.get(self.counter, self.counter));
+
+        if self.counter == self.final_index - 1 {
+            self.finished = true;
+        }
+
+        self.counter += 1;
+
+        value
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.final_index - self.counter;
+        (remaining, Some(remaining))
+    }
+}
+
+impl <'a, T: Clone> FusedIterator for DiagonalIterator<'a, T> {}
+impl <'a, T: Clone> ExactSizeIterator for DiagonalIterator<'a, T> {}
+
+/**
+ * An iterator over references to the main diagonal in a matrix.
+ *
+ * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
+ * ```ignore
+ * [
+ *   1, 2
+ *   3, 4
+ * ]
+ * ```
+ * The elements will be iterated through as &1, &4
+ *
+ * If the matrix is not square this will stop at whichever row/colum is shorter.
+ */
+#[derive(Debug)]
+pub struct DiagonalReferenceIterator<'a, T> {
+    matrix: &'a Matrix<T>,
+    counter: usize,
+    final_index: usize,
+    finished: bool,
+}
+
+impl <'a, T> DiagonalReferenceIterator<'a, T> {
+    /**
+     * Constructs a diagonal iterator over this matrix.
+     */
+    pub fn new(matrix: &Matrix<T>) -> DiagonalReferenceIterator<T> {
+        DiagonalReferenceIterator {
+            matrix,
+            counter: 0,
+            final_index: std::cmp::min(matrix.rows(), matrix.columns()),
+            finished: false,
+        }
+    }
+}
+
+impl <'a, T> Iterator for DiagonalReferenceIterator<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None
+        }
+
+        let value = Some(self.matrix.get_reference(self.counter, self.counter));
+
+        if self.counter == self.final_index - 1 {
+            self.finished = true;
+        }
+
+        self.counter += 1;
+
+        value
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.final_index - self.counter;
+        (remaining, Some(remaining))
+    }
+}
+
+impl <'a, T> FusedIterator for DiagonalReferenceIterator<'a, T> {}
+impl <'a, T> ExactSizeIterator for DiagonalReferenceIterator<'a, T> {}
