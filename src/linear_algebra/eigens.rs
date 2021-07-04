@@ -234,13 +234,7 @@ where
             u = u * q;
         }
         // read the eigenvalues off the diagonal
-        let eigenvalues = {
-            let mut eigenvalues = Vec::with_capacity(a.rows());
-            for i in 0..a.rows() {
-                eigenvalues.push(a.get(i, i));
-            }
-            eigenvalues
-        };
+        let eigenvalues = a.diagonal_iter().collect();
         let eigenvectors = u;
         Eigens::new(eigenvalues, eigenvectors)
     }
