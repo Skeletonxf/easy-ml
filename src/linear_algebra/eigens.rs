@@ -46,6 +46,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
  *
  * Then: A = Q Λ Q<sup>-1</sup> and Λ = Q<sup>-1</sup> A Q
  */
+#[derive(Clone, Debug)]
 pub struct Eigens<T> {
     /**
      * The N eigenvalues. Each eigenvalue is paired with the eigenvector in the same
@@ -167,6 +168,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct QRAlgorithm<T, C> {
     pub convergence: C,
     marker: PhantomData<T>,
@@ -209,6 +211,10 @@ where
     fn solve(&mut self, matrix: &Matrix<T>) -> Result<Eigens<T>, EigenvalueAlgorithmError> {
         // TODO: A 1x1 input should be special cased
         // TODO: Check the matrix is square
+        // TODO: Determine if this is for symmetric matrices only or not
+        // TODO: Tolerance based stopping
+        // TODO: Givens rotations
+        // TODO: Work out how to get from upper triangular a and u to an actual eigenvectors matrix
         // References
         // http://pi.math.cornell.edu/~web6140/TopTenAlgorithms/QRalgorithm.html
         // https://people.inf.ethz.ch/arbenz/ewp/Lnotes/chapter4.pdf

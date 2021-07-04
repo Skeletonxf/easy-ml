@@ -20,17 +20,12 @@ fn test_simple_eigendecomposition() {
         .sum();
     assert!(absolute_difference < 0.0001);
     // let eigenvectors = eigens.eigenvectors;
-    // println!("{}", eigenvectors);
-    // let eigenvalues = {
-    //     let mut eigenvalues = Matrix::empty(0.0, (3,3));
-    //     for i in 0..3 {
-    //         eigenvalues.set(i, i, eigens.eigenvalues[i]);
-    //     }
-    //     eigenvalues
-    // };
-    // println!("{}", eigenvalues);
+    // println!("Eigenvectors\n{}", eigenvectors);
+    // let eigenvalues = Matrix::from_diagonal(eigens.eigenvalues);
+    // println!("Eigenvalues\n{}", eigenvalues);
     // let reconstruction = &eigenvectors * eigenvalues * eigenvectors.inverse().unwrap();
-    // println!("{}", reconstruction);
+    // println!("Reconstructed input\n{}", reconstruction);
+    // println!("Expected input\n{}", matrix);
     // let absolute_difference: f64 = matrix.column_major_iter()
     //     .zip(reconstruction.column_major_iter())
     //     .map(|(x, y)| (x - y).abs())
