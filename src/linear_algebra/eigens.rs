@@ -212,6 +212,11 @@ where
         // TODO: A 1x1 input should be special cased
         // TODO: Check the matrix is square
         // TODO: Determine if this is for symmetric matrices only or not
+        // http://www.sci.wsu.edu/math/faculty/watkins/pdfiles/francis.pdf
+        // https://www.cs.utexas.edu/users/flame/laff/alaff/chapter10-practical-qr.html
+        // TODO: 1) First convert into a tridiagonal matrix
+        // TODO: 2) Then run implicitly shifted QR algorithm on the tridiagonal matrix to get the
+        // diagonal matrix of eigenvalues and the eigenvectors
         // TODO: Tolerance based stopping
         // TODO: Givens rotations
         // TODO: Work out how to get from upper triangular a and u to an actual eigenvectors matrix

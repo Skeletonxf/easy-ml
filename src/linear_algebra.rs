@@ -803,6 +803,25 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     })
 }
 
+/**
+ * Mutates a symmetric matrix in place to reduce it to a tridiagonal form, with all
+ * elements that are not on the main diagonal, or the diagonals immediately above and
+ * below set to 0.
+ */
+fn symmetric_tridiagonalization<T: Numeric + Real>(mut matrix: Matrix<T>) -> Matrix<T>
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+    // https://www.cs.utexas.edu/users/flame/laff/alaff/chapter10-reduction-to-tridiagonal-form.html
+    // https://en.wikipedia.org/wiki/Householder_transformation
+    // https://en.wikipedia.org/wiki/Tridiagonal_matrix
+
+    // TODO: Generalise the householder_matrix function to work with MatrixViews and be usable
+    // here as well as for qr_decomposition
+
+    // Take householder transformations below the diagonal and perform the algorithm to zero
+    // out the lower diagonal elemnents, then write 0s to the upper diagonal elements, and return
+    unimplemented!()
+}
+
 fn principle_component_analysis<T, E>(
     matrix: &Matrix<T>,
     mut solver: E,
