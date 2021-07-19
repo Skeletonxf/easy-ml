@@ -467,6 +467,49 @@ impl <T> Matrix<T> {
             Err(ScalarConversionError {})
         }
     }
+
+    /**
+     * Partition a matrix into 4 non overlapping quadrants. Top left starts at 0,0 until
+     * exclusive of row and column, bottom right starts at row and column to end of matrix.
+     */
+    fn partition_quadrants(&mut self, row: Row, column: Column) -> crate::matrices::views::MatrixQuadrant<T> {
+        assert!(row <= self.rows());
+        assert!(column <= self.columns());
+        let mut top_left_slices = Vec::with_capacity(row);
+        let mut top_right_slices = Vec::with_capacity(row);
+        let mut bottom_left_slices = Vec::with_capacity(self.rows() - row);
+        let mut bottom_right_slices = Vec::with_capacity(self.rows() - row);
+
+        let rows = self.rows();
+        let columns = self.columns();
+        let (_, mut data) = self.data.split_at_mut(0);
+        for r in 0..rows {
+            // Partition the next row of our matrix to get the slice for
+            // the top/bottom left quadrant.
+            let (left, rest) = data.split_at_mut(column);
+            if r < row {
+                top_left_slices.push(left);
+            } else {
+                bottom_left_slices.push(left);
+            }
+
+            // Partition again to get the the slice for the top/bottom right quadrant
+            let (right, rest) = rest.split_at_mut(columns - column);
+            if r < row {
+                top_right_slices.push(right);
+            } else {
+                bottom_right_slices.push(right);
+            }
+
+            data = rest
+        }
+        // rest is now empty, so we can ignore it.
+
+        crate::matrices::views::MatrixQuadrant::from_slices(
+            top_left_slices, top_right_slices, bottom_left_slices, bottom_right_slices,
+            rows, columns, row, column,
+        )
+    }
 }
 
 /**
