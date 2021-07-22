@@ -4,13 +4,18 @@
  * Not stable or public API yet
  */
 
-// use std::ops::{Deref, DerefMut};
 // use std::rc::Rc;
 // use std::sync::Arc;
+use std::error::Error;
+use std::fmt;
 use std::marker::PhantomData;
 
 use crate::matrices::{Row, Column, Matrix};
-//use crate::matrices::slices::{Slice, Slice2D};
+use crate::matrices::slices::Slice;
+
+
+// TODO: Expose a non panicking API on MatrixRef/MatrixMut so don't have to deal with arbitary
+// levels of #[track_caller] and can make an easy to use panicking API on the MatrixView instead
 
 /**
  * A shared/immutable reference to a matrix of some type.
@@ -31,31 +36,22 @@ trait MatrixRef<T> {
 trait MatrixMut<T>: MatrixRef<T> {
     fn set(&mut self, row: Row, column: Column, value: T);
 }
-//
-// // /**
-// //  * An owned matrix such as Box<Matrix<f64>>.
-// //  */
-// // // TODO: Make a Matrix wrapper type that doesn't have the overheads of a Box as implementing
-// // // Deref<Matrix<T>> for Matrix<T> seems wrong.
-// // trait MatrixOwned<T>: MatrixMut<T> {
-// //     fn get_owned(self) -> Matrix<T>;
-// // }
-//
-// impl <'source, T> MatrixRef<T> for &'source Matrix<T> {
-//     #[track_caller]
-//     fn get_reference(&self, row: Row, column: Column) -> &T {
-//         (*self).get_reference(row, column)
-//     }
-//
-//     fn rows(&self) -> Row {
-//         (*self).rows()
-//     }
-//
-//     fn columns(&self) -> Column {
-//         (*self).columns()
-//     }
-// }
-//
+
+impl <'source, T> MatrixRef<T> for &'source Matrix<T> {
+    #[track_caller]
+    fn get_reference(&self, row: Row, column: Column) -> &T {
+        Matrix::get_reference(self, row, column)
+    }
+
+    fn rows(&self) -> Row {
+        Matrix::rows(self)
+    }
+
+    fn columns(&self) -> Column {
+        Matrix::columns(self)
+    }
+}
+
 // impl <T> MatrixRef<T> for Rc<Matrix<T>> {
 //     #[track_caller]
 //     fn get_reference(&self, row: Row, column: Column) -> &T {
@@ -86,28 +82,28 @@ trait MatrixMut<T>: MatrixRef<T> {
 //     }
 // }
 //
-// impl <'source, T> MatrixRef<T> for &'source mut Matrix<T> {
-//     #[track_caller]
-//     fn get_reference(&self, row: Row, column: Column) -> &T {
-//         let matrix = (*self);
-//         matrix.get_reference(row, column)
-//     }
-//
-//     fn rows(&self) -> Row {
-//         self.rows()
-//     }
-//
-//     fn columns(&self) -> Column {
-//         self.columns()
-//     }
-// }
-//
-// impl <'source, T> MatrixMut<T> for &'source mut Matrix<T> {
-//     #[track_caller]
-//     fn set(&mut self, row: Row, column: Column, value: T) {
-//         (*self).set(row, column, value)
-//     }
-// }
+impl <'source, T> MatrixRef<T> for &'source mut Matrix<T> {
+    #[track_caller]
+    fn get_reference(&self, row: Row, column: Column) -> &T {
+        Matrix::get_reference(self, row, column)
+    }
+
+    fn rows(&self) -> Row {
+        Matrix::rows(self)
+    }
+
+    fn columns(&self) -> Column {
+        Matrix::columns(self)
+    }
+}
+
+impl <'source, T> MatrixMut<T> for &'source mut Matrix<T> {
+    #[track_caller]
+    fn set(&mut self, row: Row, column: Column, value: T) {
+        Matrix::set(self, row, column, value)
+    }
+}
+
 //
 // impl <T> MatrixRef<T> for Box<Matrix<T>> {
 //     #[track_caller]
@@ -130,12 +126,6 @@ trait MatrixMut<T>: MatrixRef<T> {
 //         self.set(row, column, value)
 //     }
 // }
-//
-// impl <T> MatrixOwned<T> for Box<Matrix<T>> {
-//     fn get_owned(self) -> Matrix<T> {
-//         *self
-//     }
-// }
 
 /**
  * A view into some or all of a matrix.
@@ -144,14 +134,20 @@ trait MatrixMut<T>: MatrixRef<T> {
  * and a slice into it is not, and a slice may span only a portion of the total of a Vec,
  * a MatrixView cannot resize its source, and may span only a portion of the total Matrix in
  * each dimension. The main difference is that a slice is more primitive than a Vec,
- * whereas a Matrix is more primitive than a MatrixView.
+ * whereas a Matrix is more primitive than a MatrixView. A MatrixView is generic not only
+ * over the type of the data in the Matrix, but also over the way the Matrix is 'sliced'
+ * and the two are orthogonal to each other.
  */
 struct MatrixView<T, S> {
     source: S,
     _type: PhantomData<T>,
+    // TODO: Transposition
 }
 
-impl <T, S: MatrixRef<T>> MatrixView<T, S> {
+impl <T, S> MatrixView<T, S>
+where
+    S: MatrixRef<T>
+{
     fn get_reference(&self, row: Row, column: Column) -> &T {
         self.source.get_reference(row, column)
     }
@@ -169,25 +165,31 @@ impl <T, S: MatrixRef<T>> MatrixView<T, S> {
     }
 }
 
-impl <T, S: MatrixMut<T>> MatrixView<T, S> {
+impl <T, S> MatrixView<T, S>
+where
+    S: MatrixRef<T>,
+    T: Clone,
+{
+    fn get(&self, row: Row, column: Column) -> T {
+        self.get_reference(row, column).clone()
+    }
+}
+
+impl <T, S> MatrixView<T, S>
+where
+    S: MatrixMut<T> {
     fn set(&mut self, row: Row, column: Column, value: T) {
         self.source.set(row, column, value)
     }
 }
 
-// enum Lookup {
-//     Transpose {
-//         rows: IndexLookup,
-//         columns: IndexLookup,
-//     },
-//     Normal {
-//         rows: IndexLookup,
-//         columns: IndexLookup,
-//     }
-// }
-
-struct MatrixRange<M> {
-    matrix: M,
+/**
+ * A range of a matrix, hiding the rest of the matrix data from view. The entire source
+ * is still owned by the MatrixRange however, so this does not permit creating multiple
+ * mutable ranges into a single matrix.
+ */
+struct MatrixRange<S> {
+    source: S,
     rows: IndexRange,
     columns: IndexRange,
 }
@@ -212,12 +214,15 @@ impl IndexRange {
     }
 }
 
-impl <'source, T> MatrixRef<T> for MatrixRange<&'source Matrix<T>> {
+impl <T, S> MatrixRef<T> for MatrixRange<S>
+where
+    S: MatrixRef<T>
+{
     #[track_caller]
     fn get_reference(&self, row: Row, column: Column) -> &T {
         let row = self.rows.map(row).expect("Row out of index");
         let column = self.columns.map(column).expect("Column out of index");
-        self.matrix.get_reference(row, column)
+        self.source.get_reference(row, column)
     }
 
     fn rows(&self) -> Row {
@@ -229,35 +234,21 @@ impl <'source, T> MatrixRef<T> for MatrixRange<&'source Matrix<T>> {
     }
 }
 
-impl <'source, T> MatrixRef<T> for MatrixRange<&'source mut Matrix<T>> {
-    #[track_caller]
-    fn get_reference(&self, row: Row, column: Column) -> &T {
-        let row = self.rows.map(row).expect("Row out of index");
-        let column = self.columns.map(column).expect("Column out of index");
-        self.matrix.get_reference(row, column)
-    }
-
-    fn rows(&self) -> Row {
-        self.rows.length
-    }
-
-    fn columns(&self) -> Column {
-        self.columns.length
-    }
-}
-
-impl <'source, T> MatrixMut<T> for MatrixRange<&'source mut Matrix<T>> {
+impl <T, S> MatrixMut<T> for MatrixRange<S>
+where
+    S: MatrixMut<T>
+{
     #[track_caller]
     fn set(&mut self, row: Row, column: Column, value: T) {
         let row = self.rows.map(row).expect("Row out of index");
         let column = self.columns.map(column).expect("Column out of index");
-        self.matrix.set(row, column, value)
+        self.source.set(row, column, value)
     }
 }
 
 
 
-
+// TODO: Make MatrixQuadrant able to be 4 different MatrixMut that can be mutated independently
 pub(crate) struct MatrixQuadrant<'source, T> {
     top_left: Vec<&'source mut [T]>,
     top_right: Vec<&'source mut [T]>,
@@ -293,117 +284,53 @@ impl <'source, T> MatrixQuadrant<'source, T> {
     }
 }
 
-// TODO: Make MatrixQuadrant able to be 4 different MatrixViews that can be mutated independently
+/**
+ * An error indicating failure to convert a slice to an IndexRange.
+ */
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+struct SliceToIndexRangeError;
 
+impl Error for SliceToIndexRangeError {}
 
+impl fmt::Display for SliceToIndexRangeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Slice cannot be converted to an IndexRange")
+    }
+}
 
+/**
+ * Converts a basic slice into an IndexRange, erroring if the slice is composed of
+ * other slices as these are not representable by a single contiguous range in the
+ * general case.
+ */
+fn slice_to_index_range(length: usize, slice: Slice) -> Result<IndexRange, SliceToIndexRangeError> {
+    match slice {
+        // Anything which can be expressed as a range of accepted
+        // indexes (likely most actual use cases of slices) can be
+        // turned into an arithmetic lookup
+        Slice::All() => Ok(IndexRange {
+            start: 0,
+            length,
+        }),
+        Slice::None() => Ok(IndexRange {
+            start: 0,
+            length: 0,
+        }),
+        Slice::Single(i) => Ok(IndexRange {
+            start: i,
+            length: 1,
+        }),
+        Slice::Range(range) => Ok(IndexRange {
+            start: range.start,
+            length: range.end - range.start,
+        }),
+        _ => Err(SliceToIndexRangeError),
+    }
+}
 
-// enum IndexLookup {
-//     Range {
-//         start: usize,
-//         length: usize,
-//     },
-//     Mapping(Vec<usize>),
-// }
-
-// impl IndexLookup {
-//     /**
-//      * Maps from a coordinate space of the ith index accessible by this view to the actual index
-//      * into the entire matrix data.
-//      */
-//     #[inline]
-//     fn map(&self, index: usize) -> Option<usize> {
-//         match self {
-//             IndexLookup::Range {
-//                 start,
-//                 length,
-//             } => {
-//                 if index < *length {
-//                     Some(index + start)
-//                 } else {
-//                     None
-//                 }
-//             },
-//             IndexLookup::Mapping(lookup) => {
-//                 if index < lookup.len() {
-//                     Some(lookup[index])
-//                 } else {
-//                     None
-//                 }
-//             },
-//         }
-//     }
-// }
-
-// impl Lookup {
-//     /**
-//      * Maps from a row and column in the coordinate space of the i'th row/column accessibile by
-//      * this view into the actual indexes into the entire matrix data.
-//      */
-//     #[inline]
-//     fn map(&self, row: Row, column: Column) -> Option<(Row, Column)> {
-//         match self {
-//             Lookup::Normal {
-//                 rows,
-//                 columns,
-//             } => {
-//                 let r = rows.map(row);
-//                 let c = columns.map(column);
-//                 match (r, c) {
-//                     (Some(r), Some(c)) => Some((r, c)),
-//                     _ => None
-//                 }
-//             },
-//             Lookup::Transpose {
-//                 rows,
-//                 columns,
-//             } => {
-//                 let r = rows.map(column);
-//                 let c = columns.map(row);
-//                 match (r, c) {
-//                     (Some(r), Some(c)) => Some((r, c)),
-//                     _ => None
-//                 }
-//             }
-//         }
-//     }
-// }
-
-// fn slice_to_lookup(length: usize, slice: Slice) -> IndexLookup {
-//     match slice {
-//         // Anything which can be expressed as a range of accepted
-//         // indexes (likely most actual use cases of slices) can be
-//         // turned into an arithmetic lookup
-//         Slice::All() => IndexLookup::Range {
-//             start: 0,
-//             length,
-//         },
-//         Slice::None() => IndexLookup::Range {
-//             start: 0,
-//             length: 0,
-//         },
-//         Slice::Single(i) => IndexLookup::Range {
-//             start: i,
-//             length: 1,
-//         },
-//         Slice::Range(range) => IndexLookup::Range {
-//             start: range.start,
-//             length: range.end - range.start,
-//         },
-//         slice => {
-//             // For the general case create a lookup table
-//             let mut lookup = Vec::with_capacity(length);
-//             for i in 0..length {
-//                 if slice.accepts(i) {
-//                     lookup.push(i);
-//                 }
-//             }
-//             IndexLookup::Mapping(lookup)
-//         },
-//     }
-// }
-
-impl <'source, T: 'source, S: 'source> MatrixView<T, S> {
+impl <T, S> MatrixView<T, S>
+where
+    S: MatrixRef<T> {
     /**
      * Creates a MatrixView from a source of some type.
      *
@@ -423,8 +350,6 @@ impl <'source, T: 'source, S: 'source> MatrixView<T, S> {
      * //```
      */
     fn from(source: S) -> MatrixView<T, S>
-    where
-        S: MatrixRef<T>
     {
         MatrixView {
             source,
@@ -437,7 +362,7 @@ impl <'source, T: 'source, S: 'source> MatrixView<T, S> {
 fn creating_matrix_views_ref() {
     let matrix = Matrix::from(vec![vec![1.0]]);
     let _ = MatrixView::from(MatrixRange {
-        matrix: &matrix,
+        source: &matrix,
         rows: IndexRange {
             start: 0,
             length: 1,
@@ -453,7 +378,7 @@ fn creating_matrix_views_ref() {
 fn creating_matrix_views_mut() {
     let mut matrix = Matrix::from(vec![vec![1.0]]);
     let _ = MatrixView::from(MatrixRange {
-        matrix: &mut matrix,
+        source: &mut matrix,
         rows: IndexRange {
             start: 0,
             length: 1,
@@ -464,9 +389,3 @@ fn creating_matrix_views_mut() {
         },
     });
 }
-
-// #[test]
-// fn creating_matrix_views_box() {
-//     let matrix = Matrix::from(vec![vec![1.0]]);
-//     let _ = MatrixView::from(Box::new(matrix), Slice2D::new().rows(Slice::All()).columns(Slice::All()));
-// }
