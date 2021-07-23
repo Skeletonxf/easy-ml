@@ -154,27 +154,42 @@ where
     }
 }
 
-// impl <T> MatrixRef<T> for Box<dyn MatrixRef<T>> {
-//     #[track_caller]
-//     fn get_reference(&self, row: Row, column: Column) -> &T {
-//         self.as_ref().get_reference(row, column)
-//     }
-//
-//     fn rows(&self) -> Row {
-//         self.as_ref().rows()
-//     }
-//
-//     fn columns(&self) -> Column {
-//         self.as_ref().columns()
-//     }
-// }
-//
-// impl <T> MatrixMut<T> for Box<dyn MatrixMut<T>> {
-//     #[track_caller]
-//     fn set(&mut self, row: Row, column: Column, value: T) {
-//         self.as_mut().set(row, column, value)
-//     }
-// }
+impl <T> MatrixRef<T> for Box<dyn MatrixRef<T>> {
+    #[track_caller]
+    fn get_reference(&self, row: Row, column: Column) -> &T {
+        self.as_ref().get_reference(row, column)
+    }
+
+    fn rows(&self) -> Row {
+        self.as_ref().rows()
+    }
+
+    fn columns(&self) -> Column {
+        self.as_ref().columns()
+    }
+}
+
+impl <T> MatrixRef<T> for Box<dyn MatrixMut<T>> {
+    #[track_caller]
+    fn get_reference(&self, row: Row, column: Column) -> &T {
+        self.as_ref().get_reference(row, column)
+    }
+
+    fn rows(&self) -> Row {
+        self.as_ref().rows()
+    }
+
+    fn columns(&self) -> Column {
+        self.as_ref().columns()
+    }
+}
+
+impl <T> MatrixMut<T> for Box<dyn MatrixMut<T>> {
+    #[track_caller]
+    fn set(&mut self, row: Row, column: Column, value: T) {
+        self.as_mut().set(row, column, value)
+    }
+}
 
 /**
  * A view into some or all of a matrix.
@@ -193,7 +208,7 @@ struct MatrixView<T, S> {
     // TODO: Transposition
 }
 
-//type ErasedMatrixView<T> = MatrixView<T, Box<dyn MatrixRef<T>>>;
+type ErasedMatrixView<T> = MatrixView<T, Box<dyn MatrixRef<T>>>;
 
 impl <T, S> MatrixView<T, S>
 where
@@ -441,9 +456,11 @@ fn creating_matrix_views_mut() {
     });
 }
 
-// #[test]
-// fn creating_matrix_views_erased() {
-//     let matrix = Matrix::from(vec![vec![1.0]]);
-//     let view = ErasedMatrixView::from(Box::new(matrix));
-//     view.get(0, 0);
-// }
+#[test]
+fn creating_matrix_views_erased() {
+    let matrix = Matrix::from(vec![vec![1.0]]);
+    let boxed: Box<dyn MatrixMut<f32>> = Box::new(matrix);
+    let mut view = MatrixView::from(boxed);
+    view.get(0, 0);
+    view.set(0, 0, 2.0);
+}
