@@ -104,26 +104,75 @@ impl <'source, T> MatrixMut<T> for &'source mut Matrix<T> {
     }
 }
 
-//
-// impl <T> MatrixRef<T> for Box<Matrix<T>> {
+impl <T> MatrixRef<T> for Matrix<T> {
+    #[track_caller]
+    fn get_reference(&self, row: Row, column: Column) -> &T {
+        Matrix::get_reference(self, row, column)
+    }
+
+    fn rows(&self) -> Row {
+        Matrix::rows(self)
+    }
+
+    fn columns(&self) -> Column {
+        Matrix::columns(self)
+    }
+}
+
+impl <T> MatrixMut<T> for Matrix<T> {
+    #[track_caller]
+    fn set(&mut self, row: Row, column: Column, value: T) {
+        Matrix::set(self, row, column, value)
+    }
+}
+
+impl <T, S> MatrixRef<T> for Box<S>
+where
+    S: MatrixRef<T>
+{
+    #[track_caller]
+    fn get_reference(&self, row: Row, column: Column) -> &T {
+        self.as_ref().get_reference(row, column)
+    }
+
+    fn rows(&self) -> Row {
+        self.as_ref().rows()
+    }
+
+    fn columns(&self) -> Column {
+        self.as_ref().columns()
+    }
+}
+
+impl <T, S> MatrixMut<T> for Box<S>
+where
+    S: MatrixMut<T>
+{
+    #[track_caller]
+    fn set(&mut self, row: Row, column: Column, value: T) {
+        self.as_mut().set(row, column, value)
+    }
+}
+
+// impl <T> MatrixRef<T> for Box<dyn MatrixRef<T>> {
 //     #[track_caller]
 //     fn get_reference(&self, row: Row, column: Column) -> &T {
-//         self.get_reference(row, column)
+//         self.as_ref().get_reference(row, column)
 //     }
 //
 //     fn rows(&self) -> Row {
-//         self.rows()
+//         self.as_ref().rows()
 //     }
 //
 //     fn columns(&self) -> Column {
-//         self.columns()
+//         self.as_ref().columns()
 //     }
 // }
 //
-// impl <T> MatrixMut<T> for Box<Matrix<T>> {
+// impl <T> MatrixMut<T> for Box<dyn MatrixMut<T>> {
 //     #[track_caller]
 //     fn set(&mut self, row: Row, column: Column, value: T) {
-//         self.set(row, column, value)
+//         self.as_mut().set(row, column, value)
 //     }
 // }
 
@@ -143,6 +192,8 @@ struct MatrixView<T, S> {
     _type: PhantomData<T>,
     // TODO: Transposition
 }
+
+//type ErasedMatrixView<T> = MatrixView<T, Box<dyn MatrixRef<T>>>;
 
 impl <T, S> MatrixView<T, S>
 where
@@ -389,3 +440,10 @@ fn creating_matrix_views_mut() {
         },
     });
 }
+
+// #[test]
+// fn creating_matrix_views_erased() {
+//     let matrix = Matrix::from(vec![vec![1.0]]);
+//     let view = ErasedMatrixView::from(Box::new(matrix));
+//     view.get(0, 0);
+// }
