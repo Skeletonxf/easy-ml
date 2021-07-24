@@ -13,7 +13,7 @@ use serde::{Serialize, Deserialize};
 pub mod iterators;
 pub mod slices;
 mod errors;
-mod views;
+pub mod views;
 
 pub use errors::ScalarConversionError;
 

@@ -1,7 +1,7 @@
 /*!
  * Ways to slice into a Matrix, viewing only part of the whole data.
  *
- * Not stable or public API yet
+ * Not remotely stable API yet
  */
 
 // use std::rc::Rc;
@@ -13,15 +13,13 @@ use std::marker::PhantomData;
 use crate::matrices::{Row, Column, Matrix};
 use crate::matrices::slices::Slice;
 
-mod iterators;
-
 // TODO: Expose a non panicking API on MatrixRef/MatrixMut so don't have to deal with arbitary
 // levels of #[track_caller] and can make an easy to use panicking API on the MatrixView instead
 
 /**
  * A shared/immutable reference to a matrix of some type.
  */
-trait MatrixRef<T> {
+pub trait MatrixRef<T> {
     fn get_reference(&self, row: Row, column: Column) -> &T;
     fn rows(&self) -> Row;
     fn columns(&self) -> Column;
@@ -34,7 +32,7 @@ trait MatrixRef<T> {
 /**
  * A unique/mutable reference to a matrix of some type.
  */
-trait MatrixMut<T>: MatrixRef<T> {
+pub trait MatrixMut<T>: MatrixRef<T> {
     fn set(&mut self, row: Row, column: Column, value: T);
 }
 

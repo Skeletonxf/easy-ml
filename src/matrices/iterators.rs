@@ -67,8 +67,10 @@
  */
 
 use std::iter::{ExactSizeIterator, FusedIterator};
+use std::marker::PhantomData;
 
 use crate::matrices::{Matrix, Row, Column};
+use crate::matrices::views::MatrixRef;
 
 /**
  * An iterator over a column in a matrix.
@@ -84,11 +86,12 @@ use crate::matrices::{Matrix, Row, Column};
  * can either iterate through 1, 3 or 2, 4.
  */
 #[derive(Debug)]
-pub struct ColumnIterator<'a, T: Clone> {
-    matrix: &'a Matrix<T>,
+pub struct ColumnIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     column: Column,
     counter: usize,
     finished: bool,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T: Clone> ColumnIterator<'a, T> {
@@ -101,11 +104,12 @@ impl <'a, T: Clone> ColumnIterator<'a, T> {
             column,
             counter: 0,
             finished: false,
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T: Clone> Iterator for ColumnIterator<'a, T> {
+impl <'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -113,7 +117,7 @@ impl <'a, T: Clone> Iterator for ColumnIterator<'a, T> {
             return None
         }
 
-        let value = Some(self.matrix.get(self.counter, self.column));
+        let value = Some(self.matrix.get_reference(self.counter, self.column).clone());
 
         if self.counter == self.matrix.rows() - 1 {
             self.finished = true;
@@ -130,8 +134,8 @@ impl <'a, T: Clone> Iterator for ColumnIterator<'a, T> {
     }
 }
 
-impl <'a, T: Clone> FusedIterator for ColumnIterator<'a, T> {}
-impl <'a, T: Clone> ExactSizeIterator for ColumnIterator<'a, T> {}
+impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for ColumnIterator<'a, T, S> {}
+impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for ColumnIterator<'a, T, S> {}
 
 /**
  * An iterator over a row in a matrix.
@@ -147,11 +151,12 @@ impl <'a, T: Clone> ExactSizeIterator for ColumnIterator<'a, T> {}
  * can either iterate through 1, 2 or 3, 4.
  */
 #[derive(Debug)]
-pub struct RowIterator<'a, T: Clone> {
-    matrix: &'a Matrix<T>,
+pub struct RowIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     row: Row,
     counter: usize,
     finished: bool,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T: Clone> RowIterator<'a, T> {
@@ -164,11 +169,12 @@ impl <'a, T: Clone> RowIterator<'a, T> {
             row,
             counter: 0,
             finished: false,
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T: Clone> Iterator for RowIterator<'a, T> {
+impl <'a, T: Clone, S: MatrixRef<T>> Iterator for RowIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -176,7 +182,7 @@ impl <'a, T: Clone> Iterator for RowIterator<'a, T> {
             return None
         }
 
-        let value = Some(self.matrix.get(self.row, self.counter));
+        let value = Some(self.matrix.get_reference(self.row, self.counter).clone());
 
         if self.counter == self.matrix.columns() - 1 {
             self.finished = true;
@@ -193,8 +199,8 @@ impl <'a, T: Clone> Iterator for RowIterator<'a, T> {
     }
 }
 
-impl <'a, T: Clone> FusedIterator for RowIterator<'a, T> {}
-impl <'a, T: Clone> ExactSizeIterator for RowIterator<'a, T> {}
+impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for RowIterator<'a, T, S> {}
+impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for RowIterator<'a, T, S> {}
 
 /**
  * A column major iterator over all values in a matrix.
@@ -209,11 +215,12 @@ impl <'a, T: Clone> ExactSizeIterator for RowIterator<'a, T> {}
  * The elements will be iterated through as 1, 3, 2, 4
  */
 #[derive(Debug)]
-pub struct ColumnMajorIterator<'a, T: Clone> {
-    matrix: &'a Matrix<T>,
+pub struct ColumnMajorIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     column_counter: Column,
     row_counter: Row,
     finished: bool,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T: Clone> ColumnMajorIterator<'a, T> {
@@ -226,11 +233,12 @@ impl <'a, T: Clone> ColumnMajorIterator<'a, T> {
             column_counter: 0,
             row_counter: 0,
             finished: false,
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T: Clone> Iterator for ColumnMajorIterator<'a, T> {
+impl <'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnMajorIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -238,7 +246,7 @@ impl <'a, T: Clone> Iterator for ColumnMajorIterator<'a, T> {
             return None
         }
 
-        let value = Some(self.matrix.get(self.row_counter, self.column_counter));
+        let value = Some(self.matrix.get_reference(self.row_counter, self.column_counter).clone());
 
         if self.row_counter == self.matrix.rows() - 1
                 && self.column_counter == self.matrix.columns() -1 {
@@ -281,8 +289,8 @@ impl <'a, T: Clone> Iterator for ColumnMajorIterator<'a, T> {
     }
 }
 
-impl <'a, T: Clone> FusedIterator for ColumnMajorIterator<'a, T> {}
-impl <'a, T: Clone> ExactSizeIterator for ColumnMajorIterator<'a, T> {}
+impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for ColumnMajorIterator<'a, T, S> {}
+impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for ColumnMajorIterator<'a, T, S> {}
 
 /**
  * A row major iterator over all values in a matrix.
@@ -297,11 +305,12 @@ impl <'a, T: Clone> ExactSizeIterator for ColumnMajorIterator<'a, T> {}
  * The elements will be iterated through as 1, 2, 3, 4
  */
 #[derive(Debug)]
-pub struct RowMajorIterator<'a, T: Clone> {
-    matrix: &'a Matrix<T>,
+pub struct RowMajorIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     column_counter: Column,
     row_counter: Row,
     finished: bool,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T: Clone> RowMajorIterator<'a, T> {
@@ -314,11 +323,12 @@ impl <'a, T: Clone> RowMajorIterator<'a, T> {
             column_counter: 0,
             row_counter: 0,
             finished: false,
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T: Clone> Iterator for RowMajorIterator<'a, T> {
+impl <'a, T: Clone, S: MatrixRef<T>> Iterator for RowMajorIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -326,7 +336,7 @@ impl <'a, T: Clone> Iterator for RowMajorIterator<'a, T> {
             return None
         }
 
-        let value = Some(self.matrix.get(self.row_counter, self.column_counter));
+        let value = Some(self.matrix.get_reference(self.row_counter, self.column_counter).clone());
 
         if self.column_counter == self.matrix.columns() - 1
                 && self.row_counter == self.matrix.rows() -1 {
@@ -369,8 +379,8 @@ impl <'a, T: Clone> Iterator for RowMajorIterator<'a, T> {
     }
 }
 
-impl <'a, T: Clone> FusedIterator for RowMajorIterator<'a, T> {}
-impl <'a, T: Clone> ExactSizeIterator for RowMajorIterator<'a, T> {}
+impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for RowMajorIterator<'a, T, S> {}
+impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for RowMajorIterator<'a, T, S> {}
 
 /**
  * An iterator over references to a column in a matrix.
@@ -386,11 +396,12 @@ impl <'a, T: Clone> ExactSizeIterator for RowMajorIterator<'a, T> {}
  * can either iterate through &1, &3 or &2, &4.
  */
 #[derive(Debug)]
-pub struct ColumnReferenceIterator<'a, T> {
-    matrix: &'a Matrix<T>,
+pub struct ColumnReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     column: Column,
     counter: usize,
     finished: bool,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T> ColumnReferenceIterator<'a, T> {
@@ -403,11 +414,12 @@ impl <'a, T> ColumnReferenceIterator<'a, T> {
             column,
             counter: 0,
             finished: false,
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T> Iterator for ColumnReferenceIterator<'a, T> {
+impl <'a, T, S: MatrixRef<T>> Iterator for ColumnReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -432,8 +444,8 @@ impl <'a, T> Iterator for ColumnReferenceIterator<'a, T> {
     }
 }
 
-impl <'a, T> FusedIterator for ColumnReferenceIterator<'a, T> {}
-impl <'a, T> ExactSizeIterator for ColumnReferenceIterator<'a, T> {}
+impl <'a, T, S: MatrixRef<T>> FusedIterator for ColumnReferenceIterator<'a, T, S> {}
+impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for ColumnReferenceIterator<'a, T, S> {}
 
 /**
  * An iterator over references to a row in a matrix.
@@ -449,11 +461,12 @@ impl <'a, T> ExactSizeIterator for ColumnReferenceIterator<'a, T> {}
  * can either iterate through &1, &2 or &3, &4.
  */
 #[derive(Debug)]
-pub struct RowReferenceIterator<'a, T> {
-    matrix: &'a Matrix<T>,
+pub struct RowReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     row: Row,
     counter: usize,
     finished: bool,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T> RowReferenceIterator<'a, T> {
@@ -466,11 +479,12 @@ impl <'a, T> RowReferenceIterator<'a, T> {
             row,
             counter: 0,
             finished: false,
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T> Iterator for RowReferenceIterator<'a, T> {
+impl <'a, T, S: MatrixRef<T>> Iterator for RowReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -495,8 +509,8 @@ impl <'a, T> Iterator for RowReferenceIterator<'a, T> {
     }
 }
 
-impl <'a, T> FusedIterator for RowReferenceIterator<'a, T> {}
-impl <'a, T> ExactSizeIterator for RowReferenceIterator<'a, T> {}
+impl <'a, T, S: MatrixRef<T>> FusedIterator for RowReferenceIterator<'a, T, S> {}
+impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for RowReferenceIterator<'a, T, S> {}
 
 /**
  * A column major iterator over references to all values in a matrix.
@@ -511,11 +525,12 @@ impl <'a, T> ExactSizeIterator for RowReferenceIterator<'a, T> {}
  * The elements will be iterated through as &1, &3, &2, &4
  */
 #[derive(Debug)]
-pub struct ColumnMajorReferenceIterator<'a, T> {
-    matrix: &'a Matrix<T>,
+pub struct ColumnMajorReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     column_counter: Column,
     row_counter: Row,
     finished: bool,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T> ColumnMajorReferenceIterator<'a, T> {
@@ -528,11 +543,12 @@ impl <'a, T> ColumnMajorReferenceIterator<'a, T> {
             column_counter: 0,
             row_counter: 0,
             finished: false,
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T> Iterator for ColumnMajorReferenceIterator<'a, T> {
+impl <'a, T, S: MatrixRef<T>> Iterator for ColumnMajorReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -583,8 +599,8 @@ impl <'a, T> Iterator for ColumnMajorReferenceIterator<'a, T> {
     }
 }
 
-impl <'a, T> FusedIterator for ColumnMajorReferenceIterator<'a, T> {}
-impl <'a, T> ExactSizeIterator for ColumnMajorReferenceIterator<'a, T> {}
+impl <'a, T, S: MatrixRef<T>> FusedIterator for ColumnMajorReferenceIterator<'a, T, S> {}
+impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for ColumnMajorReferenceIterator<'a, T, S> {}
 
 /**
  * A row major iterator over references to all values in a matrix.
@@ -599,11 +615,12 @@ impl <'a, T> ExactSizeIterator for ColumnMajorReferenceIterator<'a, T> {}
  * The elements will be iterated through as &1, &2, &3, &4
  */
 #[derive(Debug)]
-pub struct RowMajorReferenceIterator<'a, T> {
-    matrix: &'a Matrix<T>,
+pub struct RowMajorReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     column_counter: Column,
     row_counter: Row,
     finished: bool,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T> RowMajorReferenceIterator<'a, T> {
@@ -616,11 +633,12 @@ impl <'a, T> RowMajorReferenceIterator<'a, T> {
             column_counter: 0,
             row_counter: 0,
             finished: false,
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T> Iterator for RowMajorReferenceIterator<'a, T> {
+impl <'a, T, S: MatrixRef<T>> Iterator for RowMajorReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -671,8 +689,8 @@ impl <'a, T> Iterator for RowMajorReferenceIterator<'a, T> {
     }
 }
 
-impl <'a, T> FusedIterator for RowMajorReferenceIterator<'a, T> {}
-impl <'a, T> ExactSizeIterator for RowMajorReferenceIterator<'a, T> {}
+impl <'a, T, S: MatrixRef<T>> FusedIterator for RowMajorReferenceIterator<'a, T, S> {}
+impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for RowMajorReferenceIterator<'a, T, S> {}
 
 /**
  * An iterator over the main diagonal in a matrix.
@@ -689,11 +707,12 @@ impl <'a, T> ExactSizeIterator for RowMajorReferenceIterator<'a, T> {}
  * If the matrix is not square this will stop at whichever row/colum is shorter.
  */
 #[derive(Debug)]
-pub struct DiagonalIterator<'a, T: Clone> {
-    matrix: &'a Matrix<T>,
+pub struct DiagonalIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     counter: usize,
     final_index: usize,
     finished: bool,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T: Clone> DiagonalIterator<'a, T> {
@@ -706,11 +725,12 @@ impl <'a, T: Clone> DiagonalIterator<'a, T> {
             counter: 0,
             final_index: std::cmp::min(matrix.rows(), matrix.columns()),
             finished: false,
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T: Clone> Iterator for DiagonalIterator<'a, T> {
+impl <'a, T: Clone, S: MatrixRef<T>> Iterator for DiagonalIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -718,7 +738,7 @@ impl <'a, T: Clone> Iterator for DiagonalIterator<'a, T> {
             return None
         }
 
-        let value = Some(self.matrix.get(self.counter, self.counter));
+        let value = Some(self.matrix.get_reference(self.counter, self.counter).clone());
 
         if self.counter == self.final_index - 1 {
             self.finished = true;
@@ -735,8 +755,8 @@ impl <'a, T: Clone> Iterator for DiagonalIterator<'a, T> {
     }
 }
 
-impl <'a, T: Clone> FusedIterator for DiagonalIterator<'a, T> {}
-impl <'a, T: Clone> ExactSizeIterator for DiagonalIterator<'a, T> {}
+impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for DiagonalIterator<'a, T, S> {}
+impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for DiagonalIterator<'a, T, S> {}
 
 /**
  * An iterator over references to the main diagonal in a matrix.
@@ -753,11 +773,12 @@ impl <'a, T: Clone> ExactSizeIterator for DiagonalIterator<'a, T> {}
  * If the matrix is not square this will stop at whichever row/colum is shorter.
  */
 #[derive(Debug)]
-pub struct DiagonalReferenceIterator<'a, T> {
-    matrix: &'a Matrix<T>,
+pub struct DiagonalReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     counter: usize,
     final_index: usize,
     finished: bool,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T> DiagonalReferenceIterator<'a, T> {
@@ -770,11 +791,12 @@ impl <'a, T> DiagonalReferenceIterator<'a, T> {
             counter: 0,
             final_index: std::cmp::min(matrix.rows(), matrix.columns()),
             finished: false,
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T> Iterator for DiagonalReferenceIterator<'a, T> {
+impl <'a, T, S: MatrixRef<T>> Iterator for DiagonalReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -799,5 +821,5 @@ impl <'a, T> Iterator for DiagonalReferenceIterator<'a, T> {
     }
 }
 
-impl <'a, T> FusedIterator for DiagonalReferenceIterator<'a, T> {}
-impl <'a, T> ExactSizeIterator for DiagonalReferenceIterator<'a, T> {}
+impl <'a, T, S: MatrixRef<T>> FusedIterator for DiagonalReferenceIterator<'a, T, S> {}
+impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for DiagonalReferenceIterator<'a, T, S> {}
