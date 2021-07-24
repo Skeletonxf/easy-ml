@@ -13,6 +13,7 @@ use std::marker::PhantomData;
 use crate::matrices::{Row, Column, Matrix};
 use crate::matrices::slices::Slice;
 
+mod iterators;
 
 // TODO: Expose a non panicking API on MatrixRef/MatrixMut so don't have to deal with arbitary
 // levels of #[track_caller] and can make an easy to use panicking API on the MatrixView instead
@@ -202,18 +203,49 @@ impl <T> MatrixMut<T> for Box<dyn MatrixMut<T>> {
  * over the type of the data in the Matrix, but also over the way the Matrix is 'sliced'
  * and the two are orthogonal to each other.
  */
+ #[derive(Debug)]
 struct MatrixView<T, S> {
     source: S,
     _type: PhantomData<T>,
     // TODO: Transposition
 }
 
-type ErasedMatrixView<T> = MatrixView<T, Box<dyn MatrixRef<T>>>;
-
 impl <T, S> MatrixView<T, S>
 where
     S: MatrixRef<T>
 {
+    /**
+     * Creates a MatrixView from a source of some type.
+     *
+     * The lifetime of the source determines the lifetime of the MatrixView created. If the
+     * MatrixView is created from a reference to a Matrix, then the MatrixView cannot live
+     * longer than the Matrix referenced.
+     *
+     * TODO: Uncomment once APIs are public to let doc test run
+     * //```
+     * //use easy_ml::matrices::Matrix;
+     * //use easy_ml::matrices::views::MatrixView;
+     * //use easy_ml::matrices::slices::{Slice, Slice2D};
+     * //let matrix = Matrix::from(vec![vec![1.0]]);
+     * //let _ = MatrixView::from(&matrix, Slice2D::new().rows(Slice::All()).columns(Slice::All()));
+     * //let mut matrix = Matrix::from(vec![vec![1.0]]);
+     * //let _ = MatrixView::from(&mut matrix, Slice2D::new().rows(Slice::All()).columns(Slice::All()));
+     * //```
+     */
+    fn from(source: S) -> MatrixView<T, S> {
+        MatrixView {
+            source,
+            _type: PhantomData,
+        }
+    }
+
+    /**
+     * Consumes the matrix view, yielding the source it was created from.
+     */
+    fn source(self) -> S {
+        self.source
+    }
+
     fn get_reference(&self, row: Row, column: Column) -> &T {
         self.source.get_reference(row, column)
     }
@@ -312,8 +344,6 @@ where
     }
 }
 
-
-
 // TODO: Make MatrixQuadrant able to be 4 different MatrixMut that can be mutated independently
 pub(crate) struct MatrixQuadrant<'source, T> {
     top_left: Vec<&'source mut [T]>,
@@ -391,36 +421,6 @@ fn slice_to_index_range(length: usize, slice: Slice) -> Result<IndexRange, Slice
             length: range.end - range.start,
         }),
         _ => Err(SliceToIndexRangeError),
-    }
-}
-
-impl <T, S> MatrixView<T, S>
-where
-    S: MatrixRef<T> {
-    /**
-     * Creates a MatrixView from a source of some type.
-     *
-     * The lifetime of the source determines the lifetime of the MatrixView created. If the
-     * MatrixView is created from a reference to a Matrix, then the MatrixView cannot live
-     * longer than the Matrix referenced.
-     *
-     * TODO: Uncomment once APIs are public to let doc test run
-     * //```
-     * //use easy_ml::matrices::Matrix;
-     * //use easy_ml::matrices::views::MatrixView;
-     * //use easy_ml::matrices::slices::{Slice, Slice2D};
-     * //let matrix = Matrix::from(vec![vec![1.0]]);
-     * //let _ = MatrixView::from(&matrix, Slice2D::new().rows(Slice::All()).columns(Slice::All()));
-     * //let mut matrix = Matrix::from(vec![vec![1.0]]);
-     * //let _ = MatrixView::from(&mut matrix, Slice2D::new().rows(Slice::All()).columns(Slice::All()));
-     * //```
-     */
-    fn from(source: S) -> MatrixView<T, S>
-    {
-        MatrixView {
-            source,
-            _type: PhantomData,
-        }
     }
 }
 
