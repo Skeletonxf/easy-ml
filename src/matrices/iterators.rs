@@ -73,6 +73,28 @@ use crate::matrices::{Matrix, Row, Column};
 use crate::matrices::views::MatrixRef;
 
 /**
+ * Convenience panicking extension for MatrixRef which panics on index out of bounds just as
+ * the get_reference method on Matrix does.
+ * Iterators are always constructed to be stay within bounds but MatrixRef implementations may
+ * possess interior mutability and thus it is possible that an iterator would become invalid
+ * if the matrix it references resizes under it.
+ */
+trait MatrixRefExtension<T>: MatrixRef<T> {
+    #[track_caller]
+    fn get_reference(&self, row: Row, column: Column) -> &T {
+        self
+            .try_get_reference(row, column)
+            .unwrap_or_else(|| panic!(
+                "Expected ({},{}) to be in range in {}x{} matrix",
+                row, column, self.rows(), self.columns()
+            ))
+    }
+}
+
+impl <R, T> MatrixRefExtension<T> for R
+where R: MatrixRef<T> {}
+
+/**
  * An iterator over a column in a matrix.
  *
  * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie

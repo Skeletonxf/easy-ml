@@ -13,33 +13,42 @@ use std::marker::PhantomData;
 use crate::matrices::{Row, Column, Matrix};
 use crate::matrices::slices::Slice;
 
-// TODO: Expose a non panicking API on MatrixRef/MatrixMut so don't have to deal with arbitary
-// levels of #[track_caller] and can make an easy to use panicking API on the MatrixView instead
-
 /**
  * A shared/immutable reference to a matrix of some type.
  */
 pub trait MatrixRef<T> {
-    fn get_reference(&self, row: Row, column: Column) -> &T;
+    /**
+     * Gets a reference to the value at the index, if the index is in range.
+     */
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T>;
     fn rows(&self) -> Row;
     fn columns(&self) -> Column;
 
     fn size(&self) -> (Row, Column) {
         (self.rows(), self.columns())
     }
+
+    // TODO: unsafe get_reference_unchecked, make the trait itself unsafe and document
+    // that implementations must uphold a contract of prohibiting interior mutability XOR panicking on out of bounds access
 }
 
 /**
  * A unique/mutable reference to a matrix of some type.
  */
 pub trait MatrixMut<T>: MatrixRef<T> {
-    fn set(&mut self, row: Row, column: Column, value: T);
+    /**
+     * Gets a mutable reference to the value at the index, if the index is in range.
+     */
+    fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T>;
+
+
+    // TODO: unsafe get_reference_mut_unchecked, make the trait itself unsafe and document
+    // that implementations must uphold a contract of prohibiting interior mutability XOR panicking on out of bounds access
 }
 
 impl <'source, T> MatrixRef<T> for &'source Matrix<T> {
-    #[track_caller]
-    fn get_reference(&self, row: Row, column: Column) -> &T {
-        Matrix::get_reference(self, row, column)
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        Matrix::_try_get_reference(self, row, column)
     }
 
     fn rows(&self) -> Row {
@@ -82,9 +91,8 @@ impl <'source, T> MatrixRef<T> for &'source Matrix<T> {
 // }
 //
 impl <'source, T> MatrixRef<T> for &'source mut Matrix<T> {
-    #[track_caller]
-    fn get_reference(&self, row: Row, column: Column) -> &T {
-        Matrix::get_reference(self, row, column)
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        Matrix::_try_get_reference(self, row, column)
     }
 
     fn rows(&self) -> Row {
@@ -97,16 +105,14 @@ impl <'source, T> MatrixRef<T> for &'source mut Matrix<T> {
 }
 
 impl <'source, T> MatrixMut<T> for &'source mut Matrix<T> {
-    #[track_caller]
-    fn set(&mut self, row: Row, column: Column, value: T) {
-        Matrix::set(self, row, column, value)
+    fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
+        Matrix::_try_get_reference_mut(self, row, column)
     }
 }
 
 impl <T> MatrixRef<T> for Matrix<T> {
-    #[track_caller]
-    fn get_reference(&self, row: Row, column: Column) -> &T {
-        Matrix::get_reference(self, row, column)
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        Matrix::_try_get_reference(self, row, column)
     }
 
     fn rows(&self) -> Row {
@@ -119,9 +125,8 @@ impl <T> MatrixRef<T> for Matrix<T> {
 }
 
 impl <T> MatrixMut<T> for Matrix<T> {
-    #[track_caller]
-    fn set(&mut self, row: Row, column: Column, value: T) {
-        Matrix::set(self, row, column, value)
+    fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
+        Matrix::_try_get_reference_mut(self, row, column)
     }
 }
 
@@ -129,9 +134,8 @@ impl <T, S> MatrixRef<T> for Box<S>
 where
     S: MatrixRef<T>
 {
-    #[track_caller]
-    fn get_reference(&self, row: Row, column: Column) -> &T {
-        self.as_ref().get_reference(row, column)
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        self.as_ref().try_get_reference(row, column)
     }
 
     fn rows(&self) -> Row {
@@ -147,16 +151,14 @@ impl <T, S> MatrixMut<T> for Box<S>
 where
     S: MatrixMut<T>
 {
-    #[track_caller]
-    fn set(&mut self, row: Row, column: Column, value: T) {
-        self.as_mut().set(row, column, value)
+    fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
+        self.as_mut().try_get_reference_mut(row, column)
     }
 }
 
 impl <T> MatrixRef<T> for Box<dyn MatrixRef<T>> {
-    #[track_caller]
-    fn get_reference(&self, row: Row, column: Column) -> &T {
-        self.as_ref().get_reference(row, column)
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        self.as_ref().try_get_reference(row, column)
     }
 
     fn rows(&self) -> Row {
@@ -169,9 +171,8 @@ impl <T> MatrixRef<T> for Box<dyn MatrixRef<T>> {
 }
 
 impl <T> MatrixRef<T> for Box<dyn MatrixMut<T>> {
-    #[track_caller]
-    fn get_reference(&self, row: Row, column: Column) -> &T {
-        self.as_ref().get_reference(row, column)
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        self.as_ref().try_get_reference(row, column)
     }
 
     fn rows(&self) -> Row {
@@ -184,9 +185,8 @@ impl <T> MatrixRef<T> for Box<dyn MatrixMut<T>> {
 }
 
 impl <T> MatrixMut<T> for Box<dyn MatrixMut<T>> {
-    #[track_caller]
-    fn set(&mut self, row: Row, column: Column, value: T) {
-        self.as_mut().set(row, column, value)
+    fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
+        self.as_mut().try_get_reference_mut(row, column)
     }
 }
 
@@ -244,9 +244,9 @@ where
         self.source
     }
 
-    fn get_reference(&self, row: Row, column: Column) -> &T {
-        self.source.get_reference(row, column)
-    }
+    // fn get_reference(&self, row: Row, column: Column) -> &T {
+    //     self.source.try_get_reference(row, column)
+    // }
 
     fn rows(&self) -> Row {
         self.source.rows()
@@ -266,17 +266,17 @@ where
     S: MatrixRef<T>,
     T: Clone,
 {
-    fn get(&self, row: Row, column: Column) -> T {
-        self.get_reference(row, column).clone()
-    }
+    // fn get(&self, row: Row, column: Column) -> T {
+    //     self.get_reference(row, column).clone()
+    // }
 }
 
 impl <T, S> MatrixView<T, S>
 where
     S: MatrixMut<T> {
-    fn set(&mut self, row: Row, column: Column, value: T) {
-        self.source.set(row, column, value)
-    }
+    // fn set(&mut self, row: Row, column: Column, value: T) {
+    //     self.source.set(row, column, value)
+    // }
 }
 
 /**
@@ -314,11 +314,10 @@ impl <T, S> MatrixRef<T> for MatrixRange<S>
 where
     S: MatrixRef<T>
 {
-    #[track_caller]
-    fn get_reference(&self, row: Row, column: Column) -> &T {
-        let row = self.rows.map(row).expect("Row out of index");
-        let column = self.columns.map(column).expect("Column out of index");
-        self.source.get_reference(row, column)
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        let row = self.rows.map(row)?;
+        let column = self.columns.map(column)?;
+        self.source.try_get_reference(row, column)
     }
 
     fn rows(&self) -> Row {
@@ -334,11 +333,10 @@ impl <T, S> MatrixMut<T> for MatrixRange<S>
 where
     S: MatrixMut<T>
 {
-    #[track_caller]
-    fn set(&mut self, row: Row, column: Column, value: T) {
-        let row = self.rows.map(row).expect("Row out of index");
-        let column = self.columns.map(column).expect("Column out of index");
-        self.source.set(row, column, value)
+    fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
+        let row = self.rows.map(row)?;
+        let column = self.columns.map(column)?;
+        self.source.try_get_reference_mut(row, column)
     }
 }
 
@@ -459,6 +457,6 @@ fn creating_matrix_views_erased() {
     let matrix = Matrix::from(vec![vec![1.0]]);
     let boxed: Box<dyn MatrixMut<f32>> = Box::new(matrix);
     let mut view = MatrixView::from(boxed);
-    view.get(0, 0);
-    view.set(0, 0, 2.0);
+    //view.get(0, 0);
+    //view.set(0, 0, 2.0);
 }

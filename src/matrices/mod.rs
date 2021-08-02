@@ -264,6 +264,18 @@ impl <T> Matrix<T> {
     }
 
     /**
+     * Not public API because don't want to name clash with the method on MatrixRef
+     * that calls this.
+     */
+    pub(crate) fn _try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        if row < self.rows() || column < self.columns() {
+            Some(&self.data[self.get_index(row, column)])
+        } else {
+            None
+        }
+    }
+
+    /**
      * Sets a new value to this row and column. Rows and Columns are 0 indexed.
      *
      * # Panics
@@ -274,8 +286,23 @@ impl <T> Matrix<T> {
     pub fn set(&mut self, row: Row, column: Column, value: T) {
         assert!(row < self.rows(), "Row out of index");
         assert!(column < self.columns(), "Column out of index");
-        let columns = self.columns();
-        self.data[column + (row * columns)] = value;
+        let index = self.get_index(row, column);
+        // borrow for get_index ends
+        self.data[index] = value;
+    }
+
+    /**
+     * Not public API because don't want to name clash with the method on MatrixMut
+     * that calls this.
+     */
+    pub(crate) fn _try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
+        if row < self.rows() || column < self.columns() {
+            let index = self.get_index(row, column);
+            // borrow for get_index ends
+            Some(&mut self.data[index])
+        } else {
+            None
+        }
     }
 
     /**
