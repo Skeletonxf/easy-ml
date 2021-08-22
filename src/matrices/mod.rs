@@ -5,27 +5,27 @@
  * the matrix can be used in a mathematical way.
  */
 
-use std::ops::{Add, Sub, Mul, Neg, Div};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 #[cfg(feature = "serde")]
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
+mod errors;
 pub mod iterators;
 pub mod slices;
-mod errors;
+pub mod views;
 
 pub use errors::ScalarConversionError;
 
-use crate::matrices::iterators::{
-    ColumnIterator, RowIterator,
-    ColumnMajorIterator, RowMajorIterator,
-    ColumnReferenceIterator, RowReferenceIterator,
-    ColumnMajorReferenceIterator, RowMajorReferenceIterator,
-    DiagonalIterator, DiagonalReferenceIterator};
-use crate::matrices::slices::Slice2D;
-use crate::numeric::{Numeric, NumericRef};
-use crate::numeric::extra::{Real, RealRef};
 use crate::linear_algebra;
+use crate::matrices::iterators::{
+    ColumnIterator, ColumnMajorIterator, ColumnMajorReferenceIterator, ColumnReferenceIterator,
+    DiagonalIterator, DiagonalReferenceIterator, RowIterator, RowMajorIterator,
+    RowMajorReferenceIterator, RowReferenceIterator,
+};
+use crate::matrices::slices::Slice2D;
+use crate::numeric::extra::{Real, RealRef};
+use crate::numeric::{Numeric, NumericRef};
 
 /**
  * A general purpose matrix of some type. This type may implement
@@ -275,6 +275,14 @@ impl <T> Matrix<T> {
     }
 
     /**
+     * Not public API because don't want to name clash with the method on MatrixRef
+     * that calls this.
+     */
+    pub(crate) unsafe fn _get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        self.data.get_unchecked(self.get_index(row, column))
+    }
+
+    /**
      * Sets a new value to this row and column. Rows and Columns are 0 indexed.
      *
      * # Panics
@@ -302,6 +310,20 @@ impl <T> Matrix<T> {
         } else {
             None
         }
+    }
+
+    /**
+     * Not public API because don't want to name clash with the method on MatrixMut
+     * that calls this.
+     */
+    pub(crate) unsafe fn _get_reference_unchecked_mut(
+        &mut self,
+        row: Row,
+        column: Column,
+    ) -> &mut T {
+        let index = self.get_index(row, column);
+        // borrow for get_index ends
+        self.data.get_unchecked_mut(index)
     }
 
     /**
