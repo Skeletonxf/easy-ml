@@ -111,3 +111,112 @@ pub unsafe trait MatrixMut<T>: MatrixRef<T> {
      */
     unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T;
 }
+
+// # Safety
+//
+// Since we hold a shared reference to a Matrix and Matrix does not implement interior mutability
+// we know it is not possible to mutate the size of the matrix out from under us.
+/**
+ * A shared reference to a Matrix implements MatrixRef.
+ */
+unsafe impl <'source, T> MatrixRef<T> for &'source Matrix<T> {
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        Matrix::_try_get_reference(self, row, column)
+    }
+
+    fn view_rows(&self) -> Row {
+        Matrix::rows(self)
+    }
+
+    fn view_columns(&self) -> Column {
+        Matrix::columns(self)
+    }
+
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        Matrix::_get_reference_unchecked(self, row, column)
+    }
+}
+
+// # Safety
+//
+// Since we hold an exclusive reference to a Matrix we know it is not possible to mutate
+// the size of the matrix out from under us.
+/**
+ * An exclusive reference to a Matrix implements MatrixRef.
+ */
+unsafe impl <'source, T> MatrixRef<T> for &'source mut Matrix<T> {
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        Matrix::_try_get_reference(self, row, column)
+    }
+
+    fn view_rows(&self) -> Row {
+        Matrix::rows(self)
+    }
+
+    fn view_columns(&self) -> Column {
+        Matrix::columns(self)
+    }
+
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        Matrix::_get_reference_unchecked(self, row, column)
+    }
+}
+
+// # Safety
+//
+// Since we hold an exclusive reference to a Matrix we know it is not possible to mutate
+// the size of the matrix out from under us.
+/**
+ * An exclusive reference to a Matrix implements MatrixMut.
+ */
+unsafe impl <'source, T> MatrixMut<T> for &'source mut Matrix<T> {
+    fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
+        Matrix::_try_get_reference_mut(self, row, column)
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+        Matrix::_get_reference_unchecked_mut(self, row, column)
+    }
+}
+
+// # Safety
+//
+// Since we hold an owned Matrix we know it is not possible to mutate the size of the matrix
+// out from under us.
+/**
+ * An owned Matrix implements MatrixRef.
+ */
+unsafe impl <T> MatrixRef<T> for Matrix<T> {
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        Matrix::_try_get_reference(self, row, column)
+    }
+
+    fn view_rows(&self) -> Row {
+        Matrix::rows(self)
+    }
+
+    fn view_columns(&self) -> Column {
+        Matrix::columns(self)
+    }
+
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        Matrix::_get_reference_unchecked(self, row, column)
+    }
+}
+
+// # Safety
+//
+// Since we hold an owned Matrix we know it is not possible to mutate the size of the matrix
+// out from under us.
+/**
+ * An owned Matrix implements MatrixMut.
+ */
+unsafe impl <T> MatrixMut<T> for Matrix<T> {
+    fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
+        Matrix::_try_get_reference_mut(self, row, column)
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+        Matrix::_get_reference_unchecked_mut(self, row, column)
+    }
+}
