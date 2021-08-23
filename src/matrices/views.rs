@@ -220,3 +220,118 @@ unsafe impl <T> MatrixMut<T> for Matrix<T> {
         Matrix::_get_reference_unchecked_mut(self, row, column)
     }
 }
+
+// # Safety
+//
+// Since the MatrixRef we box must implement MatrixRef correctly, so do we by delegating to it,
+// as a box doesn't introduce any interior mutability.
+/**
+ * A box of a MatrixRef also implements MatrixRef.
+ */
+unsafe impl <T, S> MatrixRef<T> for Box<S>
+where
+    S: MatrixRef<T>
+{
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        self.as_ref().try_get_reference(row, column)
+    }
+
+    fn view_rows(&self) -> Row {
+        self.as_ref().view_rows()
+    }
+
+    fn view_columns(&self) -> Column {
+        self.as_ref().view_columns()
+    }
+
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        self.as_ref().get_reference_unchecked(row, column)
+    }
+}
+
+// # Safety
+//
+// Since the MatrixMut we box must implement MatrixMut correctly, so do we by delegating to it,
+// as a box doesn't introduce any interior mutability.
+/**
+ * A box of a MatrixMut also implements MatrixMut.
+ */
+unsafe impl <T, S> MatrixMut<T> for Box<S>
+where
+    S: MatrixMut<T>
+{
+    fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
+        self.as_mut().try_get_reference_mut(row, column)
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+        self.as_mut().get_reference_unchecked_mut(row, column)
+    }
+}
+
+// # Safety
+//
+// Since the MatrixRef we box must implement MatrixRef correctly, so do we by delegating to it,
+// as a box doesn't introduce any interior mutability.
+/**
+ * A box of a dynamic MatrixRef also implements MatrixRef.
+ */
+unsafe impl <T> MatrixRef<T> for Box<dyn MatrixRef<T>> {
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        self.as_ref().try_get_reference(row, column)
+    }
+
+    fn view_rows(&self) -> Row {
+        self.as_ref().view_rows()
+    }
+
+    fn view_columns(&self) -> Column {
+        self.as_ref().view_columns()
+    }
+
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        self.as_ref().get_reference_unchecked(row, column)
+    }
+}
+
+// # Safety
+//
+// Since the MatrixMut we box must implement MatrixRef correctly, so do we by delegating to it,
+// as a box doesn't introduce any interior mutability.
+/**
+ * A box of a dynamic MatrixMut also implements MatrixRef.
+ */
+unsafe impl <T> MatrixRef<T> for Box<dyn MatrixMut<T>> {
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        self.as_ref().try_get_reference(row, column)
+    }
+
+    fn view_rows(&self) -> Row {
+        self.as_ref().view_rows()
+    }
+
+    fn view_columns(&self) -> Column {
+        self.as_ref().view_columns()
+    }
+
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        self.as_ref().get_reference_unchecked(row, column)
+    }
+}
+
+// # Safety
+//
+// Since the MatrixMut we box must implement MatrixMut correctly, so do we by delegating to it,
+// as a box doesn't introduce any interior mutability.
+/**
+ * A box of a dynamic MatrixMut also implements MatrixMut.
+ */
+unsafe impl <T> MatrixMut<T> for Box<dyn MatrixMut<T>> {
+    fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
+        self.as_mut().try_get_reference_mut(row, column)
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+        self.as_mut().get_reference_unchecked_mut(row, column)
+    }
+}
