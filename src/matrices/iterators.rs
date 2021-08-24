@@ -67,8 +67,23 @@
  */
 
 use std::iter::{ExactSizeIterator, FusedIterator};
+use std::marker::PhantomData;
+use std::ops::Range;
 
 use crate::matrices::{Matrix, Row, Column};
+use crate::matrices::views::MatrixRef;
+
+trait MatrixRefExtension<T>: MatrixRef<T> {
+    /**
+     * Helper for asserting starting indexes are in range.
+     */
+    fn index_is_valid(&self, row: Row, column: Column) -> bool {
+        row < self.view_rows() && column < self.view_columns()
+    }
+}
+
+impl <R, T> MatrixRefExtension<T> for R
+where R: MatrixRef<T> {}
 
 /**
  * An iterator over a column in a matrix.
@@ -84,11 +99,11 @@ use crate::matrices::{Matrix, Row, Column};
  * can either iterate through 1, 3 or 2, 4.
  */
 #[derive(Debug)]
-pub struct ColumnIterator<'a, T: Clone> {
-    matrix: &'a Matrix<T>,
+pub struct ColumnIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     column: Column,
-    counter: usize,
-    finished: bool,
+    range: Range<Row>,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T: Clone> ColumnIterator<'a, T> {
@@ -96,42 +111,40 @@ impl <'a, T: Clone> ColumnIterator<'a, T> {
      * Constructs a column iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>, column: Column) -> ColumnIterator<T> {
+        assert!(matrix.index_is_valid(0, column), "Expected ({},{}) to be in range", 0, column);
         ColumnIterator {
             matrix,
             column,
-            counter: 0,
-            finished: false,
+            range: 0..matrix.view_rows(),
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T: Clone> Iterator for ColumnIterator<'a, T> {
+impl <'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None
+        match self.range.next() {
+            None => None,
+            Some(row) => unsafe {
+                // Safety: We initialised the range to 0..matrix.view_rows(), and
+                // checked we can read from this column at creation, hence if
+                // the view_rows have not changed this read is in bounds and if
+                // they are able to be changed, then the MatrixRef implementation is
+                // required to bounds check for us.
+                Some(self.matrix.get_reference_unchecked(row, self.column).clone())
+            }
         }
-
-        let value = Some(self.matrix.get(self.counter, self.column));
-
-        if self.counter == self.matrix.rows() - 1 {
-            self.finished = true;
-        }
-
-        self.counter += 1;
-
-        value
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining = self.matrix.rows() - self.counter;
-        (remaining, Some(remaining))
+        self.range.size_hint()
     }
 }
 
-impl <'a, T: Clone> FusedIterator for ColumnIterator<'a, T> {}
-impl <'a, T: Clone> ExactSizeIterator for ColumnIterator<'a, T> {}
+impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for ColumnIterator<'a, T, S> {}
+impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for ColumnIterator<'a, T, S> {}
 
 /**
  * An iterator over a row in a matrix.
@@ -147,11 +160,11 @@ impl <'a, T: Clone> ExactSizeIterator for ColumnIterator<'a, T> {}
  * can either iterate through 1, 2 or 3, 4.
  */
 #[derive(Debug)]
-pub struct RowIterator<'a, T: Clone> {
-    matrix: &'a Matrix<T>,
+pub struct RowIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     row: Row,
-    counter: usize,
-    finished: bool,
+    range: Range<Column>,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T: Clone> RowIterator<'a, T> {
@@ -159,42 +172,40 @@ impl <'a, T: Clone> RowIterator<'a, T> {
      * Constructs a row iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>, row: Row) -> RowIterator<T> {
+        assert!(matrix.index_is_valid(row, 0), "Expected ({},{}) to be in range", row, 0);
         RowIterator {
             matrix,
             row,
-            counter: 0,
-            finished: false,
+            range: 0..matrix.view_columns(),
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T: Clone> Iterator for RowIterator<'a, T> {
+impl <'a, T: Clone, S: MatrixRef<T>> Iterator for RowIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None
+        match self.range.next() {
+            None => None,
+            Some(column) => unsafe {
+                // Safety: We initialised the range to 0..matrix.view_columns(), and
+                // checked we can read from this row at creation, hence if
+                // the view_columns have not changed this read is in bounds and if
+                // they are able to be changed, then the MatrixRef implementation is
+                // required to bounds check for us.
+                Some(self.matrix.get_reference_unchecked(self.row, column).clone())
+            }
         }
-
-        let value = Some(self.matrix.get(self.row, self.counter));
-
-        if self.counter == self.matrix.columns() - 1 {
-            self.finished = true;
-        }
-
-        self.counter += 1;
-
-        value
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining = self.matrix.columns() - self.counter;
-        (remaining, Some(remaining))
+        self.range.size_hint()
     }
 }
 
-impl <'a, T: Clone> FusedIterator for RowIterator<'a, T> {}
-impl <'a, T: Clone> ExactSizeIterator for RowIterator<'a, T> {}
+impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for RowIterator<'a, T, S> {}
+impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for RowIterator<'a, T, S> {}
 
 /**
  * A column major iterator over all values in a matrix.
@@ -209,11 +220,12 @@ impl <'a, T: Clone> ExactSizeIterator for RowIterator<'a, T> {}
  * The elements will be iterated through as 1, 3, 2, 4
  */
 #[derive(Debug)]
-pub struct ColumnMajorIterator<'a, T: Clone> {
-    matrix: &'a Matrix<T>,
+pub struct ColumnMajorIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     column_counter: Column,
     row_counter: Row,
     finished: bool,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T: Clone> ColumnMajorIterator<'a, T> {
@@ -221,16 +233,18 @@ impl <'a, T: Clone> ColumnMajorIterator<'a, T> {
      * Constructs a column major iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>) -> ColumnMajorIterator<T> {
+        assert!(matrix.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
         ColumnMajorIterator {
             matrix,
             column_counter: 0,
             row_counter: 0,
             finished: false,
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T: Clone> Iterator for ColumnMajorIterator<'a, T> {
+impl <'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnMajorIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -238,15 +252,22 @@ impl <'a, T: Clone> Iterator for ColumnMajorIterator<'a, T> {
             return None
         }
 
-        let value = Some(self.matrix.get(self.row_counter, self.column_counter));
+        let value = unsafe {
+            // Safety: We checked on creation that 0,0 is in range, and after getting
+            // our next value we check if we hit the end of the matrix and will avoid
+            // calling this on our next loop if we finished. Hence if the view_size has
+            // not changed this read is in bounds and if they are able to be changed,
+            // then the MatrixRef implementation is required to bounds check for us.
+            Some(self.matrix.get_reference_unchecked(self.row_counter, self.column_counter).clone())
+        };
 
-        if self.row_counter == self.matrix.rows() - 1
-                && self.column_counter == self.matrix.columns() -1 {
+        if self.row_counter == self.matrix.view_rows() - 1
+                && self.column_counter == self.matrix.view_columns() -1 {
             // reached end of matrix for next iteration
             self.finished = true;
         }
 
-        if self.row_counter == self.matrix.rows() - 1 {
+        if self.row_counter == self.matrix.view_rows() - 1 {
             // reached end of a column, need to reset to first element in next column
             self.row_counter = 0;
             self.column_counter += 1;
@@ -259,21 +280,21 @@ impl <'a, T: Clone> Iterator for ColumnMajorIterator<'a, T> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining_columns = self.matrix.columns() - self.column_counter;
+        let remaining_columns = self.matrix.view_columns() - self.column_counter;
         match remaining_columns {
             0 => (0, Some(0)),
             1 => {
                 // we're on the last column, so return how many items are left for us to
                 // go through with the row counter
-                let remaining_rows = self.matrix.rows() - self.row_counter;
+                let remaining_rows = self.matrix.view_rows() - self.row_counter;
                 (remaining_rows, Some(remaining_rows))
             }
             x => {
                 // we still have at least one full column left in addition to what's left
                 // for this column's row counter
-                let remaining_rows = self.matrix.rows() - self.row_counter;
+                let remaining_rows = self.matrix.view_rows() - self.row_counter;
                 // each full column takes as many iterations as the matrix has rows
-                let remaining_full_columns = (x - 1) * self.matrix.rows();
+                let remaining_full_columns = (x - 1) * self.matrix.view_rows();
                 let remaining = remaining_rows + remaining_full_columns;
                 (remaining, Some(remaining))
             }
@@ -281,8 +302,8 @@ impl <'a, T: Clone> Iterator for ColumnMajorIterator<'a, T> {
     }
 }
 
-impl <'a, T: Clone> FusedIterator for ColumnMajorIterator<'a, T> {}
-impl <'a, T: Clone> ExactSizeIterator for ColumnMajorIterator<'a, T> {}
+impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for ColumnMajorIterator<'a, T, S> {}
+impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for ColumnMajorIterator<'a, T, S> {}
 
 /**
  * A row major iterator over all values in a matrix.
@@ -297,11 +318,12 @@ impl <'a, T: Clone> ExactSizeIterator for ColumnMajorIterator<'a, T> {}
  * The elements will be iterated through as 1, 2, 3, 4
  */
 #[derive(Debug)]
-pub struct RowMajorIterator<'a, T: Clone> {
-    matrix: &'a Matrix<T>,
+pub struct RowMajorIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     column_counter: Column,
     row_counter: Row,
     finished: bool,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T: Clone> RowMajorIterator<'a, T> {
@@ -309,16 +331,18 @@ impl <'a, T: Clone> RowMajorIterator<'a, T> {
      * Constructs a row major iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>) -> RowMajorIterator<T> {
+        assert!(matrix.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
         RowMajorIterator {
             matrix,
             column_counter: 0,
             row_counter: 0,
             finished: false,
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T: Clone> Iterator for RowMajorIterator<'a, T> {
+impl <'a, T: Clone, S: MatrixRef<T>> Iterator for RowMajorIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -326,15 +350,22 @@ impl <'a, T: Clone> Iterator for RowMajorIterator<'a, T> {
             return None
         }
 
-        let value = Some(self.matrix.get(self.row_counter, self.column_counter));
+        let value = unsafe {
+            // Safety: We checked on creation that 0,0 is in range, and after getting
+            // our next value we check if we hit the end of the matrix and will avoid
+            // calling this on our next loop if we finished. Hence if the view_size has
+            // not changed this read is in bounds and if they are able to be changed,
+            // then the MatrixRef implementation is required to bounds check for us.
+            Some(self.matrix.get_reference_unchecked(self.row_counter, self.column_counter).clone())
+        };
 
-        if self.column_counter == self.matrix.columns() - 1
-                && self.row_counter == self.matrix.rows() -1 {
+        if self.column_counter == self.matrix.view_columns() - 1
+                && self.row_counter == self.matrix.view_rows() -1 {
             // reached end of matrix for next iteration
             self.finished = true;
         }
 
-        if self.column_counter == self.matrix.columns() - 1 {
+        if self.column_counter == self.matrix.view_columns() - 1 {
             // reached end of a row, need to reset to first element in next row
             self.column_counter = 0;
             self.row_counter += 1;
@@ -347,21 +378,21 @@ impl <'a, T: Clone> Iterator for RowMajorIterator<'a, T> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining_rows = self.matrix.rows() - self.row_counter;
+        let remaining_rows = self.matrix.view_rows() - self.row_counter;
         match remaining_rows {
             0 => (0, Some(0)),
             1 => {
                 // we're on the last row, so return how many items are left for us to
                 // go through with the column counter
-                let remaining_columns = self.matrix.columns() - self.column_counter;
+                let remaining_columns = self.matrix.view_columns() - self.column_counter;
                 (remaining_columns, Some(remaining_columns))
             }
             x => {
                 // we still have at least one full row left in addition to what's left
                 // for this row's column counter
-                let remaining_columns = self.matrix.columns() - self.column_counter;
+                let remaining_columns = self.matrix.view_columns() - self.column_counter;
                 // each full row takes as many iterations as the matrix has columns
-                let remaining_full_rows = (x - 1) * self.matrix.columns();
+                let remaining_full_rows = (x - 1) * self.matrix.view_columns();
                 let remaining = remaining_columns + remaining_full_rows;
                 (remaining, Some(remaining))
             }
@@ -369,8 +400,8 @@ impl <'a, T: Clone> Iterator for RowMajorIterator<'a, T> {
     }
 }
 
-impl <'a, T: Clone> FusedIterator for RowMajorIterator<'a, T> {}
-impl <'a, T: Clone> ExactSizeIterator for RowMajorIterator<'a, T> {}
+impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for RowMajorIterator<'a, T, S> {}
+impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for RowMajorIterator<'a, T, S> {}
 
 /**
  * An iterator over references to a column in a matrix.
@@ -386,11 +417,11 @@ impl <'a, T: Clone> ExactSizeIterator for RowMajorIterator<'a, T> {}
  * can either iterate through &1, &3 or &2, &4.
  */
 #[derive(Debug)]
-pub struct ColumnReferenceIterator<'a, T> {
-    matrix: &'a Matrix<T>,
+pub struct ColumnReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     column: Column,
-    counter: usize,
-    finished: bool,
+    range: Range<Row>,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T> ColumnReferenceIterator<'a, T> {
@@ -398,42 +429,40 @@ impl <'a, T> ColumnReferenceIterator<'a, T> {
      * Constructs a column iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>, column: Column) -> ColumnReferenceIterator<T> {
+        assert!(matrix.index_is_valid(0, column), "Expected ({},{}) to be in range", 0, column);
         ColumnReferenceIterator {
             matrix,
             column,
-            counter: 0,
-            finished: false,
+            range: 0..matrix.view_rows(),
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T> Iterator for ColumnReferenceIterator<'a, T> {
+impl <'a, T, S: MatrixRef<T>> Iterator for ColumnReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None
+        match self.range.next() {
+            None => None,
+            Some(row) => unsafe {
+                // Safety: We initialised the range to 0..matrix.view_rows(), and
+                // checked we can read from this column at creation, hence if
+                // the view_rows have not changed this read is in bounds and if
+                // they are able to be changed, then the MatrixRef implementation is
+                // required to bounds check for us.
+                Some(self.matrix.get_reference_unchecked(row, self.column))
+            }
         }
-
-        let value = Some(self.matrix.get_reference(self.counter, self.column));
-
-        if self.counter == self.matrix.rows() - 1 {
-            self.finished = true;
-        }
-
-        self.counter += 1;
-
-        value
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining = self.matrix.rows() - self.counter;
-        (remaining, Some(remaining))
+        self.range.size_hint()
     }
 }
 
-impl <'a, T> FusedIterator for ColumnReferenceIterator<'a, T> {}
-impl <'a, T> ExactSizeIterator for ColumnReferenceIterator<'a, T> {}
+impl <'a, T, S: MatrixRef<T>> FusedIterator for ColumnReferenceIterator<'a, T, S> {}
+impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for ColumnReferenceIterator<'a, T, S> {}
 
 /**
  * An iterator over references to a row in a matrix.
@@ -449,11 +478,11 @@ impl <'a, T> ExactSizeIterator for ColumnReferenceIterator<'a, T> {}
  * can either iterate through &1, &2 or &3, &4.
  */
 #[derive(Debug)]
-pub struct RowReferenceIterator<'a, T> {
-    matrix: &'a Matrix<T>,
+pub struct RowReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     row: Row,
-    counter: usize,
-    finished: bool,
+    range: Range<Column>,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T> RowReferenceIterator<'a, T> {
@@ -461,42 +490,40 @@ impl <'a, T> RowReferenceIterator<'a, T> {
      * Constructs a row iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>, row: Row) -> RowReferenceIterator<T> {
+        assert!(matrix.index_is_valid(row, 0), "Expected ({},{}) to be in range", row, 0);
         RowReferenceIterator {
             matrix,
             row,
-            counter: 0,
-            finished: false,
+            range: 0..matrix.view_columns(),
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T> Iterator for RowReferenceIterator<'a, T> {
+impl <'a, T, S: MatrixRef<T>> Iterator for RowReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None
+        match self.range.next() {
+            None => None,
+            Some(column) => unsafe {
+                // Safety: We initialised the range to 0..matrix.view_columns(), and
+                // checked we can read from this row at creation, hence if
+                // the view_columns have not changed this read is in bounds and if
+                // they are able to be changed, then the MatrixRef implementation is
+                // required to bounds check for us.
+                Some(self.matrix.get_reference_unchecked(self.row, column).clone())
+            }
         }
-
-        let value = Some(self.matrix.get_reference(self.row, self.counter));
-
-        if self.counter == self.matrix.columns() - 1 {
-            self.finished = true;
-        }
-
-        self.counter += 1;
-
-        value
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining = self.matrix.columns() - self.counter;
-        (remaining, Some(remaining))
+        self.range.size_hint()
     }
 }
 
-impl <'a, T> FusedIterator for RowReferenceIterator<'a, T> {}
-impl <'a, T> ExactSizeIterator for RowReferenceIterator<'a, T> {}
+impl <'a, T, S: MatrixRef<T>> FusedIterator for RowReferenceIterator<'a, T, S> {}
+impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for RowReferenceIterator<'a, T, S> {}
 
 /**
  * A column major iterator over references to all values in a matrix.
@@ -511,11 +538,12 @@ impl <'a, T> ExactSizeIterator for RowReferenceIterator<'a, T> {}
  * The elements will be iterated through as &1, &3, &2, &4
  */
 #[derive(Debug)]
-pub struct ColumnMajorReferenceIterator<'a, T> {
-    matrix: &'a Matrix<T>,
+pub struct ColumnMajorReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     column_counter: Column,
     row_counter: Row,
     finished: bool,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T> ColumnMajorReferenceIterator<'a, T> {
@@ -523,16 +551,18 @@ impl <'a, T> ColumnMajorReferenceIterator<'a, T> {
      * Constructs a column major iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>) -> ColumnMajorReferenceIterator<T> {
+        assert!(matrix.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
         ColumnMajorReferenceIterator {
             matrix,
             column_counter: 0,
             row_counter: 0,
             finished: false,
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T> Iterator for ColumnMajorReferenceIterator<'a, T> {
+impl <'a, T, S: MatrixRef<T>> Iterator for ColumnMajorReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -540,15 +570,22 @@ impl <'a, T> Iterator for ColumnMajorReferenceIterator<'a, T> {
             return None
         }
 
-        let value = Some(self.matrix.get_reference(self.row_counter, self.column_counter));
+        let value = unsafe {
+            // Safety: We checked on creation that 0,0 is in range, and after getting
+            // our next value we check if we hit the end of the matrix and will avoid
+            // calling this on our next loop if we finished. Hence if the view_size has
+            // not changed this read is in bounds and if they are able to be changed,
+            // then the MatrixRef implementation is required to bounds check for us.
+            Some(self.matrix.get_reference_unchecked(self.row_counter, self.column_counter))
+        };
 
-        if self.row_counter == self.matrix.rows() - 1
-                && self.column_counter == self.matrix.columns() -1 {
+        if self.row_counter == self.matrix.view_rows() - 1
+                && self.column_counter == self.matrix.view_columns() -1 {
             // reached end of matrix for next iteration
             self.finished = true;
         }
 
-        if self.row_counter == self.matrix.rows() - 1 {
+        if self.row_counter == self.matrix.view_rows() - 1 {
             // reached end of a column, need to reset to first element in next column
             self.row_counter = 0;
             self.column_counter += 1;
@@ -561,21 +598,21 @@ impl <'a, T> Iterator for ColumnMajorReferenceIterator<'a, T> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining_columns = self.matrix.columns() - self.column_counter;
+        let remaining_columns = self.matrix.view_columns() - self.column_counter;
         match remaining_columns {
             0 => (0, Some(0)),
             1 => {
                 // we're on the last column, so return how many items are left for us to
                 // go through with the row counter
-                let remaining_rows = self.matrix.rows() - self.row_counter;
+                let remaining_rows = self.matrix.view_rows() - self.row_counter;
                 (remaining_rows, Some(remaining_rows))
             }
             x => {
                 // we still have at least one full column left in addition to what's left
                 // for this column's row counter
-                let remaining_rows = self.matrix.rows() - self.row_counter;
+                let remaining_rows = self.matrix.view_rows() - self.row_counter;
                 // each full column takes as many iterations as the matrix has rows
-                let remaining_full_columns = (x - 1) * self.matrix.rows();
+                let remaining_full_columns = (x - 1) * self.matrix.view_rows();
                 let remaining = remaining_rows + remaining_full_columns;
                 (remaining, Some(remaining))
             }
@@ -583,8 +620,8 @@ impl <'a, T> Iterator for ColumnMajorReferenceIterator<'a, T> {
     }
 }
 
-impl <'a, T> FusedIterator for ColumnMajorReferenceIterator<'a, T> {}
-impl <'a, T> ExactSizeIterator for ColumnMajorReferenceIterator<'a, T> {}
+impl <'a, T, S: MatrixRef<T>> FusedIterator for ColumnMajorReferenceIterator<'a, T, S> {}
+impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for ColumnMajorReferenceIterator<'a, T, S> {}
 
 /**
  * A row major iterator over references to all values in a matrix.
@@ -599,11 +636,12 @@ impl <'a, T> ExactSizeIterator for ColumnMajorReferenceIterator<'a, T> {}
  * The elements will be iterated through as &1, &2, &3, &4
  */
 #[derive(Debug)]
-pub struct RowMajorReferenceIterator<'a, T> {
-    matrix: &'a Matrix<T>,
+pub struct RowMajorReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
     column_counter: Column,
     row_counter: Row,
     finished: bool,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T> RowMajorReferenceIterator<'a, T> {
@@ -611,16 +649,18 @@ impl <'a, T> RowMajorReferenceIterator<'a, T> {
      * Constructs a column major iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>) -> RowMajorReferenceIterator<T> {
+        assert!(matrix.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
         RowMajorReferenceIterator {
             matrix,
             column_counter: 0,
             row_counter: 0,
             finished: false,
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T> Iterator for RowMajorReferenceIterator<'a, T> {
+impl <'a, T, S: MatrixRef<T>> Iterator for RowMajorReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -628,15 +668,22 @@ impl <'a, T> Iterator for RowMajorReferenceIterator<'a, T> {
             return None
         }
 
-        let value = Some(self.matrix.get_reference(self.row_counter, self.column_counter));
+        let value = unsafe {
+            // Safety: We checked on creation that 0,0 is in range, and after getting
+            // our next value we check if we hit the end of the matrix and will avoid
+            // calling this on our next loop if we finished. Hence if the view_size has
+            // not changed this read is in bounds and if they are able to be changed,
+            // then the MatrixRef implementation is required to bounds check for us.
+            Some(self.matrix.get_reference_unchecked(self.row_counter, self.column_counter))
+        };
 
-        if self.column_counter == self.matrix.columns() - 1
-                && self.row_counter == self.matrix.rows() -1 {
+        if self.column_counter == self.matrix.view_columns() - 1
+                && self.row_counter == self.matrix.view_rows() -1 {
             // reached end of matrix for next iteration
             self.finished = true;
         }
 
-        if self.column_counter == self.matrix.columns() - 1 {
+        if self.column_counter == self.matrix.view_columns() - 1 {
             // reached end of a row, need to reset to first element in next row
             self.column_counter = 0;
             self.row_counter += 1;
@@ -649,21 +696,21 @@ impl <'a, T> Iterator for RowMajorReferenceIterator<'a, T> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining_rows = self.matrix.rows() - self.row_counter;
+        let remaining_rows = self.matrix.view_rows() - self.row_counter;
         match remaining_rows {
             0 => (0, Some(0)),
             1 => {
                 // we're on the last row, so return how many items are left for us to
                 // go through with the column counter
-                let remaining_columns = self.matrix.columns() - self.column_counter;
+                let remaining_columns = self.matrix.view_columns() - self.column_counter;
                 (remaining_columns, Some(remaining_columns))
             }
             x => {
                 // we still have at least one full row left in addition to what's left
                 // for this row's column counter
-                let remaining_columns = self.matrix.columns() - self.column_counter;
+                let remaining_columns = self.matrix.view_columns() - self.column_counter;
                 // each full row takes as many iterations as the matrix has columns
-                let remaining_full_rows = (x - 1) * self.matrix.columns();
+                let remaining_full_rows = (x - 1) * self.matrix.view_columns();
                 let remaining = remaining_columns + remaining_full_rows;
                 (remaining, Some(remaining))
             }
@@ -671,8 +718,8 @@ impl <'a, T> Iterator for RowMajorReferenceIterator<'a, T> {
     }
 }
 
-impl <'a, T> FusedIterator for RowMajorReferenceIterator<'a, T> {}
-impl <'a, T> ExactSizeIterator for RowMajorReferenceIterator<'a, T> {}
+impl <'a, T, S: MatrixRef<T>> FusedIterator for RowMajorReferenceIterator<'a, T, S> {}
+impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for RowMajorReferenceIterator<'a, T, S> {}
 
 /**
  * An iterator over the main diagonal in a matrix.
@@ -689,11 +736,10 @@ impl <'a, T> ExactSizeIterator for RowMajorReferenceIterator<'a, T> {}
  * If the matrix is not square this will stop at whichever row/colum is shorter.
  */
 #[derive(Debug)]
-pub struct DiagonalIterator<'a, T: Clone> {
-    matrix: &'a Matrix<T>,
-    counter: usize,
-    final_index: usize,
-    finished: bool,
+pub struct DiagonalIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
+    range: Range<usize>,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T: Clone> DiagonalIterator<'a, T> {
@@ -701,42 +747,39 @@ impl <'a, T: Clone> DiagonalIterator<'a, T> {
      * Constructs a diagonal iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>) -> DiagonalIterator<T> {
+        assert!(matrix.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
         DiagonalIterator {
             matrix,
-            counter: 0,
-            final_index: std::cmp::min(matrix.rows(), matrix.columns()),
-            finished: false,
+            range: 0..std::cmp::min(matrix.view_rows(), matrix.view_columns()),
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T: Clone> Iterator for DiagonalIterator<'a, T> {
+impl <'a, T: Clone, S: MatrixRef<T>> Iterator for DiagonalIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None
+        match self.range.next() {
+            None => None,
+            Some(i) => unsafe {
+                // Safety: We initialised the range to 0..min(rows/columns), and
+                // checked we can read from 0,0 at creation, hence if the view_size
+                // has not changed this read is in bounds and if they are able to
+                // be changed, then the MatrixRef implementation is required to bounds
+                // check for us.
+                Some(self.matrix.get_reference_unchecked(i, i).clone())
+            }
         }
-
-        let value = Some(self.matrix.get(self.counter, self.counter));
-
-        if self.counter == self.final_index - 1 {
-            self.finished = true;
-        }
-
-        self.counter += 1;
-
-        value
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining = self.final_index - self.counter;
-        (remaining, Some(remaining))
+        self.range.size_hint()
     }
 }
 
-impl <'a, T: Clone> FusedIterator for DiagonalIterator<'a, T> {}
-impl <'a, T: Clone> ExactSizeIterator for DiagonalIterator<'a, T> {}
+impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for DiagonalIterator<'a, T, S> {}
+impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for DiagonalIterator<'a, T, S> {}
 
 /**
  * An iterator over references to the main diagonal in a matrix.
@@ -753,11 +796,10 @@ impl <'a, T: Clone> ExactSizeIterator for DiagonalIterator<'a, T> {}
  * If the matrix is not square this will stop at whichever row/colum is shorter.
  */
 #[derive(Debug)]
-pub struct DiagonalReferenceIterator<'a, T> {
-    matrix: &'a Matrix<T>,
-    counter: usize,
-    final_index: usize,
-    finished: bool,
+pub struct DiagonalReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
+    matrix: &'a S,
+    range: Range<usize>,
+    _type: PhantomData<&'a T>,
 }
 
 impl <'a, T> DiagonalReferenceIterator<'a, T> {
@@ -765,39 +807,36 @@ impl <'a, T> DiagonalReferenceIterator<'a, T> {
      * Constructs a diagonal iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>) -> DiagonalReferenceIterator<T> {
+        assert!(matrix.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
         DiagonalReferenceIterator {
             matrix,
-            counter: 0,
-            final_index: std::cmp::min(matrix.rows(), matrix.columns()),
-            finished: false,
+            range: 0..std::cmp::min(matrix.view_rows(), matrix.view_columns()),
+            _type: PhantomData,
         }
     }
 }
 
-impl <'a, T> Iterator for DiagonalReferenceIterator<'a, T> {
+impl <'a, T, S: MatrixRef<T>> Iterator for DiagonalReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None
+        match self.range.next() {
+            None => None,
+            Some(i) => unsafe {
+                // Safety: We initialised the range to 0..min(rows/columns), and
+                // checked we can read from 0,0 at creation, hence if the view_size
+                // has not changed this read is in bounds and if they are able to
+                // be changed, then the MatrixRef implementation is required to bounds
+                // check for us.
+                Some(self.matrix.get_reference_unchecked(i, i).clone())
+            }
         }
-
-        let value = Some(self.matrix.get_reference(self.counter, self.counter));
-
-        if self.counter == self.final_index - 1 {
-            self.finished = true;
-        }
-
-        self.counter += 1;
-
-        value
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining = self.final_index - self.counter;
-        (remaining, Some(remaining))
+        self.range.size_hint()
     }
 }
 
-impl <'a, T> FusedIterator for DiagonalReferenceIterator<'a, T> {}
-impl <'a, T> ExactSizeIterator for DiagonalReferenceIterator<'a, T> {}
+impl <'a, T, S: MatrixRef<T>> FusedIterator for DiagonalReferenceIterator<'a, T, S> {}
+impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for DiagonalReferenceIterator<'a, T, S> {}
