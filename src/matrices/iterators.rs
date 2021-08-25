@@ -110,12 +110,23 @@ impl <'a, T: Clone> ColumnIterator<'a, T> {
     /**
      * Constructs a column iterator over this matrix.
      */
+    #[track_caller]
     pub fn new(matrix: &Matrix<T>, column: Column) -> ColumnIterator<T> {
-        assert!(matrix.index_is_valid(0, column), "Expected ({},{}) to be in range", 0, column);
+        ColumnIterator::from(matrix, column)
+    }
+}
+
+impl <'a, T: Clone, S: MatrixRef<T>> ColumnIterator<'a, T, S> {
+    /**
+     * Constructs a column iterator over this source.
+     */
+    #[track_caller]
+    pub fn from(source: &S, column: Column) -> ColumnIterator<T, S> {
+        assert!(source.index_is_valid(0, column), "Expected ({},{}) to be in range", 0, column);
         ColumnIterator {
-            matrix,
+            matrix: source,
             column,
-            range: 0..matrix.view_rows(),
+            range: 0..source.view_rows(),
             _type: PhantomData,
         }
     }
@@ -171,12 +182,23 @@ impl <'a, T: Clone> RowIterator<'a, T> {
     /**
      * Constructs a row iterator over this matrix.
      */
+    #[track_caller]
     pub fn new(matrix: &Matrix<T>, row: Row) -> RowIterator<T> {
-        assert!(matrix.index_is_valid(row, 0), "Expected ({},{}) to be in range", row, 0);
+        RowIterator::from(matrix, row)
+    }
+}
+
+impl <'a, T: Clone, S: MatrixRef<T>> RowIterator<'a, T, S> {
+    /**
+     * Constructs a row iterator over this source.
+     */
+    #[track_caller]
+    pub fn from(source: &S, row: Row) -> RowIterator<T, S> {
+        assert!(source.index_is_valid(row, 0), "Expected ({},{}) to be in range", row, 0);
         RowIterator {
-            matrix,
+            matrix: source,
             row,
-            range: 0..matrix.view_columns(),
+            range: 0..source.view_columns(),
             _type: PhantomData,
         }
     }
@@ -233,9 +255,26 @@ impl <'a, T: Clone> ColumnMajorIterator<'a, T> {
      * Constructs a column major iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>) -> ColumnMajorIterator<T> {
-        assert!(matrix.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
+        // No need to assert the size of the matrix since Matrices must be at least 1x1
         ColumnMajorIterator {
             matrix,
+            column_counter: 0,
+            row_counter: 0,
+            finished: false,
+            _type: PhantomData,
+        }
+    }
+}
+
+impl <'a, T: Clone, S: MatrixRef<T>> ColumnMajorIterator<'a, T, S> {
+    /**
+     * Constructs a column major iterator over this source.
+     */
+    #[track_caller]
+    pub fn from(source: &S) -> ColumnMajorIterator<T, S> {
+        assert!(source.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
+        ColumnMajorIterator {
+            matrix: source,
             column_counter: 0,
             row_counter: 0,
             finished: false,
@@ -331,9 +370,26 @@ impl <'a, T: Clone> RowMajorIterator<'a, T> {
      * Constructs a row major iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>) -> RowMajorIterator<T> {
-        assert!(matrix.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
+        // No need to assert the size of the matrix since Matrices must be at least 1x1
         RowMajorIterator {
             matrix,
+            column_counter: 0,
+            row_counter: 0,
+            finished: false,
+            _type: PhantomData,
+        }
+    }
+}
+
+impl <'a, T: Clone, S: MatrixRef<T>> RowMajorIterator<'a, T, S> {
+    /**
+     * Constructs a row major iterator over this source.
+     */
+    #[track_caller]
+    pub fn from(source: &S) -> RowMajorIterator<T, S> {
+        assert!(source.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
+        RowMajorIterator {
+            matrix: source,
             column_counter: 0,
             row_counter: 0,
             finished: false,
@@ -428,12 +484,23 @@ impl <'a, T> ColumnReferenceIterator<'a, T> {
     /**
      * Constructs a column iterator over this matrix.
      */
+    #[track_caller]
     pub fn new(matrix: &Matrix<T>, column: Column) -> ColumnReferenceIterator<T> {
-        assert!(matrix.index_is_valid(0, column), "Expected ({},{}) to be in range", 0, column);
+        ColumnReferenceIterator::from(matrix, column)
+    }
+}
+
+impl <'a, T, S: MatrixRef<T>> ColumnReferenceIterator<'a, T, S> {
+    /**
+     * Constructs a column iterator over this source.
+     */
+    #[track_caller]
+    pub fn from(source: &S, column: Column) -> ColumnReferenceIterator<T, S> {
+        assert!(source.index_is_valid(0, column), "Expected ({},{}) to be in range", 0, column);
         ColumnReferenceIterator {
-            matrix,
+            matrix: source,
             column,
-            range: 0..matrix.view_rows(),
+            range: 0..source.view_rows(),
             _type: PhantomData,
         }
     }
@@ -489,12 +556,23 @@ impl <'a, T> RowReferenceIterator<'a, T> {
     /**
      * Constructs a row iterator over this matrix.
      */
+    #[track_caller]
     pub fn new(matrix: &Matrix<T>, row: Row) -> RowReferenceIterator<T> {
-        assert!(matrix.index_is_valid(row, 0), "Expected ({},{}) to be in range", row, 0);
+        RowReferenceIterator::from(matrix, row)
+    }
+}
+
+impl <'a, T, S: MatrixRef<T>> RowReferenceIterator<'a, T, S> {
+    /**
+     * Constructs a row iterator over this source.
+     */
+    #[track_caller]
+    pub fn from(source: &S, row: Row) -> RowReferenceIterator<T, S> {
+        assert!(source.index_is_valid(row, 0), "Expected ({},{}) to be in range", row, 0);
         RowReferenceIterator {
-            matrix,
+            matrix: source,
             row,
-            range: 0..matrix.view_columns(),
+            range: 0..source.view_columns(),
             _type: PhantomData,
         }
     }
@@ -551,9 +629,26 @@ impl <'a, T> ColumnMajorReferenceIterator<'a, T> {
      * Constructs a column major iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>) -> ColumnMajorReferenceIterator<T> {
-        assert!(matrix.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
+        // No need to assert the size of the matrix since Matrices must be at least 1x1
         ColumnMajorReferenceIterator {
             matrix,
+            column_counter: 0,
+            row_counter: 0,
+            finished: false,
+            _type: PhantomData,
+        }
+    }
+}
+
+impl <'a, T, S: MatrixRef<T>> ColumnMajorReferenceIterator<'a, T, S> {
+    /**
+     * Constructs a column major iterator over this source.
+     */
+    #[track_caller]
+    pub fn from(source: &S) -> ColumnMajorReferenceIterator<T, S> {
+        assert!(source.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
+        ColumnMajorReferenceIterator {
+            matrix: source,
             column_counter: 0,
             row_counter: 0,
             finished: false,
@@ -649,9 +744,26 @@ impl <'a, T> RowMajorReferenceIterator<'a, T> {
      * Constructs a column major iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>) -> RowMajorReferenceIterator<T> {
-        assert!(matrix.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
+        // No need to assert the size of the matrix since Matrices must be at least 1x1
         RowMajorReferenceIterator {
             matrix,
+            column_counter: 0,
+            row_counter: 0,
+            finished: false,
+            _type: PhantomData,
+        }
+    }
+}
+
+impl <'a, T, S: MatrixRef<T>> RowMajorReferenceIterator<'a, T, S> {
+    /**
+     * Constructs a column major iterator over this source.
+     */
+    #[track_caller]
+    pub fn from(source: &S) -> RowMajorReferenceIterator<T, S> {
+        assert!(source.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
+        RowMajorReferenceIterator {
+            matrix: source,
             column_counter: 0,
             row_counter: 0,
             finished: false,
@@ -747,10 +859,18 @@ impl <'a, T: Clone> DiagonalIterator<'a, T> {
      * Constructs a diagonal iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>) -> DiagonalIterator<T> {
-        assert!(matrix.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
+        DiagonalIterator::from(matrix)
+    }
+}
+
+impl <'a, T: Clone, S: MatrixRef<T>> DiagonalIterator<'a, T, S> {
+    /**
+     * Constructs a diagonal iterator over this source.
+     */
+    pub fn from(source: &S) -> DiagonalIterator<T, S> {
         DiagonalIterator {
-            matrix,
-            range: 0..std::cmp::min(matrix.view_rows(), matrix.view_columns()),
+            matrix: source,
+            range: 0..std::cmp::min(source.view_rows(), source.view_columns()),
             _type: PhantomData,
         }
     }
@@ -763,9 +883,8 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for DiagonalIterator<'a, T, S> {
         match self.range.next() {
             None => None,
             Some(i) => unsafe {
-                // Safety: We initialised the range to 0..min(rows/columns), and
-                // checked we can read from 0,0 at creation, hence if the view_size
-                // has not changed this read is in bounds and if they are able to
+                // Safety: We initialised the range to 0..min(rows/columns), hence if the
+                // view_size has not changed this read is in bounds and if they are able to
                 // be changed, then the MatrixRef implementation is required to bounds
                 // check for us.
                 Some(self.matrix.get_reference_unchecked(i, i).clone())
@@ -807,10 +926,18 @@ impl <'a, T> DiagonalReferenceIterator<'a, T> {
      * Constructs a diagonal iterator over this matrix.
      */
     pub fn new(matrix: &Matrix<T>) -> DiagonalReferenceIterator<T> {
-        assert!(matrix.index_is_valid(0, 0), "Expected ({},{}) to be in range", 0, 0);
+        DiagonalReferenceIterator::from(matrix)
+    }
+}
+
+impl <'a, T, S: MatrixRef<T>> DiagonalReferenceIterator<'a, T, S> {
+    /**
+     * Constructs a diagonal iterator over this source.
+     */
+    pub fn from(source: &S) -> DiagonalReferenceIterator<T, S> {
         DiagonalReferenceIterator {
-            matrix,
-            range: 0..std::cmp::min(matrix.view_rows(), matrix.view_columns()),
+            matrix: source,
+            range: 0..std::cmp::min(source.view_rows(), source.view_columns()),
             _type: PhantomData,
         }
     }
@@ -823,9 +950,8 @@ impl <'a, T, S: MatrixRef<T>> Iterator for DiagonalReferenceIterator<'a, T, S> {
         match self.range.next() {
             None => None,
             Some(i) => unsafe {
-                // Safety: We initialised the range to 0..min(rows/columns), and
-                // checked we can read from 0,0 at creation, hence if the view_size
-                // has not changed this read is in bounds and if they are able to
+                // Safety: We initialised the range to 0..min(rows/columns), hence if the
+                // view_size has not changed this read is in bounds and if they are able to
                 // be changed, then the MatrixRef implementation is required to bounds
                 // check for us.
                 Some(self.matrix.get_reference_unchecked(i, i).clone())
