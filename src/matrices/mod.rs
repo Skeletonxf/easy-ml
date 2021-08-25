@@ -385,7 +385,12 @@ impl <T> Matrix<T> {
     /**
      * Returns an iterator over references to a column vector in this matrix.
      * Columns are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the column does not exist in this matrix.
      */
+    #[track_caller]
     pub fn column_reference_iter(&self, column: Column) -> ColumnReferenceIterator<T> {
         ColumnReferenceIterator::new(self, column)
     }
@@ -393,7 +398,12 @@ impl <T> Matrix<T> {
     /**
      * Returns an iterator over references to a row vector in this matrix.
      * Rows are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the row does not exist in this matrix.
      */
+    #[track_caller]
     pub fn row_reference_iter(&self, row: Row) -> RowReferenceIterator<T> {
         RowReferenceIterator::new(self, row)
     }
@@ -590,7 +600,12 @@ impl <T: Clone> Matrix<T> {
      * then a column of 0, 1, and 2 will yield [1, 4, 7], [2, 5, 8] and [3, 6, 9]
      * respectively. If you do not need to copy the elements use
      * [`column_reference_iter`](Matrix::column_reference_iter) instead.
+     *
+     * # Panics
+     *
+     * Panics if the column does not exist in this matrix.
      */
+    #[track_caller]
     pub fn column_iter(&self, column: Column) -> ColumnIterator<T> {
         ColumnIterator::new(self, column)
     }
@@ -609,7 +624,12 @@ impl <T: Clone> Matrix<T> {
      * then a row of 0, 1, and 2 will yield [1, 2, 3], [4, 5, 6] and [7, 8, 9]
      * respectively. If you do not need to copy the elements use
      * [`row_reference_iter`](Matrix::row_reference_iter) instead.
+     *
+     * # Panics
+     *
+     * Panics if the row does not exist in this matrix.
      */
+    #[track_caller]
     pub fn row_iter(&self, row: Row) -> RowIterator<T> {
         RowIterator::new(self, row)
     }
