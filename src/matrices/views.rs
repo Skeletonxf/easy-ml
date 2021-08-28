@@ -10,8 +10,14 @@
  * typically use MatrixRef and MatrixMut implementations via the MatrixView struct.
  */
 
-use crate::matrices::{Column, Row};
 use std::marker::PhantomData;
+
+use crate::matrices::{Column, Row};
+use crate::matrices::iterators::{
+    ColumnIterator, ColumnMajorIterator, ColumnMajorReferenceIterator, ColumnReferenceIterator,
+    DiagonalIterator, DiagonalReferenceIterator, RowIterator, RowMajorIterator,
+    RowMajorReferenceIterator, RowReferenceIterator,
+};
 
 pub mod traits;
 
@@ -122,6 +128,8 @@ pub unsafe trait MatrixMut<T>: MatrixRef<T> {
  *
  * However a MatrixView is generic not only over the type of the data in the Matrix,
  * but also over the way the Matrix is 'sliced' and the two are orthogonal to each other.
+ *
+ * MatrixView closely mirrors the API of Matrix, minus resizing methods which are not available.
  */
  #[derive(Debug)]
 pub struct MatrixView<T, S> {
@@ -130,6 +138,12 @@ pub struct MatrixView<T, S> {
     // TODO: Transposition?
 }
 
+// TODO try_get_reference, mapping functions, trait implementations for MatrixView,
+// linear_algebra numeric functions, numeric operators
+
+/**
+ * MatrixView methods which require only read access via a [MatrixRef](MatrixRef) source.
+ */
 impl <T, S> MatrixView<T, S>
 where
     S: MatrixRef<T>
@@ -155,9 +169,12 @@ where
         self.source
     }
 
-    // fn get_reference(&self, row: Row, column: Column) -> &T {
-    //     self.source.try_get_reference(row, column)
-    // }
+    /**
+     * Returns the dimensionality of this matrix view in Row, Column format
+     */
+    pub fn size(&self) -> (Row, Column) {
+        (self.rows(), self.columns())
+    }
 
     /**
      * Gets the number of rows visible to this matrix view.
@@ -174,24 +191,216 @@ where
     }
 
     /**
-     * Returns the dimensionality of this matrix view in Row, Column format
+     * Gets a reference to the value at this row and column. Rows and Columns are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the index is out of range.
      */
-    pub fn size(&self) -> (Row, Column) {
-        (self.rows(), self.columns())
+    #[track_caller]
+    pub fn get_reference(&self, row: Row, column: Column) -> &T {
+        match self.source.try_get_reference(row, column) {
+            Some(reference) => reference,
+            None => panic!(
+                "Index ({},{}) not in range, MatrixView range is (0,0) to ({},{}).",
+                row, column, self.rows(), self.columns()
+            )
+        }
+    }
+
+    /**
+     * Returns an iterator over references to a column vector in this matrix view.
+     * Columns are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the column is not visible to this view.
+     */
+    #[track_caller]
+    pub fn column_reference_iter(&self, column: Column) -> ColumnReferenceIterator<T, S> {
+        ColumnReferenceIterator::from(&self.source, column)
+    }
+
+    /**
+     * Returns an iterator over references to a row vector in this matrix view.
+     * Rows are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the row is not visible to this view.
+     */
+    #[track_caller]
+    pub fn row_reference_iter(&self, row: Row) -> RowReferenceIterator<T, S> {
+        RowReferenceIterator::from(&self.source, row)
+    }
+
+    /**
+     * Returns a column major iterator over references to all values in this matrix view,
+     * proceeding through each column in order.
+     */
+    pub fn column_major_reference_iter(&self) -> ColumnMajorReferenceIterator<T, S> {
+        ColumnMajorReferenceIterator::from(&self.source)
+    }
+
+    /**
+     * Returns a row major iterator over references to all values in this matrix view,
+     * proceeding through each row in order.
+     */
+    pub fn row_major_reference_iter(&self) -> RowMajorReferenceIterator<T, S> {
+        RowMajorReferenceIterator::from(&self.source)
+    }
+
+    /**
+     * Returns an iterator over references to the main diagonal in this matrix view.
+     */
+    pub fn diagonal_reference_iter(&self) -> DiagonalReferenceIterator<T, S> {
+        DiagonalReferenceIterator::from(&self.source)
     }
 }
 
 /**
- * MatrixView methods which require only read access via a [MatrixRef](MatrixRef) source.
+ * MatrixView methods which require only read access via a [MatrixRef](MatrixRef) source
+ * and a clonable type.
  */
 impl <T, S> MatrixView<T, S>
 where
     S: MatrixRef<T>,
     T: Clone,
 {
-    // fn get(&self, row: Row, column: Column) -> T {
-    //     self.get_reference(row, column).clone()
-    // }
+    /**
+     * Gets a copy of the value at this row and column. Rows and Columns are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the index is out of range.
+     */
+    #[track_caller]
+    pub fn get(&self, row: Row, column: Column) -> T {
+        match self.source.try_get_reference(row, column) {
+            Some(reference) => reference.clone(),
+            None => panic!(
+                "Index ({},{}) not in range, MatrixView range is (0,0) to ({},{}).",
+                row, column, self.rows(), self.columns()
+            )
+        }
+    }
+
+    /**
+     * Returns an iterator over a column vector in this matrix view. Columns are 0 indexed.
+     *
+     * If you have a matrix such as:
+     * ```ignore
+     * [
+     *    1, 2, 3
+     *    4, 5, 6
+     *    7, 8, 9
+     * ]
+     * ```
+     * then a column of 0, 1, and 2 will yield [1, 4, 7], [2, 5, 8] and [3, 6, 9]
+     * respectively. If you do not need to copy the elements use
+     * [`column_reference_iter`](MatrixView::column_reference_iter) instead.
+     *
+     * # Panics
+     *
+     * Panics if the column does not exist in this matrix.
+     */
+    #[track_caller]
+    pub fn column_iter(&self, column: Column) -> ColumnIterator<T, S> {
+        ColumnIterator::from(&self.source, column)
+    }
+
+    /**
+     * Returns an iterator over a row vector in this matrix view. Rows are 0 indexed.
+     *
+     * If you have a matrix such as:
+     * ```ignore
+     * [
+     *    1, 2, 3
+     *    4, 5, 6
+     *    7, 8, 9
+     * ]
+     * ```
+     * then a row of 0, 1, and 2 will yield [1, 2, 3], [4, 5, 6] and [7, 8, 9]
+     * respectively. If you do not need to copy the elements use
+     * [`row_reference_iter`](MatrixView::row_reference_iter) instead.
+     *
+     * # Panics
+     *
+     * Panics if the row does not exist in this matrix.
+     */
+    #[track_caller]
+    pub fn row_iter(&self, row: Row) -> RowIterator<T, S> {
+        RowIterator::from(&self.source, row)
+    }
+
+    /**
+     * Returns a column major iterator over all values in this matrix view, proceeding through each
+     * column in order.
+     *
+     * If you have a matrix such as:
+     * ```ignore
+     * [
+     *    1, 2
+     *    3, 4
+     * ]
+     * ```
+     * then the iterator will yield [1, 3, 2, 4]. If you do not need to copy the
+     * elements use [`column_major_reference_iter`](MatrixView::column_major_reference_iter)
+     * instead.
+     */
+    pub fn column_major_iter(&self) -> ColumnMajorIterator<T, S> {
+        ColumnMajorIterator::from(&self.source)
+    }
+
+    /**
+     * Returns a row major iterator over all values in this matrix view, proceeding through each
+     * row in order.
+     *
+     * If you have a matrix such as:
+     * ```ignore
+     * [
+     *    1, 2
+     *    3, 4
+     * ]
+     * ```
+     * then the iterator will yield [1, 2, 3, 4]. If you do not need to copy the
+     * elements use [`row_major_reference_iter`](MatrixView::row_major_reference_iter) instead.
+     */
+    pub fn row_major_iter(&self) -> RowMajorIterator<T, S> {
+        RowMajorIterator::from(&self.source)
+    }
+
+    /**
+     * Returns a iterator over the main diagonal of this matrix view.
+     *
+     * If you have a matrix such as:
+     * ```ignore
+     * [
+     *    1, 2
+     *    3, 4
+     * ]
+     * ```
+     * then the iterator will yield [1, 4]. If you do not need to copy the
+     * elements use [`diagonal_reference_iter`](MatrixView::diagonal_reference_iter) instead.
+     *
+     * # Examples
+     *
+     * Computing a [trace](https://en.wikipedia.org/wiki/Trace_(linear_algebra))
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * use easy_ml::matrices::views::MatrixView;
+     * let view = MatrixView::from(Matrix::from(vec![
+     *     vec![ 1, 2, 3 ],
+     *     vec![ 4, 5, 6 ],
+     *     vec![ 7, 8, 9 ],
+     * ]));
+     * let trace: i32 = view.diagonal_iter().sum();
+     * assert_eq!(trace, 1 + 5 + 9);
+     * ```
+     */
+    pub fn diagonal_iter(&self) -> DiagonalIterator<T, S> {
+        DiagonalIterator::from(&self.source)
+    }
 }
 
 /**
@@ -200,15 +409,33 @@ where
 impl <T, S> MatrixView<T, S>
 where
     S: MatrixMut<T> {
-    // fn set(&mut self, row: Row, column: Column, value: T) {
-    //     self.source.set(row, column, value)
-    // }
+    /**
+     * Sets a new value to this row and column. Rows and Columns are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the index is out of range.
+     */
+    #[track_caller]
+    pub fn set(&mut self, row: Row, column: Column, value: T) {
+        match self.source.try_get_reference_mut(row, column) {
+            Some(reference) => *reference = value,
+            None => panic!(
+                "Index ({},{}) not in range, MatrixView range is (0,0) to ({},{}).",
+                row, column, self.rows(), self.columns()
+            )
+        }
+    }
+
+    // try_get_reference_mut
 }
 
 #[test]
 fn creating_matrix_views_erased() {
-    use crate::matrices::Matrix; 
+    use crate::matrices::Matrix;
     let matrix = Matrix::from(vec![vec![1.0]]);
     let boxed: Box<dyn MatrixMut<f32>> = Box::new(matrix);
-    MatrixView::from(boxed);
+    let mut view = MatrixView::from(boxed);
+    view.set(0, 0, view.get(0, 0) + 1.0);
+    assert_eq!(2.0, view.get(0, 0));
 }
