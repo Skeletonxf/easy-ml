@@ -32,11 +32,9 @@ pub mod traits;
 *
 * 1 - Any valid index as described in Indexing will yield a safe reference when calling
 * `get_reference_unchecked` and `get_reference_unchecked_mut` - It is the caller's responsbility
-* to check `view_rows`/`view_columns`/`view_size` and request only indexes in range.
+* to check `view_rows`/`view_columns` and request only indexes in range.
 *
-* 2 - `self.view_size()` must equal `(self.view_rows(), self.view_columns())` - as in the provided implementation.
-*
-* 3 - Either the `view_rows`/`view_columns`/`view_size` that define which indexes are valid may not
+* 2 - Either the `view_rows`/`view_columns` that define which indexes are valid may not
 * be changed by a shared reference to the MatrixRef, or `get_reference_unchecked` and
 * `get_reference_unchecked_mut` must panic if the index is invalid.
 *
@@ -70,14 +68,6 @@ pub unsafe trait MatrixRef<T> {
      * of columns stored in the matrix.
      */
     fn view_columns(&self) -> Column;
-
-    /**
-     * The size of the matrix that this reference can view. This may be smaller than the actual
-     * size of the data stored in the matrix.
-     */
-    fn view_size(&self) -> (Row, Column) {
-        (self.view_rows(), self.view_columns())
-    }
 
     /**
      * Gets a reference to the value at the index without doing any bounds checking. For a safe
@@ -187,7 +177,7 @@ where
      * Returns the dimensionality of this matrix view in Row, Column format
      */
     pub fn size(&self) -> (Row, Column) {
-        self.source.view_size()
+        (self.rows(), self.columns())
     }
 }
 
@@ -217,6 +207,7 @@ where
 
 #[test]
 fn creating_matrix_views_erased() {
+    use crate::matrices::Matrix; 
     let matrix = Matrix::from(vec![vec![1.0]]);
     let boxed: Box<dyn MatrixMut<f32>> = Box::new(matrix);
     MatrixView::from(boxed);

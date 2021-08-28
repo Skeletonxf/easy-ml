@@ -301,7 +301,7 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnMajorIterator<'a, T, S> 
         let value = unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
-            // calling this on our next loop if we finished. Hence if the view_size has
+            // calling this on our next loop if we finished. Hence if the view size has
             // not changed this read is in bounds and if they are able to be changed,
             // then the MatrixRef implementation is required to bounds check for us.
             Some(self.matrix.get_reference_unchecked(self.row_counter, self.column_counter).clone())
@@ -407,7 +407,7 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for RowMajorIterator<'a, T, S> {
         let value = unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
-            // calling this on our next loop if we finished. Hence if the view_size has
+            // calling this on our next loop if we finished. Hence if the view size has
             // not changed this read is in bounds and if they are able to be changed,
             // then the MatrixRef implementation is required to bounds check for us.
             Some(self.matrix.get_reference_unchecked(self.row_counter, self.column_counter).clone())
@@ -673,7 +673,7 @@ impl <'a, T, S: MatrixRef<T>> Iterator for ColumnMajorReferenceIterator<'a, T, S
         let value = unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
-            // calling this on our next loop if we finished. Hence if the view_size has
+            // calling this on our next loop if we finished. Hence if the view size has
             // not changed this read is in bounds and if they are able to be changed,
             // then the MatrixRef implementation is required to bounds check for us.
             Some(self.matrix.get_reference_unchecked(self.row_counter, self.column_counter))
@@ -779,7 +779,7 @@ impl <'a, T, S: MatrixRef<T>> Iterator for RowMajorReferenceIterator<'a, T, S> {
         let value = unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
-            // calling this on our next loop if we finished. Hence if the view_size has
+            // calling this on our next loop if we finished. Hence if the view size has
             // not changed this read is in bounds and if they are able to be changed,
             // then the MatrixRef implementation is required to bounds check for us.
             Some(self.matrix.get_reference_unchecked(self.row_counter, self.column_counter))
@@ -880,7 +880,7 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for DiagonalIterator<'a, T, S> {
             None => None,
             Some(i) => unsafe {
                 // Safety: We initialised the range to 0..min(rows/columns), hence if the
-                // view_size has not changed this read is in bounds and if they are able to
+                // view size has not changed this read is in bounds and if they are able to
                 // be changed, then the MatrixRef implementation is required to bounds
                 // check for us.
                 Some(self.matrix.get_reference_unchecked(i, i).clone())
@@ -947,7 +947,7 @@ impl <'a, T, S: MatrixRef<T>> Iterator for DiagonalReferenceIterator<'a, T, S> {
             None => None,
             Some(i) => unsafe {
                 // Safety: We initialised the range to 0..min(rows/columns), hence if the
-                // view_size has not changed this read is in bounds and if they are able to
+                // view size has not changed this read is in bounds and if they are able to
                 // be changed, then the MatrixRef implementation is required to bounds
                 // check for us.
                 Some(self.matrix.get_reference_unchecked(i, i).clone())
