@@ -983,28 +983,11 @@ impl <T: Clone> Clone for Matrix<T> {
 }
 
 /**
- * Any matrix of a Displayable + Cloneable type implements Display
+ * Any matrix of a Displayable type implements Display
  */
-impl <T: std::fmt::Display + Clone> std::fmt::Display for Matrix<T> {
+impl <T: std::fmt::Display> std::fmt::Display for Matrix<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "[ ")?;
-        for row in 0..self.rows() {
-            if row > 0 {
-                write!(f, "  ")?;
-            }
-            for column in 0..self.columns() {
-                // default to 3 decimals but allow the caller to override
-                // TODO: ideally want to set significant figures instead of decimals
-                write!(f, "{:.*}", f.precision().unwrap_or(3), self.get(row, column))?;
-                if column < self.columns() - 1 {
-                    write!(f, ", ")?;
-                }
-            }
-            if row < self.rows() - 1 {
-                writeln!(f)?;
-            }
-        }
-        write!(f, " ]")
+        crate::matrices::views::format_view(self, f)
     }
 }
 

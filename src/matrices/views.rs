@@ -131,14 +131,14 @@ pub unsafe trait MatrixMut<T>: MatrixRef<T> {
  *
  * MatrixView closely mirrors the API of Matrix, minus resizing methods which are not available.
  */
- #[derive(Debug)]
+ #[derive(Clone, Debug)]
 pub struct MatrixView<T, S> {
     source: S,
     _type: PhantomData<T>,
     // TODO: Transposition?
 }
 
-// TODO try_get_reference, mapping functions, trait implementations for MatrixView,
+// TODO mapping functions, trait implementations for MatrixView,
 // linear_algebra numeric functions, numeric operators
 
 /**
@@ -206,6 +206,14 @@ where
                 row, column, self.rows(), self.columns()
             )
         }
+    }
+
+    /**
+     * Gets a reference to the value at the row and column if the index is in range.
+     * Otherwise returns None.
+     */
+    pub fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        self.source.try_get_reference(row, column)
     }
 
     /**
@@ -427,7 +435,70 @@ where
         }
     }
 
-    // try_get_reference_mut
+    /**
+     * Gets a mutable reference to the value at the row and column if the index is in range.
+     * Otherwise returns None.
+     */
+    pub fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
+        self.source.try_get_reference_mut(row, column)
+    }
+}
+
+// Common formatting logic used for Matrix and MatrixView Display implementations
+pub(crate) fn format_view<T, S>(view: &S, f: &mut std::fmt::Formatter) -> std::fmt::Result
+where
+    T: std::fmt::Display,
+    S: MatrixRef<T>
+{
+    let rows = view.view_rows();
+    let columns = view.view_columns();
+    write!(f, "[ ")?;
+    for row in 0..rows {
+        if row > 0 {
+            write!(f, "  ")?;
+        }
+        for column in 0..columns {
+            let value = match view.try_get_reference(row, column) {
+                Some(x) => x,
+                None => panic!(
+                    "Expected ({},{}) to be in range of (0,0) to ({},{})",
+                    row, column,
+                    rows, columns
+                ),
+            };
+            // default to 3 decimals but allow the caller to override
+            // TODO: ideally want to set significant figures instead of decimals
+            write!(f, "{:.*}", f.precision().unwrap_or(3), value)?;
+            if column < columns - 1 {
+                write!(f, ", ")?;
+            }
+        }
+        if row < rows - 1 {
+            writeln!(f)?;
+        }
+    }
+    write!(f, " ]")
+}
+
+/**
+ * Any matrix view of a Displayable type implements Display
+ */
+impl <T, S> std::fmt::Display for MatrixView<T, S>
+where
+    T: std::fmt::Display,
+    S: MatrixRef<T>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        format_view(&self.source, f)
+    }
+}
+
+#[test]
+fn printing_matrices() {
+    use crate::matrices::Matrix;
+    let view = MatrixView::from(Matrix::from(vec![vec![1.0, 2.0], vec![3.0, 4.0]]));
+    let formatted = view.to_string();
+    assert_eq!("[ 1.000, 2.000\n  3.000, 4.000 ]", formatted);
 }
 
 #[test]
