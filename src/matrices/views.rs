@@ -501,6 +501,31 @@ fn printing_matrices() {
     assert_eq!("[ 1.000, 2.000\n  3.000, 4.000 ]", formatted);
 }
 
+/**
+ * PartialEq is implemented as two matrix views are equal if and only if all their elements
+ * are equal and they have the same size.
+ */
+impl <T, S> PartialEq for MatrixView<T, S>
+where
+    T: PartialEq,
+    S: MatrixRef<T>,
+{
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        if self.rows() != other.rows() {
+            return false;
+        }
+        if self.columns() != other.columns() {
+            return false;
+        }
+        // perform elementwise check, return true only if every element in
+        // each matrix is the same
+        self.row_major_reference_iter()
+            .zip(other.row_major_reference_iter())
+            .all(|(x, y)| x == y)
+    }
+}
+
 #[test]
 fn creating_matrix_views_erased() {
     use crate::matrices::Matrix;
