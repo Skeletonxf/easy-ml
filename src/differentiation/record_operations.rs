@@ -36,7 +36,7 @@
 
 use crate::numeric::{Numeric, NumericRef, ZeroOne, FromUsize};
 use crate::numeric::extra::{Real, RealRef, Sin, Cos, Exp, Pow, Ln, Sqrt, Pi};
-use crate::differentiation::{Primitive, Record, WengertList};
+use crate::differentiation::{Primitive, Record};
 use std::ops::{Add, Sub, Mul, Neg, Div};
 use std::cmp::Ordering;
 use std::iter::Sum;
@@ -102,9 +102,7 @@ pub(crate) fn same_list<'a, 'b, T: Primitive>(a: &Record<'a, T>, b: &Record<'b, 
         (None, None) => true,
         (Some(_), None) => true,
         (None, Some(_)) => true,
-        (Some(list_a), Some(list_b)) => (
-            list_a as *const WengertList<T> == list_b as *const WengertList<T>
-        ),
+        (Some(list_a), Some(list_b)) => std::ptr::eq(list_a, list_b),
     }
 }
 

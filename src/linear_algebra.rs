@@ -655,10 +655,10 @@ where for<'a> &'a T: NumericRef<T> {
  * The result of a QR Decomposition of some matrix A such that QR = A.
  */
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct QRDecomposition<T> {
     pub q: Matrix<T>,
     pub r: Matrix<T>,
-    _private: (),
 }
 
 impl <T: std::fmt::Display + Clone> std::fmt::Display for QRDecomposition<T> {
@@ -679,7 +679,6 @@ impl <T> QRDecomposition<T> {
         QRDecomposition {
             q,
             r,
-            _private: (),
         }
     }
 }
@@ -796,6 +795,5 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
         // This should always be Some because the input matrix has to be at least 1x1
         q: q.unwrap(),
         r,
-        _private: (),
     })
 }

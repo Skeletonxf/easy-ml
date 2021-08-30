@@ -138,8 +138,7 @@ pub struct MatrixView<T, S> {
     // TODO: Transposition?
 }
 
-// TODO mapping functions, trait implementations for MatrixView,
-// linear_algebra numeric functions, numeric operators
+// TODO mapping functions, linear_algebra numeric functions, numeric operators
 
 /**
  * MatrixView methods which require only read access via a [MatrixRef](MatrixRef) source.

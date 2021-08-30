@@ -72,6 +72,7 @@ impl Slice {
     /**
      * Returns the negation of this slice
      */
+    #[allow(clippy::should_implement_trait)]
     pub fn not(self) -> Slice {
         Slice::Not(Box::new(self))
     }
@@ -141,6 +142,7 @@ impl Slice2D {
      *
      * Rows and Column slices can be specified in either order but both must be given.
      */
+    #[allow(clippy::new_ret_no_self)]
     pub fn new() -> EmptySlice2DBuilder {
         EmptySlice2DBuilder { }
     }
