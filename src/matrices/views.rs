@@ -12,7 +12,7 @@
 
 use std::marker::PhantomData;
 
-use crate::matrices::{Column, Row};
+use crate::matrices::{Column, Row, Matrix};
 use crate::matrices::iterators::{
     ColumnIterator, ColumnMajorIterator, ColumnMajorReferenceIterator, ColumnReferenceIterator,
     DiagonalIterator, DiagonalReferenceIterator, RowIterator, RowMajorIterator,
@@ -46,7 +46,7 @@ pub mod traits;
 *
 * Essentially, interior mutability causes problems, since code looping through the range of valid
 * indexes in a MatrixRef needs to be able to rely on that range of valid indexes not changing.
-* This is trivially the case by default since a [Matrix](super::Matrix) does not have any form of
+* This is trivially the case by default since a [Matrix](Matrix) does not have any form of
 * interior mutability, and therefore an iterator holding a shared reference to a Matrix prevents
 * that matrix being resized. However, a type implementing MatrixRef could introduce interior
 * mutability by putting the Matrix in a `Arc<Mutex<>>` which would allow another thread to
@@ -141,7 +141,7 @@ pub enum DataLayout {
 /**
  * A view into some or all of a matrix.
  *
- * A MatrixView has a similar relationship to a [`Matrix`](crate::matrices::Matrix) as a
+ * A MatrixView has a similar relationship to a [`Matrix`](Matrix) as a
  * `&str` has to a `String`, or an array slice to an array. A MatrixView cannot resize
  * its source, and may span only a portion of the source Matrix in each dimension.
  *
@@ -149,6 +149,7 @@ pub enum DataLayout {
  * but also over the way the Matrix is 'sliced' and the two are orthogonal to each other.
  *
  * MatrixView closely mirrors the API of Matrix, minus resizing methods which are not available.
+ * Methods that create a new matrix do not return a MatrixView, they return a Matrix.
  */
  #[derive(Clone, Debug)]
 pub struct MatrixView<T, S> {
@@ -157,7 +158,7 @@ pub struct MatrixView<T, S> {
     // TODO: Transposition?
 }
 
-// TODO mapping functions, linear_algebra numeric functions, numeric operators
+// TODO linear_algebra numeric functions, numeric operators
 
 /**
  * MatrixView methods which require only read access via a [MatrixRef](MatrixRef) source.
@@ -299,8 +300,8 @@ where
  */
 impl <T, S> MatrixView<T, S>
 where
-    S: MatrixRef<T>,
     T: Clone,
+    S: MatrixRef<T>,
 {
     /**
      * Gets a copy of the value at this row and column. Rows and Columns are 0 indexed.
@@ -436,6 +437,52 @@ where
     pub fn diagonal_iter(&self) -> DiagonalIterator<T, S> {
         DiagonalIterator::from(&self.source)
     }
+
+    /**
+     * Creates and returns a new matrix with all values from the original with the
+     * function applied to each.
+     *
+     * # Exmples
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * use easy_ml::matrices::views::MatrixView;
+     * let x = MatrixView::from(Matrix::from(vec![
+     *    vec![ 0.0, 1.2 ],
+     *    vec![ 5.8, 6.9 ]]));
+     * let y = x.map(|element| element > 2.0);
+     * let result = Matrix::from(vec![
+     *    vec![ false, false ],
+     *    vec![ true, true ]]);
+     * assert_eq!(&y, &result);
+     * ```
+     */
+    pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Matrix<U>
+        where U: Clone,
+    {
+        let mapped = self.row_major_iter().map(|x| mapping_function(x)).collect();
+        Matrix::from_flat_row_major(self.size(), mapped)
+    }
+
+    /**
+     * Creates and returns a new matrix with all values from the original
+     * and the index of each value mapped by a function. This can be used
+     * to perform elementwise operations that are not defined on the
+     * Matrix type itself.
+     */
+    pub fn map_with_index<U>(&self, mapping_function: impl Fn(T, Row, Column) -> U) -> Matrix<U>
+        where U: Clone
+    {
+        // compute the first mapped value so we have a value of type U
+        // to initialise the mapped matrix with
+        let first_value: U = mapping_function(self.get(0, 0), 0, 0);
+        let mut mapped = Matrix::empty(first_value, self.size());
+        for i in 0..self.rows() {
+            for j in 0..self.columns() {
+                mapped.set(i, j, mapping_function(self.get(i, j), i, j));
+            }
+        }
+        mapped
+    }
 }
 
 /**
@@ -468,6 +515,63 @@ where
      */
     pub fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
         self.source.try_get_reference_mut(row, column)
+    }
+}
+
+/**
+ * MatrixView methods which require mutable access via a [MatrixMut](MatrixMut) source
+ * and a clonable type.
+ */
+impl <T, S> MatrixView<T, S>
+where
+    T: Clone,
+    S: MatrixMut<T>
+{
+    /**
+     * Applies a function to all values in the matrix view, modifying the source in place.
+     *
+     * # Examples
+     *
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * use easy_ml::matrices::views::MatrixView;
+     * let mut matrix = Matrix::from(vec![
+     *    vec![ 0.0, 1.2 ],
+     *    vec![ 5.8, 6.9 ]]);
+     * {
+     *    let mut view = MatrixView::from(&mut matrix);
+     *    view.map_mut(|x| x + 1.0);
+     * }
+     * let result = Matrix::from(vec![
+     *    vec![ 1.0, 2.2 ],
+     *    vec![ 6.8, 7.9 ]]);
+     * assert_eq!(result, matrix);
+     */
+    pub fn map_mut(&mut self, mapping_function: impl Fn(T) -> T) {
+        self.map_mut_with_index(|x, _, _| mapping_function(x))
+    }
+
+    /**
+     * Applies a function to all values and each value's index in the matrix view,
+     * modifying the source in place.
+     */
+    pub fn map_mut_with_index(&mut self, mapping_function: impl Fn(T, Row, Column) -> T) {
+        match self.data_layout() {
+            DataLayout::ColumnMajor => {
+                for j in 0..self.columns() {
+                    for i in 0..self.rows() {
+                        self.set(i, j, mapping_function(self.get(i, j), i, j))
+                    }
+                }
+            }
+            _ => {
+                for i in 0..self.rows() {
+                    for j in 0..self.columns() {
+                        self.set(i, j, mapping_function(self.get(i, j), i, j))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -560,7 +664,6 @@ where
 
 #[test]
 fn creating_matrix_views_erased() {
-    use crate::matrices::Matrix;
     let matrix = Matrix::from(vec![vec![1.0]]);
     let boxed: Box<dyn MatrixMut<f32>> = Box::new(matrix);
     let mut view = MatrixView::from(boxed);
