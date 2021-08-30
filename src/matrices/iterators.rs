@@ -610,7 +610,7 @@ impl <'a, T, S: MatrixRef<T>> Iterator for RowReferenceIterator<'a, T, S> {
                 // the view_columns have not changed this read is in bounds and if
                 // they are able to be changed, then the MatrixRef implementation is
                 // required to bounds check for us.
-                Some(self.matrix.get_reference_unchecked(self.row, column).clone())
+                Some(self.matrix.get_reference_unchecked(self.row, column))
             }
         }
     }
@@ -962,7 +962,7 @@ impl <'a, T, S: MatrixRef<T>> Iterator for DiagonalReferenceIterator<'a, T, S> {
                 // view size has not changed this read is in bounds and if they are able to
                 // be changed, then the MatrixRef implementation is required to bounds
                 // check for us.
-                Some(self.matrix.get_reference_unchecked(i, i).clone())
+                Some(self.matrix.get_reference_unchecked(i, i))
             }
         }
     }
