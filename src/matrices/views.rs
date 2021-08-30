@@ -88,6 +88,13 @@ pub unsafe trait MatrixRef<T> {
      * [MatrixRef]: MatrixRef
      */
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T;
+
+    /**
+     * A hint for the data layout this MatrixView uses to store its data.
+     *
+     * See [Matrix layout and iterator performance](crate::matrices::iterators#matrix-layout-and-iterator-performance)
+     */
+    fn data_layout(&self) -> DataLayout;
 }
 
 /**
@@ -117,6 +124,18 @@ pub unsafe trait MatrixMut<T>: MatrixRef<T> {
      * [MatrixRef]: MatrixRef
      */
     unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T;
+}
+
+/**
+ * The [data layout] used for storing the 2 dimensional data of a MatrixView.
+ *
+ * [data layout]: https://en.wikipedia.org/wiki/Row-_and_column-major_order
+ */
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum DataLayout {
+    RowMajor,
+    ColumnMajor,
+    Other,
 }
 
 /**
@@ -187,6 +206,15 @@ where
      */
     pub fn columns(&self) -> Column {
         self.source.view_columns()
+    }
+
+    /**
+     * Gets the data layout this MatrixView's source uses to store its data.
+     *
+     * See [Matrix layout and iterator performance](crate::matrices::iterators#matrix-layout-and-iterator-performance)
+     */
+    pub fn data_layout(&self) -> DataLayout {
+        self.source.data_layout()
     }
 
     /**
@@ -519,9 +547,14 @@ where
         }
         // perform elementwise check, return true only if every element in
         // each matrix is the same
-        self.row_major_reference_iter()
-            .zip(other.row_major_reference_iter())
-            .all(|(x, y)| x == y)
+        match (self.data_layout(), other.data_layout()) {
+            (DataLayout::ColumnMajor, DataLayout::ColumnMajor) => self.column_major_reference_iter()
+                .zip(other.column_major_reference_iter())
+                .all(|(x, y)| x == y),
+            _ => self.row_major_reference_iter()
+                .zip(other.row_major_reference_iter())
+                .all(|(x, y)| x == y)
+        }
     }
 }
 

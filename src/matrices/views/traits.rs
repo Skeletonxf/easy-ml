@@ -6,7 +6,7 @@
  */
 
 use crate::matrices::{Column, Matrix, Row};
-use crate::matrices::views::{MatrixRef, MatrixMut};
+use crate::matrices::views::{MatrixRef, MatrixMut, DataLayout};
 
 // # Safety
 //
@@ -30,6 +30,10 @@ unsafe impl <'source, T> MatrixRef<T> for &'source Matrix<T> {
 
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
         Matrix::_get_reference_unchecked(self, row, column)
+    }
+
+    fn data_layout(&self) -> DataLayout {
+        DataLayout::RowMajor
     }
 }
 
@@ -55,6 +59,10 @@ unsafe impl <'source, T> MatrixRef<T> for &'source mut Matrix<T> {
 
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
         Matrix::_get_reference_unchecked(self, row, column)
+    }
+
+    fn data_layout(&self) -> DataLayout {
+        DataLayout::RowMajor
     }
 }
 
@@ -97,6 +105,10 @@ unsafe impl <T> MatrixRef<T> for Matrix<T> {
 
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
         Matrix::_get_reference_unchecked(self, row, column)
+    }
+
+    fn data_layout(&self) -> DataLayout {
+        DataLayout::RowMajor
     }
 }
 
@@ -143,6 +155,10 @@ where
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
         self.as_ref().get_reference_unchecked(row, column)
     }
+
+    fn data_layout(&self) -> DataLayout {
+        self.as_ref().data_layout()
+    }
 }
 
 // # Safety
@@ -188,6 +204,10 @@ unsafe impl <T> MatrixRef<T> for Box<dyn MatrixRef<T>> {
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
         self.as_ref().get_reference_unchecked(row, column)
     }
+
+    fn data_layout(&self) -> DataLayout {
+        self.as_ref().data_layout()
+    }
 }
 
 // # Safety
@@ -212,6 +232,10 @@ unsafe impl <T> MatrixRef<T> for Box<dyn MatrixMut<T>> {
 
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
         self.as_ref().get_reference_unchecked(row, column)
+    }
+
+    fn data_layout(&self) -> DataLayout {
+        self.as_ref().data_layout()
     }
 }
 
