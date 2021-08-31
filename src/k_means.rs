@@ -40,7 +40,7 @@ let cluster2 = MultivariateGaussian::new(
 let points = 200;
 let mut random_numbers: DistIter<Standard, &mut ChaCha8Rng, f64> =
     (&mut random_generator).sample_iter(Standard);
-// unwrap is perfectly save if and only if we know we have supplied enough random numbers
+// unwrap is perfectly safe if and only if we know we have supplied enough random numbers
 let cluster1_points = cluster1.draw(&mut random_numbers, points).unwrap();
 let cluster2_points = cluster2.draw(&mut random_numbers, points).unwrap();
 

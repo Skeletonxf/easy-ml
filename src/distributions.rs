@@ -32,7 +32,7 @@ let mut random_numbers: DistIter<Standard, &mut ChaCha8Rng, f64> =
 
 // draw samples from the normal distribution
 let samples: Vec<f64> = normal_distribution.draw(&mut random_numbers, SAMPLES)
-    // unwrap is perfectly save if and only if we know we have supplied enough random numbers
+    // unwrap is perfectly safe if and only if we know we have supplied enough random numbers
     .unwrap();
 
 // create a [(f32, f32)] list to plot a histogram of
