@@ -7,7 +7,8 @@
  *
  * Since a Matrix is itself a MatrixRef, the APIs for the traits are purposefully verbose to
  * avoid name clashes with methods defined on the Matrix and MatrixView types. You should
- * typically use MatrixRef and MatrixMut implementations via the MatrixView struct.
+ * typically use MatrixRef and MatrixMut implementations via the MatrixView struct which provides
+ * an API closely resembling Matrix.
  */
 
 use std::marker::PhantomData;
@@ -37,12 +38,11 @@ pub mod traits;
 * implementing type is required to uphold several invariants.
 *
 * 1 - Any valid index as described in Indexing will yield a safe reference when calling
-* `get_reference_unchecked` and `get_reference_unchecked_mut` - It is the caller's responsbility
-* to check `view_rows`/`view_columns` and request only indexes in range.
+* `get_reference_unchecked` and `get_reference_unchecked_mut`.
 *
 * 2 - Either the `view_rows`/`view_columns` that define which indexes are valid may not
-* be changed by a shared reference to the MatrixRef, or `get_reference_unchecked` and
-* `get_reference_unchecked_mut` must panic if the index is invalid.
+* be changed by a shared reference to the MatrixRef implementation, or `get_reference_unchecked`
+* and `get_reference_unchecked_mut` must panic if the index is invalid.
 *
 * Essentially, interior mutability causes problems, since code looping through the range of valid
 * indexes in a MatrixRef needs to be able to rely on that range of valid indexes not changing.
@@ -53,7 +53,7 @@ pub mod traits;
 * resize a matrix while an iterator was looping through previously valid indexes on a different
 * thread. For such cases, the MatrixRef implementation must ensure that invalid indexes panic
 * for `get_reference_unchecked` and `get_reference_unchecked_mut` to prevent undefined behavior.
-* Note that it is okay to be able to resize a Matrix backing a MatrixRef if that always requires
+* Note that it is okay to be able to resize a MatrixRef implementation if that always requires
 * an exclusive reference to the MatrixRef/Matrix, since the exclusivity prevents the above
 * scenario.
 */
@@ -242,6 +242,22 @@ where
      */
     pub fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
         self.source.try_get_reference(row, column)
+    }
+
+    /**
+     * Gets a reference to the value at the index without doing any bounds checking. For a safe
+     * alternative see [try_get_reference](MatrixView::try_get_reference).
+     *
+     * # Safety
+     *
+     * Calling this method with an out-of-bounds index is *[undefined behavior]* even if the
+     * resulting reference is not used. Valid indexes are defined as in [MatrixRef].
+     *
+     * [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+     * [MatrixRef]: MatrixRef
+     */
+    pub unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        self.source.get_reference_unchecked(row, column)
     }
 
     /**
@@ -516,6 +532,22 @@ where
     pub fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
         self.source.try_get_reference_mut(row, column)
     }
+
+    /**
+     * Gets a mutable reference to the value at the index without doing any bounds checking.
+     * For a safe alternative see [try_get_reference_mut](MatrixView::try_get_reference_mut).
+     *
+     * # Safety
+     *
+     * Calling this method with an out-of-bounds index is *[undefined behavior]* even if the
+     * resulting reference is not used. Valid indexes are defined as in [MatrixRef].
+     *
+     * [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+     * [MatrixRef]: MatrixRef
+     */
+    pub unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+        self.source.get_reference_unchecked_mut(row, column)
+    }
 }
 
 /**
@@ -652,10 +684,12 @@ where
         // perform elementwise check, return true only if every element in
         // each matrix is the same
         match (self.data_layout(), other.data_layout()) {
-            (DataLayout::ColumnMajor, DataLayout::ColumnMajor) => self.column_major_reference_iter()
+            (DataLayout::ColumnMajor, DataLayout::ColumnMajor) => self
+                .column_major_reference_iter()
                 .zip(other.column_major_reference_iter())
                 .all(|(x, y)| x == y),
-            _ => self.row_major_reference_iter()
+            _ => self
+                .row_major_reference_iter()
                 .zip(other.row_major_reference_iter())
                 .all(|(x, y)| x == y)
         }

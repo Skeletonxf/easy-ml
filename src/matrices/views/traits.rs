@@ -3,6 +3,16 @@
  *
  * These implementations are written here but Rust docs will display them on the
  * traits' pages.
+ *
+ * An owned or referenced [Matrix](Matrix) is a MatrixRef, and a MatrixMut if not a shared
+ * reference, Therefore, you can pass a Matrix to any function which takes a MatrixRef.
+ *
+ * Boxed MatrixRef and MatrixMut values also implement MatrixRef and MatrixMut respectively.
+ *
+ * Since a Matrix always stores its data in row major order,
+ * [`data_layout()`](MatrixRef::data_layout) will return
+ * [`DataLayout::RowMajor`](DataLayout::RowMajor), but third party matrix types implementing
+ * MatrixRef/MatrixMut may use a column major layout.
  */
 
 use crate::matrices::{Column, Matrix, Row};
