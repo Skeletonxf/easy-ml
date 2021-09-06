@@ -21,6 +21,9 @@ use crate::matrices::iterators::{
 };
 
 pub mod traits;
+mod ranges;
+
+pub use ranges::*;
 
 /**
 * A shared/immutable reference to a matrix (or a portion of it) of some type.
