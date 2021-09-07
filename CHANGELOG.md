@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 1.7
+
+Added diagonal iterators. Added MatrixView, MatrixRef and MatrixMut APIs. Made
+all matrix iterators generic over their source, allowing them to also be used
+with matrix views. Added unsafe getters to elide bounds checks for Matrices, and
+these are now used internally by matrix iterators.
+
 ## Version 1.6.1
 
 Fixed README versions still referring to 1.5

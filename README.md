@@ -4,7 +4,7 @@ A completely deterministic matrix and linear algebra library over generic number
 
 ## Usage
 
-Add `easy-ml = "1.6"` to your `[dependencies]`<sup>1</sup>.
+Add `easy-ml = "1.7"` to your `[dependencies]`<sup>1</sup>.
 
 ## Overview
 This is a pure Rust library which makes heavy use of passing closures, iterators, generic types, and other rust idioms that machine learning libraries which wrap around another language backend could never provide easily. This library tries to provide adequate documentation to explain what the functions compute, what the computations mean, and examples of tasks you might want to do with this library:
@@ -30,4 +30,4 @@ Where as other machine learning libraries often create objects/structs to repres
 
 *****
 
-1 - If you need to freeze your rust compiler version you should specify a minor version with a [tilde requirement](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#tilde-requirements) such as `easy-ml = "~1.6"`. Easy ML will not introduce breaking API changes between minor versions, but does follow the latest stable version of rust, and thus may introduce dependencies on newer language features (eg const generics) in minor version updates.
+1 - If you need to freeze your rust compiler version you should specify a minor version with a [tilde requirement](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#tilde-requirements) such as `easy-ml = "~1.7"`. Easy ML will not introduce breaking API changes between minor versions, but does follow the latest stable version of rust, and thus may introduce dependencies on newer language features (eg const generics) in minor version updates.
