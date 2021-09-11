@@ -24,6 +24,7 @@ use crate::matrices::iterators::{
     RowMajorReferenceIterator, RowReferenceIterator,
 };
 use crate::matrices::slices::Slice2D;
+use crate::matrices::views::MatrixPart;
 use crate::numeric::extra::{Real, RealRef};
 use crate::numeric::{Numeric, NumericRef};
 
@@ -524,6 +525,75 @@ impl <T> Matrix<T> {
         } else {
             Err(ScalarConversionError {})
         }
+    }
+
+    fn partition(&mut self, row_partitions: &[Row], column_partitions: &[Column]) -> Vec<MatrixPart<T>> {
+        let rows = self.rows();
+        let columns = self.columns();
+        fn check_axis(partitions: &[usize], length: usize) {
+            let mut previous: Option<usize> = None;
+            for &index in partitions {
+                assert!(index <= length);
+                previous = match previous {
+                    None => Some(index),
+                    Some(i) => {
+                        assert!(index > i, "{:?} must be ascending", partitions);
+                        Some(i)
+                    }
+                }
+            }
+        }
+        check_axis(row_partitions, rows);
+        check_axis(column_partitions, columns);
+
+        // There will be one more slice than partitions, since partitions are the boundries
+        // between slices.
+        let row_slices = row_partitions.len() + 1;
+        let column_slices = column_partitions.len() + 1;
+        let total_slices = row_slices * column_slices;
+        let mut slices: Vec<Vec<&mut [T]>> = Vec::with_capacity(total_slices);
+        let (_, mut data) = self.data.split_at_mut(0);
+
+        let mut index = 0;
+        for r in 0..row_slices {
+            let row_index = row_partitions.get(r).cloned().unwrap_or(rows);
+            // Determine how many rows of our matrix we need for the next set of row slices
+            let rows_included = row_index - index;
+            for _ in 0..column_slices {
+                slices.push(Vec::with_capacity(rows_included));
+            }
+            index = row_index;
+
+            for _ in 0..rows_included {
+                // Partition the next row of our matrix along the columns
+                let mut index = 0;
+                for c in 0..column_slices {
+                    let column_index = column_partitions.get(c).cloned().unwrap_or(columns);
+                    let columns_included = column_index - index;
+                    index = column_index;
+                    // Split off as many elements as included in this column slice
+                    let (slice, rest) = data.split_at_mut(columns_included);
+                    // Insert the slice into the slices, we'll push `rows_included` times into
+                    // each slice Vec.
+                    slices[(r * column_slices) + c].push(slice);
+                    data = rest;
+                }
+            }
+        }
+        // rest is now empty, so we can ignore it.
+
+        slices
+            .into_iter()
+            .map(|slices| {
+                let rows = slices.len();
+                let columns = slices.get(0).map(|columns| columns.len()).unwrap_or(0);
+                MatrixPart::new(slices, rows, columns)
+            })
+            .collect()
+    }
+
+    fn partition_quadrants(&mut self, row: Row, column: Column) -> Vec<MatrixPart<T>> {
+        self.partition(&[row], &[column])
     }
 }
 

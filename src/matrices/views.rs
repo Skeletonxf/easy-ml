@@ -22,8 +22,10 @@ use crate::matrices::iterators::{
 
 pub mod traits;
 mod ranges;
+mod partitions;
 
 pub use ranges::*;
+pub use partitions::*;
 
 /**
 * A shared/immutable reference to a matrix (or a portion of it) of some type.
