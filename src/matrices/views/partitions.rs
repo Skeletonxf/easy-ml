@@ -1,4 +1,6 @@
 use crate::matrices::{Row, Column};
+#[allow(unused)] // used in doc links
+use crate::matrices::Matrix;
 use crate::matrices::views::{DataLayout, MatrixView, MatrixRef, MatrixMut};
 
 /**
@@ -24,7 +26,7 @@ use crate::matrices::views::{DataLayout, MatrixView, MatrixRef, MatrixMut};
  * by each of the MatrixParts.
  *
  * See
- * - [`Matrix::partition`](Matrix::partition)
+ * - [`Matrix::partition_quadrants`](Matrix::partition_quadrants)
  */
 #[derive(Debug)]
 pub struct MatrixPart<'source, T> {

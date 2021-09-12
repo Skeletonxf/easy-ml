@@ -603,12 +603,52 @@ impl <T> Matrix<T> {
             .collect()
     }
 
+    /**
+     * Partition a matrix into 4 non overlapping quadrants. Top left starts at 0,0 until
+     * exclusive of row and column, bottom right starts at row and column to the end of the matrix.
+     *
+     * # Panics
+     *
+     * Panics if the row or column are greater than the number of rows or columns in the matrix.
+     *
+     * # Examples
+     *
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * let mut matrix = Matrix::from(vec![
+     *     vec![ 0, 1, 2 ],
+     *     vec![ 3, 4, 5 ],
+     *     vec![ 6, 7, 8 ]
+     * ]);
+     * // Split the matrix at the second row and first column giving 2x1, 2x2, 1x1 and 2x1
+     * // quadrants.
+     * // 0 | 1 2
+     * // 3 | 4 5
+     * // -------
+     * // 6 | 7 8
+     * let mut parts = matrix.partition_quadrants(2, 1);
+     * assert_eq!(parts.top_left, Matrix::column(vec![ 0, 3 ]));
+     * assert_eq!(parts.top_right, Matrix::from(vec![vec![ 1, 2 ], vec![ 4, 5 ]]));
+     * assert_eq!(parts.bottom_left, Matrix::column(vec![ 6 ]));
+     * assert_eq!(parts.bottom_right, Matrix::row(vec![ 7, 8 ]));
+     * // Modify the matrix data independently without worrying about the borrow checker
+     * parts.top_right.map_mut(|x| x + 10);
+     * parts.bottom_left.map_mut(|x| x - 10);
+     * // Drop MatrixQuadrants so we can use the matrix directly again
+     * std::mem::drop(parts);
+     * assert_eq!(matrix, Matrix::from(vec![
+     *     vec![ 0, 11, 12 ],
+     *     vec![ 3, 14, 15 ],
+     *     vec![ -4, 7, 8 ]
+     * ]));
+     * ```
+     */
     #[track_caller]
     pub fn partition_quadrants<'a>(
         &'a mut self,
         row: Row,
         column: Column
-    ) -> views::MatrixQuadrants<'a, T> {
+    ) -> MatrixQuadrants<'a, T> {
         let mut parts = self.partition(&[row], &[column]).into_iter();
         // We know there will be exactly 4 parts returned by the partition since we provided
         // 1 row and 1 column to partition ourself into 4 with.
