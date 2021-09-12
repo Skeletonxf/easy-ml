@@ -686,35 +686,77 @@ fn printing_matrices() {
     assert_eq!("[ 1.000, 2.000\n  3.000, 4.000 ]", formatted);
 }
 
+// Common matrix equality definition
+#[inline]
+pub(crate) fn matrix_equality<T, S1, S2>(left: &S1, right: &S2) -> bool
+where
+    T: PartialEq,
+    S1: MatrixRef<T>,
+    S2: MatrixRef<T>,
+{
+    if left.view_rows() != right.view_rows() {
+        return false;
+    }
+    if left.view_columns() != right.view_columns() {
+        return false;
+    }
+    // perform elementwise check, return true only if every element in
+    // each matrix is the same
+    match (left.data_layout(), right.data_layout()) {
+        (DataLayout::ColumnMajor, DataLayout::ColumnMajor) =>
+            ColumnMajorReferenceIterator::from(left)
+            .zip(ColumnMajorReferenceIterator::from(right))
+            .all(|(x, y)| x == y),
+        _ =>
+            RowMajorReferenceIterator::from(left)
+            .zip(RowMajorReferenceIterator::from(right))
+            .all(|(x, y)| x == y)
+    }
+}
+
 /**
  * PartialEq is implemented as two matrix views are equal if and only if all their elements
- * are equal and they have the same size.
+ * are equal and they have the same size. Differences in their source types are ignored.
  */
-impl <T, S> PartialEq for MatrixView<T, S>
+impl <T, S1, S2> PartialEq<MatrixView<T, S2>> for MatrixView<T, S1>
+where
+    T: PartialEq,
+    S1: MatrixRef<T>,
+    S2: MatrixRef<T>,
+{
+    #[inline]
+    fn eq(&self, other: &MatrixView<T, S2>) -> bool {
+        matrix_equality(&self.source, &other.source)
+    }
+}
+
+/**
+ * A MatrixView and a Matrix can be compared for equality. PartialEq is implemented as they are
+ * equal if and only if all their elements are equal and they have the same size.
+ */
+impl <T, S> PartialEq<Matrix<T>> for MatrixView<T, S>
 where
     T: PartialEq,
     S: MatrixRef<T>,
 {
     #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        if self.rows() != other.rows() {
-            return false;
-        }
-        if self.columns() != other.columns() {
-            return false;
-        }
-        // perform elementwise check, return true only if every element in
-        // each matrix is the same
-        match (self.data_layout(), other.data_layout()) {
-            (DataLayout::ColumnMajor, DataLayout::ColumnMajor) => self
-                .column_major_reference_iter()
-                .zip(other.column_major_reference_iter())
-                .all(|(x, y)| x == y),
-            _ => self
-                .row_major_reference_iter()
-                .zip(other.row_major_reference_iter())
-                .all(|(x, y)| x == y)
-        }
+    fn eq(&self, other: &Matrix<T>) -> bool {
+        matrix_equality(&self.source, &other)
+    }
+}
+
+/**
+ * A Matrix and a MatrixView can be compared for equality. PartialEq is implemented as they are
+ * equal if and only if all their elements are equal and they have the same size.
+ */
+impl <T, S> PartialEq<MatrixView<T, S>> for Matrix<T>
+where
+    T: PartialEq,
+    S: MatrixRef<T>,
+{
+    #[inline]
+    fn eq(&self, other: &MatrixView<T, S>) -> bool {
+        matrix_equality(&self, &other.source)
     }
 }
 
