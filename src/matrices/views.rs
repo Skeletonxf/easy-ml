@@ -160,10 +160,9 @@ pub enum DataLayout {
 pub struct MatrixView<T, S> {
     source: S,
     _type: PhantomData<T>,
-    // TODO: Transposition?
 }
 
-// TODO linear_algebra numeric functions, numeric operators
+// TODO linear_algebra numeric functions, numeric operators, transpositions
 
 /**
  * MatrixView methods which require only read access via a [MatrixRef](MatrixRef) source.
@@ -191,6 +190,24 @@ where
      */
     pub fn source(self) -> S {
         self.source
+    }
+
+    /**
+     * Gives a reference to the matrix view's source. This should typically not be needed
+     * since Easy ML APIs which take [MatrixRef](MatrixRef)s as inputs like iterators are
+     * already wrapped for you as methods on MatrixView.
+     */
+    pub fn source_ref(&self) -> &S {
+        &self.source
+    }
+
+    /**
+     * Gives a mutable reference to the matrix view's source. This should typically not be needed
+     * since Easy ML APIs which take [MatrixRef](MatrixRef)s as inputs like iterators are
+     * already wrapped for you as methods on MatrixView.
+     */
+    pub fn source_ref_mut(&mut self) -> &mut S {
+        &mut self.source
     }
 
     /**
