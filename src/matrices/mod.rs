@@ -24,7 +24,7 @@ use crate::matrices::iterators::{
     RowMajorReferenceIterator, RowReferenceIterator,
 };
 use crate::matrices::slices::Slice2D;
-use crate::matrices::views::MatrixPart;
+use crate::matrices::views::{MatrixView, MatrixPart, MatrixQuadrants};
 use crate::numeric::extra::{Real, RealRef};
 use crate::numeric::{Numeric, NumericRef};
 
@@ -527,7 +527,12 @@ impl <T> Matrix<T> {
         }
     }
 
-    fn partition(&mut self, row_partitions: &[Row], column_partitions: &[Column]) -> Vec<MatrixPart<T>> {
+    #[track_caller]
+    fn partition(
+        &mut self,
+        row_partitions: &[Row],
+        column_partitions: &[Column]
+    ) -> Vec<MatrixView<T, MatrixPart<T>>> {
         let rows = self.rows();
         let columns = self.columns();
         fn check_axis(partitions: &[usize], length: usize) {
@@ -587,13 +592,32 @@ impl <T> Matrix<T> {
             .map(|slices| {
                 let rows = slices.len();
                 let columns = slices.get(0).map(|columns| columns.len()).unwrap_or(0);
-                MatrixPart::new(slices, rows, columns)
+                if columns == 0 {
+                    // We may have allocated N rows but if each column in that row has no size so
+                    // our actual size is 0x0
+                    MatrixView::from(MatrixPart::new(slices, 0, 0))
+                } else {
+                    MatrixView::from(MatrixPart::new(slices, rows, columns))
+                }
             })
             .collect()
     }
 
-    fn partition_quadrants(&mut self, row: Row, column: Column) -> Vec<MatrixPart<T>> {
-        self.partition(&[row], &[column])
+    #[track_caller]
+    pub fn partition_quadrants<'a>(
+        &'a mut self,
+        row: Row,
+        column: Column
+    ) -> views::MatrixQuadrants<'a, T> {
+        let mut parts = self.partition(&[row], &[column]).into_iter();
+        // We know there will be exactly 4 parts returned by the partition since we provided
+        // 1 row and 1 column to partition ourself into 4 with.
+        MatrixQuadrants {
+            top_left: parts.next().unwrap(),
+            top_right: parts.next().unwrap(),
+            bottom_left: parts.next().unwrap(),
+            bottom_right: parts.next().unwrap(),
+        }
     }
 }
 

@@ -298,4 +298,41 @@ mod tests {
             ]).map_with_index(|_, r, c| r + c)
         )
     }
+
+    #[test]
+    fn check_partition_quadrants() {
+        let mut matrix = Matrix::from(vec![
+            vec![ 0, 1, 2 ],
+            vec![ 3, 4, 5 ],
+            vec![ 6, 7, 8 ]
+        ]);
+        {
+            let parts = matrix.partition_quadrants(2, 1);
+            assert_eq!(parts.top_left, Matrix::column(vec![ 0, 3]));
+            assert_eq!(parts.top_right, Matrix::from(vec![vec![ 1, 2 ], vec![ 4, 5]]));
+            assert_eq!(parts.bottom_left, Matrix::column(vec![ 6 ]));
+            assert_eq!(parts.bottom_right, Matrix::row(vec![ 7, 8]));
+        }
+        {
+            let parts = matrix.partition_quadrants(1, 2);
+            assert_eq!(parts.top_left, Matrix::row(vec![ 0, 1]));
+            assert_eq!(parts.top_right, Matrix::column(vec![ 2 ]));
+            assert_eq!(parts.bottom_left, Matrix::from(vec![vec![ 3, 4 ], vec![ 6, 7]]));
+            assert_eq!(parts.bottom_right, Matrix::column(vec![ 5, 8]));
+        }
+        {
+            let parts = matrix.partition_quadrants(0, 1);
+            assert_eq!(parts.top_left.size(), (0, 0));
+            assert_eq!(parts.top_right.size(), (0, 0));
+            assert_eq!(parts.bottom_left, Matrix::column(vec![ 0, 3, 6 ]));
+            assert_eq!(parts.bottom_right, Matrix::from(vec![vec![ 1, 2 ], vec![ 4, 5 ], vec![ 7, 8 ]]));
+        }
+        {
+            let parts = matrix.partition_quadrants(2, 3);
+            assert_eq!(parts.top_left, Matrix::from(vec![vec![ 0, 1, 2 ], vec![ 3, 4, 5 ]]));
+            assert_eq!(parts.top_right.size(), (0, 0));
+            assert_eq!(parts.bottom_left, Matrix::row(vec![ 6, 7, 8 ]));
+            assert_eq!(parts.bottom_right.size(), (0, 0));
+        }
+    }
 }
