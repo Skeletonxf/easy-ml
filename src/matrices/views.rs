@@ -530,6 +530,27 @@ impl <T, S> MatrixView<T, S>
 where
     S: MatrixMut<T> {
     /**
+     * Gets a mutable reference to the value at this row and column.
+     * Rows and Columns are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the index is out of range.
+     */
+    #[track_caller]
+    pub fn get_reference_mut(&mut self, row: Row, column: Column) -> &mut T {
+        let size = self.size();
+        // borrow for size ends
+        match self.source.try_get_reference_mut(row, column) {
+            Some(reference) => reference,
+            None => panic!(
+                "Index ({},{}) not in range, MatrixView range is (0,0) to ({},{}).",
+                row, column, size.0, size.1
+            )
+        }
+    }
+
+    /**
      * Sets a new value to this row and column. Rows and Columns are 0 indexed.
      *
      * # Panics

@@ -264,6 +264,23 @@ impl <T> Matrix<T> {
     }
 
     /**
+     * Gets a mutable reference to the value at this row and column.
+     * Rows and Columns are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the index is out of range.
+     */
+    #[track_caller]
+    pub fn get_reference_mut(&mut self, row: Row, column: Column) -> &mut T {
+        assert!(row < self.rows(), "Row out of index");
+        assert!(column < self.columns(), "Column out of index");
+        let index = self.get_index(row, column);
+        // borrow for get_index ends
+        &mut self.data[index]
+    }
+
+    /**
      * Not public API because don't want to name clash with the method on MatrixRef
      * that calls this.
      */

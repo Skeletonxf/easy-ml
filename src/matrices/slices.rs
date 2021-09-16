@@ -5,6 +5,9 @@
  * matrices with [retain](super::Matrix::retain()) and
  * [retain_mut](super::Matrix::retain_mut()). In the future it will be available
  * for iterating through matrices and indexing into matrices to get values.
+ *
+ * See also
+ * - [views](crate::matrices::views)
  */
 
 use std::ops::Range;
