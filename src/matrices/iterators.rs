@@ -71,7 +71,7 @@ use std::marker::PhantomData;
 use std::ops::Range;
 
 use crate::matrices::{Matrix, Row, Column};
-use crate::matrices::views::MatrixRef;
+use crate::matrices::views::{MatrixRef, MatrixMut, NoInteriorMutability};
 
 trait MatrixRefExtension<T>: MatrixRef<T> {
     /**
@@ -974,3 +974,245 @@ impl <'a, T, S: MatrixRef<T>> Iterator for DiagonalReferenceIterator<'a, T, S> {
 
 impl <'a, T, S: MatrixRef<T>> FusedIterator for DiagonalReferenceIterator<'a, T, S> {}
 impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for DiagonalReferenceIterator<'a, T, S> {}
+
+/**
+ * A column major iterator over mutable references to all values in a matrix.
+ *
+ * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
+ * ```ignore
+ * [
+ *   1, 2
+ *   3, 4
+ * ]
+ * ```
+ * The elements will be iterated through as &mut 1, &mut 3, &mut 2, &mut 4
+ */
+#[derive(Debug)]
+pub struct ColumnMajorReferenceMutIterator<'a, T, S: MatrixMut<T> = Matrix<T>> {
+    matrix: &'a mut S,
+    column_counter: Column,
+    columns: Column,
+    row_counter: Row,
+    rows: Row,
+    finished: bool,
+    _type: PhantomData<&'a mut T>,
+}
+
+impl <'a, T> ColumnMajorReferenceMutIterator<'a, T> {
+    /**
+     * Constructs a column major iterator over this matrix.
+     */
+    pub fn new(matrix: &mut Matrix<T>) -> ColumnMajorReferenceMutIterator<T> {
+        ColumnMajorReferenceMutIterator::from(matrix)
+    }
+}
+
+impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> ColumnMajorReferenceMutIterator<'a, T, S> {
+    /**
+     * Constructs a column major iterator over this source.
+     */
+    pub fn from(source: &mut S) -> ColumnMajorReferenceMutIterator<T, S> {
+        ColumnMajorReferenceMutIterator {
+            column_counter: 0,
+            columns: source.view_columns(),
+            row_counter: 0,
+            rows: source.view_rows(),
+            finished: !source.index_is_valid(0, 0),
+            matrix: source,
+            _type: PhantomData,
+        }
+    }
+}
+
+impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnMajorReferenceMutIterator<'a, T, S> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None
+        }
+
+        let value = unsafe {
+            // Safety: We checked on creation that 0,0 is in range, and after getting
+            // our next value we check if we hit the end of the matrix and will avoid
+            // calling this on our next loop if we finished. Hence if the view size has
+            // not changed this read is in bounds and if they are able to be changed,
+            // then the MatrixRef implementation is required to bounds check for us.
+            // Safety: We are not allowed to give out overlapping mutable references,
+            // but since we will always increment the counter on every call to next()
+            // and stop when we reach the end no references will overlap*.
+            // The compiler doesn't know this, so transmute the lifetime for it.
+            // *We also require the source matrix to be NoInteriorMutability to additionally
+            // make illegal any edge cases where some extremely exotic matrix rotates its data
+            // inside the buffer around though a shared reference while we were iterating that
+            // could otherwise make our cursor read the same data twice.
+            Some(
+                std::mem::transmute(
+                    self.matrix.get_reference_unchecked_mut(self.row_counter, self.column_counter)
+                )
+            )
+        };
+
+        if self.row_counter == self.rows - 1 && self.column_counter == self.columns -1 {
+            // reached end of matrix for next iteration
+            self.finished = true;
+        }
+
+        if self.row_counter == self.rows - 1 {
+            // reached end of a column, need to reset to first element in next column
+            self.row_counter = 0;
+            self.column_counter += 1;
+        } else {
+            // keep incrementing through this column
+            self.row_counter += 1;
+        }
+
+        value
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining_columns = self.columns - self.column_counter;
+        match remaining_columns {
+            0 => (0, Some(0)),
+            1 => {
+                // we're on the last column, so return how many items are left for us to
+                // go through with the row counter
+                let remaining_rows = self.rows - self.row_counter;
+                (remaining_rows, Some(remaining_rows))
+            }
+            x => {
+                // we still have at least one full column left in addition to what's left
+                // for this column's row counter
+                let remaining_rows = self.rows - self.row_counter;
+                // each full column takes as many iterations as the matrix has rows
+                let remaining_full_columns = (x - 1) * self.rows;
+                let remaining = remaining_rows + remaining_full_columns;
+                (remaining, Some(remaining))
+            }
+        }
+    }
+}
+
+impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for ColumnMajorReferenceMutIterator<'a, T, S> {}
+impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for ColumnMajorReferenceMutIterator<'a, T, S> {}
+
+/**
+ * A row major iterator over mutable references to all values in a matrix.
+ *
+ * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
+ * ```ignore
+ * [
+ *   1, 2
+ *   3, 4
+ * ]
+ * ```
+ * The elements will be iterated through as &mut 1, &mut 2, &mut 3, &mut 4
+ */
+#[derive(Debug)]
+pub struct RowMajorReferenceMutIterator<'a, T, S: MatrixMut<T> = Matrix<T>> {
+    matrix: &'a mut S,
+    column_counter: Column,
+    columns: Column,
+    row_counter: Row,
+    rows: Row,
+    finished: bool,
+    _type: PhantomData<&'a mut T>,
+}
+
+impl <'a, T> RowMajorReferenceMutIterator<'a, T> {
+    /**
+     * Constructs a column major iterator over this matrix.
+     */
+    pub fn new(matrix: &mut Matrix<T>) -> RowMajorReferenceMutIterator<T> {
+        RowMajorReferenceMutIterator::from(matrix)
+    }
+}
+
+impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> RowMajorReferenceMutIterator<'a, T, S> {
+    /**
+     * Constructs a column major iterator over this source.
+     */
+    pub fn from(source: &mut S) -> RowMajorReferenceMutIterator<T, S> {
+        RowMajorReferenceMutIterator {
+            column_counter: 0,
+            columns: source.view_columns(),
+            row_counter: 0,
+            rows: source.view_rows(),
+            finished: !source.index_is_valid(0, 0),
+            matrix: source,
+            _type: PhantomData,
+        }
+    }
+}
+
+impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowMajorReferenceMutIterator<'a, T, S> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None
+        }
+
+        let value = unsafe {
+            // Safety: We checked on creation that 0,0 is in range, and after getting
+            // our next value we check if we hit the end of the matrix and will avoid
+            // calling this on our next loop if we finished. Hence if the view size has
+            // not changed this read is in bounds and if they are able to be changed,
+            // then the MatrixRef implementation is required to bounds check for us.
+            // Safety: We are not allowed to give out overlapping mutable references,
+            // but since we will always increment the counter on every call to next()
+            // and stop when we reach the end no references will overlap*.
+            // The compiler doesn't know this, so transmute the lifetime for it.
+            // *We also require the source matrix to be NoInteriorMutability to additionally
+            // make illegal any edge cases where some extremely exotic matrix rotates its data
+            // inside the buffer around through a shared reference while we were iterating that
+            // could otherwise make our cursor read the same data twice.
+            Some(
+                std::mem::transmute(
+                    self.matrix.get_reference_unchecked_mut(self.row_counter, self.column_counter)
+                )
+            )
+        };
+
+        if self.column_counter == self.columns - 1 && self.row_counter == self.rows -1 {
+            // reached end of matrix for next iteration
+            self.finished = true;
+        }
+
+        if self.column_counter == self.columns - 1 {
+            // reached end of a row, need to reset to first element in next row
+            self.column_counter = 0;
+            self.row_counter += 1;
+        } else {
+            // keep incrementing through this row
+            self.column_counter += 1;
+        }
+
+        value
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining_rows = self.rows - self.row_counter;
+        match remaining_rows {
+            0 => (0, Some(0)),
+            1 => {
+                // we're on the last row, so return how many items are left for us to
+                // go through with the column counter
+                let remaining_columns = self.columns - self.column_counter;
+                (remaining_columns, Some(remaining_columns))
+            }
+            x => {
+                // we still have at least one full row left in addition to what's left
+                // for this row's column counter
+                let remaining_columns = self.columns - self.column_counter;
+                // each full row takes as many iterations as the matrix has columns
+                let remaining_full_rows = (x - 1) * self.columns;
+                let remaining = remaining_columns + remaining_full_rows;
+                (remaining, Some(remaining))
+            }
+        }
+    }
+}
+
+impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for RowMajorReferenceMutIterator<'a, T, S> {}
+impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for RowMajorReferenceMutIterator<'a, T, S> {}
