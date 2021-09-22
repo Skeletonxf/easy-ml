@@ -132,6 +132,19 @@ pub unsafe trait MatrixMut<T>: MatrixRef<T> {
 }
 
 /**
+ * A marker trait that promises that the implementing type does not permit interior mutability.
+ *
+ * When combined with [MatrixRef](MatrixRef) or [MatrixMut](MatrixMut), other code can rely on
+ * the type not being resizable or otherwise mutated through a shared reference.
+ *
+ * # Safety
+ *
+ * Implementing types must ensure that their internal state cannot be changed through a shared
+ * reference to them.
+ */
+pub unsafe trait NoInteriorMutability {}
+
+/**
  * The [data layout] used for storing the 2 dimensional data of a MatrixView.
  *
  * [data layout]: https://en.wikipedia.org/wiki/Row-_and_column-major_order

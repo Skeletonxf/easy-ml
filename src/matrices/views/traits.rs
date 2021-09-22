@@ -9,6 +9,9 @@
  *
  * Boxed MatrixRef and MatrixMut values also implement MatrixRef and MatrixMut respectively.
  *
+ * All MatrixRef and MatrixMut implementations for Matrices are also
+ * [NoInteriorMutability](NoInteriorMutability).
+ *
  * Since a Matrix always stores its data in row major order,
  * [`data_layout()`](MatrixRef::data_layout) will return
  * [`DataLayout::RowMajor`](DataLayout::RowMajor), but third party matrix types implementing
@@ -16,7 +19,7 @@
  */
 
 use crate::matrices::{Column, Matrix, Row};
-use crate::matrices::views::{MatrixRef, MatrixMut, DataLayout};
+use crate::matrices::views::{MatrixRef, MatrixMut, NoInteriorMutability, DataLayout};
 
 // # Safety
 //
@@ -46,6 +49,14 @@ unsafe impl <'source, T> MatrixRef<T> for &'source Matrix<T> {
         DataLayout::RowMajor
     }
 }
+
+// # Safety
+//
+// We promise to never implement interior mutability for Matrix.
+/**
+ * A shared reference to a Matrix implements NoInteriorMutability.
+ */
+unsafe impl <'source, T> NoInteriorMutability for &'source Matrix<T> {}
 
 // # Safety
 //
@@ -95,6 +106,14 @@ unsafe impl <'source, T> MatrixMut<T> for &'source mut Matrix<T> {
 
 // # Safety
 //
+// We promise to never implement interior mutability for Matrix.
+/**
+ * An exclusive reference to a Matrix implements NoInteriorMutability.
+ */
+unsafe impl <'source, T> NoInteriorMutability for &'source mut Matrix<T> {}
+
+// # Safety
+//
 // Since we hold an owned Matrix we know it is not possible to mutate the size of the matrix
 // out from under us.
 /**
@@ -138,6 +157,14 @@ unsafe impl <T> MatrixMut<T> for Matrix<T> {
         Matrix::_get_reference_unchecked_mut(self, row, column)
     }
 }
+
+// # Safety
+//
+// We promise to never implement interior mutability for Matrix.
+/**
+ * An owned Matrix implements NoInteriorMutability.
+ */
+unsafe impl <T> NoInteriorMutability for Matrix<T> {}
 
 // # Safety
 //
@@ -190,6 +217,16 @@ where
         self.as_mut().get_reference_unchecked_mut(row, column)
     }
 }
+
+// # Safety
+//
+// Box doesn't interoduce any interior mutability, so we can implement if it the type we box does.
+/**
+ * A box of a NoInteriorMutability also implements NoInteriorMutability
+ */
+unsafe impl <S> NoInteriorMutability for Box<S>
+where
+    S: NoInteriorMutability {}
 
 // # Safety
 //
@@ -265,3 +302,11 @@ unsafe impl <T> MatrixMut<T> for Box<dyn MatrixMut<T>> {
         self.as_mut().get_reference_unchecked_mut(row, column)
     }
 }
+
+// # Safety
+//
+// Box doesn't interoduce any interior mutability, so we can implement if it the type we box does.
+/**
+ * A box of a dynamic NoInteriorMutability also implements NoInteriorMutability
+ */
+unsafe impl NoInteriorMutability for Box<dyn NoInteriorMutability> {}
