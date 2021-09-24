@@ -28,6 +28,10 @@ This library is currently usable for simple linear algebra tasks like linear reg
 
 Where as other machine learning libraries often create objects/structs to represent algorithms like linear regression or k-means, Easy ML instead only represents the data in structs and the consuming code determines all of the control flow. While this may take more effort to write for consuming code initially, it means making changes to the algorithms are much easier.
 
+## Features
+
+- `serde` - Optional, enables serde Serialize and Deserialize implementations.
+
 *****
 
 1 - If you need to freeze your rust compiler version you should specify a minor version with a [tilde requirement](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#tilde-requirements) such as `easy-ml = "~1.7"`. Easy ML will not introduce breaking API changes between minor versions, but does follow the latest stable version of rust, and thus may introduce dependencies on newer language features (eg const generics) in minor version updates.
