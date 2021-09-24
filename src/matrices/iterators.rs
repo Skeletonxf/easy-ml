@@ -381,6 +381,65 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnMajorIterator<'a, T, S> 
 impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for ColumnMajorIterator<'a, T, S> {}
 impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for ColumnMajorIterator<'a, T, S> {}
 
+// Common row major iterator logic
+fn row_major_iter(
+    finished: &mut bool,
+    rows: Row,
+    columns: Column,
+    row_counter: &mut Row,
+    column_counter: &mut Column
+) -> Option<(Row, Column)> {
+    if *finished {
+        return None
+    }
+
+    let value = Some((*row_counter, *column_counter));
+
+    if *column_counter == columns - 1 && *row_counter == rows -1 {
+        // reached end of matrix for next iteration
+        *finished = true;
+    }
+
+    if *column_counter == columns - 1 {
+        // reached end of a row, need to reset to first element in next row
+        *column_counter = 0;
+        *row_counter += 1;
+    } else {
+        // keep incrementing through this row
+        *column_counter += 1;
+    }
+
+    value
+}
+
+// Common row major iterator size hint logic
+fn row_major_size_hint(
+    rows: Row,
+    columns: Column,
+    row_counter: Row,
+    column_counter: Column
+) -> (usize, Option<usize>) {
+    let remaining_rows = rows - row_counter;
+    match remaining_rows {
+        0 => (0, Some(0)),
+        1 => {
+            // we're on the last row, so return how many items are left for us to
+            // go through with the column counter
+            let remaining_columns = columns - column_counter;
+            (remaining_columns, Some(remaining_columns))
+        }
+        x => {
+            // we still have at least one full row left in addition to what's left
+            // for this row's column counter
+            let remaining_columns = columns - column_counter;
+            // each full row takes as many iterations as the matrix has columns
+            let remaining_full_rows = (x - 1) * columns;
+            let remaining = remaining_columns + remaining_full_rows;
+            (remaining, Some(remaining))
+        }
+    }
+}
+
 /**
  * A row major iterator over all values in a matrix.
  *
@@ -434,56 +493,24 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for RowMajorIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None
-        }
-
-        let value = unsafe {
+        row_major_iter(
+            &mut self.finished,
+            self.rows,
+            self.columns,
+            &mut self.row_counter,
+            &mut self.column_counter
+        ).map(|(row, column)| unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
             // calling this on our next loop if we finished. Hence if the view size has
             // not changed this read is in bounds and if they are able to be changed,
             // then the MatrixRef implementation is required to bounds check for us.
-            Some(self.matrix.get_reference_unchecked(self.row_counter, self.column_counter).clone())
-        };
-
-        if self.column_counter == self.columns - 1 && self.row_counter == self.rows -1 {
-            // reached end of matrix for next iteration
-            self.finished = true;
-        }
-
-        if self.column_counter == self.columns - 1 {
-            // reached end of a row, need to reset to first element in next row
-            self.column_counter = 0;
-            self.row_counter += 1;
-        } else {
-            // keep incrementing through this row
-            self.column_counter += 1;
-        }
-
-        value
+            self.matrix.get_reference_unchecked(row, column).clone()
+        })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining_rows = self.rows - self.row_counter;
-        match remaining_rows {
-            0 => (0, Some(0)),
-            1 => {
-                // we're on the last row, so return how many items are left for us to
-                // go through with the column counter
-                let remaining_columns = self.columns - self.column_counter;
-                (remaining_columns, Some(remaining_columns))
-            }
-            x => {
-                // we still have at least one full row left in addition to what's left
-                // for this row's column counter
-                let remaining_columns = self.columns - self.column_counter;
-                // each full row takes as many iterations as the matrix has columns
-                let remaining_full_rows = (x - 1) * self.columns;
-                let remaining = remaining_columns + remaining_full_rows;
-                (remaining, Some(remaining))
-            }
-        }
+        row_major_size_hint(self.rows, self.columns, self.row_counter, self.column_counter)
     }
 }
 
@@ -780,56 +807,24 @@ impl <'a, T, S: MatrixRef<T>> Iterator for RowMajorReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None
-        }
-
-        let value = unsafe {
+        row_major_iter(
+            &mut self.finished,
+            self.rows,
+            self.columns,
+            &mut self.row_counter,
+            &mut self.column_counter
+        ).map(|(row, column)| unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
             // calling this on our next loop if we finished. Hence if the view size has
             // not changed this read is in bounds and if they are able to be changed,
             // then the MatrixRef implementation is required to bounds check for us.
-            Some(self.matrix.get_reference_unchecked(self.row_counter, self.column_counter))
-        };
-
-        if self.column_counter == self.columns - 1 && self.row_counter == self.rows -1 {
-            // reached end of matrix for next iteration
-            self.finished = true;
-        }
-
-        if self.column_counter == self.columns - 1 {
-            // reached end of a row, need to reset to first element in next row
-            self.column_counter = 0;
-            self.row_counter += 1;
-        } else {
-            // keep incrementing through this row
-            self.column_counter += 1;
-        }
-
-        value
+            self.matrix.get_reference_unchecked(row, column)
+        })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining_rows = self.rows - self.row_counter;
-        match remaining_rows {
-            0 => (0, Some(0)),
-            1 => {
-                // we're on the last row, so return how many items are left for us to
-                // go through with the column counter
-                let remaining_columns = self.columns - self.column_counter;
-                (remaining_columns, Some(remaining_columns))
-            }
-            x => {
-                // we still have at least one full row left in addition to what's left
-                // for this row's column counter
-                let remaining_columns = self.columns - self.column_counter;
-                // each full row takes as many iterations as the matrix has columns
-                let remaining_full_rows = (x - 1) * self.columns;
-                let remaining = remaining_columns + remaining_full_rows;
-                (remaining, Some(remaining))
-            }
-        }
+        row_major_size_hint(self.rows, self.columns, self.row_counter, self.column_counter)
     }
 }
 
@@ -1110,11 +1105,13 @@ impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowMajorRefere
     type Item = &'a mut T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None
-        }
-
-        let value = unsafe {
+        row_major_iter(
+            &mut self.finished,
+            self.rows,
+            self.columns,
+            &mut self.row_counter,
+            &mut self.column_counter
+        ).map(|(row, column)| unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
             // calling this on our next loop if we finished. Hence if the view size has
@@ -1128,50 +1125,14 @@ impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowMajorRefere
             // make illegal any edge cases where some extremely exotic matrix rotates its data
             // inside the buffer around through a shared reference while we were iterating that
             // could otherwise make our cursor read the same data twice.
-            Some(
-                std::mem::transmute(
-                    self.matrix.get_reference_unchecked_mut(self.row_counter, self.column_counter)
-                )
+            std::mem::transmute(
+                self.matrix.get_reference_unchecked_mut(row, column)
             )
-        };
-
-        if self.column_counter == self.columns - 1 && self.row_counter == self.rows -1 {
-            // reached end of matrix for next iteration
-            self.finished = true;
-        }
-
-        if self.column_counter == self.columns - 1 {
-            // reached end of a row, need to reset to first element in next row
-            self.column_counter = 0;
-            self.row_counter += 1;
-        } else {
-            // keep incrementing through this row
-            self.column_counter += 1;
-        }
-
-        value
+        })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining_rows = self.rows - self.row_counter;
-        match remaining_rows {
-            0 => (0, Some(0)),
-            1 => {
-                // we're on the last row, so return how many items are left for us to
-                // go through with the column counter
-                let remaining_columns = self.columns - self.column_counter;
-                (remaining_columns, Some(remaining_columns))
-            }
-            x => {
-                // we still have at least one full row left in addition to what's left
-                // for this row's column counter
-                let remaining_columns = self.columns - self.column_counter;
-                // each full row takes as many iterations as the matrix has columns
-                let remaining_full_rows = (x - 1) * self.columns;
-                let remaining = remaining_columns + remaining_full_rows;
-                (remaining, Some(remaining))
-            }
-        }
+        row_major_size_hint(self.rows, self.columns, self.row_counter, self.column_counter)
     }
 }
 
