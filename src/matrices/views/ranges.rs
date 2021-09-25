@@ -6,6 +6,7 @@ use std::marker::PhantomData;
 
 /**
  * A 2 dimensional range over a matrix, hiding the rest of the matrix data from view.
+ *
  * The entire source is still owned by the MatrixRange however, so this does not permit
  * creating multiple mutable ranges into a single matrix even if they wouldn't overlap.
  */
