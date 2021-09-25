@@ -19,9 +19,11 @@ pub use errors::ScalarConversionError;
 
 use crate::linear_algebra;
 use crate::matrices::iterators::{
-    ColumnIterator, ColumnMajorIterator, ColumnMajorReferenceIterator, ColumnReferenceIterator,
-    DiagonalIterator, DiagonalReferenceIterator, RowIterator, RowMajorIterator,
-    RowMajorReferenceIterator, RowReferenceIterator,
+    ColumnIterator, ColumnMajorIterator, ColumnMajorReferenceIterator,
+    ColumnMajorReferenceMutIterator, ColumnReferenceIterator,
+    DiagonalIterator, DiagonalReferenceIterator,
+    RowIterator, RowMajorIterator, RowMajorReferenceIterator,
+    RowMajorReferenceMutIterator, RowReferenceIterator,
 };
 use crate::matrices::slices::Slice2D;
 use crate::matrices::views::{MatrixView, MatrixPart, MatrixQuadrants};
@@ -440,6 +442,22 @@ impl <T> Matrix<T> {
      */
     pub fn row_major_reference_iter(&self) -> RowMajorReferenceIterator<T> {
         RowMajorReferenceIterator::new(self)
+    }
+
+    /**
+     * Returns a column major iterator over mutable references to all values in this matrix,
+     * proceeding through each column in order.
+     */
+    pub fn column_major_reference_mut_iter(&mut self) -> ColumnMajorReferenceMutIterator<T> {
+        ColumnMajorReferenceMutIterator::new(self)
+    }
+
+    /**
+     * Returns a row major iterator over mutable references to all values in this matrix,
+     * proceeding through each row in order.
+     */
+    pub fn row_major_reference_mut_iter(&mut self) -> RowMajorReferenceMutIterator<T> {
+        RowMajorReferenceMutIterator::new(self)
     }
 
     /**

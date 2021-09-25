@@ -15,9 +15,11 @@ use std::marker::PhantomData;
 
 use crate::matrices::{Column, Row, Matrix};
 use crate::matrices::iterators::{
-    ColumnIterator, ColumnMajorIterator, ColumnMajorReferenceIterator, ColumnReferenceIterator,
-    DiagonalIterator, DiagonalReferenceIterator, RowIterator, RowMajorIterator,
-    RowMajorReferenceIterator, RowReferenceIterator,
+    ColumnIterator, ColumnMajorIterator, ColumnMajorReferenceIterator,
+    ColumnMajorReferenceMutIterator, ColumnReferenceIterator,
+    DiagonalIterator, DiagonalReferenceIterator,
+    RowIterator, RowMajorIterator, RowMajorReferenceIterator,
+    RowMajorReferenceMutIterator, RowReferenceIterator,
 };
 
 pub mod traits;
@@ -603,6 +605,31 @@ where
      */
     pub unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
         self.source.get_reference_unchecked_mut(row, column)
+    }
+}
+
+/**
+ * MatrixView methods which require mutable access via a [MatrixMut](MatrixMut) source and
+ * no interior mutability.
+ */
+impl <T, S> MatrixView<T, S>
+where
+    S: MatrixMut<T> + NoInteriorMutability
+{
+    /**
+     * Returns a column major iterator over mutable references to all values in this matrix view,
+     * proceeding through each column in order.
+     */
+    pub fn column_major_reference_mut_iter(&mut self) -> ColumnMajorReferenceMutIterator<T, S> {
+        ColumnMajorReferenceMutIterator::from(&mut self.source)
+    }
+
+    /**
+     * Returns a row major iterator over mutable references to all values in this matrix view,
+     * proceeding through each row in order.
+     */
+    pub fn row_major_reference_mut_iter(&mut self) -> RowMajorReferenceMutIterator<T, S> {
+        RowMajorReferenceMutIterator::from(&mut self.source)
     }
 }
 
