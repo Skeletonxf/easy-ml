@@ -679,6 +679,7 @@ impl <T> Matrix<T> {
      * ```
      */
     #[track_caller]
+    #[allow(clippy::needless_lifetimes)] // false positive?
     pub fn partition_quadrants<'a>(
         &'a mut self,
         row: Row,
