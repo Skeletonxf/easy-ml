@@ -62,37 +62,48 @@ impl<T, const D: usize> Tensor<T, D> {
     }
 }
 
+// Given a list of dimension lengths, and a list of indexes, computes the 1 dimensional index
+// into the former specified by the latter.
+fn flattened_index<const D: usize>(
+    dimensions: &[(Dimension, usize); D],
+    indexes: &[(Dimension, usize); D],
+) -> Option<usize> {
+    let mut index = 0;
+    for d in 0..dimensions.len() {
+        let (dimension, length) = dimensions[d];
+        // happy path, fetch index of matching order
+        let (_, i) = if indexes[d].0 == dimension {
+            indexes[d]
+        } else {
+            // If indexes are in a different order, find the matching index by name.
+            // Since both lists are the same length and we know dimensions won't contain duplicates
+            // this also ensures the two lists have exactly the same set of names as otherwise
+            // one of these `find`s will fail.
+            *indexes.iter().find(|(d, _)| *d == dimension)?
+        };
+        // make sure each dimension's index is within bounds of that dimension's length
+        if i >= length {
+            return None;
+        }
+        let stride = dimensions
+            .iter()
+            .skip(d + 1)
+            .map(|d| d.1)
+            .fold(1, |d1, d2| d1 * d2);
+        index += i * stride;
+    }
+    Some(index)
+}
+
 impl<T, const D: usize> Tensor<T, D> {
     pub(crate) fn _try_get_reference(&self, mut dimensions: [(Dimension, usize); D]) -> Option<&T> {
-        // go through our dimensions in memory order
-        for (i, (dimension, _)) in self.dimensions.iter().enumerate() {
-            // check if the dimensions given are in the same order
-            if dimensions[i].0 != *dimension {
-                // swap input dimensions to put them in the same order as our memory order,
-                // returning None if we don't have a match
-                let (j, _) = dimensions
-                    .iter()
-                    .enumerate()
-                    .find(|(_, (d, _))| *d == *dimension)?;
-                if j < i {
-                    return None;
-                }
-                // put this dimension into the same order as our memory order
-                dimensions.swap(i, j);
-            }
-        }
-
-        let mut index = 0;
-        for (d, (_, n)) in dimensions.iter().enumerate() {
-            let stride = self
-                .dimensions
-                .iter()
-                .skip(d + 1)
-                .map(|d| d.1)
-                .fold(1, |d1, d2| d1 * d2);
-            index += n * stride;
-        }
+        let index = flattened_index(&self.dimensions, &mut dimensions)?;
         self.data.get(index)
+    }
+
+    pub(crate) fn _try_get_reference_mut(&mut self, mut dimensions: [(Dimension, usize); D]) -> Option<&mut T> {
+        let index = flattened_index(&self.dimensions, &mut dimensions)?;
+        self.data.get_mut(index)
     }
 
     pub fn view(&self) -> TensorView<T, &Tensor<T, D>, D> {
