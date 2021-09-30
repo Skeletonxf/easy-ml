@@ -25,6 +25,8 @@
 pub mod numeric;
 pub mod linear_algebra;
 pub mod matrices;
+#[allow(dead_code)]
+mod tensors;
 pub mod distributions;
 pub mod differentiation;
 
