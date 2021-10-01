@@ -7,6 +7,12 @@ mod indexes;
 
 pub use indexes::*;
 
+// also need to document that interior mutability is completely banned since batch reference
+// reading relies on view_shape being fixed for entire batch of reads
+// need to document that you will typically want to implement this for &T and &mut T rather than
+// just T.
+// need to then abstract over this as much as possible to have a get_references(&self) method on TensorView
+// since ergonomics of taking by value by accident are pretty bad
 pub unsafe trait TensorRef<T, const D: usize> {
     type Accessor: TensorRefAccess<T, D>;
 

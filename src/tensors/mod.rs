@@ -228,50 +228,7 @@ fn has(dimensions: &[(Dimension, usize)], name: Dimension) -> bool {
     dimensions.iter().any(|d| d.0 == name)
 }
 
-// Given a list of dimension lengths, and a list of indexes, computes the 1 dimensional index
-// into the former specified by the latter.
-fn flattened_index<const D: usize>(
-    dimensions: &[(Dimension, usize); D],
-    indexes: &[(Dimension, usize); D],
-) -> Option<usize> {
-    let mut index = 0;
-    for d in 0..dimensions.len() {
-        let (dimension, length) = dimensions[d];
-        // happy path, fetch index of matching order
-        let (_, i) = if indexes[d].0 == dimension {
-            indexes[d]
-        } else {
-            // If indexes are in a different order, find the matching index by name.
-            // Since both lists are the same length and we know dimensions won't contain duplicates
-            // this also ensures the two lists have exactly the same set of names as otherwise
-            // one of these `find`s will fail.
-            *indexes.iter().find(|(d, _)| *d == dimension)?
-        };
-        // make sure each dimension's index is within bounds of that dimension's length
-        if i >= length {
-            return None;
-        }
-        let stride = dimensions
-            .iter()
-            .skip(d + 1)
-            .map(|d| d.1)
-            .fold(1, |d1, d2| d1 * d2);
-        index += i * stride;
-    }
-    Some(index)
-}
-
 impl<T, const D: usize> Tensor<T, D> {
-    // pub(crate) fn _try_get_reference(&self, mut dimensions: [(Dimension, usize); D]) -> Option<&T> {
-    //     let index = flattened_index(&self.dimensions, &mut dimensions)?;
-    //     self.data.get(index)
-    // }
-    //
-    // pub(crate) fn _try_get_reference_mut(&mut self, mut dimensions: [(Dimension, usize); D]) -> Option<&mut T> {
-    //     let index = flattened_index(&self.dimensions, &mut dimensions)?;
-    //     self.data.get_mut(index)
-    // }
-
     pub fn view(&self) -> TensorView<T, &Tensor<T, D>, D> {
         TensorView::from(self)
     }
@@ -331,6 +288,13 @@ fn repeated_name() {
 #[should_panic]
 fn wrong_size() {
     Tensor::new(vec![1, 2, 3, 4], [of("x", 2), of("y", 3)]);
+}
+
+#[test]
+fn bad_indexing_test() {
+    let tensor = Tensor::new(vec![1, 2, 3, 4], [of("x", 2), of("y", 2)]);
+    let xx = (&tensor).get_references([dimension("x"), dimension("x")]);
+    assert!(xx.is_none());
 }
 
 #[test]
