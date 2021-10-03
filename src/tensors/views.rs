@@ -16,7 +16,6 @@ pub use indexes::*;
 pub unsafe trait TensorRef<T, const D: usize> {
     type Accessor: TensorRefAccess<T, D>;
 
-    // TODO: This really should be a result so we can have proper error handling
     fn get_references(self, dimensions: [Dimension; D]) -> Option<Self::Accessor>;
 
     fn view_shape(&self) -> [(Dimension, usize); D];
@@ -29,11 +28,23 @@ pub unsafe trait TensorRefAccess<T, const D: usize> {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T>;
 }
 
-// pub unsafe trait TensorMut<T, const D: usize>: TensorRef<T, D> {
-//     fn try_get_reference_mut(&mut self, dimensions: [(Dimension, usize); D]) -> Option<&mut T>;
-// }
+pub unsafe trait TensorMut<T, const D: usize>: TensorRef<T, D> {
+    fn get_references_mut(self, dimensions: [Dimension; D]) -> Option<Self::Accessor>;
+}
+
+pub unsafe trait TensorMutAccess<T, const D: usize> {
+    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T>;
+}
 
 pub struct TensorView<T, S, const D: usize> {
+    source: S,
+    _type: PhantomData<T>,
+}
+
+/**
+ * Access to the data in a Tensor with a particular type of dimension indexing.
+ */
+pub struct TensorAccess<T, S, const D: usize> {
     source: S,
     _type: PhantomData<T>,
 }
@@ -49,10 +60,6 @@ where
         }
     }
 
-    pub fn shape(&self) -> [(Dimension, usize); D] {
-        self.source.view_shape()
-    }
-
     pub fn source(self) -> S {
         self.source
     }
@@ -64,6 +71,27 @@ where
     pub fn source_ref_mut(&mut self) -> &mut S {
         &mut self.source
     }
+}
+
+impl <T, S, const D: usize> TensorView<T, S, D>
+where
+    for<'a> &'a S: TensorRef<T, D>
+{
+    #[track_caller]
+    pub fn get(&self, dimensions: [Dimension; D]) -> TensorAccess<T, <&S as TensorRef<T, D>>::Accessor, D> {
+        match self.source.get_references(dimensions) {
+            Some(access) => TensorAccess::from(access),
+            None => panic!(
+                "Unable to index with {:?}, TensorView dimensions are {:?}.",
+                dimensions, self.shape()
+            ),
+        }
+    }
+
+    pub fn shape(&self) -> [(Dimension, usize); D] {
+        (&self.source).view_shape()
+    }
+
     //
     // pub fn try_get_reference(&self, dimensions: [(Dimension, usize); D]) -> Option<&T> {
     //     self.source.try_get_reference(dimensions)
@@ -80,6 +108,108 @@ where
     //     }
     // }
 }
+
+impl <T, S, const D: usize> TensorView<T, S, D>
+where
+    for<'a> &'a mut S: TensorMut<T, D>
+{
+    #[track_caller]
+    pub fn get_mut(&mut self, dimensions: [Dimension; D]) -> TensorAccess<T, <&mut S as TensorRef<T, D>>::Accessor, D> {
+        let shape = (&mut self.source).view_shape();
+        match self.source.get_references_mut(dimensions) {
+            Some(access) => TensorAccess::from(access),
+            None => panic!(
+                "Unable to index with {:?}, TensorView dimensions are {:?}.",
+                dimensions, shape
+            ),
+        }
+    }
+}
+
+impl <T, S, const D: usize> TensorView<T, S, D>
+where
+    S: TensorMut<T, D>
+{
+    #[track_caller]
+    pub fn get_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, <S as TensorRef<T, D>>::Accessor, D> {
+        let shape = self.source.view_shape();
+        match self.source.get_references_mut(dimensions) {
+            Some(access) => TensorAccess::from(access),
+            None => panic!(
+                "Unable to index with {:?}, TensorView dimensions are {:?}.",
+                dimensions, shape
+            ),
+        }
+    }
+}
+
+impl <T, S, const D: usize> TensorAccess<T, S, D>
+where
+    S: TensorRefAccess<T, D>
+{
+    pub fn from(source: S) -> TensorAccess<T, S, D> {
+        TensorAccess {
+            source,
+            _type: PhantomData,
+        }
+    }
+
+    pub fn try_get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        self.source.get_reference(indexes)
+    }
+
+    // FIXME: Need to allow querying view_shape from Accessors
+    #[track_caller]
+    pub fn get_reference(&self, indexes: [usize; D]) -> &T {
+        match self.source.get_reference(indexes) {
+            Some(reference) => reference,
+            None => panic!(
+                "Unable to index with {:?}",
+                indexes,
+            ),
+        }
+    }
+}
+
+impl <T, S, const D: usize> TensorAccess<T, S, D>
+where
+    S: TensorRefAccess<T, D>,
+    T: Clone,
+{
+    // FIXME: Need to allow querying view_shape from Accessors
+    #[track_caller]
+    pub fn get(&self, indexes: [usize; D]) -> T {
+        match self.source.get_reference(indexes) {
+            Some(reference) => reference.clone(),
+            None => panic!(
+                "Unable to index with {:?}",
+                indexes,
+            ),
+        }
+    }
+}
+
+impl <T, S, const D: usize> TensorAccess<T, S, D>
+where
+    S: TensorMutAccess<T, D>
+{
+    pub fn try_get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
+        self.source.get_reference_mut(indexes)
+    }
+
+    // FIXME: Need to allow querying view_shape from Accessors
+    #[track_caller]
+    pub fn get_reference_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        match self.source.get_reference_mut(indexes) {
+            Some(reference) => reference,
+            None => panic!(
+                "Unable to index with {:?}",
+                indexes,
+            ),
+        }
+    }
+}
+
 //
 // impl <T, S, const D: usize> TensorView<T, S, D>
 // where
