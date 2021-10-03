@@ -156,7 +156,9 @@ unsafe impl <'source, T, const D: usize> TensorRef<T, D> for &'source mut Tensor
 }
 
 unsafe impl <'source, T, const D: usize> TensorMut<T, D> for &'source mut Tensor<T, D> {
-    fn get_references_mut(self, dimensions: [Dimension; D]) -> Option<Self::Accessor> {
+    type AccessorMut = TensorMutAccessor<'source, T, D>;
+
+    fn get_references_mut(self, dimensions: [Dimension; D]) -> Option<Self::AccessorMut> {
         self.get_references(dimensions)
     }
 }
@@ -180,7 +182,9 @@ unsafe impl <T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
 }
 
 unsafe impl <T, const D: usize> TensorMut<T, D> for Tensor<T, D> {
-    fn get_references_mut(self, dimensions: [Dimension; D]) -> Option<Self::Accessor> {
+    type AccessorMut = TensorOwnedAccessor<T, D>;
+
+    fn get_references_mut(self, dimensions: [Dimension; D]) -> Option<Self::AccessorMut> {
         self.get_references(dimensions)
     }
 }

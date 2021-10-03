@@ -29,10 +29,12 @@ pub unsafe trait TensorRefAccess<T, const D: usize> {
 }
 
 pub unsafe trait TensorMut<T, const D: usize>: TensorRef<T, D> {
-    fn get_references_mut(self, dimensions: [Dimension; D]) -> Option<Self::Accessor>;
+    type AccessorMut: TensorMutAccess<T, D>;
+
+    fn get_references_mut(self, dimensions: [Dimension; D]) -> Option<Self::AccessorMut>;
 }
 
-pub unsafe trait TensorMutAccess<T, const D: usize> {
+pub unsafe trait TensorMutAccess<T, const D: usize>: TensorRefAccess<T, D> {
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T>;
 }
 
@@ -114,7 +116,7 @@ where
     for<'a> &'a mut S: TensorMut<T, D>
 {
     #[track_caller]
-    pub fn get_mut(&mut self, dimensions: [Dimension; D]) -> TensorAccess<T, <&mut S as TensorRef<T, D>>::Accessor, D> {
+    pub fn get_mut(&mut self, dimensions: [Dimension; D]) -> TensorAccess<T, <&mut S as TensorMut<T, D>>::AccessorMut, D> {
         let shape = (&mut self.source).view_shape();
         match self.source.get_references_mut(dimensions) {
             Some(access) => TensorAccess::from(access),
@@ -131,7 +133,7 @@ where
     S: TensorMut<T, D>
 {
     #[track_caller]
-    pub fn get_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, <S as TensorRef<T, D>>::Accessor, D> {
+    pub fn get_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, <S as TensorMut<T, D>>::AccessorMut, D> {
         let shape = self.source.view_shape();
         match self.source.get_references_mut(dimensions) {
             Some(access) => TensorAccess::from(access),
