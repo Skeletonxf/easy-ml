@@ -1,6 +1,8 @@
-use crate::tensors::views::{TensorAccess, TensorView, TensorRef, TensorMut, TensorRefAccess, TensorMutAccess};
+use crate::tensors::indexing::TensorAccess;
+use crate::tensors::views::{TensorView, TensorRef, TensorMut};
 
 pub mod views;
+pub mod indexing;
 mod dimensions;
 
 pub use dimensions::*;
@@ -9,6 +11,7 @@ pub use dimensions::*;
 pub struct Tensor<T, const D: usize> {
     data: Vec<T>,
     dimensions: [(Dimension, usize); D],
+    strides: [usize; D],
 }
 
 impl<T, const D: usize> Tensor<T, D> {
@@ -24,7 +27,8 @@ impl<T, const D: usize> Tensor<T, D> {
             "Dimension names must all be unique"
         );
 
-        Tensor { data, dimensions }
+        let strides = compute_strides(&dimensions);
+        Tensor { data, dimensions, strides }
     }
 
     pub fn shape(&self) -> [(Dimension, usize); D] {
@@ -32,104 +36,14 @@ impl<T, const D: usize> Tensor<T, D> {
     }
 }
 
-pub struct TensorRefAccessor<'source, T, const D: usize> {
-    tensor: &'source Tensor<T, D>,
-    // mapping from the memory order of the tensor to the dimension order this accessor
-    // was created from
-    dimension_mapping: [usize; D],
-    // strides for each dimension in the memory order of the tensor
-    strides: [usize; D],
-}
-
-pub struct TensorMutAccessor<'source, T, const D: usize> {
-    tensor: &'source mut Tensor<T, D>,
-    // mapping from the memory order of the tensor to the dimension order this accessor
-    // was created from
-    dimension_mapping: [usize; D],
-    // strides for each dimension in the memory order of the tensor
-    strides: [usize; D],
-}
-
-pub struct TensorOwnedAccessor<T, const D: usize> {
-    tensor: Tensor<T, D>,
-    // mapping from the memory order of the tensor to the dimension order this accessor
-    // was created from
-    dimension_mapping: [usize; D],
-    // strides for each dimension in the memory order of the tensor
-    strides: [usize; D],
-}
-
-unsafe impl <'source, T, const D: usize> TensorRefAccess<T, D> for TensorRefAccessor<'source, T, D> {
-    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        let i = get_index(
-            &indexes,
-            &self.dimension_mapping,
-            &self.strides,
-            &self.tensor.dimensions
-        )?;
-        self.tensor.data.get(i)
-    }
-}
-
-unsafe impl <'source, T, const D: usize> TensorRefAccess<T, D> for TensorMutAccessor<'source, T, D> {
-    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        let i = get_index(
-            &indexes,
-            &self.dimension_mapping,
-            &self.strides,
-            &self.tensor.dimensions
-        )?;
-        self.tensor.data.get(i)
-    }
-}
-
-unsafe impl <'source, T, const D: usize> TensorMutAccess<T, D> for TensorMutAccessor<'source, T, D> {
-    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
-        let i = get_index(
-            &indexes,
-            &self.dimension_mapping,
-            &self.strides,
-            &self.tensor.dimensions
-        )?;
-        self.tensor.data.get_mut(i)
-    }
-}
-
-unsafe impl <T, const D: usize> TensorRefAccess<T, D> for TensorOwnedAccessor<T, D> {
-    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        let i = get_index(
-            &indexes,
-            &self.dimension_mapping,
-            &self.strides,
-            &self.tensor.dimensions
-        )?;
-        self.tensor.data.get(i)
-    }
-}
-
-unsafe impl <T, const D: usize> TensorMutAccess<T, D> for TensorOwnedAccessor<T, D> {
-    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
-        let i = get_index(
-            &indexes,
-            &self.dimension_mapping,
-            &self.strides,
-            &self.tensor.dimensions
-        )?;
-        self.tensor.data.get_mut(i)
-    }
-}
-
 unsafe impl <'source, T, const D: usize> TensorRef<T, D> for &'source Tensor<T, D> {
-    type Accessor = TensorRefAccessor<'source, T, D>;
-
-    fn get_references(self, dimensions: [Dimension; D]) -> Option<Self::Accessor> {
-        let dimension_mapping = dimension_mapping(&self.dimensions, &dimensions)?;
-        let strides = compute_strides(&self.dimensions);
-        Some(TensorRefAccessor {
-            dimension_mapping,
-            strides,
-            tensor: self,
-        })
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        let i = get_index_direct(
+            &indexes,
+            &self.strides,
+            &self.dimensions
+        )?;
+        self.data.get(i)
     }
 
     fn view_shape(&self) -> [(Dimension, usize); D] {
@@ -138,16 +52,13 @@ unsafe impl <'source, T, const D: usize> TensorRef<T, D> for &'source Tensor<T, 
 }
 
 unsafe impl <'source, T, const D: usize> TensorRef<T, D> for &'source mut Tensor<T, D> {
-    type Accessor = TensorMutAccessor<'source, T, D>;
-
-    fn get_references(self, dimensions: [Dimension; D]) -> Option<Self::Accessor> {
-        let dimension_mapping = dimension_mapping(&self.dimensions, &dimensions)?;
-        let strides = compute_strides(&self.dimensions);
-        Some(TensorMutAccessor {
-            dimension_mapping,
-            strides,
-            tensor: self,
-        })
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        let i = get_index_direct(
+            &indexes,
+            &self.strides,
+            &self.dimensions
+        )?;
+        self.data.get(i)
     }
 
     fn view_shape(&self) -> [(Dimension, usize); D] {
@@ -156,24 +67,24 @@ unsafe impl <'source, T, const D: usize> TensorRef<T, D> for &'source mut Tensor
 }
 
 unsafe impl <'source, T, const D: usize> TensorMut<T, D> for &'source mut Tensor<T, D> {
-    type AccessorMut = TensorMutAccessor<'source, T, D>;
-
-    fn get_references_mut(self, dimensions: [Dimension; D]) -> Option<Self::AccessorMut> {
-        self.get_references(dimensions)
+    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
+        let i = get_index_direct(
+            &indexes,
+            &self.strides,
+            &self.dimensions
+        )?;
+        self.data.get_mut(i)
     }
 }
 
 unsafe impl <T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
-    type Accessor = TensorOwnedAccessor<T, D>;
-
-    fn get_references(self, dimensions: [Dimension; D]) -> Option<Self::Accessor> {
-        let dimension_mapping = dimension_mapping(&self.dimensions, &dimensions)?;
-        let strides = compute_strides(&self.dimensions);
-        Some(TensorOwnedAccessor {
-            dimension_mapping,
-            strides,
-            tensor: self,
-        })
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        let i = get_index_direct(
+            &indexes,
+            &self.strides,
+            &self.dimensions
+        )?;
+        self.data.get(i)
     }
 
     fn view_shape(&self) -> [(Dimension, usize); D] {
@@ -182,41 +93,14 @@ unsafe impl <T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
 }
 
 unsafe impl <T, const D: usize> TensorMut<T, D> for Tensor<T, D> {
-    type AccessorMut = TensorOwnedAccessor<T, D>;
-
-    fn get_references_mut(self, dimensions: [Dimension; D]) -> Option<Self::AccessorMut> {
-        self.get_references(dimensions)
+    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
+        let i = get_index_direct(
+            &indexes,
+            &self.strides,
+            &self.dimensions
+        )?;
+        self.data.get_mut(i)
     }
-}
-
-// Computes a mapping from a set of dimensions in memory order to a matching set of
-// dimensions in an arbitary order.
-// Returns a list where each dimension in the memory order is mapped to the requested order,
-// such that if the memory order is x,y,z but the requested order is z,y,x then the mapping
-// is [2,1,0] as this maps the first dimension x to the third dimension x, the second dimension y
-// to the second dimension y, and the third dimension z to to the first dimension z.
-fn dimension_mapping<const D: usize>(
-    memory: &[(Dimension, usize); D],
-    requested: &[Dimension; D]
-) -> Option<[usize; D]> {
-    let mut mapping = [ 0; D ];
-    for d in 0..D {
-        let dimension = memory[d].0;
-        // happy path, requested dimension is in the same order as in memory
-        let order = if requested[d] == dimension {
-            d
-        } else {
-            // If dimensions are in a different order, find the requested dimension with the
-            // matching dimension name.
-            // Since both lists are the same length and we know our memory order won't contain
-            // duplicates this also ensures the two lists have exactly the same set of names
-            // as otherwise one of these `find`s will fail.
-            let (n, _) = requested.iter().enumerate().find(|(_, d)| **d == dimension)?;
-            n
-        };
-        mapping[d] = order;
-    }
-    Some(mapping)
 }
 
 fn compute_strides<const D: usize>(dimensions: &[(Dimension, usize); D]) -> [usize; D] {
@@ -233,11 +117,9 @@ fn compute_strides<const D: usize>(dimensions: &[(Dimension, usize); D]) -> [usi
 
 // returns the 1 dimensional index to use to get the requested index into some tensor
 #[inline]
-fn get_index<const D: usize>(
+fn get_index_direct<const D: usize>(
     // indexes to use
     indexes: &[usize; D],
-    // mapping from indexes to memory order of the tensor
-    dimension_mapping: &[usize; D],
     // strides for indexing into the tensor
     strides: &[usize; D],
     // dimensions of the tensor to index into
@@ -245,7 +127,7 @@ fn get_index<const D: usize>(
 ) -> Option<usize> {
     let mut index = 0;
     for d in 0..D {
-        let n = indexes[dimension_mapping[d]];
+        let n = indexes[d];
         if n >= dimensions[d].1 {
             return None;
         }
@@ -282,62 +164,20 @@ impl<T, const D: usize> Tensor<T, D> {
     }
 
     #[track_caller]
-    pub fn get(&self, dimensions: [Dimension; D]) -> TensorAccess<T, TensorRefAccessor<T, D>, D> {
-        match self.get_references(dimensions) {
-            Some(access) => TensorAccess::from(access),
-            None => panic!(
-                "Unable to index {:?}, Tensor dimensions are {:?}.",
-                dimensions, self.shape()
-            ),
-        }
+    pub fn get(&self, dimensions: [Dimension; D]) -> TensorAccess<T, &Tensor<T, D>, D> {
+        TensorAccess::from(self, dimensions)
     }
 
     #[track_caller]
-    pub fn get_mut(&mut self, dimensions: [Dimension; D]) -> TensorAccess<T, TensorMutAccessor<T, D>, D> {
-        let shape = self.shape();
-        match self.get_references(dimensions) {
-            Some(access) => TensorAccess::from(access),
-            None => panic!(
-                "Unable to index {:?}, Tensor dimensions are {:?}.",
-                dimensions, shape
-            ),
-        }
+    pub fn get_mut(&mut self, dimensions: [Dimension; D]) -> TensorAccess<T, &mut Tensor<T, D>, D> {
+        TensorAccess::from(self, dimensions)
     }
 
     #[track_caller]
-    pub fn get_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, TensorOwnedAccessor<T, D>, D> {
-        let shape = self.shape();
-        match self.get_references(dimensions) {
-            Some(access) => TensorAccess::from(access),
-            None => panic!(
-                "Unable to index {:?}, Tensor dimensions are {:?}.",
-                dimensions, shape
-            ),
-        }
+    pub fn get_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, Tensor<T, D>, D> {
+        TensorAccess::from(self, dimensions)
     }
-
-    //
-    // #[track_caller]
-    // pub fn get_reference(&self, dimensions: [(Dimension, usize); D]) -> &T {
-    //     match self.try_get_reference(dimensions) {
-    //         Some(reference) => reference,
-    //         None => panic!(
-    //             "Unable to index with {:?}, Tensor dimensions are {:?}.",
-    //             dimensions, self.shape()
-    //         )
-    //     }
-    // }
 }
-
-// impl<T, const D: usize> Tensor<T, D>
-// where
-//     T: Clone,
-// {
-//     #[track_caller]
-//     pub fn get(&self, dimensions: [(Dimension, usize); D]) -> T {
-//         self.get_reference(dimensions).clone()
-//     }
-// }
 
 #[test]
 fn indexing_test() {
@@ -367,16 +207,8 @@ fn wrong_size() {
 }
 
 #[test]
-fn bad_indexing_test() {
+#[should_panic]
+fn bad_indexing() {
     let tensor = Tensor::new(vec![1, 2, 3, 4], [of("x", 2), of("y", 2)]);
-    let xx = (&tensor).get_references([dimension("x"), dimension("x")]);
-    assert!(xx.is_none());
-}
-
-#[test]
-fn test_dimension_mapping() {
-    let mapping = dimension_mapping(&[of("x", 0), of("y", 0), of("z", 0)], &[dimension("x"), dimension("y"), dimension("z")]);
-    assert_eq!([0, 1, 2], mapping.unwrap());
-    let mapping = dimension_mapping(&[of("x", 0), of("y", 0), of("z", 0)], &[dimension("z"), dimension("y"), dimension("x")]);
-    assert_eq!([2, 1, 0], mapping.unwrap());
+    tensor.get([dimension("x"), dimension("x")]);
 }
