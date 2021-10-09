@@ -46,9 +46,24 @@ where
         &mut self.source
     }
 
-    // TODO: Should create a TensorAccess from a source type which doesn't force a move here
     #[track_caller]
-    pub fn get(self, dimensions: [Dimension; D]) -> TensorAccess<T, S, D> {
+    pub fn get(&self, dimensions: [Dimension; D]) -> TensorAccess<T, TensorViewSourceRef<'_, T, S, D>, D> {
+        TensorAccess::from(TensorViewSourceRef {
+            source: &self.source,
+            _type: PhantomData,
+        }, dimensions)
+    }
+
+    #[track_caller]
+    pub fn get_mut(&mut self, dimensions: [Dimension; D]) -> TensorAccess<T, TensorViewSourceMut<'_, T, S, D>, D> {
+        TensorAccess::from(TensorViewSourceMut {
+            source: &mut self.source,
+            _type: PhantomData,
+        }, dimensions)
+    }
+
+    #[track_caller]
+    pub fn get_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, S, D> {
         TensorAccess::from(self.source, dimensions)
     }
 }
@@ -57,14 +72,53 @@ impl <T, S, const D: usize> TensorView<T, S, D>
 where
     S: TensorMut<T, D>
 {
-    // TODO: Should create a TensorAccess from a source type which doesn't force a move here
-    #[track_caller]
-    pub fn get_mut(self, dimensions: [Dimension; D]) -> TensorAccess<T, S, D> {
-        TensorAccess::from(self.source, dimensions)
+
+}
+
+pub struct TensorViewSourceRef<'s, T, S, const D: usize> {
+    source: &'s S,
+    _type: PhantomData<T>,
+}
+
+pub struct TensorViewSourceMut<'s, T, S, const D: usize> {
+    source: &'s mut S,
+    _type: PhantomData<T>,
+}
+
+unsafe impl <'a, T, S, const D: usize> TensorRef<T, D> for TensorViewSourceRef<'a, T, S, D>
+where
+    S: TensorRef<T, D>
+{
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        self.source.get_reference(indexes)
+    }
+
+    fn view_shape(&self) -> [(Dimension, usize); D] {
+        self.source.view_shape()
     }
 }
 
+unsafe impl <'a, T, S, const D: usize> TensorRef<T, D> for TensorViewSourceMut<'a, T, S, D>
+where
+    S: TensorRef<T, D>
+{
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        self.source.get_reference(indexes)
+    }
 
+    fn view_shape(&self) -> [(Dimension, usize); D] {
+        self.source.view_shape()
+    }
+}
+
+unsafe impl <'a, T, S, const D: usize> TensorMut<T, D> for TensorViewSourceMut<'a, T, S, D>
+where
+    S: TensorMut<T, D>
+{
+    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
+        self.source.get_reference_mut(indexes)
+    }
+}
 
 // impl <T, S> TensorView<T, S, 2>
 // where
