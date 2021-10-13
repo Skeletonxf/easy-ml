@@ -91,6 +91,11 @@ impl <T> Matrix<T> {
 
     /**
      * Creates a row vector (1xN) from a list
+     *
+     * # Panics
+     *
+     * Panics if no values are provided. Note: this method erroneously did not validate its inputs
+     * in Easy ML versions up to and including 1.7.0
      */
     #[track_caller]
     pub fn row(values: Vec<T>) -> Matrix<T> {
@@ -104,6 +109,11 @@ impl <T> Matrix<T> {
 
     /**
      * Creates a column vector (Nx1) from a list
+     *
+     * # Panics
+     *
+     * Panics if no values are provided. Note: this method erroneously did not validate its inputs
+     * in Easy ML versions up to and including 1.7.0
      */
     #[track_caller]
     pub fn column(values: Vec<T>) -> Matrix<T> {
@@ -189,7 +199,9 @@ impl <T> Matrix<T> {
      *
      * # Panics
      *
-     * Panics if the length of the vec does not match the size of the matrix.
+     * Panics if the length of the vec does not match the size of the matrix, or no values are
+     * provided. Note: this method erroneously did not validate its inputs were not empty in
+     * Easy ML versions up to and including 1.7.0
      */
     #[track_caller]
     pub fn from_flat_row_major(size: (Row, Column), values: Vec<T>) -> Matrix<T> {
@@ -878,6 +890,11 @@ impl <T: Clone> Matrix<T> {
 
     /**
      * Creates a matrix of the provided size with all elements initialised to the provided value
+     *
+     * # Panics
+     *
+     * Panics if no values are provided. Note: this method erroneously did not validate its inputs
+     * in Easy ML versions up to and including 1.7.0
      */
     #[track_caller]
     pub fn empty(value: T, size: (Row, Column)) -> Matrix<T> {
