@@ -92,7 +92,9 @@ impl <T> Matrix<T> {
     /**
      * Creates a row vector (1xN) from a list
      */
+    #[track_caller]
     pub fn row(values: Vec<T>) -> Matrix<T> {
+        assert!(!values.is_empty(), "No values provided");
         Matrix {
             columns: values.len(),
             data: values,
@@ -103,7 +105,9 @@ impl <T> Matrix<T> {
     /**
      * Creates a column vector (Nx1) from a list
      */
+    #[track_caller]
     pub fn column(values: Vec<T>) -> Matrix<T> {
+        assert!(!values.is_empty(), "No values provided");
         Matrix {
             rows: values.len(),
             data: values,
@@ -192,6 +196,7 @@ impl <T> Matrix<T> {
         assert!(size.0 * size.1 == values.len(),
             "Inconsistent size, attempted to construct a {}x{} matrix but provided with {} elements.",
             size.0, size.1, values.len());
+        assert!(!values.is_empty(), "No values provided");
         Matrix {
             data: values,
             rows: size.0,
@@ -874,7 +879,9 @@ impl <T: Clone> Matrix<T> {
     /**
      * Creates a matrix of the provided size with all elements initialised to the provided value
      */
+    #[track_caller]
     pub fn empty(value: T, size: (Row, Column)) -> Matrix<T> {
+        assert!(size.0 > 0 && size.1 > 0, "Size must be at least 1x1");
         Matrix {
             data: vec![value; size.0 * size.1],
             rows: size.0,
