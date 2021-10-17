@@ -12,10 +12,12 @@ use serde::{Deserialize, Serialize};
 
 mod errors;
 pub mod iterators;
+mod operations;
 pub mod slices;
 pub mod views;
 
 pub use errors::ScalarConversionError;
+pub use operations::*;
 
 use crate::linear_algebra;
 use crate::matrices::iterators::{
@@ -459,6 +461,12 @@ impl <T> Matrix<T> {
      */
     pub fn row_major_reference_iter(&self) -> RowMajorReferenceIterator<T> {
         RowMajorReferenceIterator::new(self)
+    }
+
+    // Non public row major reference iterator since we don't want to expose our implementation
+    // details to public API since then we could never change them.
+    pub(crate) fn direct_row_major_reference_iter(&self) -> std::slice::Iter<T> {
+        self.data.iter()
     }
 
     /**
