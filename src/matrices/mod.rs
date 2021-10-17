@@ -12,12 +12,11 @@ use serde::{Deserialize, Serialize};
 
 mod errors;
 pub mod iterators;
-mod operations;
+pub mod operations;
 pub mod slices;
 pub mod views;
 
 pub use errors::ScalarConversionError;
-pub use operations::*;
 
 use crate::linear_algebra;
 use crate::matrices::iterators::{
@@ -62,6 +61,10 @@ use crate::numeric::{Numeric, NumericRef};
  * # Matrix layout and iterator performance
  *
  * [See iterators submodule for Matrix layout and iterator performance](iterators#matrix-layout-and-iterator-performance)
+ *
+ * # Matrix operations
+ *
+ * [See operations submodule](operations)
  */
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -1421,213 +1424,6 @@ impl <T: PartialEq> PartialEq for Matrix<T> {
         self.data.iter()
             .zip(other.data.iter())
             .all(|(x, y)| x == y)
-    }
-}
-
-/**
- * Matrix multiplication for two referenced matrices.
- *
- * This is matrix multiplication such that a matrix of dimensionality (LxM) multiplied with
- * a matrix of dimensionality (MxN) yields a new matrix of dimensionality (LxN) with each element
- * corresponding to the sum of products of the ith row in the first matrix and the jth column in
- * the second matrix.
- *
- * Matrices of the wrong sizes will result in a panic. No broadcasting is performed, ie you cannot
- * multiply a (NxM) matrix by a (Nx1) column vector, you must transpose one of the arguments so
- * that the operation is valid.
- */
-impl <T: Numeric> Mul for &Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
-    // Tell the compiler our output type is another matrix of type T
-    type Output = Matrix<T>;
-
-    #[track_caller]
-    #[inline]
-    fn mul(self, rhs: Self) -> Self::Output {
-        // LxM * MxN -> LxN
-        assert!(self.columns() == rhs.rows(),
-            "Mismatched Matrices, left is {}x{}, right is {}x{}, * is only defined for MxN * NxL",
-            self.rows(), self.columns(), rhs.rows(), rhs.columns());
-
-        let mut result = Matrix::empty(self.get(0, 0), (self.rows(), rhs.columns()));
-        for i in 0..self.rows() {
-            for j in 0..rhs.columns() {
-                // compute dot product for each element in the new matrix
-                result.set(i, j,
-                    self.row_reference_iter(i)
-                    .zip(rhs.column_reference_iter(j))
-                    .map(|(x, y)| x * y)
-                    .sum());
-            }
-        }
-        result
-    }
-}
-
-/**
- * Matrix multiplication for two matrices.
- */
-impl <T: Numeric> Mul for Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
-    type Output = Matrix<T>;
-    #[track_caller]
-    #[inline]
-    fn mul(self, rhs: Self) -> Self::Output {
-        &self * &rhs
-    }
-}
-
-/**
- * Matrix multiplication for two matrices with one referenced.
- */
-impl <T: Numeric> Mul<&Matrix<T>> for Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
-    type Output = Matrix<T>;
-    #[track_caller]
-    #[inline]
-    fn mul(self, rhs: &Self) -> Self::Output {
-        &self * rhs
-    }
-}
-
-/**
- * Matrix multiplication for two matrices with one referenced.
- */
-impl <T: Numeric> Mul<Matrix<T>> for &Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
-    type Output = Matrix<T>;
-    #[track_caller]
-    #[inline]
-    fn mul(self, rhs: Matrix<T>) -> Self::Output {
-        self * &rhs
-    }
-}
-
-/**
- * Elementwise addition for two referenced matrices.
- */
-impl <T: Numeric> Add for &Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
-    // Tell the compiler our output type is another matrix of type T
-    type Output = Matrix<T>;
-
-    #[track_caller]
-    #[inline]
-    fn add(self, rhs: Self) -> Self::Output {
-        // LxM + LxM -> LxM
-        assert!(self.size() == rhs.size(),
-            "Mismatched Matrices, left is {}x{}, right is {}x{}, + is only defined for MxN + MxN",
-            self.rows(), self.columns(), rhs.rows(), rhs.columns());
-
-        let values = self.data
-            .iter()
-            .zip(rhs.data.iter())
-            .map(|(x, y)| x + y)
-            .collect();
-        Matrix::from_flat_row_major(self.size(), values)
-    }
-}
-
-/**
- * Elementwise addition for two matrices.
- */
-impl <T: Numeric> Add for Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
-    type Output = Matrix<T>;
-    #[track_caller]
-    #[inline]
-    fn add(self, rhs: Self) -> Self::Output {
-        &self + &rhs
-    }
-}
-
-/**
- * Elementwise addition for two matrices with one referenced.
- */
-impl <T: Numeric> Add<&Matrix<T>> for Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
-    type Output = Matrix<T>;
-    #[track_caller]
-    #[inline]
-    fn add(self, rhs: &Self) -> Self::Output {
-        &self + rhs
-    }
-}
-
-/**
- * Elementwise addition for two matrices with one referenced.
- */
-impl <T: Numeric> Add<Matrix<T>> for &Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
-    type Output = Matrix<T>;
-    #[track_caller]
-    #[inline]
-    fn add(self, rhs: Matrix<T>) -> Self::Output {
-        self + &rhs
-    }
-}
-
-/**
- * Elementwise subtraction for two referenced matrices.
- */
-impl <T: Numeric> Sub for &Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
-    // Tell the compiler our output type is another matrix of type T
-    type Output = Matrix<T>;
-
-    #[track_caller]
-    #[inline]
-    fn sub(self, rhs: Self) -> Self::Output {
-        // LxM - LxM -> LxM
-        assert!(self.size() == rhs.size(),
-            "Mismatched Matrices, left is {}x{}, right is {}x{}, - is only defined for MxN - MxN",
-            self.rows(), self.columns(), rhs.rows(), rhs.columns());
-
-        let values = self.data
-            .iter()
-            .zip(rhs.data.iter())
-            .map(|(x, y)| x - y)
-            .collect();
-        Matrix::from_flat_row_major(self.size(), values)
-    }
-}
-
-/**
- * Elementwise subtraction for two matrices.
- */
-impl <T: Numeric> Sub for Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
-    type Output = Matrix<T>;
-    #[track_caller]
-    #[inline]
-    fn sub(self, rhs: Self) -> Self::Output {
-        &self - &rhs
-    }
-}
-
-/**
- * Elementwise subtraction for two matrices with one referenced.
- */
-impl <T: Numeric> Sub<&Matrix<T>> for Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
-    type Output = Matrix<T>;
-    #[track_caller]
-    #[inline]
-    fn sub(self, rhs: &Self) -> Self::Output {
-        &self - rhs
-    }
-}
-
-/**
- * Elementwise subtraction for two matrices with one referenced.
- */
-impl <T: Numeric> Sub<Matrix<T>> for &Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
-    type Output = Matrix<T>;
-    #[track_caller]
-    #[inline]
-    fn sub(self, rhs: Matrix<T>) -> Self::Output {
-        self - &rhs
     }
 }
 

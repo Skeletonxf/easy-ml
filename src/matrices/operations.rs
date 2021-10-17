@@ -1,3 +1,28 @@
+/*!
+ * Matrix operations.
+ *
+ * [Numeric](crate::numeric) type matrices implement elementwise addition and subtraction and
+ * matrix multiplication.
+ *
+ * When doing numeric operations with matrices you should be careful to not consume a matrix by
+ * accidentally using it by value. All the operations are also defined on references to matrices
+ * so you should favor &x * &y style notation for matrices you intend to continue using.
+ * There are also convenience operations defined for a matrix and a scalar.
+ *
+ * These implementations are written here but Rust docs will display them on their implemented
+ * types. All 16 combinations of owned and referenced [Matrix](crate::matrices::Matrix) and
+ * [MatrixView](crate::matrices::views::MatrixView) operations are implemented.
+ *
+ * Matrix multiplication is such that a matrix of dimensionality (LxM) multiplied with
+ * a matrix of dimensionality (MxN) yields a new matrix of dimensionality (LxN) with each element
+ * corresponding to the sum of products of the ith row in the first matrix and the jth column in
+ * the second matrix.
+ *
+ * Operations on matrices of the wrong sizes will result in a panic. No broadcasting is performed,
+ * ie you cannot multiply a (NxM) matrix by a (Nx1) column vector, you must transpose one of the
+ * arguments so that the operation is valid.
+ */
+
 use crate::matrices::{Column, Row, Matrix};
 use crate::matrices::views::{MatrixView, MatrixRef, NoInteriorMutability};
 use crate::matrices::iterators::{RowReferenceIterator, ColumnReferenceIterator, RowMajorReferenceIterator};
@@ -5,8 +30,7 @@ use crate::numeric::{Numeric, NumericRef};
 
 use std::ops::{Add, Mul, Sub};
 
-// TODO: Port last 4 matrix op matrix impls to this macro system now that matrix_view_addition_iter
-// and matrix_view_subtraction_iter can make use of direct_row_major_reference_iter.
+// TODO: Scalar ops and porting existing Matrix versions
 
 #[track_caller]
 #[inline]
@@ -687,6 +711,195 @@ macro_rules! matrix_value_matrix_view_value_operation_iter {
 matrix_value_matrix_view_value_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for a matrix and a matrix view");
 matrix_value_matrix_view_value_operation_iter!(impl Sub for Matrix { fn sub } matrix_view_subtraction_iter "Elementwise subtraction for a matrix and a matrix view");
 matrix_value_matrix_view_value_operation!(impl Mul for Matrix { fn mul } matrix_view_multiplication "Matrix multiplication for a matrix and a matrix view");
+
+macro_rules! matrix_reference_matrix_reference_operation {
+    (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl <T> $op<&Matrix<T>> for &Matrix<T>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Matrix<T>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &Matrix<T>) -> Self::Output {
+                $implementation::<T, Matrix<T>, Matrix<T>>(self, rhs)
+            }
+        }
+    }
+}
+
+macro_rules! matrix_reference_matrix_reference_operation_iter {
+    (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl <T> $op<&Matrix<T>> for &Matrix<T>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Matrix<T>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &Matrix<T>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self.direct_row_major_reference_iter(),
+                    self.size(),
+                    rhs.direct_row_major_reference_iter(),
+                    rhs.size()
+                )
+            }
+        }
+    }
+}
+
+matrix_reference_matrix_reference_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for two referenced matrices");
+matrix_reference_matrix_reference_operation_iter!(impl Sub for Matrix { fn sub } matrix_view_subtraction_iter "Elementwise subtraction for two referenced matrices");
+matrix_reference_matrix_reference_operation!(impl Mul for Matrix { fn mul } matrix_view_multiplication "Matrix multiplication for two referenced matrices");
+
+macro_rules! matrix_reference_matrix_value_operation {
+    (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl <T> $op<Matrix<T>> for &Matrix<T>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Matrix<T>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: Matrix<T>) -> Self::Output {
+                $implementation::<T, Matrix<T>, Matrix<T>>(self, &rhs)
+            }
+        }
+    }
+}
+
+macro_rules! matrix_reference_matrix_value_operation_iter {
+    (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl <T> $op<Matrix<T>> for &Matrix<T>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Matrix<T>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: Matrix<T>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self.direct_row_major_reference_iter(),
+                    self.size(),
+                    rhs.direct_row_major_reference_iter(),
+                    rhs.size()
+                )
+            }
+        }
+    }
+}
+
+matrix_reference_matrix_value_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for two matrices with one referenced");
+matrix_reference_matrix_value_operation_iter!(impl Sub for Matrix { fn sub } matrix_view_subtraction_iter "Elementwise subtraction for two matrices with one referenced");
+matrix_reference_matrix_value_operation!(impl Mul for Matrix { fn mul } matrix_view_multiplication "Matrix multiplication for two matrices with one referenced");
+
+macro_rules! matrix_value_matrix_reference_operation {
+    (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl <T> $op<&Matrix<T>> for Matrix<T>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Matrix<T>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &Matrix<T>) -> Self::Output {
+                $implementation::<T, Matrix<T>, Matrix<T>>(&self, rhs)
+            }
+        }
+    }
+}
+
+macro_rules! matrix_value_matrix_reference_operation_iter {
+    (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl <T> $op<&Matrix<T>> for Matrix<T>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Matrix<T>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &Matrix<T>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self.direct_row_major_reference_iter(),
+                    self.size(),
+                    rhs.direct_row_major_reference_iter(),
+                    rhs.size()
+                )
+            }
+        }
+    }
+}
+
+matrix_value_matrix_reference_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for two matrices with one referenced");
+matrix_value_matrix_reference_operation_iter!(impl Sub for Matrix { fn sub } matrix_view_subtraction_iter "Elementwise subtraction for two matrices with one referenced");
+matrix_value_matrix_reference_operation!(impl Mul for Matrix { fn mul } matrix_view_multiplication "Matrix multiplication for two matrices with one referenced");
+
+macro_rules! matrix_value_matrix_value_operation {
+    (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl <T> $op<Matrix<T>> for Matrix<T>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Matrix<T>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: Matrix<T>) -> Self::Output {
+                $implementation::<T, Matrix<T>, Matrix<T>>(&self, &rhs)
+            }
+        }
+    }
+}
+
+macro_rules! matrix_value_matrix_value_operation_iter {
+    (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl <T> $op<Matrix<T>> for Matrix<T>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Matrix<T>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: Matrix<T>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self.direct_row_major_reference_iter(),
+                    self.size(),
+                    rhs.direct_row_major_reference_iter(),
+                    rhs.size()
+                )
+            }
+        }
+    }
+}
+
+matrix_value_matrix_value_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for two matrices");
+matrix_value_matrix_value_operation_iter!(impl Sub for Matrix { fn sub } matrix_view_subtraction_iter "Elementwise subtraction for two matrices");
+matrix_value_matrix_value_operation!(impl Mul for Matrix { fn mul } matrix_view_multiplication "Matrix multiplication for two matrices");
+
 
 #[test]
 fn test_all_16_combinations() {
