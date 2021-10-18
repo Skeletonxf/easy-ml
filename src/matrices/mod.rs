@@ -5,7 +5,7 @@
  * the matrix can be used in a mathematical way.
  */
 
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::ops::{Add, Div, Mul, Sub};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -1426,122 +1426,6 @@ impl <T: PartialEq> PartialEq for Matrix<T> {
             .all(|(x, y)| x == y)
     }
 }
-
-/**
- * Elementwise negation for a referenced matrix.
- */
-impl <T: Numeric> Neg for &Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
-    // Tell the compiler our output type is another matrix of type T
-    type Output = Matrix<T>;
-
-    #[inline]
-    fn neg(self) -> Self::Output {
-        self.map(|v| -v)
-    }
-}
-
-/**
- * Elementwise negation for a matrix.
- */
-impl <T: Numeric> Neg for Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
-    // Tell the compiler our output type is another matrix of type T
-    type Output = Matrix<T>;
-
-    #[inline]
-    fn neg(self) -> Self::Output {
-        - &self
-    }
-}
-
-macro_rules! matrix_scalar_reference_reference {
-    (impl $op:tt for Matrix { fn $method:ident }) => {
-        /**
-         * Operation for a matrix and scalar by reference. The scalar is applied to
-         * all elements, this is a shorthand for map().
-         */
-         impl <T: Numeric> $op<&T> for &Matrix<T>
-         where for<'a> &'a T: NumericRef<T> {
-             type Output = Matrix<T>;
-             #[inline]
-             fn $method(self, rhs: &T) -> Self::Output {
-                 self.map(|x| (x).$method(rhs.clone()))
-             }
-         }
-    }
-}
-
-macro_rules! matrix_scalar_value_value {
-    (impl $op:tt for Matrix { fn $method:ident }) => {
-        /**
-         * Operation for a matrix and scalar by value. The scalar is applied to
-         * all elements, this is a shorthand for map().
-         */
-         impl <T: Numeric> $op<T> for Matrix<T>
-         where for<'a> &'a T: NumericRef<T> {
-             type Output = Matrix<T>;
-             #[inline]
-             fn $method(self, rhs: T) -> Self::Output {
-                 self.map(|x| (x).$method(rhs.clone()))
-             }
-         }
-    }
-}
-
-macro_rules! matrix_scalar_value_reference {
-    (impl $op:tt for Matrix { fn $method:ident }) => {
-        /**
-         * Operation for a matrix by value and scalar by reference. The scalar is applied to
-         * all elements, this is a shorthand for map().
-         */
-         impl <T: Numeric> $op<&T> for Matrix<T>
-         where for<'a> &'a T: NumericRef<T> {
-             type Output = Matrix<T>;
-             #[inline]
-             fn $method(self, rhs: &T) -> Self::Output {
-                 self.map(|x| (x).$method(rhs.clone()))
-             }
-         }
-    }
-}
-
-macro_rules! matrix_scalar_reference_value {
-    (impl $op:tt for Matrix { fn $method:ident }) => {
-        /**
-         * Operation for a matrix by reference and scalar by value. The scalar is applied to
-         * all elements, this is a shorthand for map().
-         */
-         impl <T: Numeric> $op<T> for &Matrix<T>
-         where for<'a> &'a T: NumericRef<T> {
-             type Output = Matrix<T>;
-             #[inline]
-             fn $method(self, rhs: T) -> Self::Output {
-                 self.map(|x| (x).$method(rhs.clone()))
-             }
-         }
-    }
-}
-
-matrix_scalar_reference_reference!(impl Add for Matrix { fn add });
-matrix_scalar_value_reference!(impl Add for Matrix { fn add });
-matrix_scalar_reference_value!(impl Add for Matrix { fn add });
-matrix_scalar_value_value!(impl Add for Matrix { fn add });
-
-matrix_scalar_reference_reference!(impl Sub for Matrix { fn sub });
-matrix_scalar_value_reference!(impl Sub for Matrix { fn sub });
-matrix_scalar_reference_value!(impl Sub for Matrix { fn sub });
-matrix_scalar_value_value!(impl Sub for Matrix { fn sub });
-
-matrix_scalar_reference_reference!(impl Mul for Matrix { fn mul });
-matrix_scalar_value_reference!(impl Mul for Matrix { fn mul });
-matrix_scalar_reference_value!(impl Mul for Matrix { fn mul });
-matrix_scalar_value_value!(impl Mul for Matrix { fn mul });
-
-matrix_scalar_reference_reference!(impl Div for Matrix { fn div });
-matrix_scalar_value_reference!(impl Div for Matrix { fn div });
-matrix_scalar_reference_value!(impl Div for Matrix { fn div });
-matrix_scalar_value_value!(impl Div for Matrix { fn div });
 
 #[test]
 fn test_sync() {

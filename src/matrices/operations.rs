@@ -28,7 +28,7 @@ use crate::matrices::views::{MatrixView, MatrixRef, NoInteriorMutability};
 use crate::matrices::iterators::{RowReferenceIterator, ColumnReferenceIterator, RowMajorReferenceIterator};
 use crate::numeric::{Numeric, NumericRef};
 
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 // TODO: Scalar ops and porting existing Matrix versions
 
@@ -900,7 +900,6 @@ matrix_value_matrix_value_operation_iter!(impl Add for Matrix { fn add } matrix_
 matrix_value_matrix_value_operation_iter!(impl Sub for Matrix { fn sub } matrix_view_subtraction_iter "Elementwise subtraction for two matrices");
 matrix_value_matrix_value_operation!(impl Mul for Matrix { fn mul } matrix_view_multiplication "Matrix multiplication for two matrices");
 
-
 #[test]
 fn test_all_16_combinations() {
     fn matrix() -> Matrix<i8> {
@@ -930,3 +929,255 @@ fn test_all_16_combinations() {
         assert_eq!(total.scalar(), 2);
     }
 }
+
+/**
+ * Elementwise negation for a referenced matrix.
+ */
+impl <T: Numeric> Neg for &Matrix<T>
+where for<'a> &'a T: NumericRef<T> {
+    type Output = Matrix<T>;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        self.map(|v| -v)
+    }
+}
+
+/**
+ * Elementwise negation for a matrix.
+ */
+impl <T: Numeric> Neg for Matrix<T>
+where for<'a> &'a T: NumericRef<T> {
+    type Output = Matrix<T>;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        - &self
+    }
+}
+
+/**
+ * Elementwise negation for a referenced matrix view.
+ */
+impl <T, S> Neg for &MatrixView<T, S>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+    S: MatrixRef<T>,
+{
+    type Output = Matrix<T>;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        self.map(|v| -v)
+    }
+}
+
+/**
+ * Elementwise negation for a matrix view.
+ */
+ impl <T, S> Neg for MatrixView<T, S>
+ where
+     T: Numeric,
+     for<'a> &'a T: NumericRef<T>,
+     S: MatrixRef<T>,
+{
+    type Output = Matrix<T>;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        - &self
+    }
+}
+
+macro_rules! matrix_scalar_reference_reference {
+    (impl $op:tt for Matrix { fn $method:ident }) => {
+        /**
+         * Operation for a matrix and scalar by reference. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+         impl <T: Numeric> $op<&T> for &Matrix<T>
+         where for<'a> &'a T: NumericRef<T> {
+             type Output = Matrix<T>;
+             #[inline]
+             fn $method(self, rhs: &T) -> Self::Output {
+                 self.map(|x| (x).$method(rhs.clone()))
+             }
+         }
+    }
+}
+
+macro_rules! matrix_view_scalar_reference_reference {
+    (impl $op:tt for MatrixView { fn $method:ident }) => {
+        /**
+         * Operation for a matrix view and scalar by reference. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+         impl <T, S> $op<&T> for &MatrixView<T, S>
+         where
+             T: Numeric,
+             for<'a> &'a T: NumericRef<T>,
+             S: MatrixRef<T>,
+        {
+             type Output = Matrix<T>;
+             #[inline]
+             fn $method(self, rhs: &T) -> Self::Output {
+                 self.map(|x| (x).$method(rhs.clone()))
+             }
+         }
+    }
+}
+
+matrix_scalar_reference_reference!(impl Add for Matrix { fn add });
+matrix_scalar_reference_reference!(impl Sub for Matrix { fn sub });
+matrix_scalar_reference_reference!(impl Mul for Matrix { fn mul });
+matrix_scalar_reference_reference!(impl Div for Matrix { fn div });
+
+matrix_view_scalar_reference_reference!(impl Add for MatrixView { fn add });
+matrix_view_scalar_reference_reference!(impl Sub for MatrixView { fn sub });
+matrix_view_scalar_reference_reference!(impl Mul for MatrixView { fn mul });
+matrix_view_scalar_reference_reference!(impl Div for MatrixView { fn div });
+
+macro_rules! matrix_scalar_value_reference {
+    (impl $op:tt for Matrix { fn $method:ident }) => {
+        /**
+         * Operation for a matrix by value and scalar by reference. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+         impl <T: Numeric> $op<&T> for Matrix<T>
+         where for<'a> &'a T: NumericRef<T> {
+             type Output = Matrix<T>;
+             #[inline]
+             fn $method(self, rhs: &T) -> Self::Output {
+                 self.map(|x| (x).$method(rhs.clone()))
+             }
+         }
+    }
+}
+
+macro_rules! matrix_view_scalar_value_reference {
+    (impl $op:tt for MatrixView { fn $method:ident }) => {
+        /**
+         * Operation for a matrix viiew by value and scalar by reference. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+         impl <T, S> $op<&T> for MatrixView<T, S>
+         where
+             T: Numeric,
+             for<'a> &'a T: NumericRef<T>,
+             S: MatrixRef<T>,
+        {
+             type Output = Matrix<T>;
+             #[inline]
+             fn $method(self, rhs: &T) -> Self::Output {
+                 self.map(|x| (x).$method(rhs.clone()))
+             }
+         }
+    }
+}
+
+matrix_scalar_value_reference!(impl Add for Matrix { fn add });
+matrix_scalar_value_reference!(impl Sub for Matrix { fn sub });
+matrix_scalar_value_reference!(impl Mul for Matrix { fn mul });
+matrix_scalar_value_reference!(impl Div for Matrix { fn div });
+
+matrix_view_scalar_value_reference!(impl Add for MatrixView { fn add });
+matrix_view_scalar_value_reference!(impl Sub for MatrixView { fn sub });
+matrix_view_scalar_value_reference!(impl Mul for MatrixView { fn mul });
+matrix_view_scalar_value_reference!(impl Div for MatrixView { fn div });
+
+macro_rules! matrix_scalar_reference_value {
+    (impl $op:tt for Matrix { fn $method:ident }) => {
+        /**
+         * Operation for a matrix by reference and scalar by value. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+         impl <T: Numeric> $op<T> for &Matrix<T>
+         where for<'a> &'a T: NumericRef<T> {
+             type Output = Matrix<T>;
+             #[inline]
+             fn $method(self, rhs: T) -> Self::Output {
+                 self.map(|x| (x).$method(rhs.clone()))
+             }
+         }
+    }
+}
+
+macro_rules! matrix_view_scalar_reference_value {
+    (impl $op:tt for MatrixView { fn $method:ident }) => {
+        /**
+         * Operation for a matrix view by reference and scalar by value. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+         impl <T, S> $op<T> for &MatrixView<T, S>
+         where
+             T: Numeric,
+             for<'a> &'a T: NumericRef<T>,
+             S: MatrixRef<T>,
+        {
+             type Output = Matrix<T>;
+             #[inline]
+             fn $method(self, rhs: T) -> Self::Output {
+                 self.map(|x| (x).$method(rhs.clone()))
+             }
+         }
+    }
+}
+
+matrix_scalar_reference_value!(impl Add for Matrix { fn add });
+matrix_scalar_reference_value!(impl Sub for Matrix { fn sub });
+matrix_scalar_reference_value!(impl Mul for Matrix { fn mul });
+matrix_scalar_reference_value!(impl Div for Matrix { fn div });
+
+matrix_view_scalar_reference_value!(impl Add for MatrixView { fn add });
+matrix_view_scalar_reference_value!(impl Sub for MatrixView { fn sub });
+matrix_view_scalar_reference_value!(impl Mul for MatrixView { fn mul });
+matrix_view_scalar_reference_value!(impl Div for MatrixView { fn div });
+
+macro_rules! matrix_scalar_value_value {
+    (impl $op:tt for Matrix { fn $method:ident }) => {
+        /**
+         * Operation for a matrix and scalar by value. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+         impl <T: Numeric> $op<T> for Matrix<T>
+         where for<'a> &'a T: NumericRef<T> {
+             type Output = Matrix<T>;
+             #[inline]
+             fn $method(self, rhs: T) -> Self::Output {
+                 self.map(|x| (x).$method(rhs.clone()))
+             }
+         }
+    }
+}
+
+macro_rules! matrix_view_scalar_value_value {
+    (impl $op:tt for MatrixView { fn $method:ident }) => {
+        /**
+         * Operation for a matrix view and scalar by value. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+         impl <T, S> $op<T> for MatrixView<T, S>
+         where
+             T: Numeric,
+             for<'a> &'a T: NumericRef<T>,
+             S: MatrixRef<T>,
+        {
+             type Output = Matrix<T>;
+             #[inline]
+             fn $method(self, rhs: T) -> Self::Output {
+                 self.map(|x| (x).$method(rhs.clone()))
+             }
+         }
+    }
+}
+
+matrix_scalar_value_value!(impl Add for Matrix { fn add });
+matrix_scalar_value_value!(impl Sub for Matrix { fn sub });
+matrix_scalar_value_value!(impl Mul for Matrix { fn mul });
+matrix_scalar_value_value!(impl Div for Matrix { fn div });
+
+matrix_view_scalar_value_value!(impl Add for MatrixView { fn add });
+matrix_view_scalar_value_value!(impl Sub for MatrixView { fn sub });
+matrix_view_scalar_value_value!(impl Mul for MatrixView { fn mul });
+matrix_view_scalar_value_value!(impl Div for MatrixView { fn div });
