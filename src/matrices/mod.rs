@@ -590,8 +590,42 @@ impl <T> Matrix<T> {
         }
     }
 
+    /**
+     * Partition a matrix into an arbitary number of non overlapping parts.
+     *
+     * **This function is much like a hammer you should be careful to not overuse. If you don't need
+     * to mutate the parts of the matrix data individually it will be much easier and less error
+     * prone to create immutable views into the matrix using [MatrixRange](views::MatrixRange)
+     * instead.**
+     *
+     * Parts are returned in row major order, forming a grid of slices into the Matrix data that
+     * can be mutated independently.
+     *
+     * # Panics
+     *
+     * Panics if any row or column index is greater than the number of rows or columns in the
+     * matrix. Each list of row partitions and column partitions must also be in ascending order.
+     *
+     * # Further Info
+     *
+     * The partitions form the boundries between each slice of matrix data. Hence, for each
+     * dimension, each partition may range between 0 and the length of the dimension inclusive.
+     *
+     * For one dimension of length 5, you can supply 0 up to 6 partitions,
+     * `[0,1,2,3,4,5]` would split that dimension into 7, 0 to 0, 0 to 1, 1 to 2,
+     * 2 to 3, 3 to 4, 4 to 5 and 5 to 5. 0 to 0 and 5 to 5 would of course be empty and the
+     * 5 parts in between would each be of length 1 along that dimension.
+     * `[2,4]` would instead split that dimension into three parts of 0 to 2, 2 to 4, and 4 to 5.
+     * `[]` would not split that dimension at all, and give a single part of 0 to 5.
+     *
+     * `partition` does this along both dimensions, and returns the parts in row major order, so
+     * you will receive a list of R+1 * C+1 length where R is the length of the row partitions
+     * provided and C is the length of the column partitions provided. If you just want to split
+     * a matrix into a 2x2 grid see [`partition_quadrants`](Matrix::partition_quadrants) which
+     * provides a dedicated API with more ergonomics for extracting the parts.
+     */
     #[track_caller]
-    fn partition(
+    pub fn partition(
         &mut self,
         row_partitions: &[Row],
         column_partitions: &[Column]
@@ -656,7 +690,7 @@ impl <T> Matrix<T> {
                 let rows = slices.len();
                 let columns = slices.get(0).map(|columns| columns.len()).unwrap_or(0);
                 if columns == 0 {
-                    // We may have allocated N rows but if each column in that row has no size so
+                    // We may have allocated N rows but if each column in that row has no size
                     // our actual size is 0x0
                     MatrixView::from(MatrixPart::new(slices, 0, 0))
                 } else {

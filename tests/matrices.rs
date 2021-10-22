@@ -335,4 +335,50 @@ mod tests {
             assert_eq!(parts.bottom_right.size(), (0, 0));
         }
     }
+
+    #[test]
+    fn check_general_partition() {
+        use std::ops::Range;
+        let mut matrix = Matrix::from_flat_row_major((10, 10), (0..100).collect());
+        let partitions: [&[usize]; 6] = [
+            &[ 3 ],
+            &[ 2, 5, ],
+            &[ 0, 10 ],
+            &[ 0, 3, 10, ],
+            &[ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ],
+            &[],
+        ];
+        let expected_slice_sizes: [&[Range<usize>]; 6] = [
+            &[ 0..3, 3..10 ],
+            &[ 0..2, 2..5, 5..10 ],
+            &[ 0..0, 0..10, 10..10 ],
+            &[ 0..0, 0..3, 3..10, 10..10 ],
+            &[ 0..0, 0..1, 1..2, 2..3, 3..4, 4..5, 5..6, 6..7, 7..8, 8..9, 9..10, 10..10 ],
+            &[ 0..10 ],
+        ];
+        for r in 0..6 {
+            for c in 0..6 {
+                let row_partitions = partitions[r];
+                let column_partitions = partitions[c];
+                let parts = matrix.partition(row_partitions, column_partitions);
+                let expected_parts = (row_partitions.len() + 1) * (column_partitions.len() + 1);
+                assert_eq!(expected_parts, parts.len());
+                let expected_row_slices = expected_slice_sizes[r];
+                let expected_column_slices = expected_slice_sizes[c];
+                let parts_per_column = column_partitions.len() + 1;
+                for (i, part) in parts.iter().enumerate() {
+                    let (row_slice, column_slice) = (i / parts_per_column, i % parts_per_column);
+                    let expected_slice = (
+                        expected_row_slices[row_slice].clone(),
+                        expected_column_slices[column_slice].clone()
+                    );
+                    let expected_size = (expected_slice.0.len(), expected_slice.1.len());
+                    match expected_size {
+                        (0, _) | (_, 0) => assert_eq!(part.size(), (0, 0)),
+                        size => assert_eq!(part.size(), size),
+                    };
+                }
+            }
+        }
+    }
 }

@@ -30,7 +30,7 @@ use crate::numeric::{Numeric, NumericRef};
 
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-// TODO: Scalar ops and porting existing Matrix versions
+// TODO: Unify partial eq implementations
 
 #[track_caller]
 #[inline]

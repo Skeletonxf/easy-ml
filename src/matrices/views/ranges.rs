@@ -9,6 +9,9 @@ use std::marker::PhantomData;
  *
  * The entire source is still owned by the MatrixRange however, so this does not permit
  * creating multiple mutable ranges into a single matrix even if they wouldn't overlap.
+ *
+ * For non overlapping mutable ranges into a single matrix see
+ * [`partition`](crate::matrices::Matrix::partition).
  */
 #[derive(Clone, Debug)]
 pub struct MatrixRange<T, S> {

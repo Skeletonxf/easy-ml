@@ -25,8 +25,7 @@ use crate::matrices::views::{DataLayout, MatrixView, MatrixRef, MatrixMut};
  * a Matrix into multiple non overlapping parts. The Matrix can then be independently mutated
  * by each of the MatrixParts.
  *
- * See
- * - [`Matrix::partition_quadrants`](Matrix::partition_quadrants)
+ * See [`Matrix::partition_quadrants`](Matrix::partition_quadrants)
  */
 #[derive(Debug)]
 pub struct MatrixPart<'source, T> {
@@ -97,6 +96,11 @@ unsafe impl <'a, T> MatrixMut<T> for MatrixPart<'a, T> {
     }
 }
 
+/**
+ * Four [parts](MatrixPart) of a Matrix which can be mutated individually.
+ *
+ * See [`Matrix::partition_quadrants`](crate::matrices::Matrix::partition_quadrants).
+ */
 #[derive(Debug)]
 pub struct MatrixQuadrants<'source, T> {
     pub top_left: MatrixView<T, MatrixPart<'source, T>>,
