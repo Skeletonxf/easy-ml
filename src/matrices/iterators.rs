@@ -780,6 +780,14 @@ impl <'a, T, S: MatrixRef<T>> ColumnMajorReferenceIterator<'a, T, S> {
             _type: PhantomData,
         }
     }
+
+    /**
+     * Constructors an iterator which also yields the row and column index of each element in
+     * this iterator.
+     */
+    pub fn with_index_iter(self) -> WithIndex<Self> {
+        WithIndex { iterator: self }
+    }
 }
 
 impl <'a, T, S: MatrixRef<T>> Iterator for ColumnMajorReferenceIterator<'a, T, S> {
@@ -809,6 +817,17 @@ impl <'a, T, S: MatrixRef<T>> Iterator for ColumnMajorReferenceIterator<'a, T, S
 
 impl <'a, T, S: MatrixRef<T>> FusedIterator for ColumnMajorReferenceIterator<'a, T, S> {}
 impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for ColumnMajorReferenceIterator<'a, T, S> {}
+
+impl <'a, T, S: MatrixRef<T>> Iterator for WithIndex<ColumnMajorReferenceIterator<'a, T, S>> {
+    type Item = (&'a T, Row, Column);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (row, column) = (self.iterator.row_counter, self.iterator.column_counter);
+        self.iterator.next().map(|i| (i, row, column))
+    }
+}
+impl <'a, T, S: MatrixRef<T>> FusedIterator for WithIndex<ColumnMajorReferenceIterator<'a, T, S>> {}
+impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for WithIndex<ColumnMajorReferenceIterator<'a, T, S>> {}
 
 /**
  * A row major iterator over references to all values in a matrix.
@@ -857,6 +876,14 @@ impl <'a, T, S: MatrixRef<T>> RowMajorReferenceIterator<'a, T, S> {
             _type: PhantomData,
         }
     }
+
+    /**
+     * Constructors an iterator which also yields the row and column index of each element in
+     * this iterator.
+     */
+    pub fn with_index_iter(self) -> WithIndex<Self> {
+        WithIndex { iterator: self }
+    }
 }
 
 impl <'a, T, S: MatrixRef<T>> Iterator for RowMajorReferenceIterator<'a, T, S> {
@@ -886,6 +913,17 @@ impl <'a, T, S: MatrixRef<T>> Iterator for RowMajorReferenceIterator<'a, T, S> {
 
 impl <'a, T, S: MatrixRef<T>> FusedIterator for RowMajorReferenceIterator<'a, T, S> {}
 impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for RowMajorReferenceIterator<'a, T, S> {}
+
+impl <'a, T, S: MatrixRef<T>> Iterator for WithIndex<RowMajorReferenceIterator<'a, T, S>> {
+    type Item = (&'a T, Row, Column);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (row, column) = (self.iterator.row_counter, self.iterator.column_counter);
+        self.iterator.next().map(|i| (i, row, column))
+    }
+}
+impl <'a, T, S: MatrixRef<T>> FusedIterator for WithIndex<RowMajorReferenceIterator<'a, T, S>> {}
+impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for WithIndex<RowMajorReferenceIterator<'a, T, S>> {}
 
 /**
  * An iterator over the main diagonal in a matrix.
@@ -1068,6 +1106,14 @@ impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> ColumnMajorReferenceMutIter
             _type: PhantomData,
         }
     }
+
+    /**
+     * Constructors an iterator which also yields the row and column index of each element in
+     * this iterator.
+     */
+    pub fn with_index_iter(self) -> WithIndex<Self> {
+        WithIndex { iterator: self }
+    }
 }
 
 impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnMajorReferenceMutIterator<'a, T, S> {
@@ -1107,6 +1153,17 @@ impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnMajorRef
 
 impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for ColumnMajorReferenceMutIterator<'a, T, S> {}
 impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for ColumnMajorReferenceMutIterator<'a, T, S> {}
+
+impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for WithIndex<ColumnMajorReferenceMutIterator<'a, T, S>> {
+    type Item = (&'a mut T, Row, Column);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (row, column) = (self.iterator.row_counter, self.iterator.column_counter);
+        self.iterator.next().map(|i| (i, row, column))
+    }
+}
+impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for WithIndex<ColumnMajorReferenceMutIterator<'a, T, S>> {}
+impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for WithIndex<ColumnMajorReferenceMutIterator<'a, T, S>> {}
 
 /**
  * A row major iterator over mutable references to all values in a matrix.
@@ -1155,6 +1212,14 @@ impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> RowMajorReferenceMutIterato
             _type: PhantomData,
         }
     }
+
+    /**
+     * Constructors an iterator which also yields the row and column index of each element in
+     * this iterator.
+     */
+    pub fn with_index_iter(self) -> WithIndex<Self> {
+        WithIndex { iterator: self }
+    }
 }
 
 impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowMajorReferenceMutIterator<'a, T, S> {
@@ -1194,3 +1259,14 @@ impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowMajorRefere
 
 impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for RowMajorReferenceMutIterator<'a, T, S> {}
 impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for RowMajorReferenceMutIterator<'a, T, S> {}
+
+impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {
+    type Item = (&'a mut T, Row, Column);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (row, column) = (self.iterator.row_counter, self.iterator.column_counter);
+        self.iterator.next().map(|i| (i, row, column))
+    }
+}
+impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {}
+impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {}
