@@ -1009,11 +1009,9 @@ impl <T: Clone> Matrix<T> {
      * matrix, modifying the matrix in place.
      */
     pub fn map_mut_with_index(&mut self, mapping_function: impl Fn(T, Row, Column) -> T) {
-        for i in 0..self.rows() {
-            for j in 0..self.columns() {
-                self.set(i, j, mapping_function(self.get(i, j), i, j));
-            }
-        }
+        self.row_major_reference_mut_iter().with_index().for_each(|((i, j), x)| {
+            *x = mapping_function(x.clone(), i, j);
+        });
     }
 
     /**
@@ -1065,16 +1063,11 @@ impl <T: Clone> Matrix<T> {
      */
     pub fn map_with_index<U>(&self, mapping_function: impl Fn(T, Row, Column) -> U) -> Matrix<U>
             where U: Clone {
-        // compute the first mapped value so we have a value of type U
-        // to initialise the mapped matrix with
-        let first_value: U = mapping_function(self.get(0, 0), 0, 0);
-        let mut mapped = Matrix::empty(first_value, self.size());
-        for i in 0..self.rows() {
-            for j in 0..self.columns() {
-                mapped.set(i, j, mapping_function(self.get(i, j), i, j));
-            }
-        }
-        mapped
+        let mapped = self.row_major_iter()
+            .with_index()
+            .map(|((i, j), x)| mapping_function(x, i, j))
+            .collect();
+        Matrix::from_flat_row_major(self.size(), mapped)
     }
 
     /**
