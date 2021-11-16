@@ -11,7 +11,10 @@ impl Error for ScalarConversionError {}
 
 impl fmt::Display for ScalarConversionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Matrix cannot be converted to a scalar because it is not 1x1")
+        write!(
+            f,
+            "Matrix cannot be converted to a scalar because it is not 1x1"
+        )
     }
 }
 

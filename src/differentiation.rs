@@ -198,7 +198,7 @@ pub mod trace_operations;
 use crate::numeric::{Numeric, NumericRef};
 
 #[cfg(feature = "serde")]
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /**
  * A trait with no methods which is implemented for all primitive types.
@@ -250,7 +250,7 @@ pub struct Trace<T: Primitive> {
     /**
      * The first order derivative of this number.
      */
-    pub derivative: T
+    pub derivative: T,
 }
 
 /**
@@ -266,7 +266,7 @@ pub struct Trace<T: Primitive> {
  * 5. if you need derivatives for a different input then do everything all over again
  * or do them all in parallel
  */
-impl <T: Numeric + Primitive> Trace<T> {
+impl<T: Numeric + Primitive> Trace<T> {
     /**
      * Constants are lifted to Traces with a derivative of 0
      *
@@ -308,8 +308,10 @@ impl <T: Numeric + Primitive> Trace<T> {
     }
 }
 
-impl <T: Numeric + Primitive> Trace<T>
-where for<'a> &'a T: NumericRef<T> {
+impl<T: Numeric + Primitive> Trace<T>
+where
+    for<'a> &'a T: NumericRef<T>,
+{
     /**
      * Creates a new Trace from a reference to an existing Trace by applying
      * some unary function to it which operates on the type the Trace wraps.
@@ -368,17 +370,18 @@ where for<'a> &'a T: NumericRef<T> {
      */
     #[inline]
     pub fn binary(
-            &self,
-            rhs: &Trace<T>,
-            fxy: impl Fn(T, T) -> T,
-            dfxy_dx: impl Fn(T, T) -> T,
-            dfxy_dy: impl Fn(T, T) -> T
-        ) -> Trace<T> {
+        &self,
+        rhs: &Trace<T>,
+        fxy: impl Fn(T, T) -> T,
+        dfxy_dx: impl Fn(T, T) -> T,
+        dfxy_dy: impl Fn(T, T) -> T,
+    ) -> Trace<T> {
         Trace {
             number: fxy(self.number.clone(), rhs.number.clone()),
+            #[rustfmt::skip]
             derivative: (
-                (self.derivative.clone() * dfxy_dx(self.number.clone(), rhs.number.clone()))
-                + (rhs.derivative.clone() * dfxy_dy(self.number.clone(), rhs.number.clone()))
+                ((self.derivative.clone() * dfxy_dx(self.number.clone(), rhs.number.clone()))
+                + (rhs.derivative.clone() * dfxy_dy(self.number.clone(), rhs.number.clone())))
             ),
         }
     }
@@ -423,7 +426,7 @@ type Index = usize;
 pub struct WengertList<T> {
     // It is neccessary to wrap the vec in a RefCell to allow for mutating
     // this list from immutable references held by each
-    operations: RefCell<Vec<Operation<T>>>
+    operations: RefCell<Vec<Operation<T>>>,
 }
 
 /**
@@ -455,21 +458,21 @@ struct Operation<T> {
  */
 #[derive(Debug)]
 pub struct Derivatives<T> {
-    derivatives: Vec<T>
+    derivatives: Vec<T>,
 }
 
 /**
  * Any derivatives of a Cloneable type implements clone
  */
-impl <T: Clone> Clone for Derivatives<T> {
+impl<T: Clone> Clone for Derivatives<T> {
     fn clone(&self) -> Self {
         Derivatives {
-            derivatives: self.derivatives.clone()
+            derivatives: self.derivatives.clone(),
         }
     }
 }
 
-impl <T: Clone + Primitive> Derivatives<T> {
+impl<T: Clone + Primitive> Derivatives<T> {
     /**
      * Quries the derivative at the provided record as input.
      *
@@ -481,7 +484,7 @@ impl <T: Clone + Primitive> Derivatives<T> {
     }
 }
 
-impl <'a, T: Primitive> std::ops::Index<&Record<'a, T>> for Derivatives<T> {
+impl<'a, T: Primitive> std::ops::Index<&Record<'a, T>> for Derivatives<T> {
     type Output = T;
     /**
      * Quries the derivative at the provided record as input.
@@ -494,7 +497,7 @@ impl <'a, T: Primitive> std::ops::Index<&Record<'a, T>> for Derivatives<T> {
     }
 }
 
-impl <T> std::convert::From<Derivatives<T>> for Vec<T> {
+impl<T> std::convert::From<Derivatives<T>> for Vec<T> {
     /**
      * Converts the Derivatives struct into a Vec of derivatives that
      * can be indexed with `usize`s. The indexes correspond to the
@@ -508,7 +511,7 @@ impl <T> std::convert::From<Derivatives<T>> for Vec<T> {
 /**
  * Any operation of a Cloneable type implements clone
  */
-impl <T: Clone + Primitive> Clone for Operation<T> {
+impl<T: Clone + Primitive> Clone for Operation<T> {
     fn clone(&self) -> Self {
         Operation {
             left_parent: self.left_parent,
@@ -583,7 +586,7 @@ pub struct Record<'a, T: Primitive> {
  * Constants can be used to save memory if you have numbers that
  * you do not need to compute the gradients with respect to.
  */
-impl <'a, T: Numeric + Primitive> Record<'a, T> {
+impl<'a, T: Numeric + Primitive> Record<'a, T> {
     /**
      * Creates an untracked Record which has no backing WengertList.
      *
@@ -638,9 +641,7 @@ impl <'a, T: Numeric + Primitive> Record<'a, T> {
     pub fn reset(&mut self) {
         match self.history {
             None => (), // noop
-            Some(history) => {
-                self.index = history.append_nullary()
-            },
+            Some(history) => self.index = history.append_nullary(),
         };
     }
 
@@ -654,8 +655,10 @@ impl <'a, T: Numeric + Primitive> Record<'a, T> {
     }
 }
 
-impl <'a, T: Numeric + Primitive> Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, T: Numeric + Primitive> Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     /**
      * Performs a backward pass up this record's WengertList from this
      * record as the output, computing all the derivatives for the inputs
@@ -677,7 +680,7 @@ where for<'t> &'t T: NumericRef<T> {
         };
         let operations = history.operations.borrow();
 
-        let mut derivatives = vec![ T::zero(); operations.len() ];
+        let mut derivatives = vec![T::zero(); operations.len()];
 
         // δy/δy = 1
         derivatives[self.index] = T::one();
@@ -691,11 +694,9 @@ where for<'t> &'t T: NumericRef<T> {
             // are summed together.
             // δy/δx = δy/δw * δw/δx
             // δy/δx = sum for all i parents of y ( δy/δw_i * δw_i/δx )
-            derivatives[operation.left_parent] =
-                derivatives[operation.left_parent].clone()
+            derivatives[operation.left_parent] = derivatives[operation.left_parent].clone()
                 + derivative.clone() * operation.left_derivative;
-            derivatives[operation.right_parent] =
-                derivatives[operation.right_parent].clone()
+            derivatives[operation.right_parent] = derivatives[operation.right_parent].clone()
                 + derivative * operation.right_derivative;
         }
 
@@ -703,24 +704,24 @@ where for<'t> &'t T: NumericRef<T> {
     }
 }
 
-impl <T: Primitive> WengertList<T> {
+impl<T: Primitive> WengertList<T> {
     /**
      * Creates a new empty WengertList from which Records can be constructed.
      */
     pub fn new() -> WengertList<T> {
         WengertList {
-            operations: RefCell::new(Vec::new())
+            operations: RefCell::new(Vec::new()),
         }
     }
 }
 
-impl <T: Primitive> Default for WengertList<T> {
+impl<T: Primitive> Default for WengertList<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl <T> WengertList<T> {
+impl<T> WengertList<T> {
     /**
      * Clears a WengertList to make it empty again. After clearing a WengertList
      * you must reset all the Records still using that list. Then you can perform
@@ -731,7 +732,7 @@ impl <T> WengertList<T> {
     }
 }
 
-impl <T: Numeric + Primitive> WengertList<T> {
+impl<T: Numeric + Primitive> WengertList<T> {
     /**
      * Creates a record backed by this WengertList.
      *
@@ -801,9 +802,13 @@ impl <T: Numeric + Primitive> WengertList<T> {
      * For example, if z = y + x, then δz/δy = 1 and δz/δx = 1
      * For example, if z = y * x, then δz/δy = x and δz/δ/x = y
      */
-    fn append_binary(&self,
-            left_parent: Index, left_derivative: T,
-            right_parent: Index, right_derivative: T) -> Index {
+    fn append_binary(
+        &self,
+        left_parent: Index,
+        left_derivative: T,
+        right_parent: Index,
+        right_derivative: T,
+    ) -> Index {
         let mut operations = self.operations.borrow_mut();
         // insert into end of list
         let index = operations.len();
@@ -820,16 +825,18 @@ impl <T: Numeric + Primitive> WengertList<T> {
 /**
  * Any Wengert list of a Cloneable type implements clone
  */
-impl <T: Clone + Primitive> Clone for WengertList<T> {
+impl<T: Clone + Primitive> Clone for WengertList<T> {
     fn clone(&self) -> Self {
         WengertList {
-            operations: RefCell::new(self.operations.borrow().clone())
+            operations: RefCell::new(self.operations.borrow().clone()),
         }
     }
 }
 
-impl <'a, T: Numeric + Primitive> Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, T: Numeric + Primitive> Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     /**
      * Creates a new Record from a reference to an existing Record by applying
      * some unary function to it which operates on the type the Record wraps.
@@ -859,15 +866,10 @@ where for<'t> &'t T: NumericRef<T> {
                 history: None,
                 index: 0,
             },
-            Some(history) => {
-                Record {
-                    number: fx(self.number.clone()),
-                    history: Some(history),
-                    index: history.append_unary(
-                        self.index,
-                        dfx_dx(self.number.clone())
-                    )
-                }
+            Some(history) => Record {
+                number: fx(self.number.clone()),
+                history: Some(history),
+                index: history.append_unary(self.index, dfx_dx(self.number.clone())),
             },
         }
     }
@@ -907,13 +909,16 @@ where for<'t> &'t T: NumericRef<T> {
     #[inline]
     #[track_caller]
     pub fn binary(
-            &self,
-            rhs: &Record<'a, T>,
-            fxy: impl Fn(T, T) -> T,
-            dfxy_dx: impl Fn(T, T) -> T,
-            dfxy_dy: impl Fn(T, T) -> T
-        ) -> Record<T> {
-        assert!(record_operations::same_list(self, rhs), "Records must be using the same WengertList");
+        &self,
+        rhs: &Record<'a, T>,
+        fxy: impl Fn(T, T) -> T,
+        dfxy_dx: impl Fn(T, T) -> T,
+        dfxy_dy: impl Fn(T, T) -> T,
+    ) -> Record<T> {
+        assert!(
+            record_operations::same_list(self, rhs),
+            "Records must be using the same WengertList"
+        );
         match (self.history, rhs.history) {
             (None, None) => Record {
                 number: fxy(self.number.clone(), rhs.number.clone()),
@@ -926,7 +931,7 @@ where for<'t> &'t T: NumericRef<T> {
                 index: history.append_unary(
                     // if rhs didn't have a history, don't track that derivative
                     self.index,
-                    dfxy_dx(self.number.clone(), rhs.number.clone())
+                    dfxy_dx(self.number.clone(), rhs.number.clone()),
                 ),
             },
             (None, Some(history)) => Record {
@@ -935,7 +940,7 @@ where for<'t> &'t T: NumericRef<T> {
                 index: history.append_unary(
                     // if self didn't have a history, don't track that derivative
                     rhs.index,
-                    dfxy_dy(self.number.clone(), rhs.number.clone())
+                    dfxy_dy(self.number.clone(), rhs.number.clone()),
                 ),
             },
             (Some(history), Some(_)) => Record {
@@ -945,7 +950,7 @@ where for<'t> &'t T: NumericRef<T> {
                     self.index,
                     dfxy_dx(self.number.clone(), rhs.number.clone()),
                     rhs.index,
-                    dfxy_dy(self.number.clone(), rhs.number.clone())
+                    dfxy_dy(self.number.clone(), rhs.number.clone()),
                 ),
             },
         }

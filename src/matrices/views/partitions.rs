@@ -1,7 +1,7 @@
-use crate::matrices::{Row, Column};
+use crate::matrices::views::{DataLayout, MatrixMut, MatrixRef, MatrixView};
 #[allow(unused)] // used in doc links
 use crate::matrices::Matrix;
-use crate::matrices::views::{DataLayout, MatrixView, MatrixRef, MatrixMut};
+use crate::matrices::{Column, Row};
 
 /**
  * A mutably borrowed part of a matrix.
@@ -34,12 +34,12 @@ pub struct MatrixPart<'source, T> {
     columns: Column,
 }
 
-impl <'a, T> MatrixPart<'a, T> {
+impl<'a, T> MatrixPart<'a, T> {
     pub(crate) fn new(data: Vec<&'a mut [T]>, rows: Row, columns: Column) -> MatrixPart<'a, T> {
         MatrixPart {
             data,
             rows,
-            columns
+            columns,
         }
     }
 }
@@ -51,7 +51,7 @@ impl <'a, T> MatrixPart<'a, T> {
 /**
  * A MatrixPart implements MatrixRef.
  */
-unsafe impl <'a, T> MatrixRef<T> for MatrixPart<'a, T> {
+unsafe impl<'a, T> MatrixRef<T> for MatrixPart<'a, T> {
     fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
         if row >= self.rows || column >= self.columns {
             return None;
@@ -83,7 +83,7 @@ unsafe impl <'a, T> MatrixRef<T> for MatrixPart<'a, T> {
 /**
  * A MatrixPart implements MatrixMut.
  */
-unsafe impl <'a, T> MatrixMut<T> for MatrixPart<'a, T> {
+unsafe impl<'a, T> MatrixMut<T> for MatrixPart<'a, T> {
     fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
         if row >= self.rows || column >= self.columns {
             return None;
@@ -109,7 +109,7 @@ pub struct MatrixQuadrants<'source, T> {
     pub bottom_right: MatrixView<T, MatrixPart<'source, T>>,
 }
 
-impl <'a, T> std::fmt::Display for MatrixQuadrants<'a, T>
+impl<'a, T> std::fmt::Display for MatrixQuadrants<'a, T>
 where
     T: std::fmt::Display,
 {

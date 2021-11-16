@@ -1,9 +1,9 @@
 use crate::tensors::indexing::TensorAccess;
-use crate::tensors::views::{TensorView, TensorRef, TensorMut};
+use crate::tensors::views::{TensorMut, TensorRef, TensorView};
 
-pub mod views;
-pub mod indexing;
 mod dimensions;
+pub mod indexing;
+pub mod views;
 
 pub use dimensions::*;
 
@@ -28,7 +28,11 @@ impl<T, const D: usize> Tensor<T, D> {
         );
 
         let strides = compute_strides(&dimensions);
-        Tensor { data, dimensions, strides }
+        Tensor {
+            data,
+            dimensions,
+            strides,
+        }
     }
 
     pub fn shape(&self) -> [(Dimension, usize); D] {
@@ -36,13 +40,9 @@ impl<T, const D: usize> Tensor<T, D> {
     }
 }
 
-unsafe impl <'source, T, const D: usize> TensorRef<T, D> for &'source Tensor<T, D> {
+unsafe impl<'source, T, const D: usize> TensorRef<T, D> for &'source Tensor<T, D> {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        let i = get_index_direct(
-            &indexes,
-            &self.strides,
-            &self.dimensions
-        )?;
+        let i = get_index_direct(&indexes, &self.strides, &self.dimensions)?;
         self.data.get(i)
     }
 
@@ -51,13 +51,9 @@ unsafe impl <'source, T, const D: usize> TensorRef<T, D> for &'source Tensor<T, 
     }
 }
 
-unsafe impl <'source, T, const D: usize> TensorRef<T, D> for &'source mut Tensor<T, D> {
+unsafe impl<'source, T, const D: usize> TensorRef<T, D> for &'source mut Tensor<T, D> {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        let i = get_index_direct(
-            &indexes,
-            &self.strides,
-            &self.dimensions
-        )?;
+        let i = get_index_direct(&indexes, &self.strides, &self.dimensions)?;
         self.data.get(i)
     }
 
@@ -66,24 +62,16 @@ unsafe impl <'source, T, const D: usize> TensorRef<T, D> for &'source mut Tensor
     }
 }
 
-unsafe impl <'source, T, const D: usize> TensorMut<T, D> for &'source mut Tensor<T, D> {
+unsafe impl<'source, T, const D: usize> TensorMut<T, D> for &'source mut Tensor<T, D> {
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
-        let i = get_index_direct(
-            &indexes,
-            &self.strides,
-            &self.dimensions
-        )?;
+        let i = get_index_direct(&indexes, &self.strides, &self.dimensions)?;
         self.data.get_mut(i)
     }
 }
 
-unsafe impl <T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
+unsafe impl<T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        let i = get_index_direct(
-            &indexes,
-            &self.strides,
-            &self.dimensions
-        )?;
+        let i = get_index_direct(&indexes, &self.strides, &self.dimensions)?;
         self.data.get(i)
     }
 
@@ -92,13 +80,9 @@ unsafe impl <T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
     }
 }
 
-unsafe impl <T, const D: usize> TensorMut<T, D> for Tensor<T, D> {
+unsafe impl<T, const D: usize> TensorMut<T, D> for Tensor<T, D> {
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
-        let i = get_index_direct(
-            &indexes,
-            &self.strides,
-            &self.dimensions
-        )?;
+        let i = get_index_direct(&indexes, &self.strides, &self.dimensions)?;
         self.data.get_mut(i)
     }
 }
@@ -107,10 +91,10 @@ fn compute_strides<const D: usize>(dimensions: &[(Dimension, usize); D]) -> [usi
     let mut strides = [0; D];
     for d in 0..D {
         strides[d] = dimensions
-          .iter()
-          .skip(d + 1)
-          .map(|d| d.1)
-          .fold(1, |d1, d2| d1 * d2);
+            .iter()
+            .skip(d + 1)
+            .map(|d| d.1)
+            .fold(1, |d1, d2| d1 * d2);
     }
     strides
 }

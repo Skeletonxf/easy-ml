@@ -103,11 +103,11 @@ let mut random_numbers = EndlessRandomGenerator { rng: random_generator };
 [See web_assembly module for Example of creating an infinite iterator for web assembly targets](super::web_assembly)
  */
 
-use crate::numeric::{Numeric, NumericRef};
 use crate::numeric::extra::{Real, RealRef};
+use crate::numeric::{Numeric, NumericRef};
 //use crate::numeric::extra::{Sqrt, Pi, Exp, Pow, Ln, Sin, Cos};
-use crate::matrices::Matrix;
 use crate::linear_algebra;
+use crate::matrices::Matrix;
 
 /**
  * A Gaussian probability density function of a normally distributed
@@ -125,15 +125,12 @@ pub struct Gaussian<T: Numeric + Real> {
      * The variance is a measure of the spread of values around the mean, high variance means
      * one standard deviation encompasses a larger spread of values from the mean.
      */
-    pub variance: T
+    pub variance: T,
 }
 
-impl <T: Numeric + Real> Gaussian<T> {
+impl<T: Numeric + Real> Gaussian<T> {
     pub fn new(mean: T, variance: T) -> Gaussian<T> {
-        Gaussian {
-            mean,
-            variance,
-        }
+        Gaussian { mean, variance }
     }
 
     /**
@@ -148,7 +145,9 @@ impl <T: Numeric + Real> Gaussian<T> {
      * can expect the approximation to be more close.
      */
     pub fn approximating<I>(data: I) -> Gaussian<T>
-    where I: Iterator<Item = T> {
+    where
+        I: Iterator<Item = T>,
+    {
         let mut copy: Vec<T> = data.collect();
         Gaussian {
             // duplicate the data to pass once each to mean and variance
@@ -159,8 +158,10 @@ impl <T: Numeric + Real> Gaussian<T> {
     }
 }
 
-impl <T: Numeric + Real> Gaussian<T>
-where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+impl<T: Numeric + Real> Gaussian<T>
+where
+    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+{
     /**
      * Computes g(x) for some x, the probability density of a normally
      * distributed random variable x, or in other words how likely x is
@@ -176,7 +177,7 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
         let two = T::one() + T::one();
         let two_pi = &two * T::pi();
         let fraction = T::one() / (standard_deviation * (&two_pi.sqrt()));
-        let exponent = (- T::one() / &two) * ((x - &self.mean) / &self.variance).pow(&two);
+        let exponent = (-T::one() / &two) * ((x - &self.mean) / &self.variance).pow(&two);
         fraction * exponent.exp()
     }
 
@@ -199,9 +200,11 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
      * [Example of generating and feeding random numbers](self)
      */
     pub fn draw<I>(&self, source: &mut I, max_samples: usize) -> Option<Vec<T>>
-    where I: Iterator<Item = T> {
+    where
+        I: Iterator<Item = T>,
+    {
         let two = T::one() + T::one();
-        let minus_two = - &two;
+        let minus_two = -&two;
         let two_pi = &two * T::pi();
         let mut samples = Vec::with_capacity(max_samples);
         let standard_deviation = self.variance.clone().sqrt();
@@ -231,11 +234,13 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
     }
 
     fn generate_pair<I>(&self, source: &mut I) -> Option<(T, T)>
-    where I: Iterator<Item = T> {
+    where
+        I: Iterator<Item = T>,
+    {
         Some((source.next()?, source.next()?))
     }
 
-    #[deprecated(since="1.1.0", note="renamed to `probability`")]
+    #[deprecated(since = "1.1.0", note = "renamed to `probability`")]
     pub fn map(&self, x: &T) -> T {
         self.probability(x)
     }
@@ -276,10 +281,10 @@ pub struct MultivariateGaussian<T: Numeric + Real> {
      *
      * In which case the two dimensions are completely uncorrelated as `C[0,1] = C[1,0] = 0`.
      */
-    pub covariance: Matrix<T>
+    pub covariance: Matrix<T>,
 }
 
-impl <T: Numeric + Real> MultivariateGaussian<T> {
+impl<T: Numeric + Real> MultivariateGaussian<T> {
     /**
      * Constructs a new multivariate Gaussian distribution from
      * a Nx1 column vector of means and a NxN covariance matrix
@@ -297,17 +302,22 @@ impl <T: Numeric + Real> MultivariateGaussian<T> {
      */
     pub fn new(mean: Matrix<T>, covariance: Matrix<T>) -> MultivariateGaussian<T> {
         assert!(mean.columns() == 1, "Mean must be a column vector");
-        assert!(covariance.rows() == covariance.columns(), "Supplied 'covariance' matrix is not square");
-        assert!(mean.rows() == covariance.rows(), "Means must be same length as covariance matrix");
-        MultivariateGaussian {
-            mean,
-            covariance,
-        }
+        assert!(
+            covariance.rows() == covariance.columns(),
+            "Supplied 'covariance' matrix is not square"
+        );
+        assert!(
+            mean.rows() == covariance.rows(),
+            "Means must be same length as covariance matrix"
+        );
+        MultivariateGaussian { mean, covariance }
     }
 }
 
-impl <T: Numeric + Real> MultivariateGaussian<T>
-where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+impl<T: Numeric + Real> MultivariateGaussian<T>
+where
+    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+{
     /**
      * Draws samples from this multivariate distribution.
      *
@@ -322,7 +332,9 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
      * [Example of generating and feeding random numbers](super::k_means)
      */
     pub fn draw<I>(&self, source: &mut I, max_samples: usize) -> Option<Matrix<T>>
-    where I: Iterator<Item = T> {
+    where
+        I: Iterator<Item = T>,
+    {
         // Follow the method outlined at
         // https://en.wikipedia.org/wiki/Multivariate_normal_distribution#Computational_methods
         let normal_distribution = Gaussian::new(T::zero(), T::one());

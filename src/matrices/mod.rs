@@ -21,13 +21,12 @@ pub use errors::ScalarConversionError;
 use crate::linear_algebra;
 use crate::matrices::iterators::{
     ColumnIterator, ColumnMajorIterator, ColumnMajorReferenceIterator,
-    ColumnMajorReferenceMutIterator, ColumnReferenceIterator,
-    DiagonalIterator, DiagonalReferenceIterator,
-    RowIterator, RowMajorIterator, RowMajorReferenceIterator,
+    ColumnMajorReferenceMutIterator, ColumnReferenceIterator, DiagonalIterator,
+    DiagonalReferenceIterator, RowIterator, RowMajorIterator, RowMajorReferenceIterator,
     RowMajorReferenceMutIterator, RowReferenceIterator,
 };
 use crate::matrices::slices::Slice2D;
-use crate::matrices::views::{MatrixView, MatrixPart, MatrixQuadrants};
+use crate::matrices::views::{MatrixPart, MatrixQuadrants, MatrixView};
 use crate::numeric::extra::{Real, RealRef};
 use crate::numeric::{Numeric, NumericRef};
 
@@ -82,7 +81,7 @@ pub type Column = usize;
 /**
  * Methods for matrices of any type, including non numerical types such as bool.
  */
-impl <T> Matrix<T> {
+impl<T> Matrix<T> {
     /**
      * Creates a 1x1 matrix from some scalar
      */
@@ -159,7 +158,10 @@ impl <T> Matrix<T> {
         // check length of first row is > 1
         assert!(!values[0].is_empty(), "No column defined");
         // check length of each row is the same
-        assert!(values.iter().map(|x| x.len()).all(|x| x == values[0].len()), "Inconsistent size");
+        assert!(
+            values.iter().map(|x| x.len()).all(|x| x == values[0].len()),
+            "Inconsistent size"
+        );
         // flatten the data into a row major layout
         let rows = values.len();
         let columns = values[0].len();
@@ -221,7 +223,10 @@ impl <T> Matrix<T> {
         }
     }
 
-    #[deprecated(since="1.1.0", note="Incorrect use of terminology, a unit matrix is another term for an identity matrix, please use `from_scalar` instead")]
+    #[deprecated(
+        since = "1.1.0",
+        note = "Incorrect use of terminology, a unit matrix is another term for an identity matrix, please use `from_scalar` instead"
+    )]
     pub fn unit(value: T) -> Matrix<T> {
         Matrix::from_scalar(value)
     }
@@ -552,13 +557,16 @@ impl <T> Matrix<T> {
         };
         assert!(
             remaining_rows > 0,
-            "Provided slice must leave at least 1 row in the retained matrix");
+            "Provided slice must leave at least 1 row in the retained matrix"
+        );
         assert!(
             remaining_columns > 0,
-            "Provided slice must leave at least 1 column in the retained matrix");
+            "Provided slice must leave at least 1 column in the retained matrix"
+        );
         assert!(
             !self.data.is_empty(),
-            "Provided slice must leave at least 1 row and 1 column in the retained matrix");
+            "Provided slice must leave at least 1 row and 1 column in the retained matrix"
+        );
         self.rows = remaining_rows;
         self.columns = remaining_columns
         // By construction jagged slices should be impossible, if this
@@ -583,7 +591,7 @@ impl <T> Matrix<T> {
      * ```
      */
     pub fn try_into_scalar(self) -> Result<T, ScalarConversionError> {
-        if self.size() == (1,1) {
+        if self.size() == (1, 1) {
             Ok(self.data.into_iter().next().unwrap())
         } else {
             Err(ScalarConversionError {})
@@ -628,7 +636,7 @@ impl <T> Matrix<T> {
     pub fn partition(
         &mut self,
         row_partitions: &[Row],
-        column_partitions: &[Column]
+        column_partitions: &[Column],
     ) -> Vec<MatrixView<T, MatrixPart<T>>> {
         let rows = self.rows();
         let columns = self.columns();
@@ -745,7 +753,7 @@ impl <T> Matrix<T> {
     pub fn partition_quadrants<'a>(
         &'a mut self,
         row: Row,
-        column: Column
+        column: Column,
     ) -> MatrixQuadrants<'a, T> {
         let mut parts = self.partition(&[row], &[column]).into_iter();
         // We know there will be exactly 4 parts returned by the partition since we provided
@@ -762,7 +770,7 @@ impl <T> Matrix<T> {
 /**
  * Methods for matrices with types that can be copied, but still not neccessarily numerical.
  */
-impl <T: Clone> Matrix<T> {
+impl<T: Clone> Matrix<T> {
     /**
      * Computes and returns the transpose of this matrix
      *
@@ -960,10 +968,16 @@ impl <T: Clone> Matrix<T> {
      */
     #[track_caller]
     pub fn get(&self, row: Row, column: Column) -> T {
-        assert!(row < self.rows(),
-            "Row out of index, only have {} rows", self.rows());
-        assert!(column < self.columns(),
-            "Column out of index, only have {} columns", self.columns());
+        assert!(
+            row < self.rows(),
+            "Row out of index, only have {} rows",
+            self.rows()
+        );
+        assert!(
+            column < self.columns(),
+            "Column out of index, only have {} columns",
+            self.columns()
+        );
         self.data[self.get_index(row, column)].clone()
     }
 
@@ -989,8 +1003,14 @@ impl <T: Clone> Matrix<T> {
      */
     #[track_caller]
     pub fn scalar(&self) -> T {
-        assert!(self.rows() == 1, "Cannot treat matrix as scalar as it has more than one row");
-        assert!(self.columns() == 1, "Cannot treat matrix as scalar as it has more than one column");
+        assert!(
+            self.rows() == 1,
+            "Cannot treat matrix as scalar as it has more than one row"
+        );
+        assert!(
+            self.columns() == 1,
+            "Cannot treat matrix as scalar as it has more than one column"
+        );
         self.get(0, 0)
     }
 
@@ -1009,9 +1029,11 @@ impl <T: Clone> Matrix<T> {
      * matrix, modifying the matrix in place.
      */
     pub fn map_mut_with_index(&mut self, mapping_function: impl Fn(T, Row, Column) -> T) {
-        self.row_major_reference_mut_iter().with_index().for_each(|((i, j), x)| {
-            *x = mapping_function(x.clone(), i, j);
-        });
+        self.row_major_reference_mut_iter()
+            .with_index()
+            .for_each(|((i, j), x)| {
+                *x = mapping_function(x.clone(), i, j);
+            });
     }
 
     /**
@@ -1031,8 +1053,14 @@ impl <T: Clone> Matrix<T> {
      * ```
      */
     pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Matrix<U>
-            where U: Clone {
-        let mapped = self.data.iter().map(|x| mapping_function(x.clone())).collect();
+    where
+        U: Clone,
+    {
+        let mapped = self
+            .data
+            .iter()
+            .map(|x| mapping_function(x.clone()))
+            .collect();
         Matrix::from_flat_row_major(self.size(), mapped)
     }
 
@@ -1062,8 +1090,11 @@ impl <T: Clone> Matrix<T> {
      * ```
      */
     pub fn map_with_index<U>(&self, mapping_function: impl Fn(T, Row, Column) -> U) -> Matrix<U>
-            where U: Clone {
-        let mapped = self.row_major_iter()
+    where
+        U: Clone,
+    {
+        let mapped = self
+            .row_major_iter()
             .with_index()
             .map(|((i, j), x)| mapping_function(x, i, j))
             .collect();
@@ -1081,7 +1112,11 @@ impl <T: Clone> Matrix<T> {
      */
     #[track_caller]
     pub fn insert_row(&mut self, row: Row, value: T) {
-        assert!(row <= self.rows(), "Row to insert must be <= to {}", self.rows());
+        assert!(
+            row <= self.rows(),
+            "Row to insert must be <= to {}",
+            self.rows()
+        );
         for column in 0..self.columns() {
             self.data.insert(self.get_index(row, column), value.clone());
         }
@@ -1118,16 +1153,20 @@ impl <T: Clone> Matrix<T> {
      */
     #[track_caller]
     pub fn insert_row_with<I>(&mut self, row: Row, mut values: I)
-    where I: Iterator<Item = T> {
-        assert!(row <= self.rows(), "Row to insert must be <= to {}", self.rows());
+    where
+        I: Iterator<Item = T>,
+    {
+        assert!(
+            row <= self.rows(),
+            "Row to insert must be <= to {}",
+            self.rows()
+        );
         for column in 0..self.columns() {
             self.data.insert(
                 self.get_index(row, column),
-                values.next()
-                    .unwrap_or_else(|| panic!(
-                        "At least {} values must be provided",
-                        self.columns()
-                    ))
+                values.next().unwrap_or_else(|| {
+                    panic!("At least {} values must be provided", self.columns())
+                }),
             );
         }
         self.rows += 1;
@@ -1144,7 +1183,11 @@ impl <T: Clone> Matrix<T> {
      */
     #[track_caller]
     pub fn insert_column(&mut self, column: Column, value: T) {
-        assert!(column <= self.columns(), "Column to insert must be <= to {}", self.columns());
+        assert!(
+            column <= self.columns(),
+            "Column to insert must be <= to {}",
+            self.columns()
+        );
         for row in (0..self.rows()).rev() {
             self.data.insert(self.get_index(row, column), value.clone());
         }
@@ -1181,15 +1224,23 @@ impl <T: Clone> Matrix<T> {
      */
     #[track_caller]
     pub fn insert_column_with<I>(&mut self, column: Column, values: I)
-    where I: Iterator<Item = T> {
-        assert!(column <= self.columns(), "Column to insert must be <= to {}", self.columns());
+    where
+        I: Iterator<Item = T>,
+    {
+        assert!(
+            column <= self.columns(),
+            "Column to insert must be <= to {}",
+            self.columns()
+        );
         let mut array_values = values.collect::<Vec<T>>();
-        assert!(array_values.len() >= self.rows(),
-            "At least {} values must be provided", self.rows());
+        assert!(
+            array_values.len() >= self.rows(),
+            "At least {} values must be provided",
+            self.rows()
+        );
         for row in (0..self.rows()).rev() {
-            self.data.insert(
-                self.get_index(row, column),
-                array_values.pop().unwrap());
+            self.data
+                .insert(self.get_index(row, column), array_values.pop().unwrap());
         }
         self.columns += 1;
     }
@@ -1208,7 +1259,7 @@ impl <T: Clone> Matrix<T> {
 /**
  * Any matrix of a Cloneable type implements Clone.
  */
-impl <T: Clone> Clone for Matrix<T> {
+impl<T: Clone> Clone for Matrix<T> {
     fn clone(&self) -> Self {
         self.map(|element| element)
     }
@@ -1217,7 +1268,7 @@ impl <T: Clone> Clone for Matrix<T> {
 /**
  * Any matrix of a Displayable type implements Display
  */
-impl <T: std::fmt::Display> std::fmt::Display for Matrix<T> {
+impl<T: std::fmt::Display> std::fmt::Display for Matrix<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         crate::matrices::views::format_view(self, f)
     }
@@ -1275,8 +1326,10 @@ impl <T: std::fmt::Display> std::fmt::Display for Matrix<T> {
  * println!("{:?}", matrix.map(|element| element.0 as f32).determinant()); // -> -18.0
  * ```
  */
-impl <T: Numeric> Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
+impl<T: Numeric> Matrix<T>
+where
+    for<'a> &'a T: NumericRef<T>,
+{
     /**
      * Returns the determinant of this square matrix, or None if the matrix
      * does not have a determinant. See [`linear_algebra`](super::linear_algebra::determinant())
@@ -1286,12 +1339,14 @@ where for<'a> &'a T: NumericRef<T> {
     }
 
     /**
-    * Computes the inverse of a matrix provided that it exists. To have an inverse a
-    * matrix must be square (same number of rows and columns) and it must also have a
-    * non zero determinant. See [`linear_algebra`](super::linear_algebra::inverse())
-    */
+     * Computes the inverse of a matrix provided that it exists. To have an inverse a
+     * matrix must be square (same number of rows and columns) and it must also have a
+     * non zero determinant. See [`linear_algebra`](super::linear_algebra::inverse())
+     */
     pub fn inverse(&self) -> Option<Matrix<T>>
-    where T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T> {
+    where
+        T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T>,
+    {
         linear_algebra::inverse::<T>(self)
     }
 
@@ -1324,8 +1379,10 @@ where for<'a> &'a T: NumericRef<T> {
  * be able to implement all of the methods for [Real](super::numeric::extra::Real)
  * and then utilise these functions.
  */
-impl <T: Numeric + Real> Matrix<T>
-where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+impl<T: Numeric + Real> Matrix<T>
+where
+    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+{
     /**
      * Computes the [L2 norm](https://en.wikipedia.org/wiki/Euclidean_vector#Length)
      * of this row or column vector, also referred to as the length or magnitude,
@@ -1364,14 +1421,17 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
             // row vector
             (self * self.transpose()).scalar().sqrt()
         } else {
-            panic!("Cannot compute unit vector of a non vector, rows: {}, columns: {}",
-                self.rows(), self.columns());
+            panic!(
+                "Cannot compute unit vector of a non vector, rows: {}, columns: {}",
+                self.rows(),
+                self.columns()
+            );
         }
     }
 }
 
 // FIXME: want this to be callable in the main numeric impl block
-impl <T: Numeric> Matrix<T> {
+impl<T: Numeric> Matrix<T> {
     /**
      * Creates a diagonal matrix of the provided size with the diagonal elements
      * set to the provided value and all other elements in the matrix set to 0.
@@ -1437,7 +1497,7 @@ impl <T: Numeric> Matrix<T> {
  * PartialEq is implemented as two matrices are equal if and only if all their elements
  * are equal and they have the same size.
  */
-impl <T: PartialEq> PartialEq for Matrix<T> {
+impl<T: PartialEq> PartialEq for Matrix<T> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         if self.rows() != other.rows() {
@@ -1448,9 +1508,7 @@ impl <T: PartialEq> PartialEq for Matrix<T> {
         }
         // perform elementwise check, return true only if every element in
         // each matrix is the same
-        self.data.iter()
-            .zip(other.data.iter())
-            .all(|(x, y)| x == y)
+        self.data.iter().zip(other.data.iter()).all(|(x, y)| x == y)
     }
 }
 
@@ -1491,12 +1549,8 @@ fn test_indexing() {
     assert_eq!(b.get_row_column(5), (1, 2));
     assert_eq!(b.get(1, 2), 7);
     assert_eq!(
-        Matrix::from(vec![
-            vec![0, 0],
-            vec![0, 0],
-            vec![0, 0]
-        ])
-        .map_with_index(|_, r, c| format!("{:?}x{:?}", r, c)),
+        Matrix::from(vec![vec![0, 0], vec![0, 0], vec![0, 0]])
+            .map_with_index(|_, r, c| format!("{:?}x{:?}", r, c)),
         Matrix::from(vec![
             vec!["0x0", "0x1"],
             vec!["1x0", "1x1"],

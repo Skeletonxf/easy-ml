@@ -34,23 +34,23 @@
  * you have to import the trait as well as have a type that implements it!
  */
 
-use crate::numeric::{Numeric, NumericRef, ZeroOne, FromUsize};
-use crate::numeric::extra::{Real, RealRef, Sin, Cos, Exp, Pow, Ln, Sqrt, Pi};
 use crate::differentiation::{Primitive, Record};
-use std::ops::{Add, Sub, Mul, Neg, Div};
+use crate::numeric::extra::{Cos, Exp, Ln, Pi, Pow, Real, RealRef, Sin, Sqrt};
+use crate::numeric::{FromUsize, Numeric, NumericRef, ZeroOne};
 use std::cmp::Ordering;
 use std::iter::Sum;
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 /**
  * A record is displayed by showing its number component.
  */
-impl <'a, T: std::fmt::Display + Primitive> std::fmt::Display for Record<'a, T> {
+impl<'a, T: std::fmt::Display + Primitive> std::fmt::Display for Record<'a, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.number)
     }
 }
 
-impl <'a, T: Numeric + Primitive> ZeroOne for Record<'a, T> {
+impl<'a, T: Numeric + Primitive> ZeroOne for Record<'a, T> {
     #[inline]
     fn zero() -> Record<'a, T> {
         Record::constant(T::zero())
@@ -61,7 +61,7 @@ impl <'a, T: Numeric + Primitive> ZeroOne for Record<'a, T> {
     }
 }
 
-impl <'a, T: Numeric + Primitive> FromUsize for Record<'a, T> {
+impl<'a, T: Numeric + Primitive> FromUsize for Record<'a, T> {
     #[inline]
     fn from_usize(n: usize) -> Option<Record<'a, T>> {
         Some(Record::constant(T::from_usize(n)?))
@@ -71,7 +71,7 @@ impl <'a, T: Numeric + Primitive> FromUsize for Record<'a, T> {
 /**
  * Any record of a Cloneable type implements clone
  */
-impl <'a, T: Clone + Primitive> Clone for Record<'a, T> {
+impl<'a, T: Clone + Primitive> Clone for Record<'a, T> {
     #[inline]
     fn clone(&self) -> Self {
         Record {
@@ -85,7 +85,7 @@ impl <'a, T: Clone + Primitive> Clone for Record<'a, T> {
 /**
  * Any record of a Copy type implements Copy
  */
-impl <'a, T: Copy + Primitive> Copy for Record<'a, T> { }
+impl<'a, T: Copy + Primitive> Copy for Record<'a, T> {}
 
 /**
  * Compares two record's referenced WengertLists.
@@ -110,13 +110,18 @@ pub(crate) fn same_list<'a, 'b, T: Primitive>(a: &Record<'a, T>, b: &Record<'b, 
  * Addition for two records of the same type with both referenced and
  * both using the same WengertList.
  */
-impl <'a, 'l, 'r, T: Numeric + Primitive> Add<&'r Record<'a, T>> for &'l Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, 'l, 'r, T: Numeric + Primitive> Add<&'r Record<'a, T>> for &'l Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     type Output = Record<'a, T>;
     #[track_caller]
     #[inline]
     fn add(self, rhs: &Record<'a, T>) -> Self::Output {
-        assert!(same_list(self, rhs), "Records must be using the same WengertList");
+        assert!(
+            same_list(self, rhs),
+            "Records must be using the same WengertList"
+        );
         match (self.history, rhs.history) {
             // If neither inputs have a WengertList then we don't need to record
             // the computation graph at this point because neither are inputs to
@@ -141,7 +146,7 @@ where for<'t> &'t T: NumericRef<T> {
                     T::one(),
                     rhs.index,
                     // δ(self + rhs) / rhs = 1
-                    T::one()
+                    T::one(),
                 ),
             },
         }
@@ -151,8 +156,10 @@ where for<'t> &'t T: NumericRef<T> {
 /**
  * Addition for a record and a constant of the same type with both referenced.
  */
-impl <'a, T: Numeric + Primitive> Add<&T> for &Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, T: Numeric + Primitive> Add<&T> for &Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     type Output = Record<'a, T>;
     #[track_caller]
     #[inline]
@@ -170,7 +177,7 @@ where for<'t> &'t T: NumericRef<T> {
                     index: history.append_unary(
                         self.index,
                         // δ(self + C) / δself = 1
-                        T::one()
+                        T::one(),
                     ),
                 }
             }
@@ -183,8 +190,10 @@ macro_rules! record_operator_impl_value_value {
         /**
          * Operation for two records of the same type.
          */
-        impl <'a, T: Numeric + Primitive> $op for Record<'a, T>
-        where for<'t> &'t T: NumericRef<T> {
+        impl<'a, T: Numeric + Primitive> $op for Record<'a, T>
+        where
+            for<'t> &'t T: NumericRef<T>,
+        {
             type Output = Record<'a, T>;
             #[track_caller]
             #[inline]
@@ -192,7 +201,7 @@ macro_rules! record_operator_impl_value_value {
                 (&self).$method(&rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! record_operator_impl_value_reference {
@@ -200,8 +209,10 @@ macro_rules! record_operator_impl_value_reference {
         /**
          * Operation for two records of the same type with the right referenced.
          */
-        impl <'a, T: Numeric + Primitive> $op<&Record<'a, T>> for Record<'a, T>
-        where for<'t> &'t T: NumericRef<T> {
+        impl<'a, T: Numeric + Primitive> $op<&Record<'a, T>> for Record<'a, T>
+        where
+            for<'t> &'t T: NumericRef<T>,
+        {
             type Output = Record<'a, T>;
             #[track_caller]
             #[inline]
@@ -209,16 +220,18 @@ macro_rules! record_operator_impl_value_reference {
                 (&self).$method(rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! record_operator_impl_reference_value {
     (impl $op:tt for Record { fn $method:ident }) => {
         /**
-        * Operation for two records of the same type with the left referenced.
-        */
-        impl <'a, T: Numeric + Primitive> $op<Record<'a, T>> for &Record<'a, T>
-        where for<'t> &'t T: NumericRef<T> {
+         * Operation for two records of the same type with the left referenced.
+         */
+        impl<'a, T: Numeric + Primitive> $op<Record<'a, T>> for &Record<'a, T>
+        where
+            for<'t> &'t T: NumericRef<T>,
+        {
             type Output = Record<'a, T>;
             #[track_caller]
             #[inline]
@@ -226,7 +239,7 @@ macro_rules! record_operator_impl_reference_value {
                 self.$method(&rhs)
             }
         }
-    }
+    };
 }
 
 record_operator_impl_value_value!(impl Add for Record { fn add });
@@ -238,15 +251,17 @@ macro_rules! record_number_operator_impl_value_value {
         /**
          * Operation for a record and a constant of the same type.
          */
-        impl <'a, T: Numeric + Primitive> $op<T> for Record<'a, T>
-        where for<'t> &'t T: NumericRef<T> {
+        impl<'a, T: Numeric + Primitive> $op<T> for Record<'a, T>
+        where
+            for<'t> &'t T: NumericRef<T>,
+        {
             type Output = Record<'a, T>;
             #[inline]
             fn $method(self, rhs: T) -> Self::Output {
                 (&self).$method(&rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! record_number_operator_impl_value_reference {
@@ -254,31 +269,35 @@ macro_rules! record_number_operator_impl_value_reference {
         /**
          * Operation for a record and a constant of the same type with the right referenced.
          */
-        impl <'a, T: Numeric + Primitive> $op<&T> for Record<'a, T>
-        where for<'t> &'t T: NumericRef<T> {
+        impl<'a, T: Numeric + Primitive> $op<&T> for Record<'a, T>
+        where
+            for<'t> &'t T: NumericRef<T>,
+        {
             type Output = Record<'a, T>;
             #[inline]
             fn $method(self, rhs: &T) -> Self::Output {
                 (&self).$method(rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! record_number_operator_impl_reference_value {
     (impl $op:tt for Record { fn $method:ident }) => {
         /**
-        * Operation for a record and a constant of the same type with the left referenced.
-        */
-        impl <'a, T: Numeric + Primitive> $op<T> for &Record<'a, T>
-        where for<'t> &'t T: NumericRef<T> {
+         * Operation for a record and a constant of the same type with the left referenced.
+         */
+        impl<'a, T: Numeric + Primitive> $op<T> for &Record<'a, T>
+        where
+            for<'t> &'t T: NumericRef<T>,
+        {
             type Output = Record<'a, T>;
             #[inline]
             fn $method(self, rhs: T) -> Self::Output {
                 self.$method(&rhs)
             }
         }
-    }
+    };
 }
 
 record_number_operator_impl_value_value!(impl Add for Record { fn add });
@@ -289,13 +308,18 @@ record_number_operator_impl_value_reference!(impl Add for Record { fn add });
  * Multiplication for two records of the same type with both referenced and
  * both using the same WengertList.
  */
-impl <'a, 'l, 'r, T: Numeric + Primitive> Mul<&'r Record<'a, T>> for &'l Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, 'l, 'r, T: Numeric + Primitive> Mul<&'r Record<'a, T>> for &'l Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     type Output = Record<'a, T>;
     #[track_caller]
     #[inline]
     fn mul(self, rhs: &Record<'a, T>) -> Self::Output {
-        assert!(same_list(self, rhs), "Records must be using the same WengertList");
+        assert!(
+            same_list(self, rhs),
+            "Records must be using the same WengertList"
+        );
         match (self.history, rhs.history) {
             (None, None) => Record {
                 number: self.number.clone() * rhs.number.clone(),
@@ -314,7 +338,7 @@ where for<'t> &'t T: NumericRef<T> {
                     rhs.number.clone(),
                     rhs.index,
                     // δ(self * rhs) / rhs = self
-                    self.number.clone()
+                    self.number.clone(),
                 ),
             },
         }
@@ -328,8 +352,10 @@ record_operator_impl_value_reference!(impl Mul for Record { fn mul });
 /**
  * Multiplication for a record and a constant of the same type with both referenced.
  */
-impl <'a, T: Numeric + Primitive> Mul<&T> for &Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, T: Numeric + Primitive> Mul<&T> for &Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     type Output = Record<'a, T>;
     #[track_caller]
     #[inline]
@@ -347,7 +373,7 @@ where for<'t> &'t T: NumericRef<T> {
                     index: history.append_unary(
                         self.index,
                         // δ(self * C) / δself = C
-                        rhs.clone()
+                        rhs.clone(),
                     ),
                 }
             }
@@ -363,13 +389,18 @@ record_number_operator_impl_value_reference!(impl Mul for Record { fn mul });
  * Subtraction for two records of the same type with both referenced and
  * both using the same WengertList.
  */
-impl <'a, 'l, 'r, T: Numeric + Primitive> Sub<&'r Record<'a, T>> for &'l Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, 'l, 'r, T: Numeric + Primitive> Sub<&'r Record<'a, T>> for &'l Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     type Output = Record<'a, T>;
     #[track_caller]
     #[inline]
     fn sub(self, rhs: &Record<'a, T>) -> Self::Output {
-        assert!(same_list(self, rhs), "Records must be using the same WengertList");
+        assert!(
+            same_list(self, rhs),
+            "Records must be using the same WengertList"
+        );
         match (self.history, rhs.history) {
             // If neither inputs have a WengertList then we don't need to record
             // the computation graph at this point because neither are inputs to
@@ -396,7 +427,7 @@ where for<'t> &'t T: NumericRef<T> {
                     T::one(),
                     rhs.index,
                     // δ(self - rhs) / rhs = -1
-                    -T::one()
+                    -T::one(),
                 ),
             },
         }
@@ -410,8 +441,10 @@ record_operator_impl_value_reference!(impl Sub for Record { fn sub });
 /**
  * Subtraction for a record and a constant of the same type with both referenced.
  */
-impl <'a, T: Numeric + Primitive> Sub<&T> for &Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, T: Numeric + Primitive> Sub<&T> for &Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     type Output = Record<'a, T>;
     #[inline]
     fn sub(self, rhs: &T) -> Self::Output {
@@ -428,7 +461,7 @@ where for<'t> &'t T: NumericRef<T> {
                     index: history.append_unary(
                         self.index,
                         // δ(self - C) / δself = 1
-                        T::one()
+                        T::one(),
                     ),
                 }
             }
@@ -460,8 +493,10 @@ pub trait SwappedOperations<Lhs = Self> {
     fn div_swapped(self, lhs: Lhs) -> Self::Output;
 }
 
-impl <'a, T: Numeric + Primitive> SwappedOperations<&T> for &Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, T: Numeric + Primitive> SwappedOperations<&T> for &Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     type Output = Record<'a, T>;
     /**
      * Subtraction for a record and a constant, where the constant
@@ -482,7 +517,7 @@ where for<'t> &'t T: NumericRef<T> {
                     index: history.append_unary(
                         self.index,
                         // δ(C - self) / δself = -1
-                        -T::one()
+                        -T::one(),
                     ),
                 }
             }
@@ -508,7 +543,7 @@ where for<'t> &'t T: NumericRef<T> {
                     index: history.append_unary(
                         self.index,
                         // δ(C / self) / δself = -(C / self^2)
-                        -&lhs.clone() / (self.number.clone() * self.number.clone())
+                        -&lhs.clone() / (self.number.clone() * self.number.clone()),
                     ),
                 }
             }
@@ -516,8 +551,10 @@ where for<'t> &'t T: NumericRef<T> {
     }
 }
 
-impl <'a, T: Numeric + Primitive> SwappedOperations<T> for &Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, T: Numeric + Primitive> SwappedOperations<T> for &Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     type Output = Record<'a, T>;
     /**
      * Subtraction for a record and a constant, where the constant
@@ -538,8 +575,10 @@ where for<'t> &'t T: NumericRef<T> {
     }
 }
 
-impl <'a, T: Numeric + Primitive> SwappedOperations<T> for Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, T: Numeric + Primitive> SwappedOperations<T> for Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     type Output = Record<'a, T>;
     /**
      * Subtraction for a record and a constant, where the constant
@@ -560,8 +599,10 @@ where for<'t> &'t T: NumericRef<T> {
     }
 }
 
-impl <'a, T: Numeric + Primitive> SwappedOperations<&T> for Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, T: Numeric + Primitive> SwappedOperations<&T> for Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     type Output = Record<'a, T>;
     /**
      * Subtraction for a record and a constant, where the constant
@@ -586,13 +627,18 @@ where for<'t> &'t T: NumericRef<T> {
  * Dvision for two records of the same type with both referenced and
  * both using the same WengertList.
  */
-impl <'a, 'l, 'r, T: Numeric + Primitive> Div<&'r Record<'a, T>> for &'l Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, 'l, 'r, T: Numeric + Primitive> Div<&'r Record<'a, T>> for &'l Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     type Output = Record<'a, T>;
     #[track_caller]
     #[inline]
     fn div(self, rhs: &Record<'a, T>) -> Self::Output {
-        assert!(same_list(self, rhs), "Records must be using the same WengertList");
+        assert!(
+            same_list(self, rhs),
+            "Records must be using the same WengertList"
+        );
         match (self.history, rhs.history) {
             (None, None) => Record {
                 number: self.number.clone() / rhs.number.clone(),
@@ -613,7 +659,7 @@ where for<'t> &'t T: NumericRef<T> {
                     T::one() / rhs.number.clone(),
                     rhs.index,
                     // δ(self / rhs) / δrhs = -(self / rhs^2)
-                    -&self.number / (rhs.number.clone() * rhs.number.clone())
+                    -&self.number / (rhs.number.clone() * rhs.number.clone()),
                 ),
             },
         }
@@ -627,8 +673,10 @@ record_operator_impl_value_reference!(impl Div for Record { fn div });
 /**
  * Division for a record and a constant of the same type with both referenced.
  */
-impl <'a, T: Numeric + Primitive> Div<&T> for &Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, T: Numeric + Primitive> Div<&T> for &Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     type Output = Record<'a, T>;
     #[track_caller]
     #[inline]
@@ -646,7 +694,7 @@ where for<'t> &'t T: NumericRef<T> {
                     index: history.append_unary(
                         self.index,
                         // δ(self / C) / δself = 1 / C
-                        T::one() / rhs.clone()
+                        T::one() / rhs.clone(),
                     ),
                 }
             }
@@ -661,8 +709,10 @@ record_number_operator_impl_value_reference!(impl Div for Record { fn div });
 /**
  * Negation of a record by reference.
  */
-impl <'a, T: Numeric + Primitive> Neg for &Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, T: Numeric + Primitive> Neg for &Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     type Output = Record<'a, T>;
     #[inline]
     fn neg(self) -> Self::Output {
@@ -672,9 +722,7 @@ where for<'t> &'t T: NumericRef<T> {
                 history: None,
                 index: 0,
             },
-            Some(_) => {
-                Record::constant(T::zero()) - self
-            }
+            Some(_) => Record::constant(T::zero()) - self,
         }
     }
 }
@@ -682,8 +730,10 @@ where for<'t> &'t T: NumericRef<T> {
 /**
  * Negation of a record by value.
  */
-impl <'a, T: Numeric + Primitive> Neg for Record<'a, T>
-where for<'t> &'t T: NumericRef<T> {
+impl<'a, T: Numeric + Primitive> Neg for Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T>,
+{
     type Output = Record<'a, T>;
     #[inline]
     fn neg(self) -> Self::Output {
@@ -693,9 +743,7 @@ where for<'t> &'t T: NumericRef<T> {
                 history: None,
                 index: 0,
             },
-            Some(_) => {
-                Record::constant(T::zero()) - self
-            }
+            Some(_) => Record::constant(T::zero()) - self,
         }
     }
 }
@@ -706,7 +754,7 @@ where for<'t> &'t T: NumericRef<T> {
  * Note that as a Record is intended to be substitutable with its
  * type T only the number parts of the record are compared.
  */
-impl <'a, T: PartialEq + Primitive> PartialEq for Record<'a, T> {
+impl<'a, T: PartialEq + Primitive> PartialEq for Record<'a, T> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.number == other.number
@@ -719,7 +767,7 @@ impl <'a, T: PartialEq + Primitive> PartialEq for Record<'a, T> {
  * Note that as a Record is intended to be substitutable with its
  * type T only the number parts of the record are compared.
  */
-impl <'a, T: PartialOrd + Primitive> PartialOrd for Record<'a, T> {
+impl<'a, T: PartialOrd + Primitive> PartialOrd for Record<'a, T> {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.number.partial_cmp(&other.number)
@@ -730,58 +778,66 @@ impl <'a, T: PartialOrd + Primitive> PartialOrd for Record<'a, T> {
  * Any record of a Numeric type implements Sum, which is
  * the same as adding a bunch of Record types together.
  */
-impl <'a, T: Numeric + Primitive> Sum for Record<'a, T> {
+impl<'a, T: Numeric + Primitive> Sum for Record<'a, T> {
     #[track_caller]
-    fn sum<I>(mut iter: I) -> Record<'a, T> where I: Iterator<Item = Record<'a, T>> {
+    fn sum<I>(mut iter: I) -> Record<'a, T>
+    where
+        I: Iterator<Item = Record<'a, T>>,
+    {
         let mut total = Record::<'a, T>::zero();
         loop {
             match iter.next() {
                 None => return total,
-                Some(next) => total = match (total.history, next.history) {
-                    (None, None) => Record {
-                        number: total.number.clone() + next.number.clone(),
-                        history: None,
-                        index: 0,
-                    },
-                    // If only one input has a WengertList treat the other as a constant
-                    (Some(history), None) => {
-                        Record {
+                Some(next) => {
+                    total = match (total.history, next.history) {
+                        (None, None) => Record {
                             number: total.number.clone() + next.number.clone(),
-                            history: Some(history),
-                            index: history.append_unary(
-                                total.index,
-                                // δ(total + next) / δtotal = 1
-                                T::one()
-                            ),
+                            history: None,
+                            index: 0,
+                        },
+                        // If only one input has a WengertList treat the other as a constant
+                        (Some(history), None) => {
+                            Record {
+                                number: total.number.clone() + next.number.clone(),
+                                history: Some(history),
+                                index: history.append_unary(
+                                    total.index,
+                                    // δ(total + next) / δtotal = 1
+                                    T::one(),
+                                ),
+                            }
                         }
-                    },
-                    (None, Some(history)) => {
-                        Record {
-                            number: total.number.clone() + next.number.clone(),
-                            history: Some(history),
-                            index: history.append_unary(
-                                next.index,
-                                // δ(next + total) / δnext = 1
-                                T::one()
-                            ),
+                        (None, Some(history)) => {
+                            Record {
+                                number: total.number.clone() + next.number.clone(),
+                                history: Some(history),
+                                index: history.append_unary(
+                                    next.index,
+                                    // δ(next + total) / δnext = 1
+                                    T::one(),
+                                ),
+                            }
+                        }
+                        (Some(history), Some(_)) => {
+                            assert!(
+                                same_list(&total, &next),
+                                "Records must be using the same WengertList"
+                            );
+                            Record {
+                                number: total.number.clone() + next.number.clone(),
+                                history: Some(history),
+                                index: history.append_binary(
+                                    total.index,
+                                    // δ(total + next) / δtotal = 1
+                                    T::one(),
+                                    next.index,
+                                    // δ(total + next) / δnext = 1
+                                    T::one(),
+                                ),
+                            }
                         }
                     }
-                    (Some(history), Some(_)) => {
-                        assert!(same_list(&total, &next), "Records must be using the same WengertList");
-                        Record {
-                            number: total.number.clone() + next.number.clone(),
-                            history: Some(history),
-                            index: history.append_binary(
-                                total.index,
-                                // δ(total + next) / δtotal = 1
-                                T::one(),
-                                next.index,
-                                // δ(total + next) / δnext = 1
-                                T::one()
-                            ),
-                        }
-                    },
-                },
+                }
             }
         }
     }
@@ -790,8 +846,10 @@ impl <'a, T: Numeric + Primitive> Sum for Record<'a, T> {
 /**
  * Sine of a Record by reference.
  */
-impl <'a, T: Numeric + Real + Primitive> Sin for &Record<'a, T>
-where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+impl<'a, T: Numeric + Real + Primitive> Sin for &Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+{
     type Output = Record<'a, T>;
     #[inline]
     fn sin(self) -> Self::Output {
@@ -808,7 +866,7 @@ where for<'t> &'t T: NumericRef<T> + RealRef<T> {
                     index: history.append_unary(
                         self.index,
                         // δ(sin(self)) / δself = cos(self)
-                        self.number.clone().cos()
+                        self.number.clone().cos(),
                     ),
                 }
             }
@@ -819,17 +877,19 @@ where for<'t> &'t T: NumericRef<T> + RealRef<T> {
 macro_rules! record_real_operator_impl_value {
     (impl $op:tt for Record { fn $method:ident }) => {
         /**
-        * Operation for a record by value.
-        */
-        impl <'a, T: Numeric + Real + Primitive> $op for Record<'a, T>
-        where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+         * Operation for a record by value.
+         */
+        impl<'a, T: Numeric + Real + Primitive> $op for Record<'a, T>
+        where
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+        {
             type Output = Record<'a, T>;
             #[inline]
             fn $method(self) -> Self::Output {
                 (&self).$method()
             }
         }
-    }
+    };
 }
 
 record_real_operator_impl_value!(impl Sin for Record { fn sin });
@@ -837,8 +897,10 @@ record_real_operator_impl_value!(impl Sin for Record { fn sin });
 /**
  * Cosine of a Record by reference.
  */
-impl <'a, T: Numeric + Real + Primitive> Cos for &Record<'a, T>
-where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+impl<'a, T: Numeric + Real + Primitive> Cos for &Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+{
     type Output = Record<'a, T>;
     #[inline]
     fn cos(self) -> Self::Output {
@@ -855,7 +917,7 @@ where for<'t> &'t T: NumericRef<T> + RealRef<T> {
                     index: history.append_unary(
                         self.index,
                         // δ(cos(self)) / δself = -sin(self)
-                        -self.number.clone().sin()
+                        -self.number.clone().sin(),
                     ),
                 }
             }
@@ -868,8 +930,10 @@ record_real_operator_impl_value!(impl Cos for Record { fn cos });
 /**
  * Exponential, ie e<sup>x</sup> of a Record by reference.
  */
-impl <'a, T: Numeric + Real + Primitive> Exp for &Record<'a, T>
-where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+impl<'a, T: Numeric + Real + Primitive> Exp for &Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+{
     type Output = Record<'a, T>;
     #[inline]
     fn exp(self) -> Self::Output {
@@ -886,7 +950,7 @@ where for<'t> &'t T: NumericRef<T> + RealRef<T> {
                     index: history.append_unary(
                         self.index,
                         // δ(e^self) / δself = e^self
-                        self.number.clone().exp()
+                        self.number.clone().exp(),
                     ),
                 }
             }
@@ -899,8 +963,10 @@ record_real_operator_impl_value!(impl Exp for Record { fn exp });
 /**
  * Natural logarithm, ie ln(x) of a Record by reference.
  */
-impl <'a, T: Numeric + Real + Primitive> Ln for &Record<'a, T>
-where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+impl<'a, T: Numeric + Real + Primitive> Ln for &Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+{
     type Output = Record<'a, T>;
     #[inline]
     fn ln(self) -> Self::Output {
@@ -917,7 +983,7 @@ where for<'t> &'t T: NumericRef<T> + RealRef<T> {
                     index: history.append_unary(
                         self.index,
                         // δ(ln(self)) / δself = 1 / self
-                        T::one() / self.number.clone()
+                        T::one() / self.number.clone(),
                     ),
                 }
             }
@@ -930,8 +996,10 @@ record_real_operator_impl_value!(impl Ln for Record { fn ln });
 /**
  * Square root of a Record by reference.
  */
-impl <'a, T: Numeric + Real + Primitive> Sqrt for &Record<'a, T>
-where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+impl<'a, T: Numeric + Real + Primitive> Sqrt for &Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+{
     type Output = Record<'a, T>;
     #[inline]
     fn sqrt(self) -> Self::Output {
@@ -948,7 +1016,7 @@ where for<'t> &'t T: NumericRef<T> + RealRef<T> {
                     index: history.append_unary(
                         self.index,
                         // δ(sqrt(self)) / δself = 1 / (2*sqrt(self))
-                        T::one() / ((T::one() + T::one()) * self.number.clone().sqrt())
+                        T::one() / ((T::one() + T::one()) * self.number.clone().sqrt()),
                     ),
                 }
             }
@@ -962,13 +1030,18 @@ record_real_operator_impl_value!(impl Sqrt for Record { fn sqrt });
  * Power of one Record to another, ie self^rhs for two records of
  * the same type with both referenced and both using the same WengertList.
  */
-impl <'a, 'l, 'r, T: Numeric + Real + Primitive> Pow<&'r Record<'a, T>> for &'l Record<'a, T>
-where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+impl<'a, 'l, 'r, T: Numeric + Real + Primitive> Pow<&'r Record<'a, T>> for &'l Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+{
     type Output = Record<'a, T>;
     #[inline]
     #[track_caller]
     fn pow(self, rhs: &Record<'a, T>) -> Self::Output {
-        assert!(same_list(self, rhs), "Records must be using the same WengertList");
+        assert!(
+            same_list(self, rhs),
+            "Records must be using the same WengertList"
+        );
         match (self.history, rhs.history) {
             (None, None) => Record {
                 number: self.number.clone().pow(rhs.number.clone()),
@@ -987,7 +1060,7 @@ where for<'t> &'t T: NumericRef<T> + RealRef<T> {
                     rhs.number.clone() * self.number.clone().pow(rhs.number.clone() - T::one()),
                     rhs.index,
                     // δ(self^rhs) / δrhs = self^rhs * ln(self)
-                    (self.number.clone().pow(rhs.number.clone())) * self.number.clone().ln()
+                    (self.number.clone().pow(rhs.number.clone())) * self.number.clone().ln(),
                 ),
             },
         }
@@ -999,8 +1072,10 @@ macro_rules! record_real_operator_impl_value_value {
         /**
          * Operation for two records of the same type.
          */
-        impl <'a, T: Numeric + Real + Primitive> $op for Record<'a, T>
-        where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+        impl<'a, T: Numeric + Real + Primitive> $op for Record<'a, T>
+        where
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+        {
             type Output = Record<'a, T>;
             #[track_caller]
             #[inline]
@@ -1008,7 +1083,7 @@ macro_rules! record_real_operator_impl_value_value {
                 (&self).$method(&rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! record_real_operator_impl_value_reference {
@@ -1016,8 +1091,10 @@ macro_rules! record_real_operator_impl_value_reference {
         /**
          * Operation for two records of the same type with the right referenced.
          */
-        impl <'a, T: Numeric + Real + Primitive> $op<&Record<'a, T>> for Record<'a, T>
-        where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+        impl<'a, T: Numeric + Real + Primitive> $op<&Record<'a, T>> for Record<'a, T>
+        where
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+        {
             type Output = Record<'a, T>;
             #[track_caller]
             #[inline]
@@ -1025,16 +1102,18 @@ macro_rules! record_real_operator_impl_value_reference {
                 (&self).$method(rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! record_real_operator_impl_reference_value {
     (impl $op:tt for Record { fn $method:ident }) => {
         /**
-        * Operation for two records of the same type with the left referenced.
-        */
-        impl <'a, T: Numeric + Real + Primitive> $op<Record<'a, T>> for &Record<'a, T>
-        where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+         * Operation for two records of the same type with the left referenced.
+         */
+        impl<'a, T: Numeric + Real + Primitive> $op<Record<'a, T>> for &Record<'a, T>
+        where
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+        {
             type Output = Record<'a, T>;
             #[track_caller]
             #[inline]
@@ -1042,7 +1121,7 @@ macro_rules! record_real_operator_impl_reference_value {
                 self.$method(&rhs)
             }
         }
-    }
+    };
 }
 
 record_real_operator_impl_value_value!(impl Pow for Record { fn pow });
@@ -1052,8 +1131,10 @@ record_real_operator_impl_value_reference!(impl Pow for Record { fn pow });
 /**
  * Power of one Record to a constant of the same type with both referenced.
  */
-impl <'a, T: Numeric + Real + Primitive> Pow<&T> for &Record<'a, T>
-where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+impl<'a, T: Numeric + Real + Primitive> Pow<&T> for &Record<'a, T>
+where
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+{
     type Output = Record<'a, T>;
     #[inline]
     fn pow(self, rhs: &T) -> Self::Output {
@@ -1070,7 +1151,7 @@ where for<'t> &'t T: NumericRef<T> + RealRef<T> {
                     index: history.append_unary(
                         self.index,
                         // δ(self^rhs) / δself = rhs * self^(rhs-1)
-                        rhs.clone() * self.number.clone().pow(rhs.clone() - T::one())
+                        rhs.clone() * self.number.clone().pow(rhs.clone() - T::one()),
                     ),
                 }
             }
@@ -1081,8 +1162,10 @@ where for<'t> &'t T: NumericRef<T> + RealRef<T> {
 /**
  * Power of a constant to a Record of the same type with both referenced.
  */
-impl <'a, T: Numeric + Real + Primitive> Pow<&Record<'a, T>> for &T
-where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+impl<'a, T: Numeric + Real + Primitive> Pow<&Record<'a, T>> for &T
+where
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+{
     type Output = Record<'a, T>;
     #[inline]
     fn pow(self, rhs: &Record<'a, T>) -> Self::Output {
@@ -1099,7 +1182,7 @@ where for<'t> &'t T: NumericRef<T> + RealRef<T> {
                     index: history.append_unary(
                         rhs.index,
                         // δ(self^rhs) / δrhs = self^rhs * ln(self)
-                        (self.clone().pow(rhs.number.clone())) * self.clone().ln()
+                        (self.clone().pow(rhs.number.clone())) * self.clone().ln(),
                     ),
                 }
             }
@@ -1112,15 +1195,17 @@ macro_rules! record_real_number_operator_impl_value_value {
         /**
          * Operation for a record and a constant of the same type.
          */
-        impl <'a, T: Numeric + Real + Primitive> $op<T> for Record<'a, T>
-        where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+        impl<'a, T: Numeric + Real + Primitive> $op<T> for Record<'a, T>
+        where
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+        {
             type Output = Record<'a, T>;
             #[inline]
             fn $method(self, rhs: T) -> Self::Output {
                 (&self).$method(&rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! record_real_number_operator_impl_value_reference {
@@ -1128,31 +1213,35 @@ macro_rules! record_real_number_operator_impl_value_reference {
         /**
          * Operation for a record and a constant of the same type with the right referenced.
          */
-        impl <'a, T: Numeric + Real + Primitive> $op<&T> for Record<'a, T>
-        where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+        impl<'a, T: Numeric + Real + Primitive> $op<&T> for Record<'a, T>
+        where
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+        {
             type Output = Record<'a, T>;
             #[inline]
             fn $method(self, rhs: &T) -> Self::Output {
                 (&self).$method(rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! record_real_number_operator_impl_reference_value {
     (impl $op:tt for Record { fn $method:ident }) => {
         /**
-        * Operation for a record and a constant of the same type with the left referenced.
-        */
-        impl <'a, T: Numeric + Real + Primitive> $op<T> for &Record<'a, T>
-        where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+         * Operation for a record and a constant of the same type with the left referenced.
+         */
+        impl<'a, T: Numeric + Real + Primitive> $op<T> for &Record<'a, T>
+        where
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+        {
             type Output = Record<'a, T>;
             #[inline]
             fn $method(self, rhs: T) -> Self::Output {
                 self.$method(&rhs)
             }
         }
-    }
+    };
 }
 
 record_real_number_operator_impl_value_value!(impl Pow for Record { fn pow });
@@ -1164,15 +1253,17 @@ macro_rules! real_number_record_operator_impl_value_value {
         /**
          * Operation for a constant and a record  of the same type.
          */
-        impl <'a, T: Numeric + Real + Primitive> $op<Record<'a, T>> for T
-        where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+        impl<'a, T: Numeric + Real + Primitive> $op<Record<'a, T>> for T
+        where
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+        {
             type Output = Record<'a, T>;
             #[inline]
             fn $method(self, rhs: Record<'a, T>) -> Self::Output {
                 (&self).$method(&rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! real_number_record_operator_impl_value_reference {
@@ -1180,38 +1271,42 @@ macro_rules! real_number_record_operator_impl_value_reference {
         /**
          * Operation for a constant and a record of the same type with the right referenced.
          */
-        impl <'a, T: Numeric + Real + Primitive> $op<&Record<'a, T>> for T
-        where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+        impl<'a, T: Numeric + Real + Primitive> $op<&Record<'a, T>> for T
+        where
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+        {
             type Output = Record<'a, T>;
             #[inline]
             fn $method(self, rhs: &Record<'a, T>) -> Self::Output {
                 (&self).$method(rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! real_number_record_operator_impl_reference_value {
     (impl $op:tt for Record { fn $method:ident }) => {
         /**
-        * Operation for a constant and a record of the same type with the left referenced.
-        */
-        impl <'a, T: Numeric + Real + Primitive> $op<Record<'a, T>> for &T
-        where for<'t> &'t T: NumericRef<T> + RealRef<T> {
+         * Operation for a constant and a record of the same type with the left referenced.
+         */
+        impl<'a, T: Numeric + Real + Primitive> $op<Record<'a, T>> for &T
+        where
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+        {
             type Output = Record<'a, T>;
             #[inline]
             fn $method(self, rhs: Record<'a, T>) -> Self::Output {
                 self.$method(&rhs)
             }
         }
-    }
+    };
 }
 
 real_number_record_operator_impl_value_value!(impl Pow for Record { fn pow });
 real_number_record_operator_impl_reference_value!(impl Pow for Record { fn pow });
 real_number_record_operator_impl_value_reference!(impl Pow for Record { fn pow });
 
-impl <'a, T: Numeric + Real + Primitive> Pi for Record<'a, T> {
+impl<'a, T: Numeric + Real + Primitive> Pi for Record<'a, T> {
     #[inline]
     fn pi() -> Record<'a, T> {
         Record::constant(T::pi())

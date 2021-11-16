@@ -5,13 +5,13 @@
  * types.
  */
 
-use crate::differentiation::{Primitive};
+use crate::differentiation::Primitive;
 use std::num::Wrapping;
 
 macro_rules! impl_primitive {
     ($T:tt) => {
         impl Primitive for $T {}
-    }
+    };
 }
 
 impl_primitive!(u8);
@@ -29,4 +29,4 @@ impl_primitive!(f64);
 impl_primitive!(usize);
 impl_primitive!(isize);
 
-impl <T: Primitive> Primitive for Wrapping<T> {}
+impl<T: Primitive> Primitive for Wrapping<T> {}

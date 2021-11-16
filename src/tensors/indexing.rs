@@ -1,5 +1,5 @@
+use crate::tensors::views::{TensorMut, TensorRef};
 use crate::tensors::Dimension;
-use crate::tensors::views::{TensorRef, TensorMut};
 
 use std::error::Error;
 use std::fmt;
@@ -17,7 +17,7 @@ pub struct TensorAccess<T, S, const D: usize> {
 
 impl<T, S, const D: usize> TensorAccess<T, S, D>
 where
-    S: TensorRef<T, D>
+    S: TensorRef<T, D>,
 {
     #[track_caller]
     pub fn from(source: S, dimensions: [Dimension; D]) -> TensorAccess<T, S, D> {
@@ -27,13 +27,17 @@ where
         }
     }
 
-    pub fn try_from(source: S, dimensions: [Dimension; D]) -> Result<TensorAccess<T, S, D>, InvalidDimensionsError<D>> {
+    pub fn try_from(
+        source: S,
+        dimensions: [Dimension; D],
+    ) -> Result<TensorAccess<T, S, D>, InvalidDimensionsError<D>> {
         Ok(TensorAccess {
-            dimension_mapping: dimension_mapping(&source.view_shape(), &dimensions)
-                .ok_or_else(|| InvalidDimensionsError {
-                actual: source.view_shape(),
-                requested: dimensions,
-            })?,
+            dimension_mapping: dimension_mapping(&source.view_shape(), &dimensions).ok_or_else(
+                || InvalidDimensionsError {
+                    actual: source.view_shape(),
+                    requested: dimensions,
+                },
+            )?,
             source,
             _type: PhantomData,
         })
@@ -59,9 +63,9 @@ pub struct InvalidDimensionsError<const D: usize> {
     requested: [Dimension; D],
 }
 
-impl <const D: usize> Error for InvalidDimensionsError<D> {}
+impl<const D: usize> Error for InvalidDimensionsError<D> {}
 
-impl <const D: usize> fmt::Display for InvalidDimensionsError<D> {
+impl<const D: usize> fmt::Display for InvalidDimensionsError<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -83,7 +87,6 @@ fn test_send() {
     assert_send::<InvalidDimensionsError<3>>();
 }
 
-
 // Computes a mapping from a set of dimensions in memory order to a matching set of
 // dimensions in an arbitary order.
 // Returns a list where each dimension in the memory order is mapped to the requested order,
@@ -92,9 +95,9 @@ fn test_send() {
 // to the second dimension y, and the third dimension z to to the first dimension z.
 fn dimension_mapping<const D: usize>(
     memory: &[(Dimension, usize); D],
-    requested: &[Dimension; D]
+    requested: &[Dimension; D],
 ) -> Option<[usize; D]> {
-    let mut mapping = [ 0; D ];
+    let mut mapping = [0; D];
     for d in 0..D {
         let dimension = memory[d].0;
         // happy path, requested dimension is in the same order as in memory
@@ -106,7 +109,10 @@ fn dimension_mapping<const D: usize>(
             // Since both lists are the same length and we know our memory order won't contain
             // duplicates this also ensures the two lists have exactly the same set of names
             // as otherwise one of these `find`s will fail.
-            let (n, _) = requested.iter().enumerate().find(|(_, d)| **d == dimension)?;
+            let (n, _) = requested
+                .iter()
+                .enumerate()
+                .find(|(_, d)| **d == dimension)?;
             n
         };
         mapping[d] = order;
@@ -127,12 +133,13 @@ fn map_dimensions<const D: usize>(
     lookup
 }
 
-impl <T, S, const D: usize> TensorAccess<T, S, D>
+impl<T, S, const D: usize> TensorAccess<T, S, D>
 where
-    S: TensorRef<T, D>
+    S: TensorRef<T, D>,
 {
     pub fn try_get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        self.source.get_reference(map_dimensions(&self.dimension_mapping, &indexes))
+        self.source
+            .get_reference(map_dimensions(&self.dimension_mapping, &indexes))
     }
 
     #[track_caller]
@@ -141,13 +148,14 @@ where
             Some(reference) => reference,
             None => panic!(
                 "Unable to index with {:?}, Tensor dimensions are {:?}.",
-                indexes, self.shape()
+                indexes,
+                self.shape()
             ),
         }
     }
 }
 
-impl <T, S, const D: usize> TensorAccess<T, S, D>
+impl<T, S, const D: usize> TensorAccess<T, S, D>
 where
     S: TensorRef<T, D>,
     T: Clone,
@@ -158,18 +166,20 @@ where
             Some(reference) => reference.clone(),
             None => panic!(
                 "Unable to index with {:?}, Tensor dimensions are {:?}.",
-                indexes, self.shape()
+                indexes,
+                self.shape()
             ),
         }
     }
 }
 
-impl <T, S, const D: usize> TensorAccess<T, S, D>
+impl<T, S, const D: usize> TensorAccess<T, S, D>
 where
-    S: TensorMut<T, D>
+    S: TensorMut<T, D>,
 {
     pub fn try_get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
-        self.source.get_reference_mut(map_dimensions(&self.dimension_mapping, &indexes))
+        self.source
+            .get_reference_mut(map_dimensions(&self.dimension_mapping, &indexes))
     }
 
     #[track_caller]
@@ -186,9 +196,15 @@ where
 
 #[test]
 fn test_dimension_mapping() {
-    use crate::tensors::{of, dimension};
-    let mapping = dimension_mapping(&[of("x", 0), of("y", 0), of("z", 0)], &[dimension("x"), dimension("y"), dimension("z")]);
+    use crate::tensors::{dimension, of};
+    let mapping = dimension_mapping(
+        &[of("x", 0), of("y", 0), of("z", 0)],
+        &[dimension("x"), dimension("y"), dimension("z")],
+    );
     assert_eq!([0, 1, 2], mapping.unwrap());
-    let mapping = dimension_mapping(&[of("x", 0), of("y", 0), of("z", 0)], &[dimension("z"), dimension("y"), dimension("x")]);
+    let mapping = dimension_mapping(
+        &[of("x", 0), of("y", 0), of("z", 0)],
+        &[dimension("z"), dimension("y"), dimension("x")],
+    );
     assert_eq!([2, 1, 0], mapping.unwrap());
 }

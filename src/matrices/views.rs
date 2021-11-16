@@ -13,21 +13,20 @@
 
 use std::marker::PhantomData;
 
-use crate::matrices::{Column, Row, Matrix};
 use crate::matrices::iterators::{
     ColumnIterator, ColumnMajorIterator, ColumnMajorReferenceIterator,
-    ColumnMajorReferenceMutIterator, ColumnReferenceIterator,
-    DiagonalIterator, DiagonalReferenceIterator,
-    RowIterator, RowMajorIterator, RowMajorReferenceIterator,
+    ColumnMajorReferenceMutIterator, ColumnReferenceIterator, DiagonalIterator,
+    DiagonalReferenceIterator, RowIterator, RowMajorIterator, RowMajorReferenceIterator,
     RowMajorReferenceMutIterator, RowReferenceIterator,
 };
+use crate::matrices::{Column, Matrix, Row};
 
-pub mod traits;
-mod ranges;
 mod partitions;
+mod ranges;
+pub mod traits;
 
-pub use ranges::*;
 pub use partitions::*;
+pub use ranges::*;
 
 /**
 * A shared/immutable reference to a matrix (or a portion of it) of some type.
@@ -171,20 +170,20 @@ pub enum DataLayout {
  * MatrixView closely mirrors the API of Matrix, minus resizing methods which are not available.
  * Methods that create a new matrix do not return a MatrixView, they return a Matrix.
  */
- #[derive(Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct MatrixView<T, S> {
     source: S,
     _type: PhantomData<T>,
 }
 
-// TODO linear_algebra numeric functions, numeric operators, transpositions
+// TODO linear_algebra numeric functions, transpositions
 
 /**
  * MatrixView methods which require only read access via a [MatrixRef](MatrixRef) source.
  */
-impl <T, S> MatrixView<T, S>
+impl<T, S> MatrixView<T, S>
 where
-    S: MatrixRef<T>
+    S: MatrixRef<T>,
 {
     /**
      * Creates a MatrixView from a source of some type.
@@ -268,8 +267,11 @@ where
             Some(reference) => reference,
             None => panic!(
                 "Index ({},{}) not in range, MatrixView range is (0,0) to ({},{}).",
-                row, column, self.rows(), self.columns()
-            )
+                row,
+                column,
+                self.rows(),
+                self.columns()
+            ),
         }
     }
 
@@ -351,7 +353,7 @@ where
  * MatrixView methods which require only read access via a [MatrixRef](MatrixRef) source
  * and a clonable type.
  */
-impl <T, S> MatrixView<T, S>
+impl<T, S> MatrixView<T, S>
 where
     T: Clone,
     S: MatrixRef<T>,
@@ -369,8 +371,11 @@ where
             Some(reference) => reference.clone(),
             None => panic!(
                 "Index ({},{}) not in range, MatrixView range is (0,0) to ({},{}).",
-                row, column, self.rows(), self.columns()
-            )
+                row,
+                column,
+                self.rows(),
+                self.columns()
+            ),
         }
     }
 
@@ -510,7 +515,8 @@ where
      * ```
      */
     pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Matrix<U>
-        where U: Clone,
+    where
+        U: Clone,
     {
         let mapped = self.row_major_iter().map(|x| mapping_function(x)).collect();
         Matrix::from_flat_row_major(self.size(), mapped)
@@ -523,9 +529,11 @@ where
      * Matrix type itself.
      */
     pub fn map_with_index<U>(&self, mapping_function: impl Fn(T, Row, Column) -> U) -> Matrix<U>
-        where U: Clone
+    where
+        U: Clone,
     {
-        let mapped = self.row_major_iter()
+        let mapped = self
+            .row_major_iter()
             .with_index()
             .map(|((i, j), x)| mapping_function(x, i, j))
             .collect();
@@ -536,9 +544,10 @@ where
 /**
  * MatrixView methods which require mutable access via a [MatrixMut](MatrixMut) source.
  */
-impl <T, S> MatrixView<T, S>
+impl<T, S> MatrixView<T, S>
 where
-    S: MatrixMut<T> {
+    S: MatrixMut<T>,
+{
     /**
      * Gets a mutable reference to the value at this row and column.
      * Rows and Columns are 0 indexed.
@@ -556,7 +565,7 @@ where
             None => panic!(
                 "Index ({},{}) not in range, MatrixView range is (0,0) to ({},{}).",
                 row, column, size.0, size.1
-            )
+            ),
         }
     }
 
@@ -573,8 +582,11 @@ where
             Some(reference) => *reference = value,
             None => panic!(
                 "Index ({},{}) not in range, MatrixView range is (0,0) to ({},{}).",
-                row, column, self.rows(), self.columns()
-            )
+                row,
+                column,
+                self.rows(),
+                self.columns()
+            ),
         }
     }
 
@@ -607,9 +619,9 @@ where
  * MatrixView methods which require mutable access via a [MatrixMut](MatrixMut) source and
  * no interior mutability.
  */
-impl <T, S> MatrixView<T, S>
+impl<T, S> MatrixView<T, S>
 where
-    S: MatrixMut<T> + NoInteriorMutability
+    S: MatrixMut<T> + NoInteriorMutability,
 {
     /**
      * Returns a column major iterator over mutable references to all values in this matrix view,
@@ -632,10 +644,10 @@ where
  * MatrixView methods which require mutable access via a [MatrixMut](MatrixMut) source
  * and a clonable type.
  */
-impl <T, S> MatrixView<T, S>
+impl<T, S> MatrixView<T, S>
 where
     T: Clone,
-    S: MatrixMut<T>
+    S: MatrixMut<T>,
 {
     /**
      * Applies a function to all values in the matrix view, modifying the source in place.
@@ -702,7 +714,7 @@ where
 pub(crate) fn format_view<T, S>(view: &S, f: &mut std::fmt::Formatter) -> std::fmt::Result
 where
     T: std::fmt::Display,
-    S: MatrixRef<T>
+    S: MatrixRef<T>,
 {
     let rows = view.view_rows();
     let columns = view.view_columns();
@@ -716,8 +728,7 @@ where
                 Some(x) => x,
                 None => panic!(
                     "Expected ({},{}) to be in range of (0,0) to ({},{})",
-                    row, column,
-                    rows, columns
+                    row, column, rows, columns
                 ),
             };
             // default to 3 decimals but allow the caller to override
@@ -737,7 +748,7 @@ where
 /**
  * Any matrix view of a Displayable type implements Display
  */
-impl <T, S> std::fmt::Display for MatrixView<T, S>
+impl<T, S> std::fmt::Display for MatrixView<T, S>
 where
     T: std::fmt::Display,
     S: MatrixRef<T>,
@@ -772,14 +783,14 @@ where
     // perform elementwise check, return true only if every element in
     // each matrix is the same
     match (left.data_layout(), right.data_layout()) {
-        (DataLayout::ColumnMajor, DataLayout::ColumnMajor) =>
+        (DataLayout::ColumnMajor, DataLayout::ColumnMajor) => {
             ColumnMajorReferenceIterator::from(left)
-            .zip(ColumnMajorReferenceIterator::from(right))
-            .all(|(x, y)| x == y),
-        _ =>
-            RowMajorReferenceIterator::from(left)
+                .zip(ColumnMajorReferenceIterator::from(right))
+                .all(|(x, y)| x == y)
+        }
+        _ => RowMajorReferenceIterator::from(left)
             .zip(RowMajorReferenceIterator::from(right))
-            .all(|(x, y)| x == y)
+            .all(|(x, y)| x == y),
     }
 }
 
@@ -787,7 +798,7 @@ where
  * PartialEq is implemented as two matrix views are equal if and only if all their elements
  * are equal and they have the same size. Differences in their source types are ignored.
  */
-impl <T, S1, S2> PartialEq<MatrixView<T, S2>> for MatrixView<T, S1>
+impl<T, S1, S2> PartialEq<MatrixView<T, S2>> for MatrixView<T, S1>
 where
     T: PartialEq,
     S1: MatrixRef<T>,
@@ -803,7 +814,7 @@ where
  * A MatrixView and a Matrix can be compared for equality. PartialEq is implemented as they are
  * equal if and only if all their elements are equal and they have the same size.
  */
-impl <T, S> PartialEq<Matrix<T>> for MatrixView<T, S>
+impl<T, S> PartialEq<Matrix<T>> for MatrixView<T, S>
 where
     T: PartialEq,
     S: MatrixRef<T>,
@@ -818,7 +829,7 @@ where
  * A Matrix and a MatrixView can be compared for equality. PartialEq is implemented as they are
  * equal if and only if all their elements are equal and they have the same size.
  */
-impl <T, S> PartialEq<MatrixView<T, S>> for Matrix<T>
+impl<T, S> PartialEq<MatrixView<T, S>> for Matrix<T>
 where
     T: PartialEq,
     S: MatrixRef<T>,

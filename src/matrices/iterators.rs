@@ -77,8 +77,8 @@ use std::iter::{ExactSizeIterator, FusedIterator};
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use crate::matrices::{Matrix, Row, Column};
-use crate::matrices::views::{MatrixRef, MatrixMut, NoInteriorMutability};
+use crate::matrices::views::{MatrixMut, MatrixRef, NoInteriorMutability};
+use crate::matrices::{Column, Matrix, Row};
 
 trait MatrixRefExtension<T>: MatrixRef<T> {
     /**
@@ -89,8 +89,7 @@ trait MatrixRefExtension<T>: MatrixRef<T> {
     }
 }
 
-impl <R, T> MatrixRefExtension<T> for R
-where R: MatrixRef<T> {}
+impl<R, T> MatrixRefExtension<T> for R where R: MatrixRef<T> {}
 
 /**
  * A wrapper around another iterator that iterates through each element in the iterator and
@@ -103,7 +102,7 @@ pub struct WithIndex<I> {
     iterator: I,
 }
 
-impl <I> WithIndex<I> {
+impl<I> WithIndex<I> {
     /**
      * Consumes the WithIndex, yielding the iterator it was created from.
      */
@@ -133,7 +132,7 @@ pub struct ColumnIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
     _type: PhantomData<&'a T>,
 }
 
-impl <'a, T: Clone> ColumnIterator<'a, T> {
+impl<'a, T: Clone> ColumnIterator<'a, T> {
     /**
      * Constructs a column iterator over this matrix.
      *
@@ -147,7 +146,7 @@ impl <'a, T: Clone> ColumnIterator<'a, T> {
     }
 }
 
-impl <'a, T: Clone, S: MatrixRef<T>> ColumnIterator<'a, T, S> {
+impl<'a, T: Clone, S: MatrixRef<T>> ColumnIterator<'a, T, S> {
     /**
      * Constructs a column iterator over this source.
      *
@@ -157,7 +156,12 @@ impl <'a, T: Clone, S: MatrixRef<T>> ColumnIterator<'a, T, S> {
      */
     #[track_caller]
     pub fn from(source: &S, column: Column) -> ColumnIterator<T, S> {
-        assert!(source.index_is_valid(0, column), "Expected ({},{}) to be in range", 0, column);
+        assert!(
+            source.index_is_valid(0, column),
+            "Expected ({},{}) to be in range",
+            0,
+            column
+        );
         ColumnIterator {
             matrix: source,
             column,
@@ -167,7 +171,7 @@ impl <'a, T: Clone, S: MatrixRef<T>> ColumnIterator<'a, T, S> {
     }
 }
 
-impl <'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnIterator<'a, T, S> {
+impl<'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -179,8 +183,12 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnIterator<'a, T, S> {
                 // the view_rows have not changed this read is in bounds and if
                 // they are able to be changed, then the MatrixRef implementation is
                 // required to bounds check for us.
-                Some(self.matrix.get_reference_unchecked(row, self.column).clone())
-            }
+                Some(
+                    self.matrix
+                        .get_reference_unchecked(row, self.column)
+                        .clone(),
+                )
+            },
         }
     }
 
@@ -188,9 +196,8 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnIterator<'a, T, S> {
         self.range.size_hint()
     }
 }
-
-impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for ColumnIterator<'a, T, S> {}
-impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for ColumnIterator<'a, T, S> {}
+impl<'a, T: Clone, S: MatrixRef<T>> FusedIterator for ColumnIterator<'a, T, S> {}
+impl<'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for ColumnIterator<'a, T, S> {}
 
 /**
  * An iterator over a row in a matrix.
@@ -213,7 +220,7 @@ pub struct RowIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
     _type: PhantomData<&'a T>,
 }
 
-impl <'a, T: Clone> RowIterator<'a, T> {
+impl<'a, T: Clone> RowIterator<'a, T> {
     /**
      * Constructs a row iterator over this matrix.
      *
@@ -227,7 +234,7 @@ impl <'a, T: Clone> RowIterator<'a, T> {
     }
 }
 
-impl <'a, T: Clone, S: MatrixRef<T>> RowIterator<'a, T, S> {
+impl<'a, T: Clone, S: MatrixRef<T>> RowIterator<'a, T, S> {
     /**
      * Constructs a row iterator over this source.
      *
@@ -237,7 +244,12 @@ impl <'a, T: Clone, S: MatrixRef<T>> RowIterator<'a, T, S> {
      */
     #[track_caller]
     pub fn from(source: &S, row: Row) -> RowIterator<T, S> {
-        assert!(source.index_is_valid(row, 0), "Expected ({},{}) to be in range", row, 0);
+        assert!(
+            source.index_is_valid(row, 0),
+            "Expected ({},{}) to be in range",
+            row,
+            0
+        );
         RowIterator {
             matrix: source,
             row,
@@ -247,7 +259,7 @@ impl <'a, T: Clone, S: MatrixRef<T>> RowIterator<'a, T, S> {
     }
 }
 
-impl <'a, T: Clone, S: MatrixRef<T>> Iterator for RowIterator<'a, T, S> {
+impl<'a, T: Clone, S: MatrixRef<T>> Iterator for RowIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -259,8 +271,12 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for RowIterator<'a, T, S> {
                 // the view_columns have not changed this read is in bounds and if
                 // they are able to be changed, then the MatrixRef implementation is
                 // required to bounds check for us.
-                Some(self.matrix.get_reference_unchecked(self.row, column).clone())
-            }
+                Some(
+                    self.matrix
+                        .get_reference_unchecked(self.row, column)
+                        .clone(),
+                )
+            },
         }
     }
 
@@ -268,9 +284,8 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for RowIterator<'a, T, S> {
         self.range.size_hint()
     }
 }
-
-impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for RowIterator<'a, T, S> {}
-impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for RowIterator<'a, T, S> {}
+impl<'a, T: Clone, S: MatrixRef<T>> FusedIterator for RowIterator<'a, T, S> {}
+impl<'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for RowIterator<'a, T, S> {}
 
 // Common column major iterator logic
 fn column_major_iter(
@@ -278,15 +293,15 @@ fn column_major_iter(
     rows: Row,
     columns: Column,
     row_counter: &mut Row,
-    column_counter: &mut Column
+    column_counter: &mut Column,
 ) -> Option<(Row, Column)> {
     if *finished {
-        return None
+        return None;
     }
 
     let value = Some((*row_counter, *column_counter));
 
-    if *row_counter == rows - 1 && *column_counter == columns -1 {
+    if *row_counter == rows - 1 && *column_counter == columns - 1 {
         // reached end of matrix for next iteration
         *finished = true;
     }
@@ -308,7 +323,7 @@ fn column_major_size_hint(
     rows: Row,
     columns: Column,
     row_counter: Row,
-    column_counter: Column
+    column_counter: Column,
 ) -> (usize, Option<usize>) {
     let remaining_columns = columns - column_counter;
     match remaining_columns {
@@ -354,7 +369,7 @@ pub struct ColumnMajorIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
     _type: PhantomData<&'a T>,
 }
 
-impl <'a, T: Clone> ColumnMajorIterator<'a, T> {
+impl<'a, T: Clone> ColumnMajorIterator<'a, T> {
     /**
      * Constructs a column major iterator over this matrix.
      */
@@ -363,7 +378,7 @@ impl <'a, T: Clone> ColumnMajorIterator<'a, T> {
     }
 }
 
-impl <'a, T: Clone, S: MatrixRef<T>> ColumnMajorIterator<'a, T, S> {
+impl<'a, T: Clone, S: MatrixRef<T>> ColumnMajorIterator<'a, T, S> {
     /**
      * Constructs a column major iterator over this source.
      */
@@ -388,7 +403,7 @@ impl <'a, T: Clone, S: MatrixRef<T>> ColumnMajorIterator<'a, T, S> {
     }
 }
 
-impl <'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnMajorIterator<'a, T, S> {
+impl<'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnMajorIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -397,8 +412,9 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnMajorIterator<'a, T, S> 
             self.rows,
             self.columns,
             &mut self.row_counter,
-            &mut self.column_counter
-        ).map(|(row, column)| unsafe {
+            &mut self.column_counter,
+        )
+        .map(|(row, column)| unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
             // calling this on our next loop if we finished. Hence if the view size has
@@ -409,14 +425,18 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnMajorIterator<'a, T, S> 
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        column_major_size_hint(self.rows, self.columns, self.row_counter, self.column_counter)
+        column_major_size_hint(
+            self.rows,
+            self.columns,
+            self.row_counter,
+            self.column_counter,
+        )
     }
 }
+impl<'a, T: Clone, S: MatrixRef<T>> FusedIterator for ColumnMajorIterator<'a, T, S> {}
+impl<'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for ColumnMajorIterator<'a, T, S> {}
 
-impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for ColumnMajorIterator<'a, T, S> {}
-impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for ColumnMajorIterator<'a, T, S> {}
-
-impl <'a, T: Clone, S: MatrixRef<T>> Iterator for WithIndex<ColumnMajorIterator<'a, T, S>> {
+impl<'a, T: Clone, S: MatrixRef<T>> Iterator for WithIndex<ColumnMajorIterator<'a, T, S>> {
     type Item = ((Row, Column), T);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -424,8 +444,8 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for WithIndex<ColumnMajorIterator<
         self.iterator.next().map(|x| ((row, column), x))
     }
 }
-impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for WithIndex<ColumnMajorIterator<'a, T, S>> {}
-impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for WithIndex<ColumnMajorIterator<'a, T, S>> {}
+impl<'a, T: Clone, S: MatrixRef<T>> FusedIterator for WithIndex<ColumnMajorIterator<'a, T, S>> {}
+impl<'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for WithIndex<ColumnMajorIterator<'a, T, S>> {}
 
 // Common row major iterator logic
 fn row_major_iter(
@@ -433,15 +453,15 @@ fn row_major_iter(
     rows: Row,
     columns: Column,
     row_counter: &mut Row,
-    column_counter: &mut Column
+    column_counter: &mut Column,
 ) -> Option<(Row, Column)> {
     if *finished {
-        return None
+        return None;
     }
 
     let value = Some((*row_counter, *column_counter));
 
-    if *column_counter == columns - 1 && *row_counter == rows -1 {
+    if *column_counter == columns - 1 && *row_counter == rows - 1 {
         // reached end of matrix for next iteration
         *finished = true;
     }
@@ -463,7 +483,7 @@ fn row_major_size_hint(
     rows: Row,
     columns: Column,
     row_counter: Row,
-    column_counter: Column
+    column_counter: Column,
 ) -> (usize, Option<usize>) {
     let remaining_rows = rows - row_counter;
     match remaining_rows {
@@ -509,7 +529,7 @@ pub struct RowMajorIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
     _type: PhantomData<&'a T>,
 }
 
-impl <'a, T: Clone> RowMajorIterator<'a, T> {
+impl<'a, T: Clone> RowMajorIterator<'a, T> {
     /**
      * Constructs a row major iterator over this matrix.
      */
@@ -518,7 +538,7 @@ impl <'a, T: Clone> RowMajorIterator<'a, T> {
     }
 }
 
-impl <'a, T: Clone, S: MatrixRef<T>> RowMajorIterator<'a, T, S> {
+impl<'a, T: Clone, S: MatrixRef<T>> RowMajorIterator<'a, T, S> {
     /**
      * Constructs a row major iterator over this source.
      */
@@ -543,7 +563,7 @@ impl <'a, T: Clone, S: MatrixRef<T>> RowMajorIterator<'a, T, S> {
     }
 }
 
-impl <'a, T: Clone, S: MatrixRef<T>> Iterator for RowMajorIterator<'a, T, S> {
+impl<'a, T: Clone, S: MatrixRef<T>> Iterator for RowMajorIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -552,8 +572,9 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for RowMajorIterator<'a, T, S> {
             self.rows,
             self.columns,
             &mut self.row_counter,
-            &mut self.column_counter
-        ).map(|(row, column)| unsafe {
+            &mut self.column_counter,
+        )
+        .map(|(row, column)| unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
             // calling this on our next loop if we finished. Hence if the view size has
@@ -564,14 +585,18 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for RowMajorIterator<'a, T, S> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        row_major_size_hint(self.rows, self.columns, self.row_counter, self.column_counter)
+        row_major_size_hint(
+            self.rows,
+            self.columns,
+            self.row_counter,
+            self.column_counter,
+        )
     }
 }
+impl<'a, T: Clone, S: MatrixRef<T>> FusedIterator for RowMajorIterator<'a, T, S> {}
+impl<'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for RowMajorIterator<'a, T, S> {}
 
-impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for RowMajorIterator<'a, T, S> {}
-impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for RowMajorIterator<'a, T, S> {}
-
-impl <'a, T: Clone, S: MatrixRef<T>> Iterator for WithIndex<RowMajorIterator<'a, T, S>> {
+impl<'a, T: Clone, S: MatrixRef<T>> Iterator for WithIndex<RowMajorIterator<'a, T, S>> {
     type Item = ((Row, Column), T);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -579,8 +604,8 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for WithIndex<RowMajorIterator<'a,
         self.iterator.next().map(|x| ((row, column), x))
     }
 }
-impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for WithIndex<RowMajorIterator<'a, T, S>> {}
-impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for WithIndex<RowMajorIterator<'a, T, S>> {}
+impl<'a, T: Clone, S: MatrixRef<T>> FusedIterator for WithIndex<RowMajorIterator<'a, T, S>> {}
+impl<'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for WithIndex<RowMajorIterator<'a, T, S>> {}
 
 /**
  * An iterator over references to a column in a matrix.
@@ -603,7 +628,7 @@ pub struct ColumnReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
     _type: PhantomData<&'a T>,
 }
 
-impl <'a, T> ColumnReferenceIterator<'a, T> {
+impl<'a, T> ColumnReferenceIterator<'a, T> {
     /**
      * Constructs a column iterator over this matrix.
      *
@@ -617,7 +642,7 @@ impl <'a, T> ColumnReferenceIterator<'a, T> {
     }
 }
 
-impl <'a, T, S: MatrixRef<T>> ColumnReferenceIterator<'a, T, S> {
+impl<'a, T, S: MatrixRef<T>> ColumnReferenceIterator<'a, T, S> {
     /**
      * Constructs a column iterator over this source.
      *
@@ -627,7 +652,12 @@ impl <'a, T, S: MatrixRef<T>> ColumnReferenceIterator<'a, T, S> {
      */
     #[track_caller]
     pub fn from(source: &S, column: Column) -> ColumnReferenceIterator<T, S> {
-        assert!(source.index_is_valid(0, column), "Expected ({},{}) to be in range", 0, column);
+        assert!(
+            source.index_is_valid(0, column),
+            "Expected ({},{}) to be in range",
+            0,
+            column
+        );
         ColumnReferenceIterator {
             matrix: source,
             column,
@@ -637,7 +667,7 @@ impl <'a, T, S: MatrixRef<T>> ColumnReferenceIterator<'a, T, S> {
     }
 }
 
-impl <'a, T, S: MatrixRef<T>> Iterator for ColumnReferenceIterator<'a, T, S> {
+impl<'a, T, S: MatrixRef<T>> Iterator for ColumnReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -650,7 +680,7 @@ impl <'a, T, S: MatrixRef<T>> Iterator for ColumnReferenceIterator<'a, T, S> {
                 // they are able to be changed, then the MatrixRef implementation is
                 // required to bounds check for us.
                 Some(self.matrix.get_reference_unchecked(row, self.column))
-            }
+            },
         }
     }
 
@@ -658,9 +688,8 @@ impl <'a, T, S: MatrixRef<T>> Iterator for ColumnReferenceIterator<'a, T, S> {
         self.range.size_hint()
     }
 }
-
-impl <'a, T, S: MatrixRef<T>> FusedIterator for ColumnReferenceIterator<'a, T, S> {}
-impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for ColumnReferenceIterator<'a, T, S> {}
+impl<'a, T, S: MatrixRef<T>> FusedIterator for ColumnReferenceIterator<'a, T, S> {}
+impl<'a, T, S: MatrixRef<T>> ExactSizeIterator for ColumnReferenceIterator<'a, T, S> {}
 
 /**
  * An iterator over references to a row in a matrix.
@@ -683,7 +712,7 @@ pub struct RowReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
     _type: PhantomData<&'a T>,
 }
 
-impl <'a, T> RowReferenceIterator<'a, T> {
+impl<'a, T> RowReferenceIterator<'a, T> {
     /**
      * Constructs a row iterator over this matrix.
      *
@@ -697,7 +726,7 @@ impl <'a, T> RowReferenceIterator<'a, T> {
     }
 }
 
-impl <'a, T, S: MatrixRef<T>> RowReferenceIterator<'a, T, S> {
+impl<'a, T, S: MatrixRef<T>> RowReferenceIterator<'a, T, S> {
     /**
      * Constructs a row iterator over this source.
      *
@@ -707,7 +736,12 @@ impl <'a, T, S: MatrixRef<T>> RowReferenceIterator<'a, T, S> {
      */
     #[track_caller]
     pub fn from(source: &S, row: Row) -> RowReferenceIterator<T, S> {
-        assert!(source.index_is_valid(row, 0), "Expected ({},{}) to be in range", row, 0);
+        assert!(
+            source.index_is_valid(row, 0),
+            "Expected ({},{}) to be in range",
+            row,
+            0
+        );
         RowReferenceIterator {
             matrix: source,
             row,
@@ -717,7 +751,7 @@ impl <'a, T, S: MatrixRef<T>> RowReferenceIterator<'a, T, S> {
     }
 }
 
-impl <'a, T, S: MatrixRef<T>> Iterator for RowReferenceIterator<'a, T, S> {
+impl<'a, T, S: MatrixRef<T>> Iterator for RowReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -730,7 +764,7 @@ impl <'a, T, S: MatrixRef<T>> Iterator for RowReferenceIterator<'a, T, S> {
                 // they are able to be changed, then the MatrixRef implementation is
                 // required to bounds check for us.
                 Some(self.matrix.get_reference_unchecked(self.row, column))
-            }
+            },
         }
     }
 
@@ -738,9 +772,8 @@ impl <'a, T, S: MatrixRef<T>> Iterator for RowReferenceIterator<'a, T, S> {
         self.range.size_hint()
     }
 }
-
-impl <'a, T, S: MatrixRef<T>> FusedIterator for RowReferenceIterator<'a, T, S> {}
-impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for RowReferenceIterator<'a, T, S> {}
+impl<'a, T, S: MatrixRef<T>> FusedIterator for RowReferenceIterator<'a, T, S> {}
+impl<'a, T, S: MatrixRef<T>> ExactSizeIterator for RowReferenceIterator<'a, T, S> {}
 
 /**
  * A column major iterator over references to all values in a matrix.
@@ -765,7 +798,7 @@ pub struct ColumnMajorReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
     _type: PhantomData<&'a T>,
 }
 
-impl <'a, T> ColumnMajorReferenceIterator<'a, T> {
+impl<'a, T> ColumnMajorReferenceIterator<'a, T> {
     /**
      * Constructs a column major iterator over this matrix.
      */
@@ -774,7 +807,7 @@ impl <'a, T> ColumnMajorReferenceIterator<'a, T> {
     }
 }
 
-impl <'a, T, S: MatrixRef<T>> ColumnMajorReferenceIterator<'a, T, S> {
+impl<'a, T, S: MatrixRef<T>> ColumnMajorReferenceIterator<'a, T, S> {
     /**
      * Constructs a column major iterator over this source.
      */
@@ -799,7 +832,7 @@ impl <'a, T, S: MatrixRef<T>> ColumnMajorReferenceIterator<'a, T, S> {
     }
 }
 
-impl <'a, T, S: MatrixRef<T>> Iterator for ColumnMajorReferenceIterator<'a, T, S> {
+impl<'a, T, S: MatrixRef<T>> Iterator for ColumnMajorReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -808,8 +841,9 @@ impl <'a, T, S: MatrixRef<T>> Iterator for ColumnMajorReferenceIterator<'a, T, S
             self.rows,
             self.columns,
             &mut self.row_counter,
-            &mut self.column_counter
-        ).map(|(row, column)| unsafe {
+            &mut self.column_counter,
+        )
+        .map(|(row, column)| unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
             // calling this on our next loop if we finished. Hence if the view size has
@@ -820,14 +854,19 @@ impl <'a, T, S: MatrixRef<T>> Iterator for ColumnMajorReferenceIterator<'a, T, S
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        column_major_size_hint(self.rows, self.columns, self.row_counter, self.column_counter)
+        column_major_size_hint(
+            self.rows,
+            self.columns,
+            self.row_counter,
+            self.column_counter,
+        )
     }
 }
 
-impl <'a, T, S: MatrixRef<T>> FusedIterator for ColumnMajorReferenceIterator<'a, T, S> {}
-impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for ColumnMajorReferenceIterator<'a, T, S> {}
+impl<'a, T, S: MatrixRef<T>> FusedIterator for ColumnMajorReferenceIterator<'a, T, S> {}
+impl<'a, T, S: MatrixRef<T>> ExactSizeIterator for ColumnMajorReferenceIterator<'a, T, S> {}
 
-impl <'a, T, S: MatrixRef<T>> Iterator for WithIndex<ColumnMajorReferenceIterator<'a, T, S>> {
+impl<'a, T, S: MatrixRef<T>> Iterator for WithIndex<ColumnMajorReferenceIterator<'a, T, S>> {
     type Item = ((Row, Column), &'a T);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -835,8 +874,9 @@ impl <'a, T, S: MatrixRef<T>> Iterator for WithIndex<ColumnMajorReferenceIterato
         self.iterator.next().map(|x| ((row, column), x))
     }
 }
-impl <'a, T, S: MatrixRef<T>> FusedIterator for WithIndex<ColumnMajorReferenceIterator<'a, T, S>> {}
-impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for WithIndex<ColumnMajorReferenceIterator<'a, T, S>> {}
+impl<'a, T, S: MatrixRef<T>> FusedIterator for WithIndex<ColumnMajorReferenceIterator<'a, T, S>> {}
+#[rustfmt::skip]
+impl<'a, T, S: MatrixRef<T>> ExactSizeIterator for WithIndex<ColumnMajorReferenceIterator<'a, T, S>> {}
 
 /**
  * A row major iterator over references to all values in a matrix.
@@ -861,7 +901,7 @@ pub struct RowMajorReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
     _type: PhantomData<&'a T>,
 }
 
-impl <'a, T> RowMajorReferenceIterator<'a, T> {
+impl<'a, T> RowMajorReferenceIterator<'a, T> {
     /**
      * Constructs a column major iterator over this matrix.
      */
@@ -870,7 +910,7 @@ impl <'a, T> RowMajorReferenceIterator<'a, T> {
     }
 }
 
-impl <'a, T, S: MatrixRef<T>> RowMajorReferenceIterator<'a, T, S> {
+impl<'a, T, S: MatrixRef<T>> RowMajorReferenceIterator<'a, T, S> {
     /**
      * Constructs a column major iterator over this source.
      */
@@ -895,7 +935,7 @@ impl <'a, T, S: MatrixRef<T>> RowMajorReferenceIterator<'a, T, S> {
     }
 }
 
-impl <'a, T, S: MatrixRef<T>> Iterator for RowMajorReferenceIterator<'a, T, S> {
+impl<'a, T, S: MatrixRef<T>> Iterator for RowMajorReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -904,8 +944,9 @@ impl <'a, T, S: MatrixRef<T>> Iterator for RowMajorReferenceIterator<'a, T, S> {
             self.rows,
             self.columns,
             &mut self.row_counter,
-            &mut self.column_counter
-        ).map(|(row, column)| unsafe {
+            &mut self.column_counter,
+        )
+        .map(|(row, column)| unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
             // calling this on our next loop if we finished. Hence if the view size has
@@ -916,14 +957,18 @@ impl <'a, T, S: MatrixRef<T>> Iterator for RowMajorReferenceIterator<'a, T, S> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        row_major_size_hint(self.rows, self.columns, self.row_counter, self.column_counter)
+        row_major_size_hint(
+            self.rows,
+            self.columns,
+            self.row_counter,
+            self.column_counter,
+        )
     }
 }
+impl<'a, T, S: MatrixRef<T>> FusedIterator for RowMajorReferenceIterator<'a, T, S> {}
+impl<'a, T, S: MatrixRef<T>> ExactSizeIterator for RowMajorReferenceIterator<'a, T, S> {}
 
-impl <'a, T, S: MatrixRef<T>> FusedIterator for RowMajorReferenceIterator<'a, T, S> {}
-impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for RowMajorReferenceIterator<'a, T, S> {}
-
-impl <'a, T, S: MatrixRef<T>> Iterator for WithIndex<RowMajorReferenceIterator<'a, T, S>> {
+impl<'a, T, S: MatrixRef<T>> Iterator for WithIndex<RowMajorReferenceIterator<'a, T, S>> {
     type Item = ((Row, Column), &'a T);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -931,8 +976,8 @@ impl <'a, T, S: MatrixRef<T>> Iterator for WithIndex<RowMajorReferenceIterator<'
         self.iterator.next().map(|x| ((row, column), x))
     }
 }
-impl <'a, T, S: MatrixRef<T>> FusedIterator for WithIndex<RowMajorReferenceIterator<'a, T, S>> {}
-impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for WithIndex<RowMajorReferenceIterator<'a, T, S>> {}
+impl<'a, T, S: MatrixRef<T>> FusedIterator for WithIndex<RowMajorReferenceIterator<'a, T, S>> {}
+impl<'a, T, S: MatrixRef<T>> ExactSizeIterator for WithIndex<RowMajorReferenceIterator<'a, T, S>> {}
 
 /**
  * An iterator over the main diagonal in a matrix.
@@ -955,7 +1000,7 @@ pub struct DiagonalIterator<'a, T: Clone, S: MatrixRef<T> = Matrix<T>> {
     _type: PhantomData<&'a T>,
 }
 
-impl <'a, T: Clone> DiagonalIterator<'a, T> {
+impl<'a, T: Clone> DiagonalIterator<'a, T> {
     /**
      * Constructs a diagonal iterator over this matrix.
      */
@@ -964,7 +1009,7 @@ impl <'a, T: Clone> DiagonalIterator<'a, T> {
     }
 }
 
-impl <'a, T: Clone, S: MatrixRef<T>> DiagonalIterator<'a, T, S> {
+impl<'a, T: Clone, S: MatrixRef<T>> DiagonalIterator<'a, T, S> {
     /**
      * Constructs a diagonal iterator over this source.
      */
@@ -977,7 +1022,7 @@ impl <'a, T: Clone, S: MatrixRef<T>> DiagonalIterator<'a, T, S> {
     }
 }
 
-impl <'a, T: Clone, S: MatrixRef<T>> Iterator for DiagonalIterator<'a, T, S> {
+impl<'a, T: Clone, S: MatrixRef<T>> Iterator for DiagonalIterator<'a, T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -989,7 +1034,7 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for DiagonalIterator<'a, T, S> {
                 // be changed, then the MatrixRef implementation is required to bounds
                 // check for us.
                 Some(self.matrix.get_reference_unchecked(i, i).clone())
-            }
+            },
         }
     }
 
@@ -997,9 +1042,8 @@ impl <'a, T: Clone, S: MatrixRef<T>> Iterator for DiagonalIterator<'a, T, S> {
         self.range.size_hint()
     }
 }
-
-impl <'a, T: Clone, S: MatrixRef<T>> FusedIterator for DiagonalIterator<'a, T, S> {}
-impl <'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for DiagonalIterator<'a, T, S> {}
+impl<'a, T: Clone, S: MatrixRef<T>> FusedIterator for DiagonalIterator<'a, T, S> {}
+impl<'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for DiagonalIterator<'a, T, S> {}
 
 /**
  * An iterator over references to the main diagonal in a matrix.
@@ -1022,7 +1066,7 @@ pub struct DiagonalReferenceIterator<'a, T, S: MatrixRef<T> = Matrix<T>> {
     _type: PhantomData<&'a T>,
 }
 
-impl <'a, T> DiagonalReferenceIterator<'a, T> {
+impl<'a, T> DiagonalReferenceIterator<'a, T> {
     /**
      * Constructs a diagonal iterator over this matrix.
      */
@@ -1031,7 +1075,7 @@ impl <'a, T> DiagonalReferenceIterator<'a, T> {
     }
 }
 
-impl <'a, T, S: MatrixRef<T>> DiagonalReferenceIterator<'a, T, S> {
+impl<'a, T, S: MatrixRef<T>> DiagonalReferenceIterator<'a, T, S> {
     /**
      * Constructs a diagonal iterator over this source.
      */
@@ -1044,7 +1088,7 @@ impl <'a, T, S: MatrixRef<T>> DiagonalReferenceIterator<'a, T, S> {
     }
 }
 
-impl <'a, T, S: MatrixRef<T>> Iterator for DiagonalReferenceIterator<'a, T, S> {
+impl<'a, T, S: MatrixRef<T>> Iterator for DiagonalReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1056,7 +1100,7 @@ impl <'a, T, S: MatrixRef<T>> Iterator for DiagonalReferenceIterator<'a, T, S> {
                 // be changed, then the MatrixRef implementation is required to bounds
                 // check for us.
                 Some(self.matrix.get_reference_unchecked(i, i))
-            }
+            },
         }
     }
 
@@ -1064,9 +1108,8 @@ impl <'a, T, S: MatrixRef<T>> Iterator for DiagonalReferenceIterator<'a, T, S> {
         self.range.size_hint()
     }
 }
-
-impl <'a, T, S: MatrixRef<T>> FusedIterator for DiagonalReferenceIterator<'a, T, S> {}
-impl <'a, T, S: MatrixRef<T>> ExactSizeIterator for DiagonalReferenceIterator<'a, T, S> {}
+impl<'a, T, S: MatrixRef<T>> FusedIterator for DiagonalReferenceIterator<'a, T, S> {}
+impl<'a, T, S: MatrixRef<T>> ExactSizeIterator for DiagonalReferenceIterator<'a, T, S> {}
 
 /**
  * A column major iterator over mutable references to all values in a matrix.
@@ -1091,7 +1134,7 @@ pub struct ColumnMajorReferenceMutIterator<'a, T, S: MatrixMut<T> = Matrix<T>> {
     _type: PhantomData<&'a mut T>,
 }
 
-impl <'a, T> ColumnMajorReferenceMutIterator<'a, T> {
+impl<'a, T> ColumnMajorReferenceMutIterator<'a, T> {
     /**
      * Constructs a column major iterator over this matrix.
      */
@@ -1100,7 +1143,7 @@ impl <'a, T> ColumnMajorReferenceMutIterator<'a, T> {
     }
 }
 
-impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> ColumnMajorReferenceMutIterator<'a, T, S> {
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ColumnMajorReferenceMutIterator<'a, T, S> {
     /**
      * Constructs a column major iterator over this source.
      */
@@ -1125,7 +1168,9 @@ impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> ColumnMajorReferenceMutIter
     }
 }
 
-impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnMajorReferenceMutIterator<'a, T, S> {
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
+    for ColumnMajorReferenceMutIterator<'a, T, S>
+{
     type Item = &'a mut T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1134,8 +1179,9 @@ impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnMajorRef
             self.rows,
             self.columns,
             &mut self.row_counter,
-            &mut self.column_counter
-        ).map(|(row, column)| unsafe {
+            &mut self.column_counter,
+        )
+        .map(|(row, column)| unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
             // calling this on our next loop if we finished. Hence if the view size has
@@ -1149,21 +1195,27 @@ impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnMajorRef
             // make illegal any edge cases where some extremely exotic matrix rotates its data
             // inside the buffer around though a shared reference while we were iterating that
             // could otherwise make our cursor read the same data twice.
-            std::mem::transmute(
-                self.matrix.get_reference_unchecked_mut(row, column)
-            )
+            std::mem::transmute(self.matrix.get_reference_unchecked_mut(row, column))
         })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        column_major_size_hint(self.rows, self.columns, self.row_counter, self.column_counter)
+        column_major_size_hint(
+            self.rows,
+            self.columns,
+            self.row_counter,
+            self.column_counter,
+        )
     }
 }
+#[rustfmt::skip]
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for ColumnMajorReferenceMutIterator<'a, T, S> {}
+#[rustfmt::skip]
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for ColumnMajorReferenceMutIterator<'a, T, S> {}
 
-impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for ColumnMajorReferenceMutIterator<'a, T, S> {}
-impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for ColumnMajorReferenceMutIterator<'a, T, S> {}
-
-impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for WithIndex<ColumnMajorReferenceMutIterator<'a, T, S>> {
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
+    for WithIndex<ColumnMajorReferenceMutIterator<'a, T, S>>
+{
     type Item = ((Row, Column), &'a mut T);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1171,8 +1223,10 @@ impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for WithIndex<Colu
         self.iterator.next().map(|x| ((row, column), x))
     }
 }
-impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for WithIndex<ColumnMajorReferenceMutIterator<'a, T, S>> {}
-impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for WithIndex<ColumnMajorReferenceMutIterator<'a, T, S>> {}
+#[rustfmt::skip]
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for WithIndex<ColumnMajorReferenceMutIterator<'a, T, S>> {}
+#[rustfmt::skip]
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for WithIndex<ColumnMajorReferenceMutIterator<'a, T, S>> {}
 
 /**
  * A row major iterator over mutable references to all values in a matrix.
@@ -1197,7 +1251,7 @@ pub struct RowMajorReferenceMutIterator<'a, T, S: MatrixMut<T> = Matrix<T>> {
     _type: PhantomData<&'a mut T>,
 }
 
-impl <'a, T> RowMajorReferenceMutIterator<'a, T> {
+impl<'a, T> RowMajorReferenceMutIterator<'a, T> {
     /**
      * Constructs a column major iterator over this matrix.
      */
@@ -1206,7 +1260,7 @@ impl <'a, T> RowMajorReferenceMutIterator<'a, T> {
     }
 }
 
-impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> RowMajorReferenceMutIterator<'a, T, S> {
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> RowMajorReferenceMutIterator<'a, T, S> {
     /**
      * Constructs a column major iterator over this source.
      */
@@ -1231,7 +1285,9 @@ impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> RowMajorReferenceMutIterato
     }
 }
 
-impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowMajorReferenceMutIterator<'a, T, S> {
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
+    for RowMajorReferenceMutIterator<'a, T, S>
+{
     type Item = &'a mut T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1240,8 +1296,9 @@ impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowMajorRefere
             self.rows,
             self.columns,
             &mut self.row_counter,
-            &mut self.column_counter
-        ).map(|(row, column)| unsafe {
+            &mut self.column_counter,
+        )
+        .map(|(row, column)| unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
             // calling this on our next loop if we finished. Hence if the view size has
@@ -1255,21 +1312,27 @@ impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowMajorRefere
             // make illegal any edge cases where some extremely exotic matrix rotates its data
             // inside the buffer around through a shared reference while we were iterating that
             // could otherwise make our cursor read the same data twice.
-            std::mem::transmute(
-                self.matrix.get_reference_unchecked_mut(row, column)
-            )
+            std::mem::transmute(self.matrix.get_reference_unchecked_mut(row, column))
         })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        row_major_size_hint(self.rows, self.columns, self.row_counter, self.column_counter)
+        row_major_size_hint(
+            self.rows,
+            self.columns,
+            self.row_counter,
+            self.column_counter,
+        )
     }
 }
+#[rustfmt::skip]
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for RowMajorReferenceMutIterator<'a, T, S> {}
+#[rustfmt::skip]
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for RowMajorReferenceMutIterator<'a, T, S> {}
 
-impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for RowMajorReferenceMutIterator<'a, T, S> {}
-impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for RowMajorReferenceMutIterator<'a, T, S> {}
-
-impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
+    for WithIndex<RowMajorReferenceMutIterator<'a, T, S>>
+{
     type Item = ((Row, Column), &'a mut T);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1277,5 +1340,7 @@ impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for WithIndex<RowM
         self.iterator.next().map(|x| ((row, column), x))
     }
 }
-impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {}
-impl <'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {}
+#[rustfmt::skip]
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {}
+#[rustfmt::skip]
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {}

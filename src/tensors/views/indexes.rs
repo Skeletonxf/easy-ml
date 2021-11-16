@@ -1,6 +1,6 @@
-use std::marker::PhantomData;
-use crate::tensors::Dimension;
 use crate::tensors::views::TensorRef;
+use crate::tensors::Dimension;
+use std::marker::PhantomData;
 
 #[derive(Clone, Debug)]
 pub struct TensorIndex<T, S, const D: usize, const I: usize> {
@@ -9,9 +9,9 @@ pub struct TensorIndex<T, S, const D: usize, const I: usize> {
     _type: PhantomData<T>,
 }
 
-impl <T, S, const D: usize, const I: usize> TensorIndex<T, S, D, I>
+impl<T, S, const D: usize, const I: usize> TensorIndex<T, S, D, I>
 where
-    S: TensorRef<T, D>
+    S: TensorRef<T, D>,
 {
     pub fn from(source: S, index: [(Dimension, usize); I]) -> TensorIndex<T, S, D, I> {
         assert!(index.iter().all(|d| source.view_shape().contains(d)));
@@ -23,21 +23,34 @@ where
     }
 }
 
-fn calculate_view_shape_1(source: &[(Dimension, usize)], index: &[(Dimension, usize)]) -> [(Dimension, usize); 1] {
+fn calculate_view_shape_1(
+    source: &[(Dimension, usize)],
+    index: &[(Dimension, usize)],
+) -> [(Dimension, usize); 1] {
     let mut iter = source.iter().filter(|d| !index.contains(d));
-    [ iter.next().unwrap().clone() ]
+    [iter.next().unwrap().clone()]
 }
 
-fn calculate_view_shape_2(source: &[(Dimension, usize)], index: &[(Dimension, usize)]) -> [(Dimension, usize); 2] {
+fn calculate_view_shape_2(
+    source: &[(Dimension, usize)],
+    index: &[(Dimension, usize)],
+) -> [(Dimension, usize); 2] {
     let mut iter = source.iter().filter(|d| !index.contains(d));
-    [ iter.next().unwrap().clone(), iter.next().unwrap().clone() ]
+    [iter.next().unwrap().clone(), iter.next().unwrap().clone()]
 }
 
-fn calculate_view_shape_3(source: &[(Dimension, usize)], index: &[(Dimension, usize)]) -> [(Dimension, usize); 3] {
+fn calculate_view_shape_3(
+    source: &[(Dimension, usize)],
+    index: &[(Dimension, usize)],
+) -> [(Dimension, usize); 3] {
     let mut iter = source.iter().filter(|d| !index.contains(d));
-    [ iter.next().unwrap().clone(), iter.next().unwrap().clone(), iter.next().unwrap().clone() ]
+    [
+        iter.next().unwrap().clone(),
+        iter.next().unwrap().clone(),
+        iter.next().unwrap().clone(),
+    ]
 }
-// 
+//
 // unsafe impl <T, S> TensorRef<T, 2> for TensorIndex<T, S, 3, 1>
 // where
 //     S: TensorRef<T, 3>

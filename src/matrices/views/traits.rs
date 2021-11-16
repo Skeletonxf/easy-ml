@@ -18,8 +18,8 @@
  * MatrixRef/MatrixMut may use a column major layout.
  */
 
+use crate::matrices::views::{DataLayout, MatrixMut, MatrixRef, NoInteriorMutability};
 use crate::matrices::{Column, Matrix, Row};
-use crate::matrices::views::{MatrixRef, MatrixMut, NoInteriorMutability, DataLayout};
 
 // # Safety
 //
@@ -28,7 +28,7 @@ use crate::matrices::views::{MatrixRef, MatrixMut, NoInteriorMutability, DataLay
 /**
  * A shared reference to a Matrix implements MatrixRef.
  */
-unsafe impl <'source, T> MatrixRef<T> for &'source Matrix<T> {
+unsafe impl<'source, T> MatrixRef<T> for &'source Matrix<T> {
     fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
         Matrix::_try_get_reference(self, row, column)
     }
@@ -56,7 +56,7 @@ unsafe impl <'source, T> MatrixRef<T> for &'source Matrix<T> {
 /**
  * A shared reference to a Matrix implements NoInteriorMutability.
  */
-unsafe impl <'source, T> NoInteriorMutability for &'source Matrix<T> {}
+unsafe impl<'source, T> NoInteriorMutability for &'source Matrix<T> {}
 
 // # Safety
 //
@@ -65,7 +65,7 @@ unsafe impl <'source, T> NoInteriorMutability for &'source Matrix<T> {}
 /**
  * An exclusive reference to a Matrix implements MatrixRef.
  */
-unsafe impl <'source, T> MatrixRef<T> for &'source mut Matrix<T> {
+unsafe impl<'source, T> MatrixRef<T> for &'source mut Matrix<T> {
     fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
         Matrix::_try_get_reference(self, row, column)
     }
@@ -94,7 +94,7 @@ unsafe impl <'source, T> MatrixRef<T> for &'source mut Matrix<T> {
 /**
  * An exclusive reference to a Matrix implements MatrixMut.
  */
-unsafe impl <'source, T> MatrixMut<T> for &'source mut Matrix<T> {
+unsafe impl<'source, T> MatrixMut<T> for &'source mut Matrix<T> {
     fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
         Matrix::_try_get_reference_mut(self, row, column)
     }
@@ -110,7 +110,7 @@ unsafe impl <'source, T> MatrixMut<T> for &'source mut Matrix<T> {
 /**
  * An exclusive reference to a Matrix implements NoInteriorMutability.
  */
-unsafe impl <'source, T> NoInteriorMutability for &'source mut Matrix<T> {}
+unsafe impl<'source, T> NoInteriorMutability for &'source mut Matrix<T> {}
 
 // # Safety
 //
@@ -119,7 +119,7 @@ unsafe impl <'source, T> NoInteriorMutability for &'source mut Matrix<T> {}
 /**
  * An owned Matrix implements MatrixRef.
  */
-unsafe impl <T> MatrixRef<T> for Matrix<T> {
+unsafe impl<T> MatrixRef<T> for Matrix<T> {
     fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
         Matrix::_try_get_reference(self, row, column)
     }
@@ -148,7 +148,7 @@ unsafe impl <T> MatrixRef<T> for Matrix<T> {
 /**
  * An owned Matrix implements MatrixMut.
  */
-unsafe impl <T> MatrixMut<T> for Matrix<T> {
+unsafe impl<T> MatrixMut<T> for Matrix<T> {
     fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
         Matrix::_try_get_reference_mut(self, row, column)
     }
@@ -164,7 +164,7 @@ unsafe impl <T> MatrixMut<T> for Matrix<T> {
 /**
  * An owned Matrix implements NoInteriorMutability.
  */
-unsafe impl <T> NoInteriorMutability for Matrix<T> {}
+unsafe impl<T> NoInteriorMutability for Matrix<T> {}
 
 // # Safety
 //
@@ -173,9 +173,9 @@ unsafe impl <T> NoInteriorMutability for Matrix<T> {}
 /**
  * A box of a MatrixRef also implements MatrixRef.
  */
-unsafe impl <T, S> MatrixRef<T> for Box<S>
+unsafe impl<T, S> MatrixRef<T> for Box<S>
 where
-    S: MatrixRef<T>
+    S: MatrixRef<T>,
 {
     fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
         self.as_ref().try_get_reference(row, column)
@@ -205,9 +205,9 @@ where
 /**
  * A box of a MatrixMut also implements MatrixMut.
  */
-unsafe impl <T, S> MatrixMut<T> for Box<S>
+unsafe impl<T, S> MatrixMut<T> for Box<S>
 where
-    S: MatrixMut<T>
+    S: MatrixMut<T>,
 {
     fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
         self.as_mut().try_get_reference_mut(row, column)
@@ -224,9 +224,7 @@ where
 /**
  * A box of a NoInteriorMutability also implements NoInteriorMutability
  */
-unsafe impl <S> NoInteriorMutability for Box<S>
-where
-    S: NoInteriorMutability {}
+unsafe impl<S> NoInteriorMutability for Box<S> where S: NoInteriorMutability {}
 
 // # Safety
 //
@@ -235,7 +233,7 @@ where
 /**
  * A box of a dynamic MatrixRef also implements MatrixRef.
  */
-unsafe impl <T> MatrixRef<T> for Box<dyn MatrixRef<T>> {
+unsafe impl<T> MatrixRef<T> for Box<dyn MatrixRef<T>> {
     fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
         self.as_ref().try_get_reference(row, column)
     }
@@ -264,7 +262,7 @@ unsafe impl <T> MatrixRef<T> for Box<dyn MatrixRef<T>> {
 /**
  * A box of a dynamic MatrixMut also implements MatrixRef.
  */
-unsafe impl <T> MatrixRef<T> for Box<dyn MatrixMut<T>> {
+unsafe impl<T> MatrixRef<T> for Box<dyn MatrixMut<T>> {
     fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
         self.as_ref().try_get_reference(row, column)
     }
@@ -293,7 +291,7 @@ unsafe impl <T> MatrixRef<T> for Box<dyn MatrixMut<T>> {
 /**
  * A box of a dynamic MatrixMut also implements MatrixMut.
  */
-unsafe impl <T> MatrixMut<T> for Box<dyn MatrixMut<T>> {
+unsafe impl<T> MatrixMut<T> for Box<dyn MatrixMut<T>> {
     fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
         self.as_mut().try_get_reference_mut(row, column)
     }

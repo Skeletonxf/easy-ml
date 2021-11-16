@@ -21,9 +21,9 @@
  * `linear_algebra::inverse::<T>(&matrix)`
  */
 
-use crate::matrices::{Matrix, Row, Column};
-use crate::numeric::{Numeric, NumericRef};
+use crate::matrices::{Column, Matrix, Row};
 use crate::numeric::extra::{Real, RealRef, Sqrt};
+use crate::numeric::{Numeric, NumericRef};
 
 /**
  * Computes the inverse of a matrix provided that it exists. To have an inverse
@@ -60,7 +60,9 @@ use crate::numeric::extra::{Real, RealRef, Sqrt};
  * `matrix.inverse()`
  */
 pub fn inverse<T: Numeric>(matrix: &Matrix<T>) -> Option<Matrix<T>>
-where for<'a> &'a T: NumericRef<T> {
+where
+    for<'a> &'a T: NumericRef<T>,
+{
     if matrix.rows() != matrix.columns() {
         return None;
     }
@@ -108,8 +110,8 @@ where for<'a> &'a T: NumericRef<T> {
             // finally to compute the inverse we need to multiply each element by 1 / |A|
             cofactor_matrix.map_mut(|element| element * determinant_reciprocal.clone());
             Some(cofactor_matrix)
-        },
-        None => None
+        }
+        None => None,
     }
 }
 
@@ -125,7 +127,9 @@ where for<'a> &'a T: NumericRef<T> {
  * None.
  */
 fn minor<T: Numeric>(matrix: &Matrix<T>, i: Row, j: Column) -> Option<T>
-where for<'a> &'a T: NumericRef<T> {
+where
+    for<'a> &'a T: NumericRef<T>,
+{
     minor_mut::<T>(&mut matrix.clone(), i, j)
 }
 
@@ -138,7 +142,9 @@ where for<'a> &'a T: NumericRef<T> {
  * None and does not modify the matrix.
  */
 fn minor_mut<T: Numeric>(matrix: &mut Matrix<T>, i: Row, j: Column) -> Option<T>
-where for<'a> &'a T: NumericRef<T> {
+where
+    for<'a> &'a T: NumericRef<T>,
+{
     if matrix.rows() == 1 || matrix.columns() == 1 {
         // nothing to delete
         return None;
@@ -189,7 +195,9 @@ where for<'a> &'a T: NumericRef<T> {
  * `matrix.determinant()`
  */
 pub fn determinant<T: Numeric>(matrix: &Matrix<T>) -> Option<T>
-where for<'a> &'a T: NumericRef<T> {
+where
+    for<'a> &'a T: NumericRef<T>,
+{
     if matrix.rows() != matrix.columns() {
         return None;
     }
@@ -251,7 +259,9 @@ fn factorial(n: usize) -> usize {
  * https://en.wikipedia.org/wiki/Heap%27s_algorithm
  */
 fn heaps_permutations<T: Clone, F>(k: usize, list: &mut Vec<T>, consumer: &mut F)
-where F: FnMut(&mut Vec<T>) {
+where
+    F: FnMut(&mut Vec<T>),
+{
     if k == 1 {
         consumer(list);
         return;
@@ -295,7 +305,9 @@ fn generate_permutations<T: Clone>(list: &mut Vec<T>) -> Vec<(Vec<T>, bool)> {
  * is the same list before and after permutation.
  */
 fn with_each_permutation<T: Clone, F>(list: &mut Vec<T>, consumer: &mut F)
-where F: FnMut(&mut Vec<T>, bool) {
+where
+    F: FnMut(&mut Vec<T>, bool),
+{
     let mut even_swaps = true;
     heaps_permutations(list.len(), list, &mut |permuted| {
         consumer(permuted, even_swaps);
@@ -308,7 +320,7 @@ where F: FnMut(&mut Vec<T>, bool) {
 fn test_permutations() {
     // Exhaustively test permutation even/oddness for an input
     // of length 3
-    let mut list = vec![ 1, 2, 3 ];
+    let mut list = vec![1, 2, 3];
     let permutations = generate_permutations(&mut list);
     assert!(permutations.contains(&(vec![1, 2, 3], true)));
     assert!(permutations.contains(&(vec![3, 2, 1], false)));
@@ -320,7 +332,7 @@ fn test_permutations() {
 
     // Test a larger input non exhaustively to make sure it
     // generalises.
-    let mut list = vec![ 1, 2, 3, 4, 5 ];
+    let mut list = vec![1, 2, 3, 4, 5];
     let permuted = generate_permutations(&mut list);
     assert!(permuted.contains(&(vec![1, 2, 3, 4, 5], true)));
     assert!(permuted.contains(&(vec![1, 2, 3, 5, 4], false)));
@@ -372,21 +384,25 @@ fn test_permutations() {
  * `matrix.covariance_column_features()`
  */
 pub fn covariance_column_features<T: Numeric>(matrix: &Matrix<T>) -> Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
+where
+    for<'a> &'a T: NumericRef<T>,
+{
     let features = matrix.columns();
-    let samples = T::from_usize(matrix.rows()).expect(
-        "The maximum value of the matrix type T cannot represent this many samples");
+    let samples = T::from_usize(matrix.rows())
+        .expect("The maximum value of the matrix type T cannot represent this many samples");
     let mut covariance_matrix = Matrix::empty(T::zero(), (features, features));
     covariance_matrix.map_mut_with_index(|_, i, j| {
         // set each element of the covariance matrix to the variance
         // of features i and j
         let feature_i_mean: T = matrix.column_iter(i).sum::<T>() / &samples;
         let feature_j_mean: T = matrix.column_iter(j).sum::<T>() / &samples;
-        matrix.column_reference_iter(i)
+        matrix
+            .column_reference_iter(i)
             .map(|x| x - &feature_i_mean)
             .zip(matrix.column_reference_iter(j).map(|y| y - &feature_j_mean))
             .map(|(x, y)| x * y)
-            .sum::<T>() / &samples
+            .sum::<T>()
+            / &samples
     });
     covariance_matrix
 }
@@ -429,21 +445,25 @@ where for<'a> &'a T: NumericRef<T> {
  * `matrix.covariance_row_features()`
  */
 pub fn covariance_row_features<T: Numeric>(matrix: &Matrix<T>) -> Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
+where
+    for<'a> &'a T: NumericRef<T>,
+{
     let features = matrix.rows();
-    let samples = T::from_usize(matrix.columns()).expect(
-        "The maximum value of the matrix type T cannot represent this many samples");
+    let samples = T::from_usize(matrix.columns())
+        .expect("The maximum value of the matrix type T cannot represent this many samples");
     let mut covariance_matrix = Matrix::empty(T::zero(), (features, features));
     covariance_matrix.map_mut_with_index(|_, i, j| {
         // set each element of the covariance matrix to the variance
         // of features i and j
         let feature_i_mean: T = matrix.row_iter(i).sum::<T>() / &samples;
         let feature_j_mean: T = matrix.row_iter(j).sum::<T>() / &samples;
-        matrix.row_reference_iter(i)
+        matrix
+            .row_reference_iter(i)
             .map(|x| x - &feature_i_mean)
             .zip(matrix.row_reference_iter(j).map(|y| y - &feature_j_mean))
             .map(|(x, y)| x * y)
-            .sum::<T>() / &samples
+            .sum::<T>()
+            / &samples
     });
     covariance_matrix
 }
@@ -460,7 +480,9 @@ where for<'a> &'a T: NumericRef<T> {
  * represent.
  */
 pub fn mean<I, T: Numeric>(mut data: I) -> T
-where I: Iterator<Item = T> {
+where
+    I: Iterator<Item = T>,
+{
     let mut next = data.next();
     assert!(next.is_some(), "Provided iterator must not be empty");
     let mut count = T::zero();
@@ -495,14 +517,19 @@ where I: Iterator<Item = T> {
  * represent.
  */
 pub fn variance<I, T: Numeric>(data: I) -> T
-where I: Iterator<Item = T>, {
+where
+    I: Iterator<Item = T>,
+{
     let mut list = data.collect::<Vec<T>>();
     assert!(!list.is_empty(), "Provided iterator must not be empty");
 
     // copy the list as we need to keep it as well as getting the mean
     let m = mean(list.iter().cloned());
     // use drain here as we no longer need to keep list
-    mean(list.drain(..).map(|x| (x.clone() - m.clone()) * (x - m.clone())))
+    mean(
+        list.drain(..)
+            .map(|x| (x.clone() - m.clone()) * (x - m.clone())),
+    )
 }
 
 /**
@@ -529,17 +556,23 @@ where I: Iterator<Item = T>, {
  * in the iterator exceeds the maximum or minimum number the type can represent.
  */
 pub fn softmax<I, T: Numeric + Real>(data: I) -> Vec<T>
-where I: Iterator<Item = T>, {
+where
+    I: Iterator<Item = T>,
+{
     let list = data.collect::<Vec<T>>();
     if list.is_empty() {
         return Vec::with_capacity(0);
     }
-    let max = list.iter().max_by(|a, b| a.partial_cmp(b).expect("NaN should not be in list")).unwrap();
+    let max = list
+        .iter()
+        .max_by(|a, b| a.partial_cmp(b).expect("NaN should not be in list"))
+        .unwrap();
 
     let denominator: T = list.iter().cloned().map(|x| (x - max).exp()).sum();
-    list.iter().cloned().map(|x| {
-        (x - max).exp() / denominator.clone()
-    }).collect()
+    list.iter()
+        .cloned()
+        .map(|x| (x - max).exp() / denominator.clone())
+        .collect()
 }
 
 /**
@@ -610,8 +643,12 @@ pub fn f1_score<T: Numeric>(precision: T, recall: T) -> T {
  * positive definite at present, but may in the future, in which case `None`
  * will be returned.
  */
-pub fn cholesky_decomposition<T: Numeric + Sqrt<Output = T>>(matrix: &Matrix<T>) -> Option<Matrix<T>>
-where for<'a> &'a T: NumericRef<T> {
+pub fn cholesky_decomposition<T: Numeric + Sqrt<Output = T>>(
+    matrix: &Matrix<T>,
+) -> Option<Matrix<T>>
+where
+    for<'a> &'a T: NumericRef<T>,
+{
     if matrix.rows() != matrix.columns() {
         return None;
     }
@@ -628,8 +665,9 @@ where for<'a> &'a T: NumericRef<T> {
             if i == k {
                 let mut sum = T::zero();
                 for j in 0..k {
-                    sum = &sum + (lower_triangular.get_reference(k, j)
-                        * lower_triangular.get_reference(k, j));
+                    sum = &sum
+                        + (lower_triangular.get_reference(k, j)
+                            * lower_triangular.get_reference(k, j));
                 }
                 lower_triangular.set(i, k, (matrix.get_reference(i, k) - sum).sqrt());
             }
@@ -639,12 +677,16 @@ where for<'a> &'a T: NumericRef<T> {
             if i > k {
                 let mut sum = T::zero();
                 for j in 0..k {
-                    sum = &sum + (lower_triangular.get_reference(i, j)
-                        * lower_triangular.get_reference(k, j));
+                    sum = &sum
+                        + (lower_triangular.get_reference(i, j)
+                            * lower_triangular.get_reference(k, j));
                 }
-                lower_triangular.set(i, k,
-                    (T::one() / lower_triangular.get_reference(k, k)) *
-                    (matrix.get_reference(i, k) - sum));
+                lower_triangular.set(
+                    i,
+                    k,
+                    (T::one() / lower_triangular.get_reference(k, k))
+                        * (matrix.get_reference(i, k) - sum),
+                );
             }
         }
     }
@@ -661,14 +703,14 @@ pub struct QRDecomposition<T> {
     pub r: Matrix<T>,
 }
 
-impl <T: std::fmt::Display + Clone> std::fmt::Display for QRDecomposition<T> {
+impl<T: std::fmt::Display + Clone> std::fmt::Display for QRDecomposition<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "Q:\n{}", &self.q)?;
         write!(f, "R:\n{}", &self.r)
     }
 }
 
-impl <T> QRDecomposition<T> {
+impl<T> QRDecomposition<T> {
     /**
      * Creates a QR Decomposition struct from two matrices without checking that QR = A
      * or that Q and R have the intended properties.
@@ -676,10 +718,7 @@ impl <T> QRDecomposition<T> {
      * This is provided for assistance with unit testing.
      */
     pub fn from_unchecked(q: Matrix<T>, r: Matrix<T>) -> QRDecomposition<T> {
-        QRDecomposition {
-            q,
-            r,
-        }
+        QRDecomposition { q, r }
     }
 }
 
@@ -689,7 +728,9 @@ impl <T> QRDecomposition<T> {
  * For an Mx1 input, the householder matrix output will be MxM
  */
 fn householder_matrix<T: Numeric + Real>(matrix: Matrix<T>) -> Matrix<T>
-where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+where
+    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+{
     // The computation steps are outlined nicely at https://en.wikipedia.org/wiki/QR_decomposition#Using_Householder_reflections
     // Supporting reference implementations are on Rosettacode https://rosettacode.org/wiki/QR_decomposition
     // we hardcode to taking the first column vector of the input matrix
@@ -745,7 +786,9 @@ where for<'a> &'a T: NumericRef<T> + RealRef<T> {
  * `linear_algebra::qr_decomposition::<f32>(&matrix)`
  */
 pub fn qr_decomposition<T: Numeric + Real>(matrix: &Matrix<T>) -> Option<QRDecomposition<T>>
-where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+where
+    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+{
     if matrix.columns() > matrix.rows() {
         return None;
     }

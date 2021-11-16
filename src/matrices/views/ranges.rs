@@ -1,8 +1,8 @@
-use crate::matrices::{Row, Column};
-use crate::matrices::views::{DataLayout, MatrixRef, MatrixMut};
+use crate::matrices::views::{DataLayout, MatrixMut, MatrixRef};
+use crate::matrices::{Column, Row};
 
-use std::ops::Range;
 use std::marker::PhantomData;
+use std::ops::Range;
 
 /**
  * A 2 dimensional range over a matrix, hiding the rest of the matrix data from view.
@@ -21,9 +21,9 @@ pub struct MatrixRange<T, S> {
     _type: PhantomData<T>,
 }
 
-impl <T, S> MatrixRange<T, S>
+impl<T, S> MatrixRange<T, S>
 where
-    S: MatrixRef<T>
+    S: MatrixRef<T>,
 {
     /**
      * Creates a new MatrixRange giving a view of only the data within the row and column
@@ -62,7 +62,7 @@ where
      */
     pub fn from<R>(source: S, rows: R, columns: R) -> MatrixRange<T, S>
     where
-        R: Into<IndexRange>
+        R: Into<IndexRange>,
     {
         MatrixRange {
             source,
@@ -95,10 +95,7 @@ pub struct IndexRange {
 
 impl IndexRange {
     pub fn new(start: usize, length: usize) -> IndexRange {
-        IndexRange {
-            start,
-            length,
-        }
+        IndexRange { start, length }
     }
 
     /**
@@ -155,9 +152,9 @@ impl From<[usize; 2]> for IndexRange {
 /**
  * A MatrixRange of a MatrixRef type implements MatrixRef.
  */
-unsafe impl <T, S> MatrixRef<T> for MatrixRange<T, S>
+unsafe impl<T, S> MatrixRef<T> for MatrixRange<T, S>
 where
-    S: MatrixRef<T>
+    S: MatrixRef<T>,
 {
     fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
         let row = self.rows.map(row)?;
@@ -194,9 +191,9 @@ where
 /**
  * A MatrixRange of a MatrixMut type implements MatrixMut.
  */
-unsafe impl <T, S> MatrixMut<T> for MatrixRange<T, S>
+unsafe impl<T, S> MatrixMut<T> for MatrixRange<T, S>
 where
-    S: MatrixMut<T>
+    S: MatrixMut<T>,
 {
     fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
         let row = self.rows.map(row)?;

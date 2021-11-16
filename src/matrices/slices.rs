@@ -12,7 +12,7 @@
 
 use std::ops::Range;
 
-use crate::matrices::{Row, Column};
+use crate::matrices::{Column, Row};
 
 /**
  * A slice defines across one dimension what values are accepted,
@@ -104,12 +104,16 @@ pub struct EmptySlice2DBuilder {}
  * A builder object to create a slice. This exists to make forgetting to specify rows
  * *and* columns a compilation error rather than a runtime one.
  */
-pub struct RowSlice2DBuilder { rows: Slice }
+pub struct RowSlice2DBuilder {
+    rows: Slice,
+}
 /**
  * A builder object to create a slice. This exists to make forgetting to specify rows
  * *and* columns a compilation error rather than a runtime one.
  */
-pub struct ColumnSlice2DBuilder { columns: Slice }
+pub struct ColumnSlice2DBuilder {
+    columns: Slice,
+}
 
 /**
  * Constructs a builder object to create a 2d slice
@@ -147,7 +151,7 @@ impl Slice2D {
      */
     #[allow(clippy::new_ret_no_self)]
     pub fn new() -> EmptySlice2DBuilder {
-        EmptySlice2DBuilder { }
+        EmptySlice2DBuilder {}
     }
 
     /**
@@ -164,18 +168,14 @@ impl EmptySlice2DBuilder {
      * Constructs a new builder object with the rows defined first.
      */
     pub fn rows(self, rows: Slice) -> RowSlice2DBuilder {
-        RowSlice2DBuilder {
-            rows,
-        }
+        RowSlice2DBuilder { rows }
     }
 
     /**
      * Constructs a new builder object with the columns defined first.
      */
     pub fn columns(self, columns: Slice) -> ColumnSlice2DBuilder {
-        ColumnSlice2DBuilder {
-            columns,
-        }
+        ColumnSlice2DBuilder { columns }
     }
 }
 

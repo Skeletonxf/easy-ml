@@ -1,10 +1,10 @@
 use std::marker::PhantomData;
 
-use crate::tensors::Dimension;
 use crate::tensors::indexing::TensorAccess;
+use crate::tensors::Dimension;
 
-pub mod traits;
 mod indexes;
+pub mod traits;
 
 pub use indexes::*;
 
@@ -23,9 +23,9 @@ pub struct TensorView<T, S, const D: usize> {
     _type: PhantomData<T>,
 }
 
-impl <T, S, const D: usize> TensorView<T, S, D>
+impl<T, S, const D: usize> TensorView<T, S, D>
 where
-    S: TensorRef<T, D>
+    S: TensorRef<T, D>,
 {
     pub fn from(source: S) -> TensorView<T, S, D> {
         TensorView {
@@ -47,19 +47,31 @@ where
     }
 
     #[track_caller]
-    pub fn get(&self, dimensions: [Dimension; D]) -> TensorAccess<T, TensorViewSourceRef<'_, T, S, D>, D> {
-        TensorAccess::from(TensorViewSourceRef {
-            source: &self.source,
-            _type: PhantomData,
-        }, dimensions)
+    pub fn get(
+        &self,
+        dimensions: [Dimension; D],
+    ) -> TensorAccess<T, TensorViewSourceRef<'_, T, S, D>, D> {
+        TensorAccess::from(
+            TensorViewSourceRef {
+                source: &self.source,
+                _type: PhantomData,
+            },
+            dimensions,
+        )
     }
 
     #[track_caller]
-    pub fn get_mut(&mut self, dimensions: [Dimension; D]) -> TensorAccess<T, TensorViewSourceMut<'_, T, S, D>, D> {
-        TensorAccess::from(TensorViewSourceMut {
-            source: &mut self.source,
-            _type: PhantomData,
-        }, dimensions)
+    pub fn get_mut(
+        &mut self,
+        dimensions: [Dimension; D],
+    ) -> TensorAccess<T, TensorViewSourceMut<'_, T, S, D>, D> {
+        TensorAccess::from(
+            TensorViewSourceMut {
+                source: &mut self.source,
+                _type: PhantomData,
+            },
+            dimensions,
+        )
     }
 
     #[track_caller]
@@ -68,12 +80,7 @@ where
     }
 }
 
-impl <T, S, const D: usize> TensorView<T, S, D>
-where
-    S: TensorMut<T, D>
-{
-
-}
+impl<T, S, const D: usize> TensorView<T, S, D> where S: TensorMut<T, D> {}
 
 pub struct TensorViewSourceRef<'s, T, S, const D: usize> {
     source: &'s S,
@@ -85,9 +92,9 @@ pub struct TensorViewSourceMut<'s, T, S, const D: usize> {
     _type: PhantomData<T>,
 }
 
-unsafe impl <'a, T, S, const D: usize> TensorRef<T, D> for TensorViewSourceRef<'a, T, S, D>
+unsafe impl<'a, T, S, const D: usize> TensorRef<T, D> for TensorViewSourceRef<'a, T, S, D>
 where
-    S: TensorRef<T, D>
+    S: TensorRef<T, D>,
 {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
         self.source.get_reference(indexes)
@@ -98,9 +105,9 @@ where
     }
 }
 
-unsafe impl <'a, T, S, const D: usize> TensorRef<T, D> for TensorViewSourceMut<'a, T, S, D>
+unsafe impl<'a, T, S, const D: usize> TensorRef<T, D> for TensorViewSourceMut<'a, T, S, D>
 where
-    S: TensorRef<T, D>
+    S: TensorRef<T, D>,
 {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
         self.source.get_reference(indexes)
@@ -111,9 +118,9 @@ where
     }
 }
 
-unsafe impl <'a, T, S, const D: usize> TensorMut<T, D> for TensorViewSourceMut<'a, T, S, D>
+unsafe impl<'a, T, S, const D: usize> TensorMut<T, D> for TensorViewSourceMut<'a, T, S, D>
 where
-    S: TensorMut<T, D>
+    S: TensorMut<T, D>,
 {
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
         self.source.get_reference_mut(indexes)

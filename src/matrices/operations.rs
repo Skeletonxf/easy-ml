@@ -23,9 +23,11 @@
  * arguments so that the operation is valid.
  */
 
-use crate::matrices::{Column, Row, Matrix};
-use crate::matrices::views::{MatrixView, MatrixRef, NoInteriorMutability};
-use crate::matrices::iterators::{RowReferenceIterator, ColumnReferenceIterator, RowMajorReferenceIterator};
+use crate::matrices::iterators::{
+    ColumnReferenceIterator, RowMajorReferenceIterator, RowReferenceIterator,
+};
+use crate::matrices::views::{MatrixRef, MatrixView, NoInteriorMutability};
+use crate::matrices::{Column, Matrix, Row};
 use crate::numeric::{Numeric, NumericRef};
 
 use std::ops::{Add, Div, Mul, Neg, Sub};
@@ -38,7 +40,7 @@ fn matrix_view_addition_iter<'l, 'r, T, S1, S2>(
     left_iter: S1,
     left_size: (Row, Column),
     right_iter: S2,
-    right_size: (Row, Column)
+    right_size: (Row, Column),
 ) -> Matrix<T>
 where
     T: Numeric,
@@ -49,14 +51,16 @@ where
     S2: Iterator<Item = &'r T>,
 {
     // LxM + LxM -> LxM
-    assert!(left_size == right_size,
+    assert!(
+        left_size == right_size,
         "Mismatched matrices, left is {}x{}, right is {}x{}, + is only defined for MxN + MxN",
-        left_size.0, left_size.1, right_size.0, right_size.1);
+        left_size.0,
+        left_size.1,
+        right_size.0,
+        right_size.1
+    );
 
-    let values = left_iter
-        .zip(right_iter)
-        .map(|(x, y)| x + y)
-        .collect();
+    let values = left_iter.zip(right_iter).map(|(x, y)| x + y).collect();
     Matrix::from_flat_row_major(left_size, values)
 }
 
@@ -66,7 +70,7 @@ fn matrix_view_subtraction_iter<'l, 'r, T, S1, S2>(
     left_iter: S1,
     left_size: (Row, Column),
     right_iter: S2,
-    right_size: (Row, Column)
+    right_size: (Row, Column),
 ) -> Matrix<T>
 where
     T: Numeric,
@@ -77,14 +81,16 @@ where
     S2: Iterator<Item = &'r T>,
 {
     // LxM - LxM -> LxM
-    assert!(left_size == right_size,
+    assert!(
+        left_size == right_size,
         "Mismatched matrices, left is {}x{}, right is {}x{}, + is only defined for MxN + MxN",
-        left_size.0, left_size.1, right_size.0, right_size.1);
+        left_size.0,
+        left_size.1,
+        right_size.0,
+        right_size.1
+    );
 
-    let values = left_iter
-        .zip(right_iter)
-        .map(|(x, y)| x - y)
-        .collect();
+    let values = left_iter.zip(right_iter).map(|(x, y)| x - y).collect();
     Matrix::from_flat_row_major(left_size, values)
 }
 
@@ -98,19 +104,27 @@ where
     S2: MatrixRef<T> + NoInteriorMutability,
 {
     // LxM * MxN -> LxN
-    assert!(left.view_columns() == right.view_rows(),
+    assert!(
+        left.view_columns() == right.view_rows(),
         "Mismatched Matrices, left is {}x{}, right is {}x{}, * is only defined for MxN * NxL",
-        left.view_rows(), left.view_columns(), right.view_rows(), right.view_columns());
+        left.view_rows(),
+        left.view_columns(),
+        right.view_rows(),
+        right.view_columns()
+    );
 
     let mut result = Matrix::empty(T::zero(), (left.view_rows(), right.view_columns()));
     for i in 0..left.view_rows() {
         for j in 0..right.view_columns() {
             // compute dot product for each element in the new matrix
-            result.set(i, j,
+            result.set(
+                i,
+                j,
                 RowReferenceIterator::from(left, i)
-                .zip(ColumnReferenceIterator::from(right, j))
-                .map(|(x, y)| x * y)
-                .sum());
+                    .zip(ColumnReferenceIterator::from(right, j))
+                    .map(|(x, y)| x * y)
+                    .sum(),
+            );
         }
     }
     result
@@ -119,7 +133,7 @@ where
 macro_rules! matrix_view_reference_matrix_view_reference_operation {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S1, S2> $op<&MatrixView<T, S2>> for &MatrixView<T, S1>
+        impl<T, S1, S2> $op<&MatrixView<T, S2>> for &MatrixView<T, S1>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -134,13 +148,13 @@ macro_rules! matrix_view_reference_matrix_view_reference_operation {
                 $implementation::<T, S1, S2>(self.source_ref(), rhs.source_ref())
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_view_reference_matrix_view_reference_operation_iter {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S1, S2> $op<&MatrixView<T, S2>> for &MatrixView<T, S1>
+        impl<T, S1, S2> $op<&MatrixView<T, S2>> for &MatrixView<T, S1>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -156,11 +170,11 @@ macro_rules! matrix_view_reference_matrix_view_reference_operation_iter {
                     RowMajorReferenceIterator::from(self.source_ref()),
                     self.size(),
                     RowMajorReferenceIterator::from(rhs.source_ref()),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_view_reference_matrix_view_reference_operation_iter!(impl Add for MatrixView { fn add } matrix_view_addition_iter "Elementwise addition for two referenced matrix views");
@@ -170,7 +184,7 @@ matrix_view_reference_matrix_view_reference_operation!(impl Mul for MatrixView {
 macro_rules! matrix_view_reference_matrix_view_value_operation {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S1, S2> $op<MatrixView<T, S2>> for &MatrixView<T, S1>
+        impl<T, S1, S2> $op<MatrixView<T, S2>> for &MatrixView<T, S1>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -185,13 +199,13 @@ macro_rules! matrix_view_reference_matrix_view_value_operation {
                 $implementation::<T, S1, S2>(self.source_ref(), rhs.source_ref())
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_view_reference_matrix_view_value_operation_iter {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S1, S2> $op<MatrixView<T, S2>> for &MatrixView<T, S1>
+        impl<T, S1, S2> $op<MatrixView<T, S2>> for &MatrixView<T, S1>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -207,11 +221,11 @@ macro_rules! matrix_view_reference_matrix_view_value_operation_iter {
                     RowMajorReferenceIterator::from(self.source_ref()),
                     self.size(),
                     RowMajorReferenceIterator::from(rhs.source_ref()),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_view_reference_matrix_view_value_operation_iter!(impl Add for MatrixView { fn add } matrix_view_addition_iter "Elementwise addition for two matrix views with one referenced");
@@ -221,7 +235,7 @@ matrix_view_reference_matrix_view_value_operation!(impl Mul for MatrixView { fn 
 macro_rules! matrix_view_value_matrix_view_reference_operation {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S1, S2> $op<&MatrixView<T, S2>> for MatrixView<T, S1>
+        impl<T, S1, S2> $op<&MatrixView<T, S2>> for MatrixView<T, S1>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -236,13 +250,13 @@ macro_rules! matrix_view_value_matrix_view_reference_operation {
                 $implementation::<T, S1, S2>(self.source_ref(), rhs.source_ref())
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_view_value_matrix_view_reference_operation_iter {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S1, S2> $op<&MatrixView<T, S2>> for MatrixView<T, S1>
+        impl<T, S1, S2> $op<&MatrixView<T, S2>> for MatrixView<T, S1>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -258,11 +272,11 @@ macro_rules! matrix_view_value_matrix_view_reference_operation_iter {
                     RowMajorReferenceIterator::from(self.source_ref()),
                     self.size(),
                     RowMajorReferenceIterator::from(rhs.source_ref()),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_view_value_matrix_view_reference_operation_iter!(impl Add for MatrixView { fn add } matrix_view_addition_iter "Elementwise addition for two matrix views with one referenced");
@@ -272,7 +286,7 @@ matrix_view_value_matrix_view_reference_operation!(impl Mul for MatrixView { fn 
 macro_rules! matrix_view_value_matrix_view_value_operation {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S1, S2> $op<MatrixView<T, S2>> for MatrixView<T, S1>
+        impl<T, S1, S2> $op<MatrixView<T, S2>> for MatrixView<T, S1>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -287,13 +301,13 @@ macro_rules! matrix_view_value_matrix_view_value_operation {
                 $implementation::<T, S1, S2>(self.source_ref(), rhs.source_ref())
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_view_value_matrix_view_value_operation_iter {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S1, S2> $op<MatrixView<T, S2>> for MatrixView<T, S1>
+        impl<T, S1, S2> $op<MatrixView<T, S2>> for MatrixView<T, S1>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -309,11 +323,11 @@ macro_rules! matrix_view_value_matrix_view_value_operation_iter {
                     RowMajorReferenceIterator::from(self.source_ref()),
                     self.size(),
                     RowMajorReferenceIterator::from(rhs.source_ref()),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_view_value_matrix_view_value_operation_iter!(impl Add for MatrixView { fn add } matrix_view_addition_iter "Elementwise addition for two matrix views");
@@ -323,7 +337,7 @@ matrix_view_value_matrix_view_value_operation!(impl Mul for MatrixView { fn mul 
 macro_rules! matrix_view_reference_matrix_reference_operation {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<&Matrix<T>> for &MatrixView<T, S>
+        impl<T, S> $op<&Matrix<T>> for &MatrixView<T, S>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -337,13 +351,13 @@ macro_rules! matrix_view_reference_matrix_reference_operation {
                 $implementation::<T, S, Matrix<T>>(self.source_ref(), rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_view_reference_matrix_reference_operation_iter {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<&Matrix<T>> for &MatrixView<T, S>
+        impl<T, S> $op<&Matrix<T>> for &MatrixView<T, S>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -358,11 +372,11 @@ macro_rules! matrix_view_reference_matrix_reference_operation_iter {
                     RowMajorReferenceIterator::from(self.source_ref()),
                     self.size(),
                     rhs.direct_row_major_reference_iter(),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_view_reference_matrix_reference_operation_iter!(impl Add for MatrixView { fn add } matrix_view_addition_iter "Elementwise addition for a referenced matrix view and a referenced matrix");
@@ -372,7 +386,7 @@ matrix_view_reference_matrix_reference_operation!(impl Mul for MatrixView { fn m
 macro_rules! matrix_view_reference_matrix_value_operation {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<Matrix<T>> for &MatrixView<T, S>
+        impl<T, S> $op<Matrix<T>> for &MatrixView<T, S>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -386,13 +400,13 @@ macro_rules! matrix_view_reference_matrix_value_operation {
                 $implementation::<T, S, Matrix<T>>(self.source_ref(), &rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_view_reference_matrix_value_operation_iter {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<Matrix<T>> for &MatrixView<T, S>
+        impl<T, S> $op<Matrix<T>> for &MatrixView<T, S>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -407,11 +421,11 @@ macro_rules! matrix_view_reference_matrix_value_operation_iter {
                     RowMajorReferenceIterator::from(self.source_ref()),
                     self.size(),
                     rhs.direct_row_major_reference_iter(),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_view_reference_matrix_value_operation_iter!(impl Add for MatrixView { fn add } matrix_view_addition_iter "Elementwise addition for a referenced matrix view and a matrix");
@@ -421,7 +435,7 @@ matrix_view_reference_matrix_value_operation!(impl Mul for MatrixView { fn mul }
 macro_rules! matrix_view_value_matrix_reference_operation {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<&Matrix<T>> for MatrixView<T, S>
+        impl<T, S> $op<&Matrix<T>> for MatrixView<T, S>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -435,13 +449,13 @@ macro_rules! matrix_view_value_matrix_reference_operation {
                 $implementation::<T, S, Matrix<T>>(self.source_ref(), rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_view_value_matrix_reference_operation_iter {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<&Matrix<T>> for MatrixView<T, S>
+        impl<T, S> $op<&Matrix<T>> for MatrixView<T, S>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -456,11 +470,11 @@ macro_rules! matrix_view_value_matrix_reference_operation_iter {
                     RowMajorReferenceIterator::from(self.source_ref()),
                     self.size(),
                     rhs.direct_row_major_reference_iter(),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_view_value_matrix_reference_operation_iter!(impl Add for MatrixView { fn add } matrix_view_addition_iter "Elementwise addition for a matrix view and a referenced matrix");
@@ -470,7 +484,7 @@ matrix_view_value_matrix_reference_operation!(impl Mul for MatrixView { fn mul }
 macro_rules! matrix_view_value_matrix_value_operation {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<Matrix<T>> for MatrixView<T, S>
+        impl<T, S> $op<Matrix<T>> for MatrixView<T, S>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -484,13 +498,13 @@ macro_rules! matrix_view_value_matrix_value_operation {
                 $implementation::<T, S, Matrix<T>>(self.source_ref(), &rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_view_value_matrix_value_operation_iter {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<Matrix<T>> for MatrixView<T, S>
+        impl<T, S> $op<Matrix<T>> for MatrixView<T, S>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -505,11 +519,11 @@ macro_rules! matrix_view_value_matrix_value_operation_iter {
                     RowMajorReferenceIterator::from(self.source_ref()),
                     self.size(),
                     rhs.direct_row_major_reference_iter(),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_view_value_matrix_value_operation_iter!(impl Add for MatrixView { fn add } matrix_view_addition_iter "Elementwise addition for a matrix view and a matrix");
@@ -519,7 +533,7 @@ matrix_view_value_matrix_value_operation!(impl Mul for MatrixView { fn mul } mat
 macro_rules! matrix_reference_matrix_view_reference_operation {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<&MatrixView<T, S>> for &Matrix<T>
+        impl<T, S> $op<&MatrixView<T, S>> for &Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -533,13 +547,13 @@ macro_rules! matrix_reference_matrix_view_reference_operation {
                 $implementation::<T, Matrix<T>, S>(self, rhs.source_ref())
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_reference_matrix_view_reference_operation_iter {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<&MatrixView<T, S>> for &Matrix<T>
+        impl<T, S> $op<&MatrixView<T, S>> for &Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -554,11 +568,11 @@ macro_rules! matrix_reference_matrix_view_reference_operation_iter {
                     self.direct_row_major_reference_iter(),
                     self.size(),
                     RowMajorReferenceIterator::from(rhs.source_ref()),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_reference_matrix_view_reference_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for a referenced matrix and a referenced matrix view");
@@ -568,7 +582,7 @@ matrix_reference_matrix_view_reference_operation!(impl Mul for Matrix { fn mul }
 macro_rules! matrix_reference_matrix_view_value_operation {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<MatrixView<T, S>> for &Matrix<T>
+        impl<T, S> $op<MatrixView<T, S>> for &Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -582,13 +596,13 @@ macro_rules! matrix_reference_matrix_view_value_operation {
                 $implementation::<T, Matrix<T>, S>(self, rhs.source_ref())
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_reference_matrix_view_value_operation_iter {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<MatrixView<T, S>> for &Matrix<T>
+        impl<T, S> $op<MatrixView<T, S>> for &Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -603,11 +617,11 @@ macro_rules! matrix_reference_matrix_view_value_operation_iter {
                     self.direct_row_major_reference_iter(),
                     self.size(),
                     RowMajorReferenceIterator::from(rhs.source_ref()),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_reference_matrix_view_value_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for a referenced matrix and a matrix view");
@@ -617,7 +631,7 @@ matrix_reference_matrix_view_value_operation!(impl Mul for Matrix { fn mul } mat
 macro_rules! matrix_value_matrix_view_reference_operation {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<&MatrixView<T, S>> for Matrix<T>
+        impl<T, S> $op<&MatrixView<T, S>> for Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -631,13 +645,13 @@ macro_rules! matrix_value_matrix_view_reference_operation {
                 $implementation::<T, Matrix<T>, S>(&self, rhs.source_ref())
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_value_matrix_view_reference_operation_iter {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<&MatrixView<T, S>> for Matrix<T>
+        impl<T, S> $op<&MatrixView<T, S>> for Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -652,11 +666,11 @@ macro_rules! matrix_value_matrix_view_reference_operation_iter {
                     self.direct_row_major_reference_iter(),
                     self.size(),
                     RowMajorReferenceIterator::from(rhs.source_ref()),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_value_matrix_view_reference_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for a matrix and a referenced matrix view");
@@ -666,7 +680,7 @@ matrix_value_matrix_view_reference_operation!(impl Mul for Matrix { fn mul } mat
 macro_rules! matrix_value_matrix_view_value_operation {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<MatrixView<T, S>> for Matrix<T>
+        impl<T, S> $op<MatrixView<T, S>> for Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -680,13 +694,13 @@ macro_rules! matrix_value_matrix_view_value_operation {
                 $implementation::<T, Matrix<T>, S>(&self, rhs.source_ref())
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_value_matrix_view_value_operation_iter {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T, S> $op<MatrixView<T, S>> for Matrix<T>
+        impl<T, S> $op<MatrixView<T, S>> for Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -701,11 +715,11 @@ macro_rules! matrix_value_matrix_view_value_operation_iter {
                     self.direct_row_major_reference_iter(),
                     self.size(),
                     RowMajorReferenceIterator::from(rhs.source_ref()),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_value_matrix_view_value_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for a matrix and a matrix view");
@@ -715,7 +729,7 @@ matrix_value_matrix_view_value_operation!(impl Mul for Matrix { fn mul } matrix_
 macro_rules! matrix_reference_matrix_reference_operation {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T> $op<&Matrix<T>> for &Matrix<T>
+        impl<T> $op<&Matrix<T>> for &Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -728,13 +742,13 @@ macro_rules! matrix_reference_matrix_reference_operation {
                 $implementation::<T, Matrix<T>, Matrix<T>>(self, rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_reference_matrix_reference_operation_iter {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T> $op<&Matrix<T>> for &Matrix<T>
+        impl<T> $op<&Matrix<T>> for &Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -748,11 +762,11 @@ macro_rules! matrix_reference_matrix_reference_operation_iter {
                     self.direct_row_major_reference_iter(),
                     self.size(),
                     rhs.direct_row_major_reference_iter(),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_reference_matrix_reference_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for two referenced matrices");
@@ -762,7 +776,7 @@ matrix_reference_matrix_reference_operation!(impl Mul for Matrix { fn mul } matr
 macro_rules! matrix_reference_matrix_value_operation {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T> $op<Matrix<T>> for &Matrix<T>
+        impl<T> $op<Matrix<T>> for &Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -775,13 +789,13 @@ macro_rules! matrix_reference_matrix_value_operation {
                 $implementation::<T, Matrix<T>, Matrix<T>>(self, &rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_reference_matrix_value_operation_iter {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T> $op<Matrix<T>> for &Matrix<T>
+        impl<T> $op<Matrix<T>> for &Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -795,11 +809,11 @@ macro_rules! matrix_reference_matrix_value_operation_iter {
                     self.direct_row_major_reference_iter(),
                     self.size(),
                     rhs.direct_row_major_reference_iter(),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_reference_matrix_value_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for two matrices with one referenced");
@@ -809,7 +823,7 @@ matrix_reference_matrix_value_operation!(impl Mul for Matrix { fn mul } matrix_v
 macro_rules! matrix_value_matrix_reference_operation {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T> $op<&Matrix<T>> for Matrix<T>
+        impl<T> $op<&Matrix<T>> for Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -822,13 +836,13 @@ macro_rules! matrix_value_matrix_reference_operation {
                 $implementation::<T, Matrix<T>, Matrix<T>>(&self, rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_value_matrix_reference_operation_iter {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T> $op<&Matrix<T>> for Matrix<T>
+        impl<T> $op<&Matrix<T>> for Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -842,11 +856,11 @@ macro_rules! matrix_value_matrix_reference_operation_iter {
                     self.direct_row_major_reference_iter(),
                     self.size(),
                     rhs.direct_row_major_reference_iter(),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_value_matrix_reference_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for two matrices with one referenced");
@@ -856,7 +870,7 @@ matrix_value_matrix_reference_operation!(impl Mul for Matrix { fn mul } matrix_v
 macro_rules! matrix_value_matrix_value_operation {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T> $op<Matrix<T>> for Matrix<T>
+        impl<T> $op<Matrix<T>> for Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -869,13 +883,13 @@ macro_rules! matrix_value_matrix_value_operation {
                 $implementation::<T, Matrix<T>, Matrix<T>>(&self, &rhs)
             }
         }
-    }
+    };
 }
 
 macro_rules! matrix_value_matrix_value_operation_iter {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
-        impl <T> $op<Matrix<T>> for Matrix<T>
+        impl<T> $op<Matrix<T>> for Matrix<T>
         where
             T: Numeric,
             for<'a> &'a T: NumericRef<T>,
@@ -889,11 +903,11 @@ macro_rules! matrix_value_matrix_value_operation_iter {
                     self.direct_row_major_reference_iter(),
                     self.size(),
                     rhs.direct_row_major_reference_iter(),
-                    rhs.size()
+                    rhs.size(),
                 )
             }
         }
-    }
+    };
 }
 
 matrix_value_matrix_value_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for two matrices");
@@ -933,8 +947,10 @@ fn test_all_16_combinations() {
 /**
  * Elementwise negation for a referenced matrix.
  */
-impl <T: Numeric> Neg for &Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
+impl<T: Numeric> Neg for &Matrix<T>
+where
+    for<'a> &'a T: NumericRef<T>,
+{
     type Output = Matrix<T>;
 
     #[inline]
@@ -946,20 +962,22 @@ where for<'a> &'a T: NumericRef<T> {
 /**
  * Elementwise negation for a matrix.
  */
-impl <T: Numeric> Neg for Matrix<T>
-where for<'a> &'a T: NumericRef<T> {
+impl<T: Numeric> Neg for Matrix<T>
+where
+    for<'a> &'a T: NumericRef<T>,
+{
     type Output = Matrix<T>;
 
     #[inline]
     fn neg(self) -> Self::Output {
-        - &self
+        -&self
     }
 }
 
 /**
  * Elementwise negation for a referenced matrix view.
  */
-impl <T, S> Neg for &MatrixView<T, S>
+impl<T, S> Neg for &MatrixView<T, S>
 where
     T: Numeric,
     for<'a> &'a T: NumericRef<T>,
@@ -976,17 +994,17 @@ where
 /**
  * Elementwise negation for a matrix view.
  */
- impl <T, S> Neg for MatrixView<T, S>
- where
-     T: Numeric,
-     for<'a> &'a T: NumericRef<T>,
-     S: MatrixRef<T>,
+impl<T, S> Neg for MatrixView<T, S>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+    S: MatrixRef<T>,
 {
     type Output = Matrix<T>;
 
     #[inline]
     fn neg(self) -> Self::Output {
-        - &self
+        -&self
     }
 }
 
@@ -996,15 +1014,17 @@ macro_rules! matrix_scalar_reference_reference {
          * Operation for a matrix and scalar by reference. The scalar is applied to
          * all elements, this is a shorthand for map().
          */
-         impl <T: Numeric> $op<&T> for &Matrix<T>
-         where for<'a> &'a T: NumericRef<T> {
-             type Output = Matrix<T>;
-             #[inline]
-             fn $method(self, rhs: &T) -> Self::Output {
-                 self.map(|x| (x).$method(rhs.clone()))
-             }
-         }
-    }
+        impl<T: Numeric> $op<&T> for &Matrix<T>
+        where
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Matrix<T>;
+            #[inline]
+            fn $method(self, rhs: &T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+    };
 }
 
 macro_rules! matrix_view_scalar_reference_reference {
@@ -1013,19 +1033,19 @@ macro_rules! matrix_view_scalar_reference_reference {
          * Operation for a matrix view and scalar by reference. The scalar is applied to
          * all elements, this is a shorthand for map().
          */
-         impl <T, S> $op<&T> for &MatrixView<T, S>
-         where
-             T: Numeric,
-             for<'a> &'a T: NumericRef<T>,
-             S: MatrixRef<T>,
+        impl<T, S> $op<&T> for &MatrixView<T, S>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: MatrixRef<T>,
         {
-             type Output = Matrix<T>;
-             #[inline]
-             fn $method(self, rhs: &T) -> Self::Output {
-                 self.map(|x| (x).$method(rhs.clone()))
-             }
-         }
-    }
+            type Output = Matrix<T>;
+            #[inline]
+            fn $method(self, rhs: &T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+    };
 }
 
 matrix_scalar_reference_reference!(impl Add for Matrix { fn add });
@@ -1044,15 +1064,17 @@ macro_rules! matrix_scalar_value_reference {
          * Operation for a matrix by value and scalar by reference. The scalar is applied to
          * all elements, this is a shorthand for map().
          */
-         impl <T: Numeric> $op<&T> for Matrix<T>
-         where for<'a> &'a T: NumericRef<T> {
-             type Output = Matrix<T>;
-             #[inline]
-             fn $method(self, rhs: &T) -> Self::Output {
-                 self.map(|x| (x).$method(rhs.clone()))
-             }
-         }
-    }
+        impl<T: Numeric> $op<&T> for Matrix<T>
+        where
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Matrix<T>;
+            #[inline]
+            fn $method(self, rhs: &T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+    };
 }
 
 macro_rules! matrix_view_scalar_value_reference {
@@ -1061,19 +1083,19 @@ macro_rules! matrix_view_scalar_value_reference {
          * Operation for a matrix viiew by value and scalar by reference. The scalar is applied to
          * all elements, this is a shorthand for map().
          */
-         impl <T, S> $op<&T> for MatrixView<T, S>
-         where
-             T: Numeric,
-             for<'a> &'a T: NumericRef<T>,
-             S: MatrixRef<T>,
+        impl<T, S> $op<&T> for MatrixView<T, S>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: MatrixRef<T>,
         {
-             type Output = Matrix<T>;
-             #[inline]
-             fn $method(self, rhs: &T) -> Self::Output {
-                 self.map(|x| (x).$method(rhs.clone()))
-             }
-         }
-    }
+            type Output = Matrix<T>;
+            #[inline]
+            fn $method(self, rhs: &T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+    };
 }
 
 matrix_scalar_value_reference!(impl Add for Matrix { fn add });
@@ -1092,15 +1114,17 @@ macro_rules! matrix_scalar_reference_value {
          * Operation for a matrix by reference and scalar by value. The scalar is applied to
          * all elements, this is a shorthand for map().
          */
-         impl <T: Numeric> $op<T> for &Matrix<T>
-         where for<'a> &'a T: NumericRef<T> {
-             type Output = Matrix<T>;
-             #[inline]
-             fn $method(self, rhs: T) -> Self::Output {
-                 self.map(|x| (x).$method(rhs.clone()))
-             }
-         }
-    }
+        impl<T: Numeric> $op<T> for &Matrix<T>
+        where
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Matrix<T>;
+            #[inline]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+    };
 }
 
 macro_rules! matrix_view_scalar_reference_value {
@@ -1109,19 +1133,19 @@ macro_rules! matrix_view_scalar_reference_value {
          * Operation for a matrix view by reference and scalar by value. The scalar is applied to
          * all elements, this is a shorthand for map().
          */
-         impl <T, S> $op<T> for &MatrixView<T, S>
-         where
-             T: Numeric,
-             for<'a> &'a T: NumericRef<T>,
-             S: MatrixRef<T>,
+        impl<T, S> $op<T> for &MatrixView<T, S>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: MatrixRef<T>,
         {
-             type Output = Matrix<T>;
-             #[inline]
-             fn $method(self, rhs: T) -> Self::Output {
-                 self.map(|x| (x).$method(rhs.clone()))
-             }
-         }
-    }
+            type Output = Matrix<T>;
+            #[inline]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+    };
 }
 
 matrix_scalar_reference_value!(impl Add for Matrix { fn add });
@@ -1140,15 +1164,17 @@ macro_rules! matrix_scalar_value_value {
          * Operation for a matrix and scalar by value. The scalar is applied to
          * all elements, this is a shorthand for map().
          */
-         impl <T: Numeric> $op<T> for Matrix<T>
-         where for<'a> &'a T: NumericRef<T> {
-             type Output = Matrix<T>;
-             #[inline]
-             fn $method(self, rhs: T) -> Self::Output {
-                 self.map(|x| (x).$method(rhs.clone()))
-             }
-         }
-    }
+        impl<T: Numeric> $op<T> for Matrix<T>
+        where
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Matrix<T>;
+            #[inline]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+    };
 }
 
 macro_rules! matrix_view_scalar_value_value {
@@ -1157,19 +1183,19 @@ macro_rules! matrix_view_scalar_value_value {
          * Operation for a matrix view and scalar by value. The scalar is applied to
          * all elements, this is a shorthand for map().
          */
-         impl <T, S> $op<T> for MatrixView<T, S>
-         where
-             T: Numeric,
-             for<'a> &'a T: NumericRef<T>,
-             S: MatrixRef<T>,
+        impl<T, S> $op<T> for MatrixView<T, S>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: MatrixRef<T>,
         {
-             type Output = Matrix<T>;
-             #[inline]
-             fn $method(self, rhs: T) -> Self::Output {
-                 self.map(|x| (x).$method(rhs.clone()))
-             }
-         }
-    }
+            type Output = Matrix<T>;
+            #[inline]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+    };
 }
 
 matrix_scalar_value_value!(impl Add for Matrix { fn add });
