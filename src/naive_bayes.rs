@@ -314,6 +314,7 @@ assert!(f1_score > 0.8);
 [See submodule for 3 Class Naïve Bayes Example](three_class)
 */
 
+#[rustfmt::skip]
 pub mod three_class {
 /*!
 # 3 Class Naïve Bayes Example

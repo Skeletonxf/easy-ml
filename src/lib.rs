@@ -22,19 +22,19 @@
  * - [Using custom numeric types](using_custom_types)
  */
 
-pub mod numeric;
+pub mod differentiation;
+pub mod distributions;
 pub mod linear_algebra;
 pub mod matrices;
+pub mod numeric;
 #[allow(dead_code)]
 mod tensors;
-pub mod distributions;
-pub mod differentiation;
 
 // examples
-pub mod linear_regression;
-pub mod using_custom_types;
 pub mod k_means;
+pub mod linear_regression;
 pub mod logistic_regression;
 pub mod naive_bayes;
 pub mod neural_networks;
+pub mod using_custom_types;
 pub mod web_assembly;
