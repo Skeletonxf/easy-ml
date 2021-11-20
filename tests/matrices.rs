@@ -15,7 +15,7 @@ mod tests {
 
     #[test]
     fn check_dimensionality_matrix() {
-        let column_vector = Matrix::from(vec![ vec![1], vec![2], vec![3] ]);
+        let column_vector = Matrix::from(vec![vec![1], vec![2], vec![3]]);
         println!("{:?}", column_vector);
         assert_eq!((3, 1), column_vector.size());
         let matrix = Matrix::from(vec![vec![1, 2], vec![3, 4], vec![5, 6]]);
@@ -131,7 +131,10 @@ mod tests {
     fn check_matrix_addition() {
         let matrix1 = Matrix::from(vec![vec![-1, 2], vec![-3, 4], vec![5, -6]]);
         let matrix2 = Matrix::from(vec![vec![0, 0], vec![-3, 1], vec![3, -2]]);
-        assert_eq!(matrix1 + matrix2, Matrix::from(vec![vec![-1, 2], vec![-6, 5], vec![8, -8]]));
+        assert_eq!(
+            matrix1 + matrix2,
+            Matrix::from(vec![vec![-1, 2], vec![-6, 5], vec![8, -8]])
+        );
     }
 
     #[test]
@@ -146,20 +149,21 @@ mod tests {
     fn check_matrix_subtraction() {
         let matrix1 = Matrix::from(vec![vec![-1, 2], vec![-3, 4], vec![5, -6]]);
         let matrix2 = Matrix::from(vec![vec![0, 0], vec![-3, 1], vec![3, -2]]);
-        assert_eq!(matrix1 - matrix2, Matrix::from(vec![vec![-1, 2], vec![0, 3], vec![2, -4]]));
+        assert_eq!(
+            matrix1 - matrix2,
+            Matrix::from(vec![vec![-1, 2], vec![0, 3], vec![2, -4]])
+        );
     }
 
     #[test]
     fn check_matrix_negation() {
         let matrix1 = Matrix::from(vec![vec![-1, 2], vec![1, -2]]);
-        assert_eq!(- matrix1, Matrix::from(vec![vec![1, -2], vec![-1, 2]]));
+        assert_eq!(-matrix1, Matrix::from(vec![vec![1, -2], vec![-1, 2]]));
     }
 
     #[test]
     fn check_resizing_matrix() {
-        let mut matrix = Matrix::from(vec![
-            vec![ 1, 2 ],
-            vec![ 3, 4]]);
+        let mut matrix = Matrix::from(vec![vec![1, 2], vec![3, 4]]);
         matrix.insert_row(0, 5);
         let mut iterator = matrix.column_major_iter();
         assert_eq!(Some(5), iterator.next());
@@ -197,6 +201,7 @@ mod tests {
     }
 
     #[test]
+    #[rustfmt::skip]
     fn check_growing_matrix() {
         let mut matrix = Matrix::from_scalar(5);
         matrix.insert_row(1, 3);
@@ -234,18 +239,19 @@ mod tests {
     #[test]
     #[should_panic]
     fn check_insert_column_with_too_few_elements() {
-        let mut matrix = Matrix::column(vec![ 1, 2, 3 ]);
+        let mut matrix = Matrix::column(vec![1, 2, 3]);
         matrix.insert_column_with(1, [4, 5].iter().cloned());
     }
 
     #[test]
     #[should_panic]
     fn check_insert_row_with_too_few_elements() {
-        let mut matrix = Matrix::row(vec![ 1, 2, 3 ]);
+        let mut matrix = Matrix::row(vec![1, 2, 3]);
         matrix.insert_row_with(0, [4, 5].iter().cloned());
     }
 
     #[test]
+    #[rustfmt::skip]
     fn check_shrinking_matrix() {
         let mut matrix = Matrix::from(vec![
             vec![ 1, 2, 6 ],
@@ -269,6 +275,7 @@ mod tests {
     }
 
     #[test]
+    #[rustfmt::skip]
     fn check_mapping() {
         let mut matrix = Matrix::from(vec![
             vec![ 0, 1, 2 ],
@@ -301,6 +308,7 @@ mod tests {
 
     #[test]
     fn check_partition_quadrants() {
+        #[rustfmt::skip]
         let mut matrix = Matrix::from(vec![
             vec![ 0, 1, 2 ],
             vec![ 3, 4, 5 ],
@@ -308,30 +316,39 @@ mod tests {
         ]);
         {
             let parts = matrix.partition_quadrants(2, 1);
-            assert_eq!(parts.top_left, Matrix::column(vec![ 0, 3]));
-            assert_eq!(parts.top_right, Matrix::from(vec![vec![ 1, 2 ], vec![ 4, 5]]));
-            assert_eq!(parts.bottom_left, Matrix::column(vec![ 6 ]));
-            assert_eq!(parts.bottom_right, Matrix::row(vec![ 7, 8]));
+            assert_eq!(parts.top_left, Matrix::column(vec![0, 3]));
+            assert_eq!(parts.top_right, Matrix::from(vec![vec![1, 2], vec![4, 5]]));
+            assert_eq!(parts.bottom_left, Matrix::column(vec![6]));
+            assert_eq!(parts.bottom_right, Matrix::row(vec![7, 8]));
         }
         {
             let parts = matrix.partition_quadrants(1, 2);
-            assert_eq!(parts.top_left, Matrix::row(vec![ 0, 1]));
-            assert_eq!(parts.top_right, Matrix::column(vec![ 2 ]));
-            assert_eq!(parts.bottom_left, Matrix::from(vec![vec![ 3, 4 ], vec![ 6, 7]]));
-            assert_eq!(parts.bottom_right, Matrix::column(vec![ 5, 8]));
+            assert_eq!(parts.top_left, Matrix::row(vec![0, 1]));
+            assert_eq!(parts.top_right, Matrix::column(vec![2]));
+            assert_eq!(
+                parts.bottom_left,
+                Matrix::from(vec![vec![3, 4], vec![6, 7]])
+            );
+            assert_eq!(parts.bottom_right, Matrix::column(vec![5, 8]));
         }
         {
             let parts = matrix.partition_quadrants(0, 1);
             assert_eq!(parts.top_left.size(), (0, 0));
             assert_eq!(parts.top_right.size(), (0, 0));
-            assert_eq!(parts.bottom_left, Matrix::column(vec![ 0, 3, 6 ]));
-            assert_eq!(parts.bottom_right, Matrix::from(vec![vec![ 1, 2 ], vec![ 4, 5 ], vec![ 7, 8 ]]));
+            assert_eq!(parts.bottom_left, Matrix::column(vec![0, 3, 6]));
+            assert_eq!(
+                parts.bottom_right,
+                Matrix::from(vec![vec![1, 2], vec![4, 5], vec![7, 8]])
+            );
         }
         {
             let parts = matrix.partition_quadrants(2, 3);
-            assert_eq!(parts.top_left, Matrix::from(vec![vec![ 0, 1, 2 ], vec![ 3, 4, 5 ]]));
+            assert_eq!(
+                parts.top_left,
+                Matrix::from(vec![vec![0, 1, 2], vec![3, 4, 5]])
+            );
             assert_eq!(parts.top_right.size(), (0, 0));
-            assert_eq!(parts.bottom_left, Matrix::row(vec![ 6, 7, 8 ]));
+            assert_eq!(parts.bottom_left, Matrix::row(vec![6, 7, 8]));
             assert_eq!(parts.bottom_right.size(), (0, 0));
         }
     }
@@ -340,6 +357,7 @@ mod tests {
     fn check_general_partition() {
         use std::ops::Range;
         let mut matrix = Matrix::from_flat_row_major((10, 10), (0..100).collect());
+        #[rustfmt::skip]
         let partitions: [&[usize]; 6] = [
             &[ 3 ],
             &[ 2, 5, ],
@@ -348,6 +366,7 @@ mod tests {
             &[ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ],
             &[],
         ];
+        #[rustfmt::skip]
         let expected_slice_sizes: [&[Range<usize>]; 6] = [
             &[ 0..3, 3..10 ],
             &[ 0..2, 2..5, 5..10 ],
@@ -370,7 +389,7 @@ mod tests {
                     let (row_slice, column_slice) = (i / parts_per_column, i % parts_per_column);
                     let expected_slice = (
                         expected_row_slices[row_slice].clone(),
-                        expected_column_slices[column_slice].clone()
+                        expected_column_slices[column_slice].clone(),
                     );
                     let expected_size = (expected_slice.0.len(), expected_slice.1.len());
                     match expected_size {

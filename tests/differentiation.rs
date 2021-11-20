@@ -6,15 +6,27 @@ mod forward_tests {
 
     #[test]
     fn test_adding() {
-        let a = Trace { number: 2.0, derivative: 1.0 };
-        let b = Trace { number: -1.0, derivative: 1.0 };
+        let a = Trace {
+            number: 2.0,
+            derivative: 1.0,
+        };
+        let b = Trace {
+            number: -1.0,
+            derivative: 1.0,
+        };
         let _c = &a + &b;
         let _d = &a + b;
         let _e = a + &b;
         let _f = a + b;
         assert_eq!(_c, _d);
         assert_eq!(_e, _f);
-        assert_eq!(_c, Trace { number: 1.0, derivative: 2.0 });
+        assert_eq!(
+            _c,
+            Trace {
+                number: 1.0,
+                derivative: 2.0
+            }
+        );
     }
 
     fn three_x_squared(x: Trace<f32>) -> Trace<f32> {
@@ -30,7 +42,10 @@ mod forward_tests {
     fn test_three_x_squared() {
         // Test the differentiation of the function 3(x^2) with respect to x
         let x = 1.5;
-        let dx = three_x_squared(Trace { number: x, derivative: 1.0 });
+        let dx = three_x_squared(Trace {
+            number: x,
+            derivative: 1.0,
+        });
         let also_dx = three_x_squared_derivative(1.5);
         assert_eq!(dx.derivative, also_dx);
     }
@@ -181,7 +196,6 @@ mod forward_tests {
     }
 }
 
-
 #[cfg(test)]
 mod reverse_tests {
     use easy_ml::differentiation::Record;
@@ -274,7 +288,10 @@ mod reverse_tests {
         let x = Record::variable(0.5, &list);
         let y = Record::variable(2.0, &list);
         let z = Record::variable(2.0, &list);
-        let result = [ x * 3.0, (y * y) / z, (z * y) - 5.0 ].iter().cloned().sum::<Record<f32>>();
+        let result = [x * 3.0, (y * y) / z, (z * y) - 5.0]
+            .iter()
+            .cloned()
+            .sum::<Record<f32>>();
         let derivatives = result.derivatives();
         let dx = derivatives[&x];
         let dy = derivatives[&y];

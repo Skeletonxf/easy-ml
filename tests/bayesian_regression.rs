@@ -7,14 +7,14 @@ extern crate easy_ml;
 
 #[cfg(test)]
 mod tests {
-    use rand::{Rng, SeedableRng};
     use rand::distributions::Standard;
+    use rand::{Rng, SeedableRng};
 
     use textplots::{Chart, Plot, Shape};
 
     use easy_ml::distributions::{Gaussian, MultivariateGaussian};
-    use easy_ml::matrices::Matrix;
     use easy_ml::matrices::slices::{Slice, Slice2D};
+    use easy_ml::matrices::Matrix;
 
     // 3 steps for bayesian regression
     // 0: have data to model
@@ -32,13 +32,17 @@ mod tests {
         (x * 1.5) + 3.0
     }
 
-    fn generate_data<R: Rng>(random_generator: &mut R, variance: f64, training_size: usize) -> (
+    fn generate_data<R: Rng>(
+        random_generator: &mut R,
+        variance: f64,
+        training_size: usize,
+    ) -> (
         Matrix<f64>,
         Matrix<f64>,
         Matrix<f64>,
         Matrix<f64>,
         Matrix<f64>,
-        Matrix<f64>
+        Matrix<f64>,
     ) {
         // create data range from -1 to 1
         let x = Matrix::column((0..100).map(|x| ((x as f64 * 0.01) * 2.0) - 1.0).collect());
@@ -50,14 +54,16 @@ mod tests {
             n_random_numbers(random_generator, training_size)
                 .iter()
                 .map(|x| (x * 2.0) - 1.0)
-                .collect());
+                .collect(),
+        );
 
         // create noisy target values to train on from these observations
         let normal_distribution = Gaussian::new(0.0, variance);
         let mut random_numbers = n_random_numbers(random_generator, training_size);
-        let samples = normal_distribution.draw(&mut random_numbers.drain(..), training_size).unwrap();
-        let targets = observations.map_with_index(
-            |x, row, _| target(x) + samples[row]);
+        let samples = normal_distribution
+            .draw(&mut random_numbers.drain(..), training_size)
+            .unwrap();
+        let targets = observations.map_with_index(|x, row, _| target(x) + samples[row]);
 
         // create a design matrix of [1, x] for each x in observations
         let design_matrix = {
@@ -72,7 +78,14 @@ mod tests {
             test_design_matrix
         };
 
-        (x, y, test_design_matrix, design_matrix, targets, observations)
+        (
+            x,
+            y,
+            test_design_matrix,
+            design_matrix,
+            targets,
+            observations,
+        )
     }
 
     fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f64> {
@@ -87,7 +100,8 @@ mod tests {
     }
 
     fn sort_and_merge_for_plotting(x: &Matrix<f64>, fx: &Matrix<f64>) -> Vec<(f32, f32)> {
-        let mut list: Vec<(f32, f32)> = x.column_iter(0)
+        let mut list: Vec<(f32, f32)> = x
+            .column_iter(0)
             .zip(fx.column_iter(0))
             .map(|(x, y)| (x as f32, y as f32))
             .collect();
@@ -96,7 +110,8 @@ mod tests {
     }
 
     fn split_for_plotting(pairs: &Matrix<f64>) -> Vec<(f32, f32)> {
-        pairs.column_iter(0)
+        pairs
+            .column_iter(0)
             .zip(pairs.column_iter(1))
             .map(|(x, y)| (x as f32, y as f32))
             .collect()
@@ -118,15 +133,18 @@ mod tests {
         // the value we choose for simplicity.
         let noise_precision = 25.0;
         let noise_variance = 1.0 / noise_precision;
-        let (x, y, test_design_matrix, design_matrix, targets, observations) = generate_data(
-            &mut random_generator, noise_variance, 20);
+        let (x, y, test_design_matrix, design_matrix, targets, observations) =
+            generate_data(&mut random_generator, noise_variance, 20);
 
         // plot x and y to see the true line and the approximate line from
         // the noisy data
         println!("True x and f(x) and noisy version");
         Chart::new(180, 60, -1.0, 1.0)
             .lineplot(Shape::Lines(&merge_for_plotting(&x, &y)))
-            .lineplot(Shape::Points(&sort_and_merge_for_plotting(&observations, &targets)))
+            .lineplot(Shape::Points(&sort_and_merge_for_plotting(
+                &observations,
+                &targets,
+            )))
             .display();
 
         // Start with a prior distribution which we will update as we see new data.
@@ -143,13 +161,16 @@ mod tests {
         let prior_precision = 1.0;
         let prior_variance = 1.0 / prior_precision;
         let prior = MultivariateGaussian::new(
-            Matrix::column(vec![ 0.0, 0.0]),
-            Matrix::diagonal(prior_variance, (2, 2)));
+            Matrix::column(vec![0.0, 0.0]),
+            Matrix::diagonal(prior_variance, (2, 2)),
+        );
 
         // Draw some lines from the prior before seeing data to see what our
         // prior belief looks like
         let mut random_numbers = n_random_numbers(&mut random_generator, LINES_TO_DRAW * 2);
-        let weights = prior.draw(&mut random_numbers.drain(..), LINES_TO_DRAW).unwrap();
+        let weights = prior
+            .draw(&mut random_numbers.drain(..), LINES_TO_DRAW)
+            .unwrap();
         let predicted_targets = &test_design_matrix * weights.transpose();
 
         // plot the x and predicted to see the lines drawn from the posterior
@@ -162,14 +183,18 @@ mod tests {
             // get the predictions for each set of paramters drawn from the posterior
             chart.lineplot(Shape::Lines(&merge_for_plotting(
                 &x,
-                &Matrix::column(predicted_targets.column_iter(i).collect()))));
+                &Matrix::column(predicted_targets.column_iter(i).collect()),
+            )));
         }
         chart.display();
 
         // draw more weights to plot the distribution of weights in the prior
         println!("Weights distribution of prior (w1 and w0)");
-        let mut random_numbers = n_random_numbers(&mut random_generator, SAMPLES_FOR_DISTRIBUTION * 2);
-        let weights = prior.draw(&mut random_numbers.drain(..), SAMPLES_FOR_DISTRIBUTION).unwrap();
+        let mut random_numbers =
+            n_random_numbers(&mut random_generator, SAMPLES_FOR_DISTRIBUTION * 2);
+        let weights = prior
+            .draw(&mut random_numbers.drain(..), SAMPLES_FOR_DISTRIBUTION)
+            .unwrap();
         let mut chart = Chart::new(80, 80, -3.0, 3.0);
         chart.lineplot(Shape::Points(&split_for_plotting(&weights)));
         chart.display();
@@ -182,21 +207,27 @@ mod tests {
             let design_matrix_n = design_matrix.retain(
                 Slice2D::new()
                     .rows(Slice::Range(0..training_size))
-                    .columns(Slice::All()));
+                    .columns(Slice::All()),
+            );
 
             let targets_n = targets.retain(
                 Slice2D::new()
-                .rows(Slice::Range(0..training_size))
-                .columns(Slice::All()));
+                    .rows(Slice::Range(0..training_size))
+                    .columns(Slice::All()),
+            );
 
             let observations_n = observations.retain(
                 Slice2D::new()
                     .rows(Slice::Range(0..training_size))
-                    .columns(Slice::All()));
+                    .columns(Slice::All()),
+            );
 
             println!("Observations for N={}", training_size);
             Chart::new(180, 60, -1.0, 1.0)
-                .lineplot(Shape::Points(&sort_and_merge_for_plotting(&observations_n, &targets_n)))
+                .lineplot(Shape::Points(&sort_and_merge_for_plotting(
+                    &observations_n,
+                    &targets_n,
+                )))
                 .display();
 
             // General case for multivariate regression is
@@ -208,7 +239,8 @@ mod tests {
                 + (design_matrix_n.transpose() * &design_matrix_n).map(|x| x * noise_precision);
             let new_covariance = new_precision.inverse().unwrap();
             let new_mean = new_covariance.map(|x| x * noise_precision)
-                * design_matrix_n.transpose() * &targets_n;
+                * design_matrix_n.transpose()
+                * &targets_n;
 
             let posterior = MultivariateGaussian::new(new_mean, new_covariance);
 
@@ -216,12 +248,17 @@ mod tests {
             // and use these w0 and w1 parameters drawn to create a few lines
             // draw MxN random numbers because N is even
             let mut random_numbers = n_random_numbers(&mut random_generator, LINES_TO_DRAW * 2);
-            let weights = posterior.draw(&mut random_numbers.drain(..), LINES_TO_DRAW).unwrap();
+            let weights = posterior
+                .draw(&mut random_numbers.drain(..), LINES_TO_DRAW)
+                .unwrap();
             let predicted_targets = &test_design_matrix * weights.transpose();
 
             // plot the x and predicted to see the lines drawn from the posterior
             // over the whole data range
-            println!("True x and f(x) and 5 lines of the parameters drawn from the posterior of N={}", training_size);
+            println!(
+                "True x and f(x) and 5 lines of the parameters drawn from the posterior of N={}",
+                training_size
+            );
             let mut chart = Chart::new(180, 60, -1.0, 1.0);
             chart.lineplot(Shape::Lines(&merge_for_plotting(&x, &y)));
             for i in 0..LINES_TO_DRAW {
@@ -229,14 +266,21 @@ mod tests {
                 // get the predictions for each set of paramters drawn from the posterior
                 chart.lineplot(Shape::Lines(&merge_for_plotting(
                     &x,
-                    &Matrix::column(predicted_targets.column_iter(i).collect()))));
+                    &Matrix::column(predicted_targets.column_iter(i).collect()),
+                )));
             }
             chart.display();
 
             // draw more weights to plot the distribution of weights in the posterior
-            println!("Weights distribution of posterior (w1 and w0) of N={}", training_size);
-            let mut random_numbers = n_random_numbers(&mut random_generator, SAMPLES_FOR_DISTRIBUTION * 2);
-            let weights = posterior.draw(&mut random_numbers.drain(..), SAMPLES_FOR_DISTRIBUTION).unwrap();
+            println!(
+                "Weights distribution of posterior (w1 and w0) of N={}",
+                training_size
+            );
+            let mut random_numbers =
+                n_random_numbers(&mut random_generator, SAMPLES_FOR_DISTRIBUTION * 2);
+            let weights = posterior
+                .draw(&mut random_numbers.drain(..), SAMPLES_FOR_DISTRIBUTION)
+                .unwrap();
             let mut chart = Chart::new(80, 80, 2.0, 4.0);
             chart.lineplot(Shape::Points(&split_for_plotting(&weights)));
             chart.display();

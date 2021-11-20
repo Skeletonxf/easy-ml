@@ -6,16 +6,18 @@ extern crate easy_ml;
 
 #[cfg(test)]
 mod tests {
-    use easy_ml::matrices::Matrix;
     use easy_ml::linear_algebra;
+    use easy_ml::matrices::Matrix;
 
     #[test]
     fn linear_regression() {
         // First create some data to perform regression on
-        let x = Matrix::column(
-            vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0]);
-        let y = Matrix::column(
-            vec![1.0, 3.0, 3.5, 8.0, 9.0, 11.0, 13.0, 15.5, 17.5, 19.0, 21.0, 23.0, 25.0]);
+        let x = Matrix::column(vec![
+            0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+        ]);
+        let y = Matrix::column(vec![
+            1.0, 3.0, 3.5, 8.0, 9.0, 11.0, 13.0, 15.5, 17.5, 19.0, 21.0, 23.0, 25.0,
+        ]);
         // Try to fit a line y = mx + c
 
         // We will compute w as a column vector with values corresponding to c then m
@@ -27,7 +29,10 @@ mod tests {
         println!("X = {}", &X);
 
         // w is given by inverse(XT*X) * (XT * y)
-        let w = linear_algebra::inverse::<f32>(&(X.transpose() * &X)).unwrap() * (X.transpose() * &y);
+        #[rustfmt::skip]
+        let w = linear_algebra::inverse::<f32>(&(X.transpose() * &X))
+            .unwrap()
+            * (X.transpose() * &y);
         let error = error_function(&w, &X, &y);
         println!("error {:?}", error);
         println!("w = {}", w);
