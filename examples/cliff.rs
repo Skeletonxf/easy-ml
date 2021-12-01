@@ -68,6 +68,7 @@ struct GridWorld {
     agent: Position,
     expected_rewards: Vec<f64>,
     steps: u64,
+    reward: f64,
 }
 
 trait Policy {
@@ -169,6 +170,7 @@ impl GridWorld {
         );
         while self.tiles.get(self.agent.1, self.agent.0) != Cell::Goal {
             let reward = self.take_action(action);
+            self.reward += reward;
             let new_state = self.agent;
             let new_action = policy.choose(
                 &Direction::actions().map(|d| (d, self.q(new_state, d)))
@@ -214,6 +216,7 @@ fn main() {
         // Initial values may be arbitary apart from all state - actions on the Goal state
         expected_rewards: vec![ 0.0; DIRECTIONS * 4 * 12 ],
         steps: 0,
+        reward: 0.0,
     };
     let episodes = 100;
     let mut policy = EpsilonGreedy {
@@ -221,11 +224,12 @@ fn main() {
         exploration_rate: 0.1,
     };
     let mut total_steps = 0;
-    for _ in 0..episodes {
+    for n in 0..episodes {
         grid_world.steps = 0;
+        grid_world.reward = 0.0;
         grid_world.agent = (0, 3);
         grid_world.sarsa(0.5, &mut policy, 0.9);
         total_steps += grid_world.steps;
-        println!("Steps to complete episode: {:?}/{:?}", grid_world.steps, total_steps);
+        println!("Steps to complete episode {:?}:\t{:?}/{:?}\t\tSum of rewards during episode: {:?}", n, grid_world.steps, total_steps, grid_world.reward);
     }
 }
