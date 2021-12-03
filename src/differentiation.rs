@@ -1,3 +1,4 @@
+#![allow(clippy::double_parens)]
 /*!
  * (Automatic) Differentiation helpers
  *

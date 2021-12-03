@@ -45,6 +45,7 @@ where
 
     pub fn shape(&self) -> [(Dimension, usize); D] {
         let memory_shape = self.source.view_shape();
+        #[allow(clippy::clone_on_copy)]
         let mut shape = memory_shape.clone();
         for d in 0..D {
             shape[d] = memory_shape[self.dimension_mapping[d]];

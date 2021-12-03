@@ -36,7 +36,7 @@ impl<T, const D: usize> Tensor<T, D> {
     }
 
     pub fn shape(&self) -> [(Dimension, usize); D] {
-        self.dimensions.clone()
+        self.dimensions
     }
 }
 

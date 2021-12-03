@@ -28,7 +28,7 @@ fn calculate_view_shape_1(
     index: &[(Dimension, usize)],
 ) -> [(Dimension, usize); 1] {
     let mut iter = source.iter().filter(|d| !index.contains(d));
-    [iter.next().unwrap().clone()]
+    [*iter.next().unwrap()]
 }
 
 fn calculate_view_shape_2(
@@ -36,7 +36,7 @@ fn calculate_view_shape_2(
     index: &[(Dimension, usize)],
 ) -> [(Dimension, usize); 2] {
     let mut iter = source.iter().filter(|d| !index.contains(d));
-    [iter.next().unwrap().clone(), iter.next().unwrap().clone()]
+    [*iter.next().unwrap(), *iter.next().unwrap()]
 }
 
 fn calculate_view_shape_3(
@@ -45,9 +45,9 @@ fn calculate_view_shape_3(
 ) -> [(Dimension, usize); 3] {
     let mut iter = source.iter().filter(|d| !index.contains(d));
     [
-        iter.next().unwrap().clone(),
-        iter.next().unwrap().clone(),
-        iter.next().unwrap().clone(),
+        *iter.next().unwrap(),
+        *iter.next().unwrap(),
+        *iter.next().unwrap(),
     ]
 }
 //

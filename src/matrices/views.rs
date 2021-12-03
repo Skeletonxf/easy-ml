@@ -518,7 +518,7 @@ where
     where
         U: Clone,
     {
-        let mapped = self.row_major_iter().map(|x| mapping_function(x)).collect();
+        let mapped = self.row_major_iter().map(mapping_function).collect();
         Matrix::from_flat_row_major(self.size(), mapped)
     }
 
