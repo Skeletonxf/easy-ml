@@ -20,7 +20,10 @@ enum Cell {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
 enum Direction {
-    North, East, South, West
+    North,
+    East,
+    South,
+    West,
 }
 
 const DIRECTIONS: usize = 4;
@@ -35,11 +38,15 @@ impl Direction {
         }
     }
 
-    fn actions() -> [Direction; DIRECTIONS]  {
-        [ Direction::North, Direction::East, Direction::South, Direction::West ]
+    fn actions() -> [Direction; DIRECTIONS] {
+        [
+            Direction::North,
+            Direction::East,
+            Direction::South,
+            Direction::West,
+        ]
     }
 }
-
 
 impl Cell {
     fn to_str(&self) -> &'static str {
@@ -53,11 +60,7 @@ impl Cell {
 
 impl fmt::Display for Cell {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.to_str()
-        )
+        write!(f, "{}", self.to_str())
     }
 }
 
@@ -107,7 +110,7 @@ impl Policy for EpsilonGreedy {
     }
 }
 
-impl <P: Policy> Policy for &mut P {
+impl<P: Policy> Policy for &mut P {
     fn choose(&mut self, choices: &[(Direction, f64); DIRECTIONS]) -> Direction {
         P::choose(self, choices)
     }
@@ -115,6 +118,7 @@ impl <P: Policy> Policy for &mut P {
 
 impl fmt::Display for GridWorld {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        #[rustfmt::skip]
         self.tiles.row_major_iter().with_index().try_for_each(|((r, c), cell)| {
             write!(
                 f,
@@ -132,11 +136,24 @@ impl GridWorld {
     /// None
     fn step(&self, current: Position, direction: Direction) -> Option<Position> {
         let (x1, y1) = current;
+        #[rustfmt::skip]
         let (x2, y2) = match direction {
-            Direction::North => (x1, y1.saturating_sub(1)),
-            Direction::East => (std::cmp::min(x1.saturating_add(1), self.tiles.columns() - 1), y1),
-            Direction::South => (x1, std::cmp::min(y1.saturating_add(1), self.tiles.rows() - 1)),
-            Direction::West => (x1.saturating_sub(1), y1),
+            Direction::North => (
+                x1,
+                y1.saturating_sub(1)
+            ),
+            Direction::East => (
+                std::cmp::min(x1.saturating_add(1), self.tiles.columns() - 1),
+                y1,
+            ),
+            Direction::South => (
+                x1,
+                std::cmp::min(y1.saturating_add(1), self.tiles.rows() - 1),
+            ),
+            Direction::West => (
+                x1.saturating_sub(1),
+                y1
+            ),
         };
         if x1 == x2 && y1 == y2 {
             None
@@ -152,7 +169,7 @@ impl GridWorld {
                 Cell::Cliff => {
                     self.agent = (0, 3);
                     -100.0
-                },
+                }
                 Cell::Path => -1.0,
                 Cell::Goal => 0.0,
             }
@@ -164,19 +181,16 @@ impl GridWorld {
     // TODO: Generalise to qsarsa
     fn sarsa(&mut self, step_size: f64, mut policy: impl Policy, discount_factor: f64) {
         let (α, γ) = (step_size, discount_factor);
+        let actions = Direction::actions();
         let mut state = self.agent;
-        let mut action = policy.choose(
-            &Direction::actions().map(|d| (d, self.q(state, d)))
-        );
+        let mut action = policy.choose(&actions.map(|d| (d, self.q(state, d))));
         while self.tiles.get(self.agent.1, self.agent.0) != Cell::Goal {
             let reward = self.take_action(action);
             self.reward += reward;
             let new_state = self.agent;
-            let new_action = policy.choose(
-                &Direction::actions().map(|d| (d, self.q(new_state, d)))
-            );
-            *self.q_mut(state, action) = self.q(state, action) +
-                α * (reward + (γ * self.q(new_state, new_action)) - self.q(state, action));
+            let new_action = policy.choose(&actions.map(|d| (d, self.q(new_state, d))));
+            *self.q_mut(state, action) = self.q(state, action)
+                + α * (reward + (γ * self.q(new_state, new_action)) - self.q(state, action));
             state = new_state;
             action = new_action;
             self.steps += 1;
@@ -189,7 +203,7 @@ impl GridWorld {
     }
 
     /// Returns a mutable reference to the Q value of a particular state action
-    fn q_mut(&mut self, position: Position, direction: Direction) -> &mut f64  {
+    fn q_mut(&mut self, position: Position, direction: Direction) -> &mut f64 {
         &mut self.expected_rewards[index(position, direction, self.tiles.columns(), DIRECTIONS)]
     }
 }
@@ -214,7 +228,7 @@ fn main() {
         },
         agent: (0, 3),
         // Initial values may be arbitary apart from all state - actions on the Goal state
-        expected_rewards: vec![ 0.0; DIRECTIONS * 4 * 12 ],
+        expected_rewards: vec![0.0; DIRECTIONS * 4 * 12],
         steps: 0,
         reward: 0.0,
     };
@@ -230,6 +244,9 @@ fn main() {
         grid_world.agent = (0, 3);
         grid_world.sarsa(0.5, &mut policy, 0.9);
         total_steps += grid_world.steps;
-        println!("Steps to complete episode {:?}:\t{:?}/{:?}\t\tSum of rewards during episode: {:?}", n, grid_world.steps, total_steps, grid_world.reward);
+        println!(
+            "Steps to complete episode {:?}:\t{:?}/{:?}\t\tSum of rewards during episode: {:?}",
+            n, grid_world.steps, total_steps, grid_world.reward
+        );
     }
 }
