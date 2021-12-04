@@ -67,6 +67,7 @@ impl fmt::Display for Cell {
 type Position = (usize, usize);
 
 struct GridWorld {
+    start: Position,
     tiles: Matrix<Cell>,
     agent: Position,
     expected_rewards: Vec<f64>,
@@ -78,11 +79,10 @@ trait Policy {
     fn choose(&mut self, choices: &[(Direction, f64); DIRECTIONS]) -> Direction;
 }
 
-struct EpsilonGreedy {
-    rng: rand_chacha::ChaCha8Rng,
-    exploration_rate: f64,
-}
-
+/// The greedy policy always chooses the action with the best Q value. As the sole policy for
+/// a Reinforcement Learning agent, this carries the risk of exploiting the 'best' action the
+/// agent finds before it has a chance to find better ones, which can leave an agent stuck in a
+/// local optima.
 struct Greedy;
 
 impl Policy for Greedy {
@@ -97,6 +97,16 @@ impl Policy for Greedy {
         }
         best_direction
     }
+}
+
+/// The ε-greedy policy chooses the greedy action with probability 1-ε, and explores, choosing a
+/// random action, with probability ε. This randomness ensures an agent following ε-greedy explores
+/// its environment, to stop it getting stuck trying to exploit an (unknown to it) suboptimal
+/// greedy choice. However it also makes the agent unable to act 100% optimally since even after
+/// learning the true optimal strategy, the exploration rate remains.
+struct EpsilonGreedy {
+    rng: rand_chacha::ChaCha8Rng,
+    exploration_rate: f64,
 }
 
 impl Policy for EpsilonGreedy {
@@ -162,12 +172,13 @@ impl GridWorld {
         }
     }
 
+    /// Moves the agent in a direction, taking that action, and returns the collected reward.
     fn take_action(&mut self, direction: Direction) -> f64 {
         if let Some((x, y)) = self.step(self.agent, direction) {
             self.agent = (x, y);
             match self.tiles.get(y, x) {
                 Cell::Cliff => {
-                    self.agent = (0, 3);
+                    self.agent = self.start;
                     -100.0
                 }
                 Cell::Path => -1.0,
@@ -178,8 +189,18 @@ impl GridWorld {
         }
     }
 
-    // TODO: Generalise to qsarsa
-    fn sarsa(&mut self, step_size: f64, mut policy: impl Policy, discount_factor: f64) {
+    /// Q-SARSA.
+    /// For a step size in the range 0..=1, some policy that chooses an action based on the Q
+    /// values learnt so far for that state, a discount factor in the range 0..=1, and a Q-SARSA
+    /// factor in the range 0..=1. 0 Q-SARSA is Q-learning, 1 Q-SARSA is SARSA, values in between
+    /// update Q values by a factor of both algorithms.
+    fn q_sarsa(
+        &mut self,
+        step_size: f64,
+        mut policy: impl Policy,
+        discount_factor: f64,
+        q_sarsa: f64,
+    ) {
         let (α, γ) = (step_size, discount_factor);
         let actions = Direction::actions();
         let mut state = self.agent;
@@ -189,12 +210,32 @@ impl GridWorld {
             self.reward += reward;
             let new_state = self.agent;
             let new_action = policy.choose(&actions.map(|d| (d, self.q(new_state, d))));
+            let greedy_action = Greedy.choose(&actions.map(|d| (d, self.q(new_state, d))));
+            let expected_q_value = q_sarsa * self.q(new_state, new_action)
+                + ((1.0 - q_sarsa) * self.q(new_state, greedy_action));
             *self.q_mut(state, action) = self.q(state, action)
-                + α * (reward + (γ * self.q(new_state, new_action)) - self.q(state, action));
+                + α * (reward + (γ * expected_q_value) - self.q(state, action));
             state = new_state;
             action = new_action;
             self.steps += 1;
         }
+    }
+
+    /// Q-learning learns the optimal policy which travels directly along the cliff
+    /// to the goal, even though during training the exploration rate occasionally causes
+    /// the agent to fall off the cliff.
+    #[allow(dead_code)]
+    fn q_learning(&mut self, step_size: f64, policy: impl Policy, discount_factor: f64) {
+        self.q_sarsa(step_size, policy, discount_factor, 0.0);
+    }
+
+    /// SARSA learns the safer route away from the cliff because it factors in the exploration
+    /// rate that makes traveling directly along the cliff have a worse performance due to
+    /// occasional exploration.
+    ///
+    /// As the exploration rate tends to 0, SARSA and Q-Learning converge.
+    fn sarsa(&mut self, step_size: f64, policy: impl Policy, discount_factor: f64) {
+        self.q_sarsa(step_size, policy, discount_factor, 1.0);
     }
 
     /// Returns the Q value of a particular state action
@@ -205,6 +246,12 @@ impl GridWorld {
     /// Returns a mutable reference to the Q value of a particular state action
     fn q_mut(&mut self, position: Position, direction: Direction) -> &mut f64 {
         &mut self.expected_rewards[index(position, direction, self.tiles.columns(), DIRECTIONS)]
+    }
+
+    fn reset(&mut self) {
+        self.steps = 0;
+        self.reward = 0.0;
+        self.agent = self.start;
     }
 }
 
@@ -226,6 +273,7 @@ fn main() {
                 vec![P, C, C, C, C, C, C, C, C, C, C, G],
             ])
         },
+        start: (0, 3),
         agent: (0, 3),
         // Initial values may be arbitary apart from all state - actions on the Goal state
         expected_rewards: vec![0.0; DIRECTIONS * 4 * 12],
@@ -239,9 +287,7 @@ fn main() {
     };
     let mut total_steps = 0;
     for n in 0..episodes {
-        grid_world.steps = 0;
-        grid_world.reward = 0.0;
-        grid_world.agent = (0, 3);
+        grid_world.reset();
         grid_world.sarsa(0.5, &mut policy, 0.9);
         total_steps += grid_world.steps;
         println!(
