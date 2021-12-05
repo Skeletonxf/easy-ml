@@ -1,4 +1,4 @@
-use crate::matrices::views::{DataLayout, MatrixMut, MatrixRef, MatrixView};
+use crate::matrices::views::{DataLayout, MatrixMut, MatrixRef, MatrixView, NoInteriorMutability};
 #[allow(unused)] // used in doc links
 use crate::matrices::Matrix;
 use crate::matrices::{Column, Row};
@@ -95,6 +95,15 @@ unsafe impl<'a, T> MatrixMut<T> for MatrixPart<'a, T> {
         self.data.get_unchecked_mut(row).get_unchecked_mut(column)
     }
 }
+
+// # Safety
+//
+// We don't implement interior mutability and we can't be resized anyway since our
+// buffer is not owned.
+/**
+ * A MatrixPart implements NoInteriorMutability.
+ */
+unsafe impl<'a, T> NoInteriorMutability for MatrixPart<'a, T> {}
 
 /**
  * Four [parts](MatrixPart) of a Matrix which can be mutated individually.

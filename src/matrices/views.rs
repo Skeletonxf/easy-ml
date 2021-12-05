@@ -62,6 +62,9 @@ pub use ranges::*;
 * Note that it is okay to be able to resize a MatrixRef implementation if that always requires
 * an exclusive reference to the MatrixRef/Matrix, since the exclusivity prevents the above
 * scenario.
+*
+* See also [`NoInteriorMutability`](NoInteriorMutability) which rules out interior mutability
+* entirely.
 */
 pub unsafe trait MatrixRef<T> {
     /**

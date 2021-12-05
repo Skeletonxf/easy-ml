@@ -19,6 +19,7 @@
  *
  * # Miscellaneous
  * - [Web Assembly](web_assembly)
+ * - [SARSA and Q-learning using a Matrix for a grid world](sarsa)
  * - [Using custom numeric types](using_custom_types)
  */
 
@@ -36,5 +37,6 @@ pub mod linear_regression;
 pub mod logistic_regression;
 pub mod naive_bayes;
 pub mod neural_networks;
+pub mod sarsa;
 pub mod using_custom_types;
 pub mod web_assembly;

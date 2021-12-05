@@ -1,4 +1,4 @@
-use crate::matrices::views::{DataLayout, MatrixMut, MatrixRef};
+use crate::matrices::views::{DataLayout, MatrixMut, MatrixRef, NoInteriorMutability};
 use crate::matrices::{Column, Row};
 
 use std::marker::PhantomData;
@@ -210,3 +210,12 @@ where
         self.source.get_reference_unchecked_mut(row, column)
     }
 }
+
+// # Safety
+//
+// Since the NoInteriorMutability we own must implement NoInteriorMutability correctly, so
+// do we by delegating to it, as we don't introduce any interior mutability.
+/**
+ * A MatrixRange of a NoInteriorMutability type implements NoInteriorMutability.
+ */
+unsafe impl<T, S> NoInteriorMutability for MatrixRange<T, S> where S: NoInteriorMutability {}
