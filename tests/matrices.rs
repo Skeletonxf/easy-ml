@@ -1,7 +1,7 @@
 extern crate easy_ml;
 
 #[cfg(test)]
-mod tests {
+mod matrices {
     use easy_ml::matrices::Matrix;
 
     #[test]
@@ -110,6 +110,27 @@ mod tests {
         assert_eq!(iterator.next(), Some(&5));
         assert_eq!(iterator.next(), Some(&6));
         assert_eq!(iterator.next(), None);
+    }
+
+    #[test]
+    fn check_generic_row_major_iterator() {
+        let mut matrix = Matrix::from(vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]]);
+
+        let row_major = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let iterator = matrix.row_major_reference_iter();
+        assert_eq!(row_major, iterator.map(|x| *x).collect::<Vec<u8>>());
+        let iterator = matrix.row_major_reference_mut_iter();
+        assert_eq!(row_major, iterator.map(|x| *x).collect::<Vec<u8>>());
+        let iterator = matrix.row_major_iter();
+        assert_eq!(row_major, iterator.collect::<Vec<u8>>());
+
+        let column_major = vec![1, 4, 7, 2, 5, 8, 3, 6, 9];
+        let iterator = matrix.column_major_iter();
+        assert_eq!(column_major, iterator.collect::<Vec<u8>>());
+        let iterator = matrix.column_major_reference_iter();
+        assert_eq!(column_major, iterator.map(|x| *x).collect::<Vec<u8>>());
+        let iterator = matrix.column_major_reference_mut_iter();
+        assert_eq!(column_major, iterator.map(|x| *x).collect::<Vec<u8>>());
     }
 
     #[test]

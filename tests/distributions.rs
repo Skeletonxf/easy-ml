@@ -1,7 +1,7 @@
 extern crate easy_ml;
 
 #[cfg(test)]
-mod tests {
+mod distributions {
     use easy_ml::distributions::Gaussian;
 
     #[test]

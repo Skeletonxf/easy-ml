@@ -1,7 +1,7 @@
 extern crate easy_ml;
 
 #[cfg(test)]
-mod tests {
+mod slices {
     use easy_ml::matrices::slices::{Slice, Slice2D};
     use easy_ml::matrices::Matrix;
 

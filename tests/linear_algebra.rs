@@ -1,7 +1,7 @@
 extern crate easy_ml;
 
 #[cfg(test)]
-mod tests {
+mod linear_algebra {
     use easy_ml::linear_algebra;
     use easy_ml::matrices::Matrix;
 

@@ -5,7 +5,7 @@ extern crate easy_ml;
 /// A simple linear regression acceptance test / example.
 
 #[cfg(test)]
-mod tests {
+mod linear_regression {
     use easy_ml::linear_algebra;
     use easy_ml::matrices::Matrix;
 
