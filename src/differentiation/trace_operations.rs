@@ -398,9 +398,9 @@ where
             // (u'v - uv') / v^2
             #[rustfmt::skip]
             derivative: (
-                (((self.derivative.clone() * rhs.number.clone())
+                ((self.derivative.clone() * rhs.number.clone())
                 - (self.number.clone() * rhs.derivative.clone()))
-                / (rhs.number.clone() * rhs.number.clone()))
+                / (rhs.number.clone() * rhs.number.clone())
             ),
         }
     }
@@ -422,7 +422,7 @@ where
     fn div(self, rhs: &T) -> Self::Output {
         Trace {
             number: self.number.clone() / rhs.clone(),
-            derivative: ((self.derivative.clone() * rhs.clone()) / (rhs.clone() * rhs.clone())),
+            derivative: (self.derivative.clone() * rhs.clone()) / (rhs.clone() * rhs.clone()),
         }
     }
 }
