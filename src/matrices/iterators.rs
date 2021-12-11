@@ -1124,7 +1124,7 @@ impl<'a, T, S: MatrixRef<T>> ExactSizeIterator for DiagonalReferenceIterator<'a,
  * The elements will be iterated through as &mut 1, &mut 3, &mut 2, &mut 4
  */
 #[derive(Debug)]
-pub struct ColumnMajorReferenceMutIterator<'a, T, S: MatrixMut<T> = Matrix<T>> {
+pub struct ColumnMajorReferenceMutIterator<'a, T, S: MatrixMut<T> + NoInteriorMutability = Matrix<T>> {
     matrix: &'a mut S,
     column_counter: Column,
     columns: Column,
@@ -1184,9 +1184,9 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
         .map(|(row, column)| unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
-            // calling this on our next loop if we finished. Hence if the view size has
-            // not changed this read is in bounds and if they are able to be changed,
-            // then the MatrixRef implementation is required to bounds check for us.
+            // calling this on our next loop if we finished. Since the view size may not
+            // change due to NoInteriorMutability and our exclusive reference this read
+            // is in bounds.
             // Safety: We are not allowed to give out overlapping mutable references,
             // but since we will always increment the counter on every call to next()
             // and stop when we reach the end no references will overlap*.
@@ -1241,7 +1241,7 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for WithIn
  * The elements will be iterated through as &mut 1, &mut 2, &mut 3, &mut 4
  */
 #[derive(Debug)]
-pub struct RowMajorReferenceMutIterator<'a, T, S: MatrixMut<T> = Matrix<T>> {
+pub struct RowMajorReferenceMutIterator<'a, T, S: MatrixMut<T> + NoInteriorMutability = Matrix<T>> {
     matrix: &'a mut S,
     column_counter: Column,
     columns: Column,
@@ -1253,7 +1253,7 @@ pub struct RowMajorReferenceMutIterator<'a, T, S: MatrixMut<T> = Matrix<T>> {
 
 impl<'a, T> RowMajorReferenceMutIterator<'a, T> {
     /**
-     * Constructs a column major iterator over this matrix.
+     * Constructs a row major iterator over this matrix.
      */
     pub fn new(matrix: &mut Matrix<T>) -> RowMajorReferenceMutIterator<T> {
         RowMajorReferenceMutIterator::from(matrix)
@@ -1262,7 +1262,7 @@ impl<'a, T> RowMajorReferenceMutIterator<'a, T> {
 
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> RowMajorReferenceMutIterator<'a, T, S> {
     /**
-     * Constructs a column major iterator over this source.
+     * Constructs a row major iterator over this source.
      */
     pub fn from(source: &mut S) -> RowMajorReferenceMutIterator<T, S> {
         RowMajorReferenceMutIterator {
@@ -1301,8 +1301,9 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
         .map(|(row, column)| unsafe {
             // Safety: We checked on creation that 0,0 is in range, and after getting
             // our next value we check if we hit the end of the matrix and will avoid
-            // calling this on our next loop if we finished. Hence if the view size has
-            // not changed this read is in bounds and if they are able to be changed,
+            // calling this on our next loop if we finished. Since the view size may not
+            // change due to NoInteriorMutability and our exclusive reference this read
+            // is in bounds.
             // then the MatrixRef implementation is required to bounds check for us.
             // Safety: We are not allowed to give out overlapping mutable references,
             // but since we will always increment the counter on every call to next()
@@ -1344,3 +1345,76 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {}
 #[rustfmt::skip]
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {}
+
+/**
+ * An iterator over mutable references to the main diagonal in a matrix.
+ *
+ * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
+ * ```ignore
+ * [
+ *   1, 2
+ *   3, 4
+ * ]
+ * ```
+ * The elements will be iterated through as &mut 1, &mut 4
+ *
+ * If the matrix is not square this will stop at whichever row/colum is shorter.
+ */
+#[derive(Debug)]
+pub struct DiagonalReferenceMutIterator<'a, T, S: MatrixMut<T> + NoInteriorMutability = Matrix<T>> {
+    matrix: &'a mut S,
+    range: Range<usize>,
+    _type: PhantomData<&'a mut T>,
+}
+
+impl<'a, T> DiagonalReferenceMutIterator<'a, T> {
+    /**
+     * Constructs a diagonal iterator over this matrix.
+     */
+    pub fn new(matrix: &mut Matrix<T>) -> DiagonalReferenceMutIterator<T> {
+        DiagonalReferenceMutIterator::from(matrix)
+    }
+}
+
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> DiagonalReferenceMutIterator<'a, T, S> {
+    /**
+     * Constructs a diagonal iterator over this source.
+     */
+    pub fn from(source: &mut S) -> DiagonalReferenceMutIterator<T, S> {
+        DiagonalReferenceMutIterator {
+            range: 0..std::cmp::min(source.view_rows(), source.view_columns()),
+            matrix: source,
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for DiagonalReferenceMutIterator<'a, T, S> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.range.next() {
+            None => None,
+            Some(i) => unsafe {
+                // Safety: We initialised the range to 0..min(rows/columns), hence this read is
+                // in bounds because the source is NoInteriorMutability and we hold an exclusive
+                // reference to it, so the valid bounds cannot change in size.
+                // Safety: We are not allowed to give out overlapping mutable references,
+                // but since we will always increment the counter on every call to next()
+                // and stop when we reach the end no references will overlap*.
+                // The compiler doesn't know this, so transmute the lifetime for it.
+                // *We also require the source matrix to be NoInteriorMutability to additionally
+                // make illegal any edge cases where some extremely exotic matrix rotates its data
+                // inside the buffer around through a shared reference while we were iterating that
+                // could otherwise make our cursor read the same data twice.
+                std::mem::transmute(self.matrix.get_reference_unchecked_mut(i, i))
+            },
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.range.size_hint()
+    }
+}
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for DiagonalReferenceMutIterator<'a, T, S> {}
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for DiagonalReferenceMutIterator<'a, T, S> {}

@@ -113,7 +113,7 @@ mod matrices {
     }
 
     #[test]
-    fn check_generic_row_major_iterator() {
+    fn check_generic_iterators() {
         let mut matrix = Matrix::from(vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]]);
 
         let row_major = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -131,6 +131,14 @@ mod matrices {
         assert_eq!(column_major, iterator.map(|x| *x).collect::<Vec<u8>>());
         let iterator = matrix.column_major_reference_mut_iter();
         assert_eq!(column_major, iterator.map(|x| *x).collect::<Vec<u8>>());
+
+        let diagonal = vec![1, 5, 9];
+        let iterator = matrix.diagonal_iter();
+        assert_eq!(diagonal, iterator.collect::<Vec<u8>>());
+        let iterator = matrix.diagonal_reference_iter();
+        assert_eq!(diagonal, iterator.map(|x| *x).collect::<Vec<u8>>());
+        let iterator = matrix.diagonal_reference_mut_iter();
+        assert_eq!(diagonal, iterator.map(|x| *x).collect::<Vec<u8>>());
     }
 
     #[test]

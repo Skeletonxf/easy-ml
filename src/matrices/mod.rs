@@ -19,12 +19,7 @@ pub mod views;
 pub use errors::ScalarConversionError;
 
 use crate::linear_algebra;
-use crate::matrices::iterators::{
-    ColumnIterator, ColumnMajorIterator, ColumnMajorReferenceIterator,
-    ColumnMajorReferenceMutIterator, ColumnReferenceIterator, DiagonalIterator,
-    DiagonalReferenceIterator, RowIterator, RowMajorIterator, RowMajorReferenceIterator,
-    RowMajorReferenceMutIterator, RowReferenceIterator,
-};
+use crate::matrices::iterators::*;
 use crate::matrices::slices::Slice2D;
 use crate::matrices::views::{MatrixPart, MatrixQuadrants, MatrixView};
 use crate::numeric::extra::{Real, RealRef};
@@ -498,6 +493,13 @@ impl<T> Matrix<T> {
      */
     pub fn diagonal_reference_iter(&self) -> DiagonalReferenceIterator<T> {
         DiagonalReferenceIterator::new(self)
+    }
+
+    /**
+     * Returns an iterator over mutable references to the main diagonal in this matrix.
+     */
+    pub fn diagonal_reference_mut_iter(&mut self) -> DiagonalReferenceMutIterator<T> {
+        DiagonalReferenceMutIterator::new(self)
     }
 
     /**

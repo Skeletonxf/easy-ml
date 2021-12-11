@@ -13,12 +13,7 @@
 
 use std::marker::PhantomData;
 
-use crate::matrices::iterators::{
-    ColumnIterator, ColumnMajorIterator, ColumnMajorReferenceIterator,
-    ColumnMajorReferenceMutIterator, ColumnReferenceIterator, DiagonalIterator,
-    DiagonalReferenceIterator, RowIterator, RowMajorIterator, RowMajorReferenceIterator,
-    RowMajorReferenceMutIterator, RowReferenceIterator,
-};
+use crate::matrices::iterators::*;
 use crate::matrices::{Column, Matrix, Row};
 
 mod partitions;
@@ -50,21 +45,25 @@ pub use ranges::*;
 * be changed by a shared reference to the MatrixRef implementation, or `get_reference_unchecked`
 * and `get_reference_unchecked_mut` must panic if the index is invalid.
 *
+* If a type implements both MatrixRef and [`NoInteriorMutability`](NoInteriorMutability) #2
+* becomes just 'the `view_rows`/`view_columns` that define which indexes are valid may not
+* be changed by a shared reference to the MatrixRef implementation'. ie, the matrix
+* may not be resized while a mutable reference is held to it, except by that reference.
+*
 * Essentially, interior mutability causes problems, since code looping through the range of valid
 * indexes in a MatrixRef needs to be able to rely on that range of valid indexes not changing.
 * This is trivially the case by default since a [Matrix](Matrix) does not have any form of
 * interior mutability, and therefore an iterator holding a shared reference to a Matrix prevents
 * that matrix being resized. However, a type implementing MatrixRef could introduce interior
-* mutability by putting the Matrix in a `Arc<Mutex<>>` which would allow another thread to
+* mutability by putting the Matrix in an `Arc<Mutex<>>` which would allow another thread to
 * resize a matrix while an iterator was looping through previously valid indexes on a different
-* thread. For such cases, the MatrixRef implementation must ensure that invalid indexes panic
-* for `get_reference_unchecked` and `get_reference_unchecked_mut` to prevent undefined behavior.
-* Note that it is okay to be able to resize a MatrixRef implementation if that always requires
+* thread. For an implementation of MatrixRef which allows such interior mutability, it must *not*
+* implement `NoInteriorMutability`, and must ensure that invalid indexes for
+* `get_reference_unchecked` and `get_reference_unchecked_mut` panic to prevent undefined behavior.
+*
+* Note that it is okay to be able to resize any MatrixRef implementation if that always requires
 * an exclusive reference to the MatrixRef/Matrix, since the exclusivity prevents the above
 * scenario.
-*
-* See also [`NoInteriorMutability`](NoInteriorMutability) which rules out interior mutability
-* entirely.
 */
 pub unsafe trait MatrixRef<T> {
     /**
@@ -640,6 +639,13 @@ where
      */
     pub fn row_major_reference_mut_iter(&mut self) -> RowMajorReferenceMutIterator<T, S> {
         RowMajorReferenceMutIterator::from(&mut self.source)
+    }
+
+    /**
+     * Returns an iterator over mutable references to the main diagonal in this matrix view.
+     */
+    pub fn diagonal_reference_mut_iter(&mut self) -> DiagonalReferenceMutIterator<T, S> {
+        DiagonalReferenceMutIterator::from(&mut self.source)
     }
 }
 
