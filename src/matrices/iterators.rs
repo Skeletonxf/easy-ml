@@ -1124,6 +1124,7 @@ impl<'a, T, S: MatrixRef<T>> ExactSizeIterator for DiagonalReferenceIterator<'a,
  * The elements will be iterated through as &mut 1, &mut 3, &mut 2, &mut 4
  */
 #[derive(Debug)]
+#[rustfmt::skip]
 pub struct ColumnMajorReferenceMutIterator<'a, T, S: MatrixMut<T> + NoInteriorMutability = Matrix<T>> {
     matrix: &'a mut S,
     column_counter: Column,
@@ -1389,7 +1390,9 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> DiagonalReferenceMutIterator
     }
 }
 
-impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for DiagonalReferenceMutIterator<'a, T, S> {
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
+    for DiagonalReferenceMutIterator<'a, T, S>
+{
     type Item = &'a mut T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1416,5 +1419,7 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for DiagonalReferen
         self.range.size_hint()
     }
 }
+#[rustfmt::skip]
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for DiagonalReferenceMutIterator<'a, T, S> {}
+#[rustfmt::skip]
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for DiagonalReferenceMutIterator<'a, T, S> {}

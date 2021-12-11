@@ -359,6 +359,8 @@ fn mut_methods_on_trait_objects() {
     let matrix = Matrix::from_flat_row_major((2, 2), vec![1, 2, 3, 4]);
     let boxed: Box<dyn MatrixMutNoInteriorMutability<u32>> = Box::new(matrix);
     let mut view = MatrixView::from(boxed);
-    view.column_major_reference_mut_iter().with_index().for_each(|((_, _), x)| *x += 1);
+    view.column_major_reference_mut_iter()
+        .with_index()
+        .for_each(|((_, _), x)| *x += 1);
     assert!(Matrix::from_flat_row_major((2, 2), vec![2, 3, 4, 5]) == view);
 }
