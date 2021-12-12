@@ -1490,7 +1490,9 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ColumnReferenceMutIterator<'
     }
 }
 
-impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnReferenceMutIterator<'a, T, S> {
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
+    for ColumnReferenceMutIterator<'a, T, S>
+{
     type Item = &'a mut T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1518,7 +1520,9 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnReference
         self.range.size_hint()
     }
 }
+#[rustfmt::skip]
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for ColumnReferenceMutIterator<'a, T, S> {}
+#[rustfmt::skip]
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for ColumnReferenceMutIterator<'a, T, S> {}
 
 /**
@@ -1609,5 +1613,7 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowReferenceMut
         self.range.size_hint()
     }
 }
+#[rustfmt::skip]
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for RowReferenceMutIterator<'a, T, S> {}
+#[rustfmt::skip]
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for RowReferenceMutIterator<'a, T, S> {}

@@ -634,7 +634,10 @@ where
      * Panics if the column is not visible to this view.
      */
     #[track_caller]
-    pub fn column_reference_mut_iter(&mut self, column: Column) -> ColumnReferenceMutIterator<T, S> {
+    pub fn column_reference_mut_iter(
+        &mut self,
+        column: Column,
+    ) -> ColumnReferenceMutIterator<T, S> {
         ColumnReferenceMutIterator::from(&mut self.source, column)
     }
 
