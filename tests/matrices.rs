@@ -116,6 +116,14 @@ mod matrices {
     fn check_generic_iterators() {
         let mut matrix = Matrix::from(vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]]);
 
+        let row = vec![1, 2, 3];
+        let iterator = matrix.row_reference_iter(0);
+        assert_eq!(row, iterator.map(|x| *x).collect::<Vec<u8>>());
+        let iterator = matrix.row_reference_mut_iter(0);
+        assert_eq!(row, iterator.map(|x| *x).collect::<Vec<u8>>());
+        let iterator = matrix.row_iter(0);
+        assert_eq!(row, iterator.collect::<Vec<u8>>());
+
         let row_major = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
         let iterator = matrix.row_major_reference_iter();
         assert_eq!(row_major, iterator.map(|x| *x).collect::<Vec<u8>>());
@@ -123,6 +131,14 @@ mod matrices {
         assert_eq!(row_major, iterator.map(|x| *x).collect::<Vec<u8>>());
         let iterator = matrix.row_major_iter();
         assert_eq!(row_major, iterator.collect::<Vec<u8>>());
+
+        let column = vec![1, 4, 7];
+        let iterator = matrix.column_reference_iter(0);
+        assert_eq!(column, iterator.map(|x| *x).collect::<Vec<u8>>());
+        let iterator = matrix.column_reference_mut_iter(0);
+        assert_eq!(column, iterator.map(|x| *x).collect::<Vec<u8>>());
+        let iterator = matrix.column_iter(0);
+        assert_eq!(column, iterator.collect::<Vec<u8>>());
 
         let column_major = vec![1, 4, 7, 2, 5, 8, 3, 6, 9];
         let iterator = matrix.column_major_iter();

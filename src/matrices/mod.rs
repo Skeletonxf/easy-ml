@@ -451,6 +451,32 @@ impl<T> Matrix<T> {
     }
 
     /**
+     * Returns an iterator over mutable references to a column vector in this matrix.
+     * Columns are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the column does not exist in this matrix.
+     */
+    #[track_caller]
+    pub fn column_reference_mut_iter(&mut self, column: Column) -> ColumnReferenceMutIterator<T> {
+        ColumnReferenceMutIterator::new(self, column)
+    }
+
+    /**
+     * Returns an iterator over mutable references to a row vector in this matrix.
+     * Rows are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the row does not exist in this matrix.
+     */
+    #[track_caller]
+    pub fn row_reference_mut_iter(&mut self, row: Row) -> RowReferenceMutIterator<T> {
+        RowReferenceMutIterator::new(self, row)
+    }
+
+    /**
      * Returns a column major iterator over references to all values in this matrix,
      * proceeding through each column in order.
      */

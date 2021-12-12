@@ -1,6 +1,12 @@
 /*!
  * Iterators over parts of a Matrix
  *
+ * - Over a row: Row[(Reference)](RowReferenceIterator)[(Mut)](RowReferenceMutIterator)[Iterator](RowIterator)
+ * - Over a column: Column[(Reference)](ColumnReferenceIterator)[(Mut)](ColumnReferenceMutIterator)[Iterator](ColumnIterator)
+ * - Over all data in row major order: RowMajor[(Reference)](RowMajorReferenceIterator)[(Mut)](RowMajorReferenceMutIterator)[Iterator](RowMajorIterator)
+ * - Over all data in column major order: ColumnMajor[(Reference)](ColumnMajorReferenceIterator)[(Mut)](ColumnMajorReferenceMutIterator)[Iterator](ColumnMajorIterator)
+ * - Over the main diagonal: Diagonal[(Reference)](DiagonalReferenceIterator)[(Mut)](DiagonalReferenceMutIterator)[Iterator](DiagonalIterator)
+ *
  * # Examples
  *
  * Extending a matrix with new columns
@@ -1423,3 +1429,185 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for DiagonalReferenceMutIterator<'a, T, S> {}
 #[rustfmt::skip]
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for DiagonalReferenceMutIterator<'a, T, S> {}
+
+/**
+ * An iterator over mutable references to a column in a matrix.
+ *
+ * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
+ * ```ignore
+ * [
+ *   1, 2
+ *   3, 4
+ * ]
+ * ```
+ * Depending on the row iterator you want to obtain,
+ * can either iterate through &mut 1, &mut 3 or &mut 2, &mut 4.
+ */
+#[derive(Debug)]
+pub struct ColumnReferenceMutIterator<'a, T, S: MatrixMut<T> + NoInteriorMutability = Matrix<T>> {
+    matrix: &'a mut S,
+    column: Column,
+    range: Range<Row>,
+    _type: PhantomData<&'a mut T>,
+}
+
+impl<'a, T> ColumnReferenceMutIterator<'a, T> {
+    /**
+     * Constructs a column iterator over this matrix.
+     *
+     * # Panics
+     *
+     * Panics if the column does not exist in this matrix.
+     */
+    #[track_caller]
+    pub fn new(matrix: &mut Matrix<T>, column: Column) -> ColumnReferenceMutIterator<T> {
+        ColumnReferenceMutIterator::from(matrix, column)
+    }
+}
+
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ColumnReferenceMutIterator<'a, T, S> {
+    /**
+     * Constructs a column iterator over this source.
+     *
+     * # Panics
+     *
+     * Panics if the column does not exist in this source.
+     */
+    #[track_caller]
+    pub fn from(source: &mut S, column: Column) -> ColumnReferenceMutIterator<T, S> {
+        assert!(
+            source.index_is_valid(0, column),
+            "Expected ({},{}) to be in range",
+            0,
+            column
+        );
+        ColumnReferenceMutIterator {
+            range: 0..source.view_rows(),
+            matrix: source,
+            column,
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnReferenceMutIterator<'a, T, S> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.range.next() {
+            None => None,
+            Some(row) => unsafe {
+                // Safety: We initialised the range to 0..matrix.view_rows(), and
+                // checked we can read from this column at creation, hence this read is
+                // in bounds because the source is NoInteriorMutability and we hold an exclusive
+                // reference to it, so the valid bounds cannot change in size.
+                // Safety: We are not allowed to give out overlapping mutable references,
+                // but since we will always increment the counter on every call to next()
+                // and stop when we reach the end no references will overlap*.
+                // The compiler doesn't know this, so transmute the lifetime for it.
+                // *We also require the source matrix to be NoInteriorMutability to additionally
+                // make illegal any edge cases where some extremely exotic matrix rotates its data
+                // inside the buffer around through a shared reference while we were iterating that
+                // could otherwise make our cursor read the same data twice.
+                std::mem::transmute(self.matrix.get_reference_unchecked_mut(row, self.column))
+            },
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.range.size_hint()
+    }
+}
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for ColumnReferenceMutIterator<'a, T, S> {}
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for ColumnReferenceMutIterator<'a, T, S> {}
+
+/**
+ * An iterator over mutable references to a row in a matrix.
+ *
+ * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
+ * ```ignore
+ * [
+ *   1, 2
+ *   3, 4
+ * ]
+ * ```
+ * Depending on the row iterator you want to obtain,
+ * can either iterate through &mut 1, &mut 2 or &mut 3, &mut 4.
+ */
+#[derive(Debug)]
+pub struct RowReferenceMutIterator<'a, T, S: MatrixMut<T> + NoInteriorMutability = Matrix<T>> {
+    matrix: &'a mut S,
+    row: Row,
+    range: Range<Column>,
+    _type: PhantomData<&'a mut T>,
+}
+
+impl<'a, T> RowReferenceMutIterator<'a, T> {
+    /**
+     * Constructs a row iterator over this matrix.
+     *
+     * # Panics
+     *
+     * Panics if the row does not exist in this matrix.
+     */
+    #[track_caller]
+    pub fn new(matrix: &mut Matrix<T>, row: Row) -> RowReferenceMutIterator<T> {
+        RowReferenceMutIterator::from(matrix, row)
+    }
+}
+
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> RowReferenceMutIterator<'a, T, S> {
+    /**
+     * Constructs a row iterator over this source.
+     *
+     * # Panics
+     *
+     * Panics if the row does not exist in this source.
+     */
+    #[track_caller]
+    pub fn from(source: &mut S, row: Row) -> RowReferenceMutIterator<T, S> {
+        assert!(
+            source.index_is_valid(row, 0),
+            "Expected ({},{}) to be in range",
+            row,
+            0
+        );
+        RowReferenceMutIterator {
+            range: 0..source.view_columns(),
+            matrix: source,
+            row,
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowReferenceMutIterator<'a, T, S> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.range.next() {
+            None => None,
+            Some(column) => unsafe {
+                // Safety: We initialised the range to 0..matrix.view_columns(), and
+                // checked we can read from this row at creation, hence this read is
+                // in bounds because the source is NoInteriorMutability and we hold an exclusive
+                // reference to it, so the valid bounds cannot change in size.
+                // Safety: We are not allowed to give out overlapping mutable references,
+                // but since we will always increment the counter on every call to next()
+                // and stop when we reach the end no references will overlap*.
+                // The compiler doesn't know this, so transmute the lifetime for it.
+                // *We also require the source matrix to be NoInteriorMutability to additionally
+                // make illegal any edge cases where some extremely exotic matrix rotates its data
+                // inside the buffer around through a shared reference while we were iterating that
+                // could otherwise make our cursor read the same data twice.
+                std::mem::transmute(self.matrix.get_reference_unchecked_mut(self.row, column))
+            },
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.range.size_hint()
+    }
+}
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for RowReferenceMutIterator<'a, T, S> {}
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for RowReferenceMutIterator<'a, T, S> {}

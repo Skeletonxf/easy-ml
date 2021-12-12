@@ -626,6 +626,32 @@ where
     S: MatrixMut<T> + NoInteriorMutability,
 {
     /**
+     * Returns an iterator over mutable references to a column vector in this matrix view.
+     * Columns are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the column is not visible to this view.
+     */
+    #[track_caller]
+    pub fn column_reference_mut_iter(&mut self, column: Column) -> ColumnReferenceMutIterator<T, S> {
+        ColumnReferenceMutIterator::from(&mut self.source, column)
+    }
+
+    /**
+     * Returns an iterator over mutable references to a row vector in this matrix view.
+     * Rows are 0 indexed.
+     *
+     * # Panics
+     *
+     * Panics if the row is not visible to this view.
+     */
+    #[track_caller]
+    pub fn row_reference_mut_iter(&mut self, row: Row) -> RowReferenceMutIterator<T, S> {
+        RowReferenceMutIterator::from(&mut self.source, row)
+    }
+
+    /**
      * Returns a column major iterator over mutable references to all values in this matrix view,
      * proceeding through each column in order.
      */
