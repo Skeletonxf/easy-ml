@@ -1,6 +1,6 @@
 # Easy ML
 
-A completely deterministic matrix and linear algebra library over generic number types aimed at being easy to use.
+A completely deterministic machine learning library providing matrices, linear algebra and automatic differentiation over generic number types aimed at being easy to use.
 
 ## Usage
 
@@ -18,7 +18,7 @@ This is a pure Rust library which makes heavy use of passing closures, iterators
 - using a custom numeric type such as `num_bigint::BigInt`
 - Handwritten digit recognition in the browser
 
-This library is not designed for deep learning. I have not tried to optimise much of anything. The implementations of everything are more or less textbook mathematical definitions. You might find that you need to use a faster library once you've explored your problem, or that you need something that's not implemented here and have to switch. I hope that being able to at least start here may be of use.
+This library is not designed for deep learning. The implementations of everything are more or less textbook mathematical definitions, and do not feature extensive optimisation. You might find that you need to use a faster library once you've explored your problem, or that you need something that's not implemented here and have to switch. I hope that being able to at least start here may be of use.
 
 ## State of library
 
