@@ -9,6 +9,10 @@
  * avoid name clashes with methods defined on the Matrix and MatrixView types. You should
  * typically use MatrixRef and MatrixMut implementations via the MatrixView struct which provides
  * an API closely resembling Matrix.
+ *
+ * # Examples
+ *
+ * [Using trait objects with MatrixViews](erased)
  */
 
 use std::marker::PhantomData;
@@ -16,6 +20,7 @@ use std::marker::PhantomData;
 use crate::matrices::iterators::*;
 use crate::matrices::{Column, Matrix, Row};
 
+pub mod erased;
 mod partitions;
 mod ranges;
 pub mod traits;
