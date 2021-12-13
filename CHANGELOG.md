@@ -1,5 +1,17 @@
 # Changelog
 
+## Version 1.8
+
+Added mutable reference APIs for iterators, matrices and matrix views. Added
+a matrix quadrants API which allows safely splitting a matrix into multiple
+mutable parts. Added many numerical operations for MatrixViews to bring them to
+feature parity with Matrices.
+
+Named Tensors have started development but are not public API yet and not yet
+available to use.
+
+The project is now also formatted by `rustfmt`.
+
 ## Version 1.7
 
 Added diagonal iterators. Added MatrixView, MatrixRef and MatrixMut APIs. Made
