@@ -19,7 +19,7 @@ impl<T, const D: usize> Tensor<T, D> {
     pub fn new(data: Vec<T>, dimensions: [(Dimension, usize); D]) -> Self {
         assert_eq!(
             data.len(),
-            dimensions.iter().map(|d| d.1).fold(1, |d1, d2| d1 * d2),
+            dimensions.iter().map(|d| d.1).product(),
             "Length of dimensions must match size of data"
         );
         assert!(
@@ -94,7 +94,7 @@ fn compute_strides<const D: usize>(dimensions: &[(Dimension, usize); D]) -> [usi
             .iter()
             .skip(d + 1)
             .map(|d| d.1)
-            .fold(1, |d1, d2| d1 * d2);
+            .product();
     }
     strides
 }
