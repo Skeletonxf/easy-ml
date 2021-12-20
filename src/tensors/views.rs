@@ -2,13 +2,14 @@ use std::marker::PhantomData;
 
 use crate::tensors::indexing::TensorAccess;
 use crate::tensors::Dimension;
+use crate::matrices::views::NoInteriorMutability;
 
 mod indexes;
 pub mod traits;
 
 pub use indexes::*;
 
-pub unsafe trait TensorRef<T, const D: usize> {
+pub unsafe trait TensorRef<T, const D: usize>: NoInteriorMutability {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T>;
 
     fn view_shape(&self) -> [(Dimension, usize); D];
@@ -92,6 +93,10 @@ pub struct TensorViewSourceMut<'s, T, S, const D: usize> {
     _type: PhantomData<T>,
 }
 
+unsafe impl<'a, T, S, const D: usize> NoInteriorMutability for TensorViewSourceRef<'a, T, S, D>
+where
+    S: NoInteriorMutability {}
+
 unsafe impl<'a, T, S, const D: usize> TensorRef<T, D> for TensorViewSourceRef<'a, T, S, D>
 where
     S: TensorRef<T, D>,
@@ -104,6 +109,10 @@ where
         self.source.view_shape()
     }
 }
+
+unsafe impl<'a, T, S, const D: usize> NoInteriorMutability for TensorViewSourceMut<'a, T, S, D>
+where
+    S: NoInteriorMutability {}
 
 unsafe impl<'a, T, S, const D: usize> TensorRef<T, D> for TensorViewSourceMut<'a, T, S, D>
 where
