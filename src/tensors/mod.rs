@@ -3,6 +3,7 @@ use crate::tensors::views::{TensorMut, TensorRef, TensorView};
 
 mod dimensions;
 pub mod indexing;
+pub mod operations;
 pub mod views;
 
 pub use dimensions::*;
@@ -37,6 +38,19 @@ impl<T, const D: usize> Tensor<T, D> {
 
     pub fn shape(&self) -> [(Dimension, usize); D] {
         self.dimensions
+    }
+}
+
+impl<T> Tensor<T, 0> {
+    /**
+     * Creates a 0 dimensional tensor from some scalar
+     */
+    pub fn from_scalar(value: T) -> Tensor<T, 0> {
+        Tensor {
+            data: vec![value],
+            dimensions: [],
+            strides: [],
+        }
     }
 }
 
