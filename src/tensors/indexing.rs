@@ -154,6 +154,10 @@ where
             ),
         }
     }
+
+    fn index_is_valid(&self, indexes: [usize; D]) -> bool {
+        self.try_get_reference(indexes).is_some()
+    }
 }
 
 impl<T, S, const D: usize> TensorAccess<T, S, D>
@@ -195,6 +199,90 @@ where
     }
 }
 
+/**
+ * An iterator over references to all values in a tensor.
+ *
+ * First the all 0 index is iterated, then each iteration increments the rightmost index.
+ * If the tensor access is created with the same dimension order as the data in the tensor,
+ * this will take a single step in memory on each iteration, akin to iterating through the
+ * flattened data of the tensor.
+ *
+ * If the tensor access is created with a different dimension order, this iterator will still
+ * iterate the rightmost index of the index order defind by the tensor access but the tensor
+ * access will map those dimensions to the order the data in the tensor is stored, allowing
+ * iteration through dimensions in a different order to how they are stored, but no longer
+ * taking a single step in memory on each iteration.
+ */
+pub struct IndexOrderIterator<'a, T, S, const D: usize> {
+    tensor: &'a TensorAccess<T, S, D>,
+    shape: [(Dimension, usize); D],
+    indexes: [usize; D],
+    finished: bool,
+}
+
+impl<'a, T, S, const D: usize> IndexOrderIterator<'a, T, S, D>
+where
+    S: TensorRef<T, D>,
+{
+    pub fn from(tensor_access: &TensorAccess<T, S, D>) -> IndexOrderIterator<T, S, D> {
+        IndexOrderIterator {
+            finished: !tensor_access.index_is_valid([0; D]),
+            shape: tensor_access.shape(),
+            tensor: tensor_access,
+            indexes: [0; D],
+        }
+    }
+}
+
+impl<'a, T, S, const D: usize> Iterator for IndexOrderIterator<'a, T, S, D>
+where
+    S: TensorRef<T, D>,
+{
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        index_order_iter(&mut self.finished, &mut self.indexes, &self.shape).map(|indexes| {
+            self.tensor.get_reference(indexes)
+        })
+    }
+}
+
+// Common index order iterator logic
+fn index_order_iter<const D: usize>(
+    finished: &mut bool,
+    indexes: &mut [usize; D],
+    shape: &[(Dimension, usize); D],
+) -> Option<[usize; D]> {
+    if *finished {
+        return None;
+    }
+
+    let value = Some(*indexes);
+
+    if D > 0 {
+        // Increment index of final dimension. In the 2D case, we iterate through a row by
+        // incrementing through every column index.
+        indexes[D - 1] += 1;
+        for d in (1..D).rev() {
+            if indexes[d] == shape[d].1 {
+                // ran to end of this dimension with our index
+                // In the 2D case, we finished indexing through every column in the row,
+                // and it's now time to move onto the next row.
+                indexes[d] = 0;
+                indexes[d - 1] += 1;
+            }
+        }
+        // Check if we ran past the final index
+        if indexes[0] == shape[0].1 {
+            *finished = true;
+        }
+    } else {
+        *finished = true;
+    }
+
+    value
+}
+
 #[test]
 fn test_dimension_mapping() {
     use crate::tensors::{dimension, of};
@@ -208,4 +296,58 @@ fn test_dimension_mapping() {
         &[dimension("z"), dimension("y"), dimension("x")],
     );
     assert_eq!([2, 1, 0], mapping.unwrap());
+}
+
+// TODO: Port to doc example on IndexOrderIterator
+#[test]
+fn test_tensor_access_iteration() {
+    use crate::tensors::Tensor;
+    use crate::tensors::of;
+    use crate::tensors::dimension as d;
+    let tensor_0 = Tensor::from_scalar(1);
+    let tensor_1 = Tensor::new(vec![ 1, 2, 3, 4, 5, 6, 7 ], [of("a", 7)]);
+    let tensor_2 = Tensor::new(
+        vec![ 1, 2, 3,
+              4, 5, 6 ],
+        [of("a", 2), of("b", 3)]
+    );
+    let tensor_3 = Tensor::new(
+        // two rows each a single column, stacked on top of each other
+        vec![ 1,
+              2,
+
+              3,
+              4 ],
+        [of("a", 2), of("b", 1), of("c", 2)]
+    );
+    let tensor_access_0 = TensorAccess::from(&tensor_0, []);
+    let tensor_access_1 = TensorAccess::from(&tensor_1, [d("a")]);
+    let tensor_access_2 = TensorAccess::from(&tensor_2, [d("a"), d("b")]);
+    let tensor_access_2_rev = TensorAccess::from(&tensor_2, [d("b"), d("a")]);
+    let tensor_access_3 = TensorAccess::from(&tensor_3, [d("a"), d("b"), d("c")]);
+    let tensor_access_3_rev = TensorAccess::from(&tensor_3, [d("c"), d("b"), d("a")]);
+    assert_eq!(
+        IndexOrderIterator::from(&tensor_access_0).cloned().collect::<Vec<i32>>(),
+        vec![1]
+    );
+    assert_eq!(
+        IndexOrderIterator::from(&tensor_access_1).cloned().collect::<Vec<i32>>(),
+        vec![1, 2, 3, 4, 5, 6, 7]
+    );
+    assert_eq!(
+        IndexOrderIterator::from(&tensor_access_2).cloned().collect::<Vec<i32>>(),
+        vec![1, 2, 3, 4, 5, 6]
+    );
+    assert_eq!(
+        IndexOrderIterator::from(&tensor_access_2_rev).cloned().collect::<Vec<i32>>(),
+        vec![1, 4, 2, 5, 3, 6]
+    );
+    assert_eq!(
+        IndexOrderIterator::from(&tensor_access_3).cloned().collect::<Vec<i32>>(),
+        vec![1, 2, 3, 4]
+    );
+    assert_eq!(
+        IndexOrderIterator::from(&tensor_access_3_rev).cloned().collect::<Vec<i32>>(),
+        vec![1, 3, 2, 4]
+    );
 }
