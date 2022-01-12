@@ -43,6 +43,40 @@ where
         })
     }
 
+    /**
+     * Creates a TensorAccess which maps each dimension name to an index in the order
+     * of the dimensions reported by [`view_shape()`](TensorRef::view_shape).
+     *
+     * Hence if you create a TensorAccess directly from a Tensor, then use `from_source_order`,
+     * this uses the order the dimensions were laid out in memory with.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * use easy_ml::tensors::indexing::TensorAccess;
+     * use easy_ml::tensors::{dimension, of};
+     * let tensor = Tensor::new(vec![
+     *     1, 2,
+     *     3, 4,
+     *
+     *     5, 6,
+     *     7, 8
+     * ], [of("x", 2), of("y", 2), of("z", 2)]);
+     * let xyz = tensor.get([dimension("x"), dimension("y"), dimension("z")]);
+     * let also_xyz = TensorAccess::from_source_order(&tensor);
+     * ```
+     */
+    pub fn from_source_order(source: S) -> TensorAccess<T, S, D> {
+        let mut no_op_mapping = [0; D];
+        for d in 0..D {
+            no_op_mapping[d] = d;
+        }
+        TensorAccess {
+            dimension_mapping: no_op_mapping,
+            source,
+            _type: PhantomData,
+        }
+    }
+
     pub fn shape(&self) -> [(Dimension, usize); D] {
         let memory_shape = self.source.view_shape();
         #[allow(clippy::clone_on_copy)]
@@ -158,6 +192,10 @@ where
     fn index_is_valid(&self, indexes: [usize; D]) -> bool {
         self.try_get_reference(indexes).is_some()
     }
+
+    pub fn index_reference_iter(&self) -> IndexOrderIterator<T, S, D> {
+        IndexOrderIterator::from(self)
+    }
 }
 
 impl<T, S, const D: usize> TensorAccess<T, S, D>
@@ -208,10 +246,64 @@ where
  * flattened data of the tensor.
  *
  * If the tensor access is created with a different dimension order, this iterator will still
- * iterate the rightmost index of the index order defind by the tensor access but the tensor
+ * iterate the rightmost index of the index order defined by the tensor access but the tensor
  * access will map those dimensions to the order the data in the tensor is stored, allowing
  * iteration through dimensions in a different order to how they are stored, but no longer
  * taking a single step in memory on each iteration.
+ *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ * use easy_ml::tensors::of;
+ * use easy_ml::tensors::dimension as d;
+ *
+ * let tensor_0 = Tensor::from_scalar(1);
+ * let tensor_1 = Tensor::new(vec![ 1, 2, 3, 4, 5, 6, 7 ], [of("a", 7)]);
+ * let tensor_2 = Tensor::new(
+ *     // two rows, three columns
+ *     vec![ 1, 2, 3,
+ *           4, 5, 6 ],
+ *     [of("a", 2), of("b", 3)]
+ * );
+ * let tensor_3 = Tensor::new(
+ *     // two rows each a single column, stacked on top of each other
+ *     vec![ 1,
+ *           2,
+ *
+ *           3,
+ *           4 ],
+ *     [of("a", 2), of("b", 1), of("c", 2)]
+ * );
+ * let tensor_access_0 = tensor_0.get([]);
+ * let tensor_access_1 = tensor_1.get([d("a")]);
+ * let tensor_access_2 = tensor_2.get([d("a"), d("b")]);
+ * let tensor_access_2_rev = tensor_2.get([d("b"), d("a")]);
+ * let tensor_access_3 = tensor_3.get([d("a"), d("b"), d("c")]);
+ * let tensor_access_3_rev = tensor_3.get([d("c"), d("b"), d("a")]);
+ * assert_eq!(
+ *     tensor_access_0.index_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     vec![1]
+ * );
+ * assert_eq!(
+ *     tensor_access_1.index_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     vec![1, 2, 3, 4, 5, 6, 7]
+ * );
+ * assert_eq!(
+ *     tensor_access_2.index_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     vec![1, 2, 3, 4, 5, 6]
+ * );
+ * assert_eq!(
+ *     tensor_access_2_rev.index_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     vec![1, 4, 2, 5, 3, 6]
+ * );
+ * assert_eq!(
+ *     tensor_access_3.index_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     vec![1, 2, 3, 4]
+ * );
+ * assert_eq!(
+ *     tensor_access_3_rev.index_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     vec![1, 3, 2, 4]
+ * );
+ * ```
  */
 pub struct IndexOrderIterator<'a, T, S, const D: usize> {
     tensor: &'a TensorAccess<T, S, D>,
@@ -296,58 +388,4 @@ fn test_dimension_mapping() {
         &[dimension("z"), dimension("y"), dimension("x")],
     );
     assert_eq!([2, 1, 0], mapping.unwrap());
-}
-
-// TODO: Port to doc example on IndexOrderIterator
-#[test]
-fn test_tensor_access_iteration() {
-    use crate::tensors::Tensor;
-    use crate::tensors::of;
-    use crate::tensors::dimension as d;
-    let tensor_0 = Tensor::from_scalar(1);
-    let tensor_1 = Tensor::new(vec![ 1, 2, 3, 4, 5, 6, 7 ], [of("a", 7)]);
-    let tensor_2 = Tensor::new(
-        vec![ 1, 2, 3,
-              4, 5, 6 ],
-        [of("a", 2), of("b", 3)]
-    );
-    let tensor_3 = Tensor::new(
-        // two rows each a single column, stacked on top of each other
-        vec![ 1,
-              2,
-
-              3,
-              4 ],
-        [of("a", 2), of("b", 1), of("c", 2)]
-    );
-    let tensor_access_0 = TensorAccess::from(&tensor_0, []);
-    let tensor_access_1 = TensorAccess::from(&tensor_1, [d("a")]);
-    let tensor_access_2 = TensorAccess::from(&tensor_2, [d("a"), d("b")]);
-    let tensor_access_2_rev = TensorAccess::from(&tensor_2, [d("b"), d("a")]);
-    let tensor_access_3 = TensorAccess::from(&tensor_3, [d("a"), d("b"), d("c")]);
-    let tensor_access_3_rev = TensorAccess::from(&tensor_3, [d("c"), d("b"), d("a")]);
-    assert_eq!(
-        IndexOrderIterator::from(&tensor_access_0).cloned().collect::<Vec<i32>>(),
-        vec![1]
-    );
-    assert_eq!(
-        IndexOrderIterator::from(&tensor_access_1).cloned().collect::<Vec<i32>>(),
-        vec![1, 2, 3, 4, 5, 6, 7]
-    );
-    assert_eq!(
-        IndexOrderIterator::from(&tensor_access_2).cloned().collect::<Vec<i32>>(),
-        vec![1, 2, 3, 4, 5, 6]
-    );
-    assert_eq!(
-        IndexOrderIterator::from(&tensor_access_2_rev).cloned().collect::<Vec<i32>>(),
-        vec![1, 4, 2, 5, 3, 6]
-    );
-    assert_eq!(
-        IndexOrderIterator::from(&tensor_access_3).cloned().collect::<Vec<i32>>(),
-        vec![1, 2, 3, 4]
-    );
-    assert_eq!(
-        IndexOrderIterator::from(&tensor_access_3_rev).cloned().collect::<Vec<i32>>(),
-        vec![1, 3, 2, 4]
-    );
 }

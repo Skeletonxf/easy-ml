@@ -29,7 +29,9 @@ pub mod linear_algebra;
 pub mod matrices;
 pub mod numeric;
 #[allow(dead_code)]
-mod tensors;
+#[doc(hidden)]
+// these APIs are extremely alpha and subject to breaking changes, but need to be public to write the doc tests, use at your own risk!
+pub mod tensors;
 
 // examples
 pub mod k_means;
