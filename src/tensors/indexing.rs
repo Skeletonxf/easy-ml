@@ -1,3 +1,33 @@
+/*!
+ * # Indexing
+ *
+ * Many libraries represent tensors as n dimensional arrays, however there is often some semantic
+ * meaning to each dimension. You may have a batch of 2000 images, each 100 pixels wide and high,
+ * with each pixel representing 3 numbers for rgb values. This can be represented as a
+ * 2000 x 100 x 100 x 3 tensor, but a 4 dimensional array does not track the semantic meaning
+ * of each dimension and associated index.
+ *
+ * 6 months later you could come back to the code and forget which order the dimensions were
+ * created in, at best getting the indexes out of bounds and causing a crash in your application,
+ * and at worst silently reading the wrong data without realising. *Was it width then height or
+ * height then width?*...
+ *
+ * Easy ML moves the n dimensional array to an implementation detail, and most of its APIs work
+ * on the names of each dimension in a tensor instead of the order. Instead of a
+ * 2000 x 100 x 100 x 3 tensor in which the last element is at [1999, 99, 99, 2], Easy ML tracks
+ * the names of the dimensions, so you have a [batch: 2000, width: 100, height: 100, rgb: 3]
+ * tensor. This can't stop you from getting the math wrong, but confusion over which dimension
+ * means what is reduced, you could access an element as
+ * [batch: 1999, width: 0, height: 99, rgb: 3] or [batch: 1999, height: 99, width: 0, rgb: 3]
+ * and read the same data, because you index into dimensions based on their name, not the order
+ * they are stored in memory.
+ *
+ * Even with a name for each dimension, at some point you still need to say what order you want
+ * to index each dimension with, and this is where `[TensorAccess]`(TensorAccess) comes in. It
+ * creates a mapping from the dimension name order you want to access elements with to the order
+ * the dimensions are stored as.
+ */
+
 use crate::tensors::views::{TensorMut, TensorRef};
 use crate::tensors::Dimension;
 
@@ -7,6 +37,8 @@ use std::marker::PhantomData;
 
 /**
  * Access to the data in a Tensor with a particular order of dimension indexing.
+ *
+ * See the [module level documentation](crate::tensors::indexing) for more information.
  */
 #[derive(Clone, Debug)]
 pub struct TensorAccess<T, S, const D: usize> {
