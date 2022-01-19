@@ -15,12 +15,23 @@ pub struct Tensor<T, const D: usize> {
     strides: [usize; D],
 }
 
+/**
+ * Returns the product of the provided dimension lengths
+ *
+ * This is equal to the number of elements that will be stored for these dimensions.
+ * A 0 dimensional tensor stores exactly 1 element, a 1 dimensional tensor stores N elements,
+ * a 2 dimensional tensor stores NxM elements and so on.
+ */
+pub fn elements<const D: usize>(dimensions: &[(Dimension, usize); D]) -> usize {
+    dimensions.iter().map(|d| d.1).product()
+}
+
 impl<T, const D: usize> Tensor<T, D> {
     #[track_caller]
     pub fn new(data: Vec<T>, dimensions: [(Dimension, usize); D]) -> Self {
         assert_eq!(
             data.len(),
-            dimensions.iter().map(|d| d.1).product(),
+            elements(&dimensions),
             "Length of dimensions must match size of data"
         );
         assert!(
@@ -174,6 +185,31 @@ impl<T, const D: usize> Tensor<T, D> {
     #[track_caller]
     pub fn get_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, Tensor<T, D>, D> {
         TensorAccess::from(self, dimensions)
+    }
+}
+
+impl<T, const D: usize> Tensor<T, D>
+where
+    T: Clone,
+{
+    // TODO: Establish a consistent naming scheme for [(Dimension, usize)], [usize] and [Dimension]
+    // TODO: Actually test this
+    // TODO: Mut version
+    // TODO: View version
+    #[track_caller]
+    pub fn transpose(&self, dimensions: [Dimension; D]) -> Tensor<T, D> {
+        let transposed_order = TensorAccess::from(self, dimensions); // TODO: Handle error case, propagate as Dimension names to transpose to must be the same set of dimension names in the tensor
+        let transposed_shape = transposed_order.shape();
+        let dummy = transposed_order.get_reference([0; D]).clone();
+
+        let mut transposed = Tensor::new(vec![dummy; elements(&self.dimensions)], transposed_shape);
+
+        let mut transposed_elements = transposed_order.index_reference_iter();
+        for elem in transposed.data.iter_mut() {
+            *elem = transposed_elements.next().unwrap().clone();
+        }
+
+        transposed
     }
 }
 
