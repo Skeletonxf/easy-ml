@@ -186,6 +186,25 @@ impl<T, const D: usize> Tensor<T, D> {
     pub fn get_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, Tensor<T, D>, D> {
         TensorAccess::from(self, dimensions)
     }
+
+    /**
+     * Renames the dimension names of the tensor without changing the lengths of the dimensions
+     * in the tensor.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * use easy_ml::tensors::{dimension, of};
+     * let mut tensor = Tensor::new(vec![1, 2, 3, 4, 5, 6], [of("x", 2), of("y", 3)]);
+     * tensor.rename([dimension("y"), dimension("z")]);
+     * assert_eq!([of("y", 2), of("z", 3)], tensor.shape());
+     * ```
+     */
+    // TODO: View version
+    pub fn rename(&mut self, dimensions: [Dimension; D]) {
+        for d in 0..D {
+            self.dimensions[d].0 = dimensions[d];
+        }
+    }
 }
 
 impl<T, const D: usize> Tensor<T, D>
