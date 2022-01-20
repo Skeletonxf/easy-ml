@@ -15,8 +15,10 @@
  * Easy ML moves the n dimensional array to an implementation detail, and most of its APIs work
  * on the names of each dimension in a tensor instead of the order. Instead of a
  * 2000 x 100 x 100 x 3 tensor in which the last element is at [1999, 99, 99, 2], Easy ML tracks
- * the names of the dimensions, so you have a [batch: 2000, width: 100, height: 100, rgb: 3]
- * tensor. This can't stop you from getting the math wrong, but confusion over which dimension
+ * the names of the dimensions, so you have a
+ * `[("batch", 2000), ("width", 100), ("height", 100), ("rgb", 3)]` shaped tensor.
+ *
+ * This can't stop you from getting the math wrong, but confusion over which dimension
  * means what is reduced, you could access an element as
  * [batch: 1999, width: 0, height: 99, rgb: 3] or [batch: 1999, height: 99, width: 0, rgb: 3]
  * and read the same data, because you index into dimensions based on their name, not the order
@@ -85,15 +87,14 @@ where
      * ```
      * use easy_ml::tensors::Tensor;
      * use easy_ml::tensors::indexing::TensorAccess;
-     * use easy_ml::tensors::{dimension, of};
      * let tensor = Tensor::new(vec![
      *     1, 2,
      *     3, 4,
      *
      *     5, 6,
      *     7, 8
-     * ], [of("x", 2), of("y", 2), of("z", 2)]);
-     * let xyz = tensor.get([dimension("x"), dimension("y"), dimension("z")]);
+     * ], [("x", 2), ("y", 2), ("z", 2)]);
+     * let xyz = tensor.get(["x", "y", "z"]);
      * let also_xyz = TensorAccess::from_source_order(&tensor);
      * ```
      */
@@ -299,16 +300,13 @@ where
  *
  * ```
  * use easy_ml::tensors::Tensor;
- * use easy_ml::tensors::of;
- * use easy_ml::tensors::dimension as d;
- *
  * let tensor_0 = Tensor::from_scalar(1);
- * let tensor_1 = Tensor::new(vec![ 1, 2, 3, 4, 5, 6, 7 ], [of("a", 7)]);
+ * let tensor_1 = Tensor::new(vec![ 1, 2, 3, 4, 5, 6, 7 ], [("a", 7)]);
  * let tensor_2 = Tensor::new(
  *     // two rows, three columns
  *     vec![ 1, 2, 3,
  *           4, 5, 6 ],
- *     [of("a", 2), of("b", 3)]
+ *     [("a", 2), ("b", 3)]
  * );
  * let tensor_3 = Tensor::new(
  *     // two rows each a single column, stacked on top of each other
@@ -317,14 +315,14 @@ where
  *
  *           3,
  *           4 ],
- *     [of("a", 2), of("b", 1), of("c", 2)]
+ *     [("a", 2), ("b", 1), ("c", 2)]
  * );
  * let tensor_access_0 = tensor_0.get([]);
- * let tensor_access_1 = tensor_1.get([d("a")]);
- * let tensor_access_2 = tensor_2.get([d("a"), d("b")]);
- * let tensor_access_2_rev = tensor_2.get([d("b"), d("a")]);
- * let tensor_access_3 = tensor_3.get([d("a"), d("b"), d("c")]);
- * let tensor_access_3_rev = tensor_3.get([d("c"), d("b"), d("a")]);
+ * let tensor_access_1 = tensor_1.get(["a"]);
+ * let tensor_access_2 = tensor_2.get(["a", "b"]);
+ * let tensor_access_2_rev = tensor_2.get(["b", "a"]);
+ * let tensor_access_3 = tensor_3.get(["a", "b", "c"]);
+ * let tensor_access_3_rev = tensor_3.get(["c", "b", "a"]);
  * assert_eq!(
  *     tensor_access_0.index_reference_iter().cloned().collect::<Vec<i32>>(),
  *     vec![1]
@@ -423,15 +421,14 @@ fn index_order_iter<const D: usize>(
 
 #[test]
 fn test_dimension_mapping() {
-    use crate::tensors::{dimension, of};
     let mapping = dimension_mapping(
-        &[of("x", 0), of("y", 0), of("z", 0)],
-        &[dimension("x"), dimension("y"), dimension("z")],
+        &[("x", 0), ("y", 0), ("z", 0)],
+        &["x", "y", "z"],
     );
     assert_eq!([0, 1, 2], mapping.unwrap());
     let mapping = dimension_mapping(
-        &[of("x", 0), of("y", 0), of("z", 0)],
-        &[dimension("z"), dimension("y"), dimension("x")],
+        &[("x", 0), ("y", 0), ("z", 0)],
+        &["z", "y", "x"],
     );
     assert_eq!([2, 1, 0], mapping.unwrap());
 }

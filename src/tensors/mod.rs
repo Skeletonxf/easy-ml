@@ -1,14 +1,49 @@
+/**
+ * Generic n dimensional [named tensors](http://nlp.seas.harvard.edu/NamedTensor).
+ *
+ * Tensors are generic over some type `T` and some usize `D`. If `T` is [Numeric](super::numeric)
+ * then the tensor can be used in a mathematical way. `D` is the number of dimensions in the tensor
+ * and a compile time constant.
+ */
+
 use crate::tensors::indexing::TensorAccess;
 use crate::tensors::views::{TensorMut, TensorRef, TensorView};
 
-mod dimensions;
 pub mod indexing;
 pub mod operations;
 pub mod views;
 
-pub use dimensions::*;
+/**
+ * Dimension names are represented as static string references.
+ *
+ * This allows you to use string literals to refer to named dimensions, for example you might want
+ * to construct a tensor with a shape of
+ * `[("batch", 1000), ("height", 100), ("width", 100), ("rgba", 4)]`.
+ *
+ * Alternatively you can define the strings once as constants and refer to your dimension
+ * names by the constant identifiers.
+ *
+ * ```
+ * const BATCH: &'static str = "batch";
+ * const HEIGHT: &'static str = "height";
+ * const WIDTH: &'static str = "width";
+ * const RGBA: &'static str = "rgba";
+ * ```
+ *
+ * Although `Dimension` is interchangable with `&'static str` as it is just a type alias, Easy ML
+ * uses `Dimension` whenever dimension names are expected to distinguish the types from just
+ * strings.
+ */
+type Dimension = &'static str;
 
-// A named tensor http://nlp.seas.harvard.edu/NamedTensor
+/**
+ * A [named tensor](http://nlp.seas.harvard.edu/NamedTensor).
+ *
+ * TODO: Summary
+ *
+ * See also:
+ * - [indexing](indexing)
+ */
 pub struct Tensor<T, const D: usize> {
     data: Vec<T>,
     dimensions: [(Dimension, usize); D],
@@ -193,10 +228,9 @@ impl<T, const D: usize> Tensor<T, D> {
      *
      * ```
      * use easy_ml::tensors::Tensor;
-     * use easy_ml::tensors::{dimension, of};
-     * let mut tensor = Tensor::new(vec![1, 2, 3, 4, 5, 6], [of("x", 2), of("y", 3)]);
-     * tensor.rename([dimension("y"), dimension("z")]);
-     * assert_eq!([of("y", 2), of("z", 3)], tensor.shape());
+     * let mut tensor = Tensor::new(vec![1, 2, 3, 4, 5, 6], [("x", 2), ("y", 3)]);
+     * tensor.rename(["y", "z"]);
+     * assert_eq!([("y", 2), ("z", 3)], tensor.shape());
      * ```
      */
     // TODO: View version
@@ -234,9 +268,9 @@ where
 
 #[test]
 fn indexing_test() {
-    let tensor = Tensor::new(vec![1, 2, 3, 4], [of("x", 2), of("y", 2)]);
-    let xy = tensor.get([dimension("x"), dimension("y")]);
-    let yx = tensor.get([dimension("y"), dimension("x")]);
+    let tensor = Tensor::new(vec![1, 2, 3, 4], [("x", 2), ("y", 2)]);
+    let xy = tensor.get(["x", "y"]);
+    let yx = tensor.get(["y", "x"]);
     assert_eq!(xy.get([0, 0]), 1);
     assert_eq!(xy.get([0, 1]), 2);
     assert_eq!(xy.get([1, 0]), 3);
@@ -250,18 +284,18 @@ fn indexing_test() {
 #[test]
 #[should_panic]
 fn repeated_name() {
-    Tensor::new(vec![1, 2, 3, 4], [of("x", 2), of("x", 2)]);
+    Tensor::new(vec![1, 2, 3, 4], [("x", 2), ("x", 2)]);
 }
 
 #[test]
 #[should_panic]
 fn wrong_size() {
-    Tensor::new(vec![1, 2, 3, 4], [of("x", 2), of("y", 3)]);
+    Tensor::new(vec![1, 2, 3, 4], [("x", 2), ("y", 3)]);
 }
 
 #[test]
 #[should_panic]
 fn bad_indexing() {
-    let tensor = Tensor::new(vec![1, 2, 3, 4], [of("x", 2), of("y", 2)]);
-    tensor.get([dimension("x"), dimension("x")]);
+    let tensor = Tensor::new(vec![1, 2, 3, 4], [("x", 2), ("y", 2)]);
+    tensor.get(["x", "x"]);
 }
