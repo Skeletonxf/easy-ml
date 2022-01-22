@@ -62,17 +62,41 @@ pub fn elements<const D: usize>(dimensions: &[(Dimension, usize); D]) -> usize {
 }
 
 impl<T, const D: usize> Tensor<T, D> {
+    /**
+     * Creates a Tensor with a particular number of dimensions and length in each dimension.
+     *
+     * The product of the dimension lengths corresponds to the number of elements the Tensor
+     * will store. Elements are stored in what would be row major order for a Matrix.
+     * Each step in memory through the N dimensions corresponds to incrementing the rightmost
+     * index, hence a shape of `[("row", 5), ("column", 5)]` would mean the first 6 elements
+     * passed in the Vec would be for (0,0), (0,1), (0,2), (0,3), (0,4), (1,0) and so on to (4,4)
+     * for the 25th and final element.
+     *
+     * # Panics
+     *
+     * - If the number of provided elements does not match the product of the dimension lengths.
+     * - If a dimension name is not unique
+     * - If any dimension has 0 elements
+     *
+     * Note that an empty list for dimensions is valid, and constructs a 0 dimensional tensor with
+     * a single element (since the product of an empty list is 1).
+     */
     #[track_caller]
-    pub fn new(data: Vec<T>, dimensions: [(Dimension, usize); D]) -> Self {
-        assert_eq!(
-            data.len(),
-            elements(&dimensions),
-            "Length of dimensions must match size of data"
-        );
-        assert!(
-            !has_duplicates(&dimensions),
-            "Dimension names must all be unique"
-        );
+    pub fn from(dimensions: [(Dimension, usize); D], data: Vec<T>) -> Self {
+        let elements = elements(&dimensions);
+        if data.len() != elements {
+            panic!(
+                "Product of dimension lengths must match size of data. {} != {}",
+                elements,
+                data.len()
+            );
+        }
+        if has_duplicates(&dimensions) {
+            panic!("Dimension names must all be unique: {:?}", &dimensions);
+        }
+        if dimensions.iter().any(|d| d.1 == 0) {
+            panic!("No dimension can have 0 elements: {:?}", &dimensions);
+        }
 
         let strides = compute_strides(&dimensions);
         Tensor {
@@ -228,7 +252,7 @@ impl<T, const D: usize> Tensor<T, D> {
      *
      * ```
      * use easy_ml::tensors::Tensor;
-     * let mut tensor = Tensor::new(vec![1, 2, 3, 4, 5, 6], [("x", 2), ("y", 3)]);
+     * let mut tensor = Tensor::from([("x", 2), ("y", 3)], vec![1, 2, 3, 4, 5, 6]);
      * tensor.rename(["y", "z"]);
      * assert_eq!([("y", 2), ("z", 3)], tensor.shape());
      * ```
@@ -255,7 +279,7 @@ where
         let transposed_shape = transposed_order.shape();
         let dummy = transposed_order.get_reference([0; D]).clone();
 
-        let mut transposed = Tensor::new(vec![dummy; elements(&self.dimensions)], transposed_shape);
+        let mut transposed = Tensor::from(transposed_shape, vec![dummy; elements(&self.dimensions)]);
 
         let mut transposed_elements = transposed_order.index_reference_iter();
         for elem in transposed.data.iter_mut() {
@@ -268,7 +292,7 @@ where
 
 #[test]
 fn indexing_test() {
-    let tensor = Tensor::new(vec![1, 2, 3, 4], [("x", 2), ("y", 2)]);
+    let tensor = Tensor::from([("x", 2), ("y", 2)], vec![1, 2, 3, 4]);
     let xy = tensor.get(["x", "y"]);
     let yx = tensor.get(["y", "x"]);
     assert_eq!(xy.get([0, 0]), 1);
@@ -284,18 +308,18 @@ fn indexing_test() {
 #[test]
 #[should_panic]
 fn repeated_name() {
-    Tensor::new(vec![1, 2, 3, 4], [("x", 2), ("x", 2)]);
+    Tensor::from([("x", 2), ("x", 2)], vec![1, 2, 3, 4]);
 }
 
 #[test]
 #[should_panic]
 fn wrong_size() {
-    Tensor::new(vec![1, 2, 3, 4], [("x", 2), ("y", 3)]);
+    Tensor::from([("x", 2), ("y", 3)], vec![1, 2, 3, 4]);
 }
 
 #[test]
 #[should_panic]
 fn bad_indexing() {
-    let tensor = Tensor::new(vec![1, 2, 3, 4], [("x", 2), ("y", 2)]);
+    let tensor = Tensor::from([("x", 2), ("y", 2)], vec![1, 2, 3, 4]);
     tensor.get(["x", "x"]);
 }

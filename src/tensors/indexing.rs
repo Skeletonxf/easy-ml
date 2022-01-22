@@ -87,13 +87,13 @@ where
      * ```
      * use easy_ml::tensors::Tensor;
      * use easy_ml::tensors::indexing::TensorAccess;
-     * let tensor = Tensor::new(vec![
+     * let tensor = Tensor::from([("x", 2), ("y", 2), ("z", 2)], vec![
      *     1, 2,
      *     3, 4,
      *
      *     5, 6,
      *     7, 8
-     * ], [("x", 2), ("y", 2), ("z", 2)]);
+     * ]);
      * let xyz = tensor.get(["x", "y", "z"]);
      * let also_xyz = TensorAccess::from_source_order(&tensor);
      * ```
@@ -301,22 +301,20 @@ where
  * ```
  * use easy_ml::tensors::Tensor;
  * let tensor_0 = Tensor::from_scalar(1);
- * let tensor_1 = Tensor::new(vec![ 1, 2, 3, 4, 5, 6, 7 ], [("a", 7)]);
- * let tensor_2 = Tensor::new(
- *     // two rows, three columns
- *     vec![ 1, 2, 3,
- *           4, 5, 6 ],
- *     [("a", 2), ("b", 3)]
- * );
- * let tensor_3 = Tensor::new(
+ * let tensor_1 = Tensor::from([("a", 7)], vec![ 1, 2, 3, 4, 5, 6, 7 ]);
+ * let tensor_2 = Tensor::from([("a", 2), ("b", 3)], vec![
+ *    // two rows, three columns
+ *    1, 2, 3,
+ *    4, 5, 6
+ * ]);
+ * let tensor_3 = Tensor::from([("a", 2), ("b", 1), ("c", 2)], vec![
  *     // two rows each a single column, stacked on top of each other
- *     vec![ 1,
- *           2,
+ *     1,
+ *     2,
  *
- *           3,
- *           4 ],
- *     [("a", 2), ("b", 1), ("c", 2)]
- * );
+ *     3,
+ *     4
+ * ]);
  * let tensor_access_0 = tensor_0.get([]);
  * let tensor_access_1 = tensor_1.get(["a"]);
  * let tensor_access_2 = tensor_2.get(["a", "b"]);

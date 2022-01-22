@@ -61,7 +61,7 @@ where
     for (i, elem) in data.iter_mut().enumerate() {
         *elem = tensors.left.get_reference([i]) + tensors.right.get_reference([i]);
     }
-    Tensor::new(data, tensors.shape)
+    Tensor::from(tensors.shape, data)
 }
 
 fn tensor_access_addition_2<T, S1, S2>(tensors: TensorAccessElementwise<T, S1, S2, 2>) -> Tensor<T, 2>
@@ -87,7 +87,7 @@ where
             }
         }
     }
-    Tensor::new(data, tensors.shape)
+    Tensor::from(tensors.shape, data)
 }
 
 fn tensor_access_addition<T, S1, S2, const D: usize>(tensors: TensorAccessElementwise<T, S1, S2, D>) -> Tensor<T, D>
@@ -120,5 +120,5 @@ where
             // TODO: This should be extracted into a TensorAccess iterator implementation
         }
     }
-    Tensor::new(data, tensors.shape)
+    Tensor::from(tensors.shape, data)
 }
