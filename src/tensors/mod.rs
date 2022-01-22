@@ -294,18 +294,7 @@ where
      */
     #[track_caller]
     pub fn transpose(&self, dimensions: [Dimension; D]) -> Tensor<T, D> {
-        let transposed_order = TensorAccess::from(self, dimensions); // TODO: Handle error case, propagate as Dimension names to transpose to must be the same set of dimension names in the tensor
-        let transposed_shape = transposed_order.shape();
-        let dummy = transposed_order.get_reference([0; D]).clone();
-
-        let mut transposed = Tensor::from(transposed_shape, vec![dummy; elements(&self.dimensions)]);
-
-        let mut transposed_elements = transposed_order.index_reference_iter();
-        for elem in transposed.data.iter_mut() {
-            *elem = transposed_elements.next().unwrap().clone();
-        }
-
-        transposed
+        crate::tensors::views::transposition::transpose(self, dimensions)
     }
 }
 
