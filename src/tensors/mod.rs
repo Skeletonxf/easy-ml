@@ -270,9 +270,28 @@ where
     T: Clone,
 {
     // TODO: Establish a consistent naming scheme for [(Dimension, usize)], [usize] and [Dimension]
-    // TODO: Actually test this
     // TODO: Mut version
     // TODO: View version
+    /**
+     * Returns a new Tensor which has the same data as this tensor, but with the order of the
+     * dimensions and corresponding order of data changed.
+     *
+     * For example, with a `[("row", x), ("column", y)]` tensor you could call
+     * `transpose(["y", "x"])` which would return a new tensor where every (y,x) of its data
+     * corresponds to (x,y) in the original.
+     *
+     * This method need not shift *all* the dimensions though, you could also swap the width
+     * and height of images in a tensor with a shape of
+     * `[("batch", b), ("h", h), ("w", w), ("c", c)]` via `transpose(["batch", "w", "h", "c"])`
+     * which would return a new tensor where every (b,w,h,c) of its data corresponds to (b,h,w,c)
+     * in the original.
+     *
+     * # Panics
+     *
+     * If the set of dimensions in the tensor does not match the set of dimensions provided. The
+     * order need not match (and if the order does match, this function is just an expensive
+     * clone).
+     */
     #[track_caller]
     pub fn transpose(&self, dimensions: [Dimension; D]) -> Tensor<T, D> {
         let transposed_order = TensorAccess::from(self, dimensions); // TODO: Handle error case, propagate as Dimension names to transpose to must be the same set of dimension names in the tensor
@@ -322,4 +341,70 @@ fn wrong_size() {
 fn bad_indexing() {
     let tensor = Tensor::from([("x", 2), ("y", 2)], vec![1, 2, 3, 4]);
     tensor.get(["x", "x"]);
+}
+
+#[test]
+fn transpose() {
+    #[rustfmt::skip]
+    let tensor = Tensor::from(
+        [("x", 3), ("y", 2)], vec![
+        0, 1,
+        2, 3,
+        4, 5
+    ]);
+    let transposed = tensor.transpose(["y", "x"]);
+    assert_eq!(transposed.data, vec![ 0, 2, 4, 1, 3, 5 ]);
+}
+
+#[test]
+#[rustfmt::skip]
+fn transpose_more_dimensions() {
+    let tensor = Tensor::from(
+        [("batch", 2), ("y", 10), ("x", 10), ("color", 1)], vec![
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
+        0, 0, 0, 1, 0, 0, 1, 0, 0, 0,
+        0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+        0, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+        0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 1, 0, 0, 0, 1, 0,
+        0, 0, 0, 0, 0, 1, 1, 1, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
+        0, 0, 0, 1, 0, 0, 1, 0, 0, 0,
+        0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+        0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+        0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+        0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+        0, 0, 0, 1, 0, 0, 1, 0, 0, 0,
+        0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ]);
+    let transposed = tensor.transpose(["batch", "x", "y", "color"]);
+    assert_eq!(transposed.data, vec![
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+        0, 0, 0, 1, 1, 1, 0, 0, 0, 0,
+        0, 0, 1, 0, 1, 0, 1, 0, 0, 0,
+        0, 1, 0, 0, 1, 0, 0, 1, 0, 0,
+        0, 1, 0, 0, 1, 0, 0, 0, 1, 0,
+        0, 0, 1, 0, 1, 0, 0, 0, 1, 0,
+        0, 0, 0, 1, 1, 0, 0, 0, 1, 0,
+        0, 0, 0, 0, 1, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 1, 1, 1, 1, 0, 0, 0,
+        0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+        0, 1, 0, 0, 0, 0, 0, 0, 1, 0,
+        0, 1, 0, 0, 0, 0, 0, 0, 1, 0,
+        0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+        0, 0, 0, 1, 1, 1, 1, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ]);
 }
