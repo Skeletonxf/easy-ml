@@ -1,29 +1,50 @@
+use crate::tensors::views::{TensorRef, TensorMut};
+use crate::tensors::Dimension;
 
-use crate::matrices::views::NoInteriorMutability;
-use crate::tensors::Tensor;
-
-// # Safety
-//
-// We promise to never implement interior mutability for Tensor.
 /**
- * A shared reference to a Tensor implements NoInteriorMutability.
+ * If some type implements TensorRef, then a reference to it implements TensorRef as well
  */
-unsafe impl<'source, T, const D: usize> NoInteriorMutability for &'source Tensor<T, D> {}
+unsafe impl<'source, T, S, const D: usize> TensorRef<T, D> for &'source S
+where
+    S: TensorRef<T, D>,
+{
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        TensorRef::get_reference(*self, indexes)
+    }
 
-// # Safety
-//
-// We promise to never implement interior mutability for Tensor.
-/**
- * An exclusive reference to a Tensor implements NoInteriorMutability.
- */
-unsafe impl<'source, T, const D: usize> NoInteriorMutability for &'source mut Tensor<T, D> {}
+    fn view_shape(&self) -> [(Dimension, usize); D] {
+        TensorRef::view_shape(*self)
+    }
+}
 
-// # Safety
-//
-// We promise to never implement interior mutability for Tensor.
 /**
- * An owned Tensor implements NoInteriorMutability.
+ * If some type implements TensorRef, then an exclusive reference to it implements TensorRef
+ * as well
  */
-unsafe impl<T, const D: usize> NoInteriorMutability for Tensor<T, D> {}
+unsafe impl<'source, T, S, const D: usize> TensorRef<T, D> for &'source mut S
+where
+    S: TensorRef<T, D>,
+{
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        TensorRef::get_reference(*self, indexes)
+    }
+
+    fn view_shape(&self) -> [(Dimension, usize); D] {
+        TensorRef::view_shape(*self)
+    }
+}
+
+/**
+ * If some type implements TensorMut, then an exclusive reference to it implements TensorMut
+ * as well
+ */
+unsafe impl<'source, T, S, const D: usize> TensorMut<T, D> for &'source mut S
+where
+    S: TensorMut<T, D>,
+{
+    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
+        TensorMut::get_reference_mut(*self, indexes)
+    }
+}
 
 // TODO: Boxed values

@@ -124,35 +124,6 @@ impl<T> Tensor<T, 0> {
     }
 }
 
-unsafe impl<'source, T, const D: usize> TensorRef<T, D> for &'source Tensor<T, D> {
-    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        let i = get_index_direct(&indexes, &self.strides, &self.dimensions)?;
-        self.data.get(i)
-    }
-
-    fn view_shape(&self) -> [(Dimension, usize); D] {
-        Tensor::shape(self)
-    }
-}
-
-unsafe impl<'source, T, const D: usize> TensorRef<T, D> for &'source mut Tensor<T, D> {
-    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        let i = get_index_direct(&indexes, &self.strides, &self.dimensions)?;
-        self.data.get(i)
-    }
-
-    fn view_shape(&self) -> [(Dimension, usize); D] {
-        Tensor::shape(self)
-    }
-}
-
-unsafe impl<'source, T, const D: usize> TensorMut<T, D> for &'source mut Tensor<T, D> {
-    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
-        let i = get_index_direct(&indexes, &self.strides, &self.dimensions)?;
-        self.data.get_mut(i)
-    }
-}
-
 unsafe impl<T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
         let i = get_index_direct(&indexes, &self.strides, &self.dimensions)?;

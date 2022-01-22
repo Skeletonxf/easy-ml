@@ -2,7 +2,6 @@ use std::marker::PhantomData;
 
 use crate::tensors::indexing::TensorAccess;
 use crate::tensors::{Dimension, Tensor};
-use crate::matrices::views::NoInteriorMutability;
 
 mod indexes;
 pub(crate) mod transposition;
@@ -10,7 +9,8 @@ pub mod traits;
 
 pub use indexes::*;
 
-pub unsafe trait TensorRef<T, const D: usize>: NoInteriorMutability {
+// TODO: Document NoInteriorMutability as part of TensorRef (can't use it as a supertrait because then blanket impls would have to be breaking or not useful)
+pub unsafe trait TensorRef<T, const D: usize> {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T>;
 
     fn view_shape(&self) -> [(Dimension, usize); D];
@@ -52,28 +52,16 @@ where
     pub fn get(
         &self,
         dimensions: [Dimension; D],
-    ) -> TensorAccess<T, TensorViewSourceRef<'_, T, S, D>, D> {
-        TensorAccess::from(
-            TensorViewSourceRef {
-                source: &self.source,
-                _type: PhantomData,
-            },
-            dimensions,
-        )
+    ) -> TensorAccess<T, &S, D> {
+        TensorAccess::from(&self.source, dimensions)
     }
 
     #[track_caller]
     pub fn get_mut(
         &mut self,
         dimensions: [Dimension; D],
-    ) -> TensorAccess<T, TensorViewSourceMut<'_, T, S, D>, D> {
-        TensorAccess::from(
-            TensorViewSourceMut {
-                source: &mut self.source,
-                _type: PhantomData,
-            },
-            dimensions,
-        )
+    ) -> TensorAccess<T, &mut S, D> {
+        TensorAccess::from(&mut self.source, dimensions)
     }
 
     #[track_caller]
@@ -82,60 +70,10 @@ where
     }
 }
 
-impl<T, S, const D: usize> TensorView<T, S, D> where S: TensorMut<T, D> {}
-
-// TODO: Can these be replaced with blanket impls on TensorRef and TensorMut instead?
-pub struct TensorViewSourceRef<'s, T, S, const D: usize> {
-    source: &'s S,
-    _type: PhantomData<T>,
-}
-
-pub struct TensorViewSourceMut<'s, T, S, const D: usize> {
-    source: &'s mut S,
-    _type: PhantomData<T>,
-}
-
-unsafe impl<'a, T, S, const D: usize> NoInteriorMutability for TensorViewSourceRef<'a, T, S, D>
+impl<T, S, const D: usize> TensorView<T, S, D>
 where
-    S: NoInteriorMutability {}
-
-unsafe impl<'a, T, S, const D: usize> TensorRef<T, D> for TensorViewSourceRef<'a, T, S, D>
-where
-    S: TensorRef<T, D>,
+    S: TensorMut<T, D>
 {
-    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        self.source.get_reference(indexes)
-    }
-
-    fn view_shape(&self) -> [(Dimension, usize); D] {
-        self.source.view_shape()
-    }
-}
-
-unsafe impl<'a, T, S, const D: usize> NoInteriorMutability for TensorViewSourceMut<'a, T, S, D>
-where
-    S: NoInteriorMutability {}
-
-unsafe impl<'a, T, S, const D: usize> TensorRef<T, D> for TensorViewSourceMut<'a, T, S, D>
-where
-    S: TensorRef<T, D>,
-{
-    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        self.source.get_reference(indexes)
-    }
-
-    fn view_shape(&self) -> [(Dimension, usize); D] {
-        self.source.view_shape()
-    }
-}
-
-unsafe impl<'a, T, S, const D: usize> TensorMut<T, D> for TensorViewSourceMut<'a, T, S, D>
-where
-    S: TensorMut<T, D>,
-{
-    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
-        self.source.get_reference_mut(indexes)
-    }
 }
 
 impl<'a, T, S, const D: usize> TensorView<T, S, D>
@@ -165,30 +103,6 @@ where
      */
     #[track_caller]
     pub fn transpose(&self, dimensions: [Dimension; D]) -> Tensor<T, D> {
-        crate::tensors::views::transposition::transpose(
-            TensorViewSourceRef {
-                source: &self.source,
-                _type: PhantomData,
-            },
-            dimensions
-        )
+        crate::tensors::views::transposition::transpose(&self.source, dimensions)
     }
 }
-
-// impl <T, S> TensorView<T, S, 2>
-// where
-//     S: TensorRef<T, 2>,
-// {
-//     pub fn select(self, index: [(Dimension, usize); 1]) -> TensorView<T, TensorIndex<T, S, 2, 1>, 1> {
-//         TensorView::from(TensorIndex::from(self.source, index))
-//     }
-// }
-//
-// impl <T, S> TensorView<T, S, 3>
-// where
-//     S: TensorRef<T, 3>,
-// {
-//     pub fn select(self, index: [(Dimension, usize); 1]) -> TensorView<T, TensorIndex<T, S, 3, 1>, 2> {
-//         TensorView::from(TensorIndex::from(self.source, index))
-//     }
-// }
