@@ -1,5 +1,17 @@
 # Changelog
 
+## Versions 1.8.1, 1.7.1 and 1.6.2
+
+Backported a bugfix for `Matrix::transpose_mut` that affected all prior versions
+of Easy ML. `Matrix::transpose_mut` did not do the correct thing if given non
+square matrices and could have caused a panic or the matrix to be invalid. The
+documented use on square matrices was correct, and works correctly on all
+prior versions. If for some reason a user is stuck on a `1.5` or older version
+of Easy ML, they can still check themselves that the matrix is square before
+calling `Matrix::transpose_mut` and use `Matrix::transpose` instead if it is not.
+
+Version 1.9 when eventually released will also include this bugfix.
+
 ## Version 1.8
 
 Added mutable reference APIs for iterators, matrices and matrix views. Added
