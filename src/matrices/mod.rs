@@ -824,7 +824,7 @@ impl<T: Clone> Matrix<T> {
     }
 
     /**
-     * Transposes the matrix in place.
+     * Transposes the matrix in place (if it is square).
      *
      * ```
      * use easy_ml::matrices::Matrix;
@@ -837,21 +837,29 @@ impl<T: Clone> Matrix<T> {
      *    vec![ 2, 4 ]]);
      * assert_eq!(x, y);
      * ```
+     *
+     * Note: None square matrices were erroneously not supported in previous versions (1.8.0) and
+     * could be incorrectly mutated. This method will now correctly transpose non square matrices
+     * by not attempting to transpose them in place.
      */
     pub fn transpose_mut(&mut self) {
-        for i in 0..self.rows() {
-            for j in 0..self.columns() {
-                if i > j {
-                    continue;
+        if self.rows() != self.columns() {
+            let transposed = self.transpose();
+            self.data = transposed.data;
+            self.rows = transposed.rows;
+            self.columns = transposed.columns;
+        } else {
+            for i in 0..self.rows() {
+                for j in 0..self.columns() {
+                    if i > j {
+                        continue;
+                    }
+                    let temp = self.get(i, j);
+                    self.set(i, j, self.get(j, i));
+                    self.set(j, i, temp);
                 }
-                let temp = self.get(i, j);
-                self.set(i, j, self.get(j, i));
-                self.set(j, i, temp);
             }
         }
-        let rows = self.rows();
-        self.rows = self.columns();
-        self.columns = rows;
     }
 
     /**
