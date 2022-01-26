@@ -97,7 +97,7 @@ pub unsafe trait MatrixRef<T> {
      * Calling this method with an out-of-bounds index is *[undefined behavior]* even if the
      * resulting reference is not used. Valid indexes are defined as in [MatrixRef].
      *
-     * [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+     * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [MatrixRef]: MatrixRef
      */
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T;
@@ -133,7 +133,7 @@ pub unsafe trait MatrixMut<T>: MatrixRef<T> {
      * Calling this method with an out-of-bounds index is *[undefined behavior]* even if the
      * resulting reference is not used. Valid indexes are defined as in [MatrixRef].
      *
-     * [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+     * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [MatrixRef]: MatrixRef
      */
     unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T;
@@ -299,7 +299,7 @@ where
      * Calling this method with an out-of-bounds index is *[undefined behavior]* even if the
      * resulting reference is not used. Valid indexes are defined as in [MatrixRef].
      *
-     * [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+     * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [MatrixRef]: MatrixRef
      */
     pub unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
@@ -614,7 +614,7 @@ where
      * Calling this method with an out-of-bounds index is *[undefined behavior]* even if the
      * resulting reference is not used. Valid indexes are defined as in [MatrixRef].
      *
-     * [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+     * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [MatrixRef]: MatrixRef
      */
     pub unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
