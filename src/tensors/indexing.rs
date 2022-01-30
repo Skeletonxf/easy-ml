@@ -387,7 +387,7 @@ where
 }
 
 // Common index order iterator logic
-fn index_order_iter<const D: usize>(
+pub(crate) fn index_order_iter<const D: usize>(
     finished: &mut bool,
     indexes: &mut [usize; D],
     shape: &[(Dimension, usize); D],
