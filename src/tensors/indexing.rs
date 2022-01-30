@@ -282,6 +282,10 @@ where
             None => panic!("Unable to index with {:?}", indexes),
         }
     }
+
+    pub fn index_reference_mut_iter(&mut self) -> IndexOrderMutIterator<T, S, D> {
+        IndexOrderMutIterator::from(self)
+    }
 }
 
 /**
@@ -347,6 +351,7 @@ where
  * );
  * ```
  */
+#[derive(Debug)]
 pub struct IndexOrderIterator<'a, T, S, const D: usize> {
     tensor: &'a TensorAccess<T, S, D>,
     shape: [(Dimension, usize); D],
@@ -415,6 +420,47 @@ fn index_order_iter<const D: usize>(
     }
 
     value
+}
+
+#[derive(Debug)]
+pub struct IndexOrderMutIterator<'a, T, S, const D: usize> {
+    tensor: &'a mut TensorAccess<T, S, D>,
+    shape: [(Dimension, usize); D],
+    indexes: [usize; D],
+    finished: bool,
+}
+
+impl<'a, T, S, const D: usize> IndexOrderMutIterator<'a, T, S, D>
+where
+    S: TensorMut<T, D>,
+{
+    pub fn from(tensor_access: &mut TensorAccess<T, S, D>) -> IndexOrderMutIterator<T, S, D> {
+        IndexOrderMutIterator {
+            finished: !tensor_access.index_is_valid([0; D]),
+            shape: tensor_access.shape(),
+            tensor: tensor_access,
+            indexes: [0; D],
+        }
+    }
+}
+
+impl<'a, T, S, const D: usize> Iterator for IndexOrderMutIterator<'a, T, S, D>
+where
+    S: TensorMut<T, D>,
+{
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        index_order_iter(&mut self.finished, &mut self.indexes, &self.shape).map(|indexes| {
+            unsafe {
+                // Safety: We are not allowed to give out overlapping mutable references,
+                // but since we will always increment the counter on every call to next()
+                // and stop when we reach the end no references will overlap.
+                // The compiler doesn't know this, so transmute the lifetime for it.
+                std::mem::transmute(self.tensor.get_reference_mut(indexes))
+            }
+        })
+    }
 }
 
 #[test]
