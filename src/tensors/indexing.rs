@@ -66,7 +66,9 @@ where
         dimensions: [Dimension; D],
     ) -> Result<TensorAccess<T, S, D>, InvalidDimensionsError<D>> {
         Ok(TensorAccess {
-            dimension_mapping: dimension_mapping(&source.view_shape(), &dimensions).ok_or_else(
+            dimension_mapping: crate::tensors::dimensions::dimension_mapping(
+                &source.view_shape(), &dimensions
+            ).ok_or_else(
                 || InvalidDimensionsError {
                     actual: source.view_shape(),
                     requested: dimensions,
@@ -111,20 +113,10 @@ where
     }
 
     pub fn shape(&self) -> [(Dimension, usize); D] {
-        dimension_mapping_shape(&self.source.view_shape(), &self.dimension_mapping)
+        crate::tensors::dimensions::dimension_mapping_shape(
+            &self.source.view_shape(), &self.dimension_mapping
+        )
     }
-}
-
-pub(crate) fn dimension_mapping_shape<const D: usize>(source: &[(Dimension, usize); D], dimension_mapping: &[usize; D]) -> [(Dimension, usize); D] {
-    #[allow(clippy::clone_on_copy)]
-    let mut shape = source.clone();
-    for d in 0..D {
-        // The ith dimension of the mapped shape has a length of the jth dimension length where
-        // dimension_mapping maps from the ith dimension (of some arbitary dimension order) to
-        // the jth dimension (of the order in source)
-        shape[d] = source[dimension_mapping[d]];
-    }
-    shape
 }
 
 /**
@@ -161,67 +153,14 @@ fn test_send() {
     assert_send::<InvalidDimensionsError<3>>();
 }
 
-// Computes a mapping from a set of dimensions in source order to a matching set of
-// dimensions in an arbitary order.
-// Returns a list where each dimension in the source order is mapped to the requested order,
-// such that if the source order is x,y,z but the requested order is z,y,x then the mapping
-// is [2,1,0] as this maps the first dimension x to the third dimension x, the second dimension y
-// to the second dimension y, and the third dimension z to to the first dimension z.
-pub(crate) fn dimension_mapping<const D: usize>(
-    source: &[(Dimension, usize); D],
-    requested: &[Dimension; D],
-) -> Option<[usize; D]> {
-    let mut mapping = [0; D];
-    for d in 0..D {
-        let dimension = source[d].0;
-        // happy path, requested dimension is in the same order as in source order
-        let order = if requested[d] == dimension {
-            d
-        } else {
-            // If dimensions are in a different order, find the requested dimension with the
-            // matching dimension name.
-            // Since both lists are the same length and we know our source order won't contain
-            // duplicates this also ensures the two lists have exactly the same set of names
-            // as otherwise one of these `find`s will fail.
-            let (n, _) = requested
-                .iter()
-                .enumerate()
-                .find(|(_, d)| **d == dimension)?;
-            n
-        };
-        mapping[d] = order;
-    }
-    Some(mapping)
-}
-
-pub(crate) fn same_dimensions<const D: usize>(
-    source: &[(Dimension, usize); D],
-    requested: &[Dimension; D],
-) -> bool {
-    dimension_mapping(source, requested).is_some()
-}
-
-// Reorders some indexes according to the dimension_mapping to return indexes in source order from
-// input indexes in the arbitary order
-#[inline]
-pub(crate) fn map_dimensions<const D: usize>(
-    dimension_mapping: &[usize; D],
-    indexes: &[usize; D],
-) -> [usize; D] {
-    let mut lookup = [0; D];
-    for d in 0..D {
-        lookup[d] = indexes[dimension_mapping[d]];
-    }
-    lookup
-}
-
 impl<T, S, const D: usize> TensorAccess<T, S, D>
 where
     S: TensorRef<T, D>,
 {
     pub fn try_get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        self.source
-            .get_reference(map_dimensions(&self.dimension_mapping, &indexes))
+        self.source.get_reference(
+            crate::tensors::dimensions::map_dimensions(&self.dimension_mapping, &indexes)
+        )
     }
 
     #[track_caller]
@@ -268,8 +207,9 @@ where
     S: TensorMut<T, D>,
 {
     pub fn try_get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
-        self.source
-            .get_reference_mut(map_dimensions(&self.dimension_mapping, &indexes))
+        self.source.get_reference_mut(
+            crate::tensors::dimensions::map_dimensions(&self.dimension_mapping, &indexes)
+        )
     }
 
     #[track_caller]
@@ -461,18 +401,4 @@ where
             }
         })
     }
-}
-
-#[test]
-fn test_dimension_mapping() {
-    let mapping = dimension_mapping(
-        &[("x", 0), ("y", 0), ("z", 0)],
-        &["x", "y", "z"],
-    );
-    assert_eq!([0, 1, 2], mapping.unwrap());
-    let mapping = dimension_mapping(
-        &[("x", 0), ("y", 0), ("z", 0)],
-        &["z", "y", "x"],
-    );
-    assert_eq!([2, 1, 0], mapping.unwrap());
 }

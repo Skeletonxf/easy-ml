@@ -9,6 +9,7 @@
 use crate::tensors::indexing::TensorAccess;
 use crate::tensors::views::{TensorMut, TensorRef, TensorView};
 
+pub mod dimensions;
 pub mod indexing;
 pub mod operations;
 pub mod views;
@@ -50,17 +51,6 @@ pub struct Tensor<T, const D: usize> {
     strides: [usize; D],
 }
 
-/**
- * Returns the product of the provided dimension lengths
- *
- * This is equal to the number of elements that will be stored for these dimensions.
- * A 0 dimensional tensor stores exactly 1 element, a 1 dimensional tensor stores N elements,
- * a 2 dimensional tensor stores NxM elements and so on.
- */
-pub fn elements<const D: usize>(dimensions: &[(Dimension, usize); D]) -> usize {
-    dimensions.iter().map(|d| d.1).product()
-}
-
 impl<T, const D: usize> Tensor<T, D> {
     /**
      * Creates a Tensor with a particular number of dimensions and length in each dimension.
@@ -83,7 +73,7 @@ impl<T, const D: usize> Tensor<T, D> {
      */
     #[track_caller]
     pub fn from(dimensions: [(Dimension, usize); D], data: Vec<T>) -> Self {
-        let elements = elements(&dimensions);
+        let elements = crate::tensors::dimensions::elements(&dimensions);
         if data.len() != elements {
             panic!(
                 "Product of dimension lengths must match size of data. {} != {}",

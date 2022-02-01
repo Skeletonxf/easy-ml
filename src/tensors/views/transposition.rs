@@ -1,4 +1,4 @@
-use crate::tensors::{Dimension, Tensor, elements};
+use crate::tensors::{Dimension, Tensor};
 use crate::tensors::indexing::TensorAccess;
 use crate::tensors::views::{TensorRef, TensorMut};
 
@@ -18,7 +18,7 @@ where
 
     let mut transposed = Tensor::from(
         transposed_shape,
-        vec![dummy; elements(&source_shape)]
+        vec![dummy; crate::tensors::dimensions::elements(&source_shape)]
     );
 
     let mut transposed_elements = transposed_order.index_reference_iter();
@@ -29,25 +29,6 @@ where
     transposed
 }
 
-/**
- * Returns true if the dimensions are all the same length. For 0 or 1 dimensions trivially returns
- * true. For 2 dimensions, this corresponds to a square matrix, and for 3 dimensions, a cube shaped
- * tensor.
- */
-fn is_square<const D: usize>(dimensions: &[(Dimension, usize); D]) -> bool {
-    if D > 1 {
-        let first = dimensions[0].1;
-        for d in 1..D {
-            if dimensions[d].1 != first {
-                return false;
-            }
-        }
-        true
-    } else {
-        true
-    }
-}
-
 pub(crate) fn transpose_mut<T, S, const D: usize>(
     mut tensor: S,
     dimensions: [Dimension; D]
@@ -56,9 +37,9 @@ where
     T: Clone,
     S: TensorMut<T, D>,
 {
-    use crate::tensors::indexing::{dimension_mapping, dimension_mapping_shape, map_dimensions};
+    use crate::tensors::dimensions::{dimension_mapping, dimension_mapping_shape, map_dimensions};
     let source_shape = tensor.view_shape();
-    if D == 2 && is_square(&source_shape) {
+    if D == 2 && crate::tensors::dimensions::is_square(&source_shape) {
         // TODO: Handle error case, propagate as Dimension names to transpose to must be the same set of dimension names in the tensor
         let dimension_mapping = dimension_mapping(&source_shape, &dimensions).unwrap();
 
