@@ -45,6 +45,7 @@ type Dimension = &'static str;
  * See also:
  * - [indexing](indexing)
  */
+#[derive(Debug)]
 pub struct Tensor<T, const D: usize> {
     data: Vec<T>,
     dimensions: [(Dimension, usize); D],

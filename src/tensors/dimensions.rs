@@ -117,6 +117,13 @@ pub fn is_square<const D: usize>(dimensions: &[(Dimension, usize); D]) -> bool {
     }
 }
 
+/**
+ * Returns just the dimension names of the dimensions, in the same order.
+ */
+pub fn names_of<const D: usize>(dimensions: &[(Dimension, usize); D]) -> [Dimension; D] {
+    dimensions.map(|(dimension, _length)| dimension)
+}
+
 #[test]
 fn test_dimension_mapping() {
     let mapping = dimension_mapping(

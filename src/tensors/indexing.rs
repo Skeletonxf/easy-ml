@@ -125,8 +125,8 @@ where
  */
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct InvalidDimensionsError<const D: usize> {
-    actual: [(Dimension, usize); D],
-    requested: [Dimension; D],
+    pub actual: [(Dimension, usize); D],
+    pub requested: [Dimension; D],
 }
 
 impl<const D: usize> Error for InvalidDimensionsError<D> {}
