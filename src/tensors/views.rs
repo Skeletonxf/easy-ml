@@ -20,6 +20,7 @@ pub unsafe trait TensorMut<T, const D: usize>: TensorRef<T, D> {
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T>;
 }
 
+#[derive(Debug)]
 pub struct TensorView<T, S, const D: usize> {
     source: S,
     _type: PhantomData<T>,
