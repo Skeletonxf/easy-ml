@@ -258,6 +258,44 @@ where
     pub fn transpose(&self, dimensions: [Dimension; D]) -> Tensor<T, D> {
         crate::tensors::views::transposition::transpose(self, dimensions)
     }
+
+    /**
+     * Creates and returns a new tensor with all values from the original with the
+     * function applied to each. This can be used to change the type of the tensor
+     * such as creating a mask:
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * let x = Tensor::from([("a", 2), ("b", 2)], vec![
+     *    0.0, 1.2,
+     *    5.8, 6.9
+     * ]);
+     * let y = x.map(|element| element > 2.0);
+     * let result = Tensor::from([("a", 2), ("b", 2)], vec![
+     *    false, false,
+     *    true, true
+     * ]);
+     * assert_eq!(&y, &result);
+     * ```
+     */
+    pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Tensor<U, D> {
+        let mapped = self.data.iter().map(|x| mapping_function(x.clone())).collect();
+        // We're not changing the shape of the Tensor, so don't need to revalidate
+        Tensor {
+            data: mapped,
+            dimensions: self.dimensions,
+            strides: self.strides,
+        }
+    }
+
+    /**
+     * Applies a function to all values in the tensor, modifying
+     * the tensor in place.
+     */
+    pub fn map_mut(&mut self, mapping_function: impl Fn(T) -> T) {
+        for value in self.data.iter_mut() {
+            *value = mapping_function(value.clone());
+        }
+    }
 }
 
 #[test]

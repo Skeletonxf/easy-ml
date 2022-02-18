@@ -31,7 +31,7 @@
  */
 
 use crate::tensors::views::{TensorMut, TensorRef};
-use crate::tensors::Dimension;
+use crate::tensors::{Dimension, Tensor};
 
 use std::error::Error;
 use std::fmt;
@@ -200,6 +200,15 @@ where
             ),
         }
     }
+
+    /**
+     * Creates and returns a new tensor with all values from the original with the
+     * function applied to each.
+     */
+    pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Tensor<U, D> {
+        let mapped = self.index_reference_iter().map(|x| mapping_function(x.clone())).collect();
+        Tensor::from(self.shape(), mapped)
+    }
 }
 
 impl<T, S, const D: usize> TensorAccess<T, S, D>
@@ -225,6 +234,20 @@ where
 
     pub fn index_reference_mut_iter(&mut self) -> IndexOrderMutIterator<T, S, D> {
         IndexOrderMutIterator::from(self)
+    }
+}
+
+impl<T, S, const D: usize> TensorAccess<T, S, D>
+where
+    S: TensorMut<T, D>,
+    T: Clone,
+{
+    /**
+     * Applies a function to all values in the tensor, modifying
+     * the tensor in place.
+     */
+    pub fn map_mut(&mut self, mapping_function: impl Fn(T) -> T) {
+        self.index_reference_mut_iter().for_each(|x| *x = mapping_function(x.clone()));
     }
 }
 
