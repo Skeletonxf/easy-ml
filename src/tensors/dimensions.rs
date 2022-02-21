@@ -13,9 +13,9 @@
  * **dimension names** have a type of `[Dimension; D]`. We also may want to index into a Tensor,
  * which is done by providing the **index**es only, with a type of `[usize; D]`.
  *
- * Dimensions and dimension names in Easy ML APIs are usually treated like sets, the order of
- * each dimension does not usually make a difference for equality definitions, but can be
- * a factor for the order of iteration and indexing.
+ * Dimensions and dimension names in Easy ML APIs are treated like lists, the order of
+ * each dimension does make a difference for equality definitions and can be a facto
+ * for the order of iteration and indexing.
  */
 
 use crate::tensors::Dimension;

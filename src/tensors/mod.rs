@@ -210,7 +210,7 @@ impl<T, const D: usize> Tensor<T, D> {
 
     /**
      * Renames the dimension names of the tensor without changing the lengths of the dimensions
-     * in the tensor.
+     * in the tensor or moving any data around.
      *
      * ```
      * use easy_ml::tensors::Tensor;

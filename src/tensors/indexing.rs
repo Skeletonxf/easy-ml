@@ -13,13 +13,16 @@
  * height then width?*...
  *
  * Easy ML moves the n dimensional array to an implementation detail, and most of its APIs work
- * on the names of each dimension in a tensor instead of the order. Instead of a
+ * on the names of each dimension in a tensor instead of just the order. Instead of a
  * 2000 x 100 x 100 x 3 tensor in which the last element is at [1999, 99, 99, 2], Easy ML tracks
  * the names of the dimensions, so you have a
  * `[("batch", 2000), ("width", 100), ("height", 100), ("rgb", 3)]` shaped tensor.
  *
  * This can't stop you from getting the math wrong, but confusion over which dimension
- * means what is reduced, you could access an element as
+ * means what is reduced, tensors carry around their pairs of dimension name and length
+ * so adding a `[("batch", 2000), ("width", 100), ("height", 100), ("rgb", 3)]` shaped tensor
+ * to a `[("batch", 2000), ("height", 100), ("width", 100), ("rgb", 3)]` will fail unless you
+ * transpose one first, and you could access an element as
  * [batch: 1999, width: 0, height: 99, rgb: 3] or [batch: 1999, height: 99, width: 0, rgb: 3]
  * and read the same data, because you index into dimensions based on their name, not the order
  * they are stored in memory.
