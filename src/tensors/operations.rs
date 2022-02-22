@@ -81,47 +81,10 @@ impl<T: PartialEq, const D: usize> PartialEq for Tensor<T, D> {
     }
 }
 
-// /**
-//  * Two TensorViews are equal if they have a similar shape and all their elements are equal
-//  * when comparing both tensors via the same dimension order. Differences in their
-//  * source types are ignored.
-//  *
-//  * A similar shape means both tensors have the same set of dimension name and lengths
-//  * but the order of these pairs may be different.
-//  *
-//  * Elements are compared by iterating through the right most index of the left tensor
-//  * and the corresponding index in the right tensor when [accessed](TensorAccess) using
-//  * the dimension order of the left. When both tensors have their dimensions in the same
-//  * order, this corresponds to the right most index of the right tensor as well, and will
-//  * be an elementwise comparison.
-//  *
-//  * ```
-//  * use easy_ml::tensors::Tensor;
-//  * use easy_ml::tensors::views::TensorView;
-//  * let one = Tensor::from([("a", 2), ("b", 3)], vec![
-//  *    1, 2, 3,
-//  *    4, 5, 6
-//  * ]);
-//  * let two = Tensor::from([("b", 3), ("a", 2)], vec![
-//  *    1, 4,
-//  *    2, 5,
-//  *    3, 6
-//  * ]);
-//  * let three = Tensor::from([("b", 2), ("a", 3)], vec![
-//  *     1, 2, 3,
-//  *     4, 5, 6
-//  * ]);
-//  * let one = TensorView::from(&one);
-//  * let two = TensorView::from(&two);
-//  * let three = TensorView::from(&three);
-//  * assert_eq!(one, two);
-//  * assert_ne!(one, three);
-//  * assert_ne!(two, three);
-//  * assert_eq!(one, one);
-//  * assert_eq!(two, two);
-//  * assert_eq!(three, three);
-//  * ```
-//  */
+/**
+ * Two TensorViews are equal if they have an equal shape and all their elements are equal.
+ * Differences in their source types are ignored.
+ */
 impl<T, S1, S2, const D: usize> PartialEq<TensorView<T, S2, D>> for TensorView<T, S1, D>
 where
     T: PartialEq,
@@ -133,57 +96,10 @@ where
     }
 }
 
-/*
- * Two Tensors are similar if they have the same set of dimension names and lengths even
- * if two shapes are not in the same order, and all their elements are equal
- * when comparing both tensors via the same dimension ordering.
- *
- * Elements are compared by iterating through the right most index of the left tensor
- * and the corresponding index in the right tensor when [accessed](TensorAccess) using
- * the dimension order of the left. When both tensors have their dimensions in the same
- * order, this corresponds to the right most index of the right tensor as well, and will
- * be an elementwise comparison.
- *
- * If two Tensors are similar, you can transpose one of them to the dimension order of the
- * other and they will be equal.
+/**
+ * A Tensor and a TensorView can be compared for equality. The tensors are equal if they
+ * have an equal shape and all their elements are equal.
  */
-
-// /**
-//  * A Tensor and a TensorView are equal if they have a similar shape and all their
-//  * elements are equal when comparing both tensors via the same dimension order.
-//  *
-//  * A similar shape means both tensors have the same set of dimension name and lengths
-//  * but the order of these pairs may be different.
-//  *
-//  * Elements are compared by iterating through the right most index of the left tensor
-//  * and the corresponding index in the right tensor when [accessed](TensorAccess) using
-//  * the dimension order of the left. When both tensors have their dimensions in the same
-//  * order, this corresponds to the right most index of the right tensor as well, and will
-//  * be an elementwise comparison.
-//  *
-//  * ```
-//  * use easy_ml::tensors::Tensor;
-//  * use easy_ml::tensors::views::TensorView;
-//  * let one = Tensor::from([("a", 2), ("b", 3)], vec![
-//  *    1, 2, 3,
-//  *    4, 5, 6
-//  * ]);
-//  * let two = Tensor::from([("b", 3), ("a", 2)], vec![
-//  *    1, 4,
-//  *    2, 5,
-//  *    3, 6
-//  * ]);
-//  * let three = Tensor::from([("b", 2), ("a", 3)], vec![
-//  *     1, 2, 3,
-//  *     4, 5, 6
-//  * ]);
-//  * assert_eq!(one, TensorView::from(&two));
-//  * assert_ne!(one, TensorView::from(&three));
-//  * assert_ne!(two, TensorView::from(&three));
-//  * assert_eq!(one, TensorView::from(&one));
-//  * assert_eq!(two, TensorView::from(&two));
-//  * assert_eq!(three, TensorView::from(&three));
-//  */
 impl<T, S, const D: usize> PartialEq<TensorView<T, S, D>> for Tensor<T, D>
 where
     T: PartialEq,
@@ -194,43 +110,10 @@ where
     }
 }
 
-// /**
-//  * A TensorView and a Tensor are equal if they have a similar shape and all their
-//  * elements are equal when comparing both tensors via the same dimension order.
-//  *
-//  * A similar shape means both tensors have the same set of dimension name and lengths
-//  * but the order of these pairs may be different.
-//  *
-//  * Elements are compared by iterating through the right most index of the left tensor
-//  * and the corresponding index in the right tensor when [accessed](TensorAccess) using
-//  * the dimension order of the left. When both tensors have their dimensions in the same
-//  * order, this corresponds to the right most index of the right tensor as well, and will
-//  * be an elementwise comparison.
-//  *
-//  * ```
-//  * use easy_ml::tensors::Tensor;
-//  * use easy_ml::tensors::views::TensorView;
-//  * let one = Tensor::from([("a", 2), ("b", 3)], vec![
-//  *    1, 2, 3,
-//  *    4, 5, 6
-//  * ]);
-//  * let two = Tensor::from([("b", 3), ("a", 2)], vec![
-//  *    1, 4,
-//  *    2, 5,
-//  *    3, 6
-//  * ]);
-//  * let three = Tensor::from([("b", 2), ("a", 3)], vec![
-//  *     1, 2, 3,
-//  *     4, 5, 6
-//  * ]);
-//  * assert_eq!(TensorView::from(&one), two);
-//  * assert_ne!(TensorView::from(&one), three);
-//  * assert_ne!(TensorView::from(&two), three);
-//  * assert_eq!(TensorView::from(&one), one);
-//  * assert_eq!(TensorView::from(&two), two);
-//  * assert_eq!(TensorView::from(&three), three);
-//  * ```
-//  */
+/**
+ * A TensorView and a Tensor can be compared for equality. The tensors are equal if they
+ * have an equal shape and all their elements are equal.
+ */
 impl<T, S, const D: usize> PartialEq<Tensor<T, D>> for TensorView<T, S, D>
 where
     T: PartialEq,
@@ -240,6 +123,141 @@ where
         tensor_equality(self.source_ref(), other)
     }
 }
+
+/**
+ * Similarity comparisons. This is a looser comparison than [PartialEq](PartialEq),
+ * but anything which returns true for [PartialEq::eq](PartialEq::eq) will also return true
+ * for [Similar::similar].
+ *
+ * This trait is sealed and cannot be implemented for types outside this crate.
+ */
+pub trait Similar<Rhs: ?Sized = Self>: private::Sealed {
+    /**
+     * Tests if two values are similar. This is a looser comparison than [PartialEq](PartialEq),
+     * but anything which is PartialEq is also similar.
+     */
+    #[must_use]
+    fn similar(&self, other: &Rhs) -> bool;
+}
+
+mod private {
+    use crate::tensors::Tensor;
+    use crate::tensors::views::{TensorView, TensorRef};
+
+    pub trait Sealed<Rhs: ?Sized = Self> {}
+
+    impl<T: PartialEq, const D: usize> Sealed for Tensor<T, D> {}
+    impl<T, S1, S2, const D: usize> Sealed<TensorView<T, S2, D>> for TensorView<T, S1, D>
+    where
+        T: PartialEq,
+        S1: TensorRef<T, D>,
+        S2: TensorRef<T, D>,
+    {}
+    impl<T, S, const D: usize> Sealed<TensorView<T, S, D>> for Tensor<T, D>
+    where
+        T: PartialEq,
+        S: TensorRef<T, D>,
+    {}
+    impl<T, S, const D: usize> Sealed<Tensor<T, D>> for TensorView<T, S, D>
+    where
+        T: PartialEq,
+        S: TensorRef<T, D>,
+    {}
+}
+
+impl<T: PartialEq, const D: usize> Similar for Tensor<T, D> {
+    /**
+     * Two Tensors are similar if they have the same **set** of dimension names and lengths even
+     * if two shapes are not in the same order, and all their elements are equal
+     * when comparing both tensors via the same dimension ordering.
+     *
+     * Elements are compared by iterating through the right most index of the left tensor
+     * and the corresponding index in the right tensor when [accessed](TensorAccess) using
+     * the dimension order of the left. When both tensors have their dimensions in the same
+     * order, this corresponds to the right most index of the right tensor as well, and will
+     * be an elementwise comparison.
+     *
+     * If two Tensors are similar, you can transpose one of them to the dimension order of the
+     * other and they will be equal.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * use easy_ml::tensors::operations::Similar;
+     * let one = Tensor::from([("a", 2), ("b", 3)], vec![
+     *     1, 2, 3,
+     *     4, 5, 6
+     * ]);
+     * let two = Tensor::from([("b", 3), ("a", 2)], vec![
+     *     1, 4,
+     *     2, 5,
+     *     3, 6
+     * ]);
+     * let three = Tensor::from([("b", 2), ("a", 3)], vec![
+     *     1, 2, 3,
+     *     4, 5, 6
+     * ]);
+     * assert!(one.similar(&one));
+     * assert!(two.similar(&two));
+     * assert!(three.similar(&three));
+     * assert!(one.similar(&two)); // similar, dimension order is not the same
+     * assert!(!one.similar(&three)); // elementwise data is same, but dimensions are not equal
+     * assert!(!two.similar(&three)); // dimension lengths are not the same, and elementwise data is not the same
+     * ```
+     */
+    fn similar(&self, other: &Tensor<T, D>) -> bool {
+        tensor_similarity(self, other)
+    }
+}
+
+impl<T, S1, S2, const D: usize> Similar<TensorView<T, S2, D>> for TensorView<T, S1, D>
+where
+    T: PartialEq,
+    S1: TensorRef<T, D>,
+    S2: TensorRef<T, D>,
+{
+    /**
+     * Two TensorViewss are similar if they have the same **set** of dimension names and
+     * lengths even if two shapes are not in the same order, and all their elements are equal
+     * when comparing both tensors via the same dimension ordering.
+      * Differences in their source types are ignored.
+     */
+    fn similar(&self, other: &TensorView<T, S2, D>) -> bool {
+        tensor_similarity(self.source_ref(), other.source_ref())
+    }
+}
+
+/**
+ * A Tensor and a TensorView can be compared for similarity. The tensors are similar if they
+ * have the same **set** of dimension names and lengths even if two shapes are not in the same
+ * order, and all their elements are equal when comparing both tensors via the same dimension
+ * ordering.
+ */
+impl<T, S, const D: usize> Similar<TensorView<T, S, D>> for Tensor<T, D>
+where
+    T: PartialEq,
+    S: TensorRef<T, D>,
+{
+    fn similar(&self, other: &TensorView<T, S, D>) -> bool {
+        tensor_similarity(self, other.source_ref())
+    }
+}
+
+/**
+ * A TensorView and a Tensor can be compared for similarity. The tensors are similar if they
+ * have the same **set** of dimension names and lengths even if two shapes are not in the same
+ * order, and all their elements are equal when comparing both tensors via the same dimension
+ * ordering.
+ */
+impl<T, S, const D: usize> Similar<Tensor<T, D>> for TensorView<T, S, D>
+where
+    T: PartialEq,
+    S: TensorRef<T, D>,
+{
+    fn similar(&self, other: &Tensor<T, D>) -> bool {
+        tensor_similarity(self.source_ref(), other)
+    }
+}
+
 
 fn tensor_addition<T, S1, S2, const D: usize>(left: S1, right: S2) -> Tensor<T, D>
 where
