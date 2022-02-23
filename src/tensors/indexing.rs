@@ -40,6 +40,8 @@ use std::error::Error;
 use std::fmt;
 use std::marker::PhantomData;
 
+pub use crate::matrices::iterators::WithIndex;
+
 /**
  * Access to the data in a Tensor with a particular order of dimension indexing.
  *
@@ -255,6 +257,42 @@ where
     }
 }
 
+// Common index order iterator logic
+pub(crate) fn index_order_iter<const D: usize>(
+    finished: &mut bool,
+    indexes: &mut [usize; D],
+    shape: &[(Dimension, usize); D],
+) -> Option<[usize; D]> {
+    if *finished {
+        return None;
+    }
+
+    let value = Some(*indexes);
+
+    if D > 0 {
+        // Increment index of final dimension. In the 2D case, we iterate through a row by
+        // incrementing through every column index.
+        indexes[D - 1] += 1;
+        for d in (1..D).rev() {
+            if indexes[d] == shape[d].1 {
+                // ran to end of this dimension with our index
+                // In the 2D case, we finished indexing through every column in the row,
+                // and it's now time to move onto the next row.
+                indexes[d] = 0;
+                indexes[d - 1] += 1;
+            }
+        }
+        // Check if we ran past the final index
+        if indexes[0] == shape[0].1 {
+            *finished = true;
+        }
+    } else {
+        *finished = true;
+    }
+
+    value
+}
+
 /**
  * An iterator over references to all values in a tensor.
  *
@@ -338,6 +376,14 @@ where
             indexes: [0; D],
         }
     }
+
+    /**
+     * Constructors an iterator which also yields the indexes of each element in
+     * this iterator.
+     */
+    pub fn with_index(self) -> WithIndex<Self> {
+        WithIndex { iterator: self }
+    }
 }
 
 impl<'a, T, S, const D: usize> Iterator for IndexOrderIterator<'a, T, S, D>
@@ -353,40 +399,16 @@ where
     }
 }
 
-// Common index order iterator logic
-pub(crate) fn index_order_iter<const D: usize>(
-    finished: &mut bool,
-    indexes: &mut [usize; D],
-    shape: &[(Dimension, usize); D],
-) -> Option<[usize; D]> {
-    if *finished {
-        return None;
+impl<'a, T, S, const D: usize> Iterator for WithIndex<IndexOrderIterator<'a, T, S, D>>
+where
+    S: TensorRef<T, D>,
+{
+    type Item = ([usize; D], &'a T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let index = self.iterator.indexes;
+        self.iterator.next().map(|x| (index, x))
     }
-
-    let value = Some(*indexes);
-
-    if D > 0 {
-        // Increment index of final dimension. In the 2D case, we iterate through a row by
-        // incrementing through every column index.
-        indexes[D - 1] += 1;
-        for d in (1..D).rev() {
-            if indexes[d] == shape[d].1 {
-                // ran to end of this dimension with our index
-                // In the 2D case, we finished indexing through every column in the row,
-                // and it's now time to move onto the next row.
-                indexes[d] = 0;
-                indexes[d - 1] += 1;
-            }
-        }
-        // Check if we ran past the final index
-        if indexes[0] == shape[0].1 {
-            *finished = true;
-        }
-    } else {
-        *finished = true;
-    }
-
-    value
 }
 
 #[derive(Debug)]
@@ -409,6 +431,14 @@ where
             indexes: [0; D],
         }
     }
+
+    /**
+     * Constructors an iterator which also yields the indexes of each element in
+     * this iterator.
+     */
+    pub fn with_index(self) -> WithIndex<Self> {
+        WithIndex { iterator: self }
+    }
 }
 
 impl<'a, T, S, const D: usize> Iterator for IndexOrderMutIterator<'a, T, S, D>
@@ -427,5 +457,17 @@ where
                 std::mem::transmute(self.tensor.get_reference_mut(indexes))
             }
         })
+    }
+}
+
+impl<'a, T, S, const D: usize> Iterator for WithIndex<IndexOrderMutIterator<'a, T, S, D>>
+where
+    S: TensorMut<T, D>,
+{
+    type Item = ([usize; D], &'a mut T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let index = self.iterator.indexes;
+        self.iterator.next().map(|x| (index, x))
     }
 }

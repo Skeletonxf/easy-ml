@@ -105,7 +105,7 @@ impl<R, T> MatrixRefExtension<T> for R where R: MatrixRef<T> {}
  */
 #[derive(Debug)]
 pub struct WithIndex<I> {
-    iterator: I,
+    pub(crate) iterator: I,
 }
 
 impl<I> WithIndex<I> {
