@@ -69,6 +69,42 @@ where
     pub fn get_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, S, D> {
         TensorAccess::from(self.source, dimensions)
     }
+
+    /**
+     * Creates a TensorAccess which will index into the dimensions of the source this TensorView
+     * was created with in the same order as they were declared.
+     * See [TensorAccess::from_source_order].
+     */
+    pub fn source_order(&self) -> TensorAccess<T, &S, D> {
+        TensorAccess::from_source_order(&self.source)
+    }
+
+    /**
+     * Creates a TensorAccess which will index into the dimensions this Tensor was
+     * created with in the same order as they were provided. The TensorAccess mutably borrows
+     * the Tensor, and can therefore mutate it. See [TensorAccess::from_source_order].
+     */
+
+     /**
+      * Creates a TensorAccess which will index into the dimensions of the source this TensorView
+      * was created with in the same order as they were declared. The TensorAccess mutably borrows
+      * the source, and can therefore mutate it if it implements TensorMut.
+      * See [TensorAccess::from_source_order].
+      */
+    pub fn source_order_mut(&mut self) -> TensorAccess<T, &mut S, D> {
+        TensorAccess::from_source_order(&mut self.source)
+    }
+
+    /**
+     * Creates a TensorAccess which will index into the dimensions this Tensor was
+     * created with in the same order as they were provided. The TensorAccess takes ownership
+     * of the Tensor, and can therefore mutate it. The TensorAccess mutably borrows
+     * the source, and can therefore mutate it if it implements TensorMut.
+     * See [TensorAccess::from_source_order].
+     */
+    pub fn source_order_owned(self) -> TensorAccess<T, S, D> {
+        TensorAccess::from_source_order(self.source)
+    }
 }
 
 impl<T, S, const D: usize> TensorView<T, S, D>

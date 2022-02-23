@@ -101,6 +101,7 @@ where
      * ]);
      * let xyz = tensor.get(["x", "y", "z"]);
      * let also_xyz = TensorAccess::from_source_order(&tensor);
+     * let also_xyz = tensor.source_order();
      * ```
      */
     pub fn from_source_order(source: S) -> TensorAccess<T, S, D> {

@@ -209,6 +209,32 @@ impl<T, const D: usize> Tensor<T, D> {
     }
 
     /**
+     * Creates a TensorAccess which will index into the dimensions this Tensor was created with
+     * in the same order as they were provided. See [TensorAccess::from_source_order].
+     */
+    pub fn source_order(&self) -> TensorAccess<T, &Tensor<T, D>, D> {
+        TensorAccess::from_source_order(self)
+    }
+
+    /**
+     * Creates a TensorAccess which will index into the dimensions this Tensor was
+     * created with in the same order as they were provided. The TensorAccess mutably borrows
+     * the Tensor, and can therefore mutate it. See [TensorAccess::from_source_order].
+     */
+    pub fn source_order_mut(&mut self) -> TensorAccess<T, &mut Tensor<T, D>, D> {
+        TensorAccess::from_source_order(self)
+    }
+
+    /**
+     * Creates a TensorAccess which will index into the dimensions this Tensor was
+     * created with in the same order as they were provided. The TensorAccess takes ownership
+     * of the Tensor, and can therefore mutate it. See [TensorAccess::from_source_order].
+     */
+    pub fn source_order_owned(self) -> TensorAccess<T, Tensor<T, D>, D> {
+        TensorAccess::from_source_order(self)
+    }
+
+    /**
      * Renames the dimension names of the tensor without changing the lengths of the dimensions
      * in the tensor or moving any data around.
      *
