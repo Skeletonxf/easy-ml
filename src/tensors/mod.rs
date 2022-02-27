@@ -234,6 +234,12 @@ impl<T, const D: usize> Tensor<T, D> {
         TensorAccess::from_source_order(self)
     }
 
+    // Non public index order reference iterator since we don't want to expose our implementation
+    // details to public API since then we could never change them.
+    pub(crate) fn direct_index_order_reference_iter(&self) -> std::slice::Iter<T> {
+        self.data.iter()
+    }
+
     /**
      * Renames the dimension names of the tensor without changing the lengths of the dimensions
      * in the tensor or moving any data around.

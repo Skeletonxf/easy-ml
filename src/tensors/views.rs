@@ -70,6 +70,10 @@ where
         TensorAccess::from(self.source, dimensions)
     }
 
+    pub fn shape(&self) -> [(Dimension, usize); D] {
+        self.source.view_shape()
+    }
+
     /**
      * Creates a TensorAccess which will index into the dimensions of the source this TensorView
      * was created with in the same order as they were declared.

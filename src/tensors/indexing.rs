@@ -185,6 +185,8 @@ where
         self.try_get_reference(indexes).is_some()
     }
 
+    // FIXME: This should match the type name, index_order_reference_iterator and type should be
+    // renamed to IndexORderReferenceIterator
     pub fn index_reference_iter(&self) -> IndexOrderIterator<T, S, D> {
         IndexOrderIterator::from(self)
     }

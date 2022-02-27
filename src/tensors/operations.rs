@@ -3,9 +3,11 @@
  */
 
 use crate::numeric::{Numeric, NumericRef};
-use crate::tensors::Tensor;
+use crate::tensors::{Dimension, Tensor};
 use crate::tensors::indexing::TensorAccess;
 use crate::tensors::views::{TensorRef, TensorView};
+
+use std::ops::Add;
 
 // Common tensor equality definition (list of dimension names must match, and elements must match)
 #[inline]
@@ -258,35 +260,529 @@ where
     }
 }
 
+// fn tensor_addition<T, S1, S2, const D: usize>(left: S1, right: S2) -> Tensor<T, D>
+// where
+//     T: Numeric,
+//     for<'a> &'a T: NumericRef<T>,
+//     S1: TensorRef<T, D>,
+//     S2: TensorRef<T, D>,
+// {
+//     if left.view_shape() != right.view_shape() {
+//         panic!(
+//             "Dimensions of left and right tensors are not the same: (left: {:?}, right: {:?})",
+//             left.view_shape(),
+//             right.view_shape()
+//         );
+//     }
+//     Tensor::from(
+//         left.view_shape(),
+//         TensorAccess::from_source_order(left).index_reference_iter()
+//             .zip(TensorAccess::from_source_order(right).index_reference_iter())
+//             .map(|(x, y)| x + y)
+//             .collect()
+//     )
+// }
 
-fn tensor_addition<T, S1, S2, const D: usize>(left: S1, right: S2) -> Tensor<T, D>
+#[track_caller]
+#[inline]
+fn tensor_view_addition_iter<'l, 'r, T, S1, S2, const D: usize>(
+    left_iter: S1,
+    left_shape: [(Dimension, usize); D],
+    right_iter: S2,
+    right_shape: [(Dimension, usize); D],
+) -> Tensor<T, D>
 where
     T: Numeric,
+    T: 'l,
+    T: 'r,
     for<'a> &'a T: NumericRef<T>,
-    S1: TensorRef<T, D>,
-    S2: TensorRef<T, D>,
+    S1: Iterator<Item = &'l T>,
+    S2: Iterator<Item = &'r T>,
 {
-    if left.view_shape() != right.view_shape() {
+    if left_shape != right_shape {
         panic!(
             "Dimensions of left and right tensors are not the same: (left: {:?}, right: {:?})",
-            left.view_shape(),
-            right.view_shape()
+            left_shape,
+            right_shape
         );
     }
+    // LxM + LxM -> LxM
     Tensor::from(
-        left.view_shape(),
-        TensorAccess::from_source_order(left).index_reference_iter()
-            .zip(TensorAccess::from_source_order(right).index_reference_iter())
+        left_shape,
+        left_iter
+            .zip(right_iter)
             .map(|(x, y)| x + y)
             .collect()
     )
+}
+
+macro_rules! tensor_view_reference_tensor_view_reference_operation_iter {
+    (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S1, S2, const D: usize> $op<&TensorView<T, S2, D>> for &TensorView<T, S1, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S1: TensorRef<T, D>,
+            S2: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &TensorView<T, S2, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.source_order().index_reference_iter(),
+                    self.shape(),
+                    rhs.source_order().index_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_view_reference_tensor_view_reference_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for two referenced tensor views");
+
+macro_rules! tensor_view_reference_tensor_view_value_operation_iter {
+    (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S1, S2, const D: usize> $op<TensorView<T, S2, D>> for &TensorView<T, S1, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S1: TensorRef<T, D>,
+            S2: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: TensorView<T, S2, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.source_order().index_reference_iter(),
+                    self.shape(),
+                    rhs.source_order().index_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_view_reference_tensor_view_value_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for two tensor views with one referenced");
+
+macro_rules! tensor_view_value_tensor_view_reference_operation_iter {
+    (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S1, S2, const D: usize> $op<&TensorView<T, S2, D>> for TensorView<T, S1, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S1: TensorRef<T, D>,
+            S2: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &TensorView<T, S2, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.source_order().index_reference_iter(),
+                    self.shape(),
+                    rhs.source_order().index_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_view_value_tensor_view_reference_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for two tensor views with one referenced");
+
+macro_rules! tensor_view_value_tensor_view_value_operation_iter {
+    (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S1, S2, const D: usize> $op<TensorView<T, S2, D>> for TensorView<T, S1, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S1: TensorRef<T, D>,
+            S2: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: TensorView<T, S2, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.source_order().index_reference_iter(),
+                    self.shape(),
+                    rhs.source_order().index_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_view_value_tensor_view_value_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for two tensor views");
+
+macro_rules! tensor_view_reference_tensor_reference_operation_iter {
+    (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S, const D: usize> $op<&Tensor<T, D>> for &TensorView<T, S, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &Tensor<T, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.source_order().index_reference_iter(),
+                    self.shape(),
+                    rhs.direct_index_order_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_view_reference_tensor_reference_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for a referenced tensor view and a referenced tensor");
+
+macro_rules! tensor_view_reference_tensor_value_operation_iter {
+    (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S, const D: usize> $op<Tensor<T, D>> for &TensorView<T, S, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: Tensor<T, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.source_order().index_reference_iter(),
+                    self.shape(),
+                    rhs.direct_index_order_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_view_reference_tensor_value_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for a referenced tensor view and a tensor");
+
+macro_rules! tensor_view_value_tensor_reference_operation_iter {
+    (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S, const D: usize> $op<&Tensor<T, D>> for TensorView<T, S, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &Tensor<T, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.source_order().index_reference_iter(),
+                    self.shape(),
+                    rhs.direct_index_order_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_view_value_tensor_reference_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for a tensor view and a referenced tensor");
+
+macro_rules! tensor_view_value_tensor_value_operation_iter {
+    (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S, const D: usize> $op<Tensor<T, D>> for TensorView<T, S, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: Tensor<T, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.source_order().index_reference_iter(),
+                    self.shape(),
+                    rhs.direct_index_order_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_view_value_tensor_value_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for a tensor view and a tensor");
+
+macro_rules! tensor_reference_tensor_view_reference_operation_iter {
+    (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S, const D: usize> $op<&TensorView<T, S, D>> for &Tensor<T, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &TensorView<T, S, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.direct_index_order_reference_iter(),
+                    self.shape(),
+                    rhs.source_order().index_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_reference_tensor_view_reference_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for a referenced tensor and a referenced tensor view");
+
+macro_rules! tensor_reference_tensor_view_value_operation_iter {
+    (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S, const D: usize> $op<TensorView<T, S, D>> for &Tensor<T, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: TensorView<T, S, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.direct_index_order_reference_iter(),
+                    self.shape(),
+                    rhs.source_order().index_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_reference_tensor_view_value_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for a referenced tensor and a tensor view");
+
+macro_rules! tensor_value_tensor_view_reference_operation_iter {
+    (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S, const D: usize> $op<&TensorView<T, S, D>> for Tensor<T, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &TensorView<T, S, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.direct_index_order_reference_iter(),
+                    self.shape(),
+                    rhs.source_order().index_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_value_tensor_view_reference_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for a tensor and a referenced tensor view");
+
+macro_rules! tensor_value_tensor_view_value_operation_iter {
+    (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S, const D: usize> $op<TensorView<T, S, D>> for Tensor<T, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: TensorView<T, S, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.direct_index_order_reference_iter(),
+                    self.shape(),
+                    rhs.source_order().index_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_value_tensor_view_value_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for a tensor and a tensor view");
+
+macro_rules! tensor_reference_tensor_reference_operation_iter {
+    (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, const D: usize> $op<&Tensor<T, D>> for &Tensor<T, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &Tensor<T, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.direct_index_order_reference_iter(),
+                    self.shape(),
+                    rhs.direct_index_order_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_reference_tensor_reference_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for two referenced tensors");
+
+macro_rules! tensor_reference_tensor_value_operation_iter {
+    (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, const D: usize> $op<Tensor<T, D>> for &Tensor<T, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: Tensor<T, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.direct_index_order_reference_iter(),
+                    self.shape(),
+                    rhs.direct_index_order_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_reference_tensor_value_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for two tensors with one referenced");
+
+macro_rules! tensor_value_tensor_reference_operation_iter {
+    (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, const D: usize> $op<&Tensor<T, D>> for Tensor<T, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &Tensor<T, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.direct_index_order_reference_iter(),
+                    self.shape(),
+                    rhs.direct_index_order_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_value_tensor_reference_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for two tensors with one referenced");
+
+macro_rules! tensor_value_tensor_value_operation_iter {
+    (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, const D: usize> $op<Tensor<T, D>> for Tensor<T, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Tensor<T, D>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: Tensor<T, D>) -> Self::Output {
+                $implementation::<T, _, _, D>(
+                    self.direct_index_order_reference_iter(),
+                    self.shape(),
+                    rhs.direct_index_order_reference_iter(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_value_tensor_value_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for two tensors");
+
+#[test]
+fn test_all_16_combinations() {
+    fn tensor() -> Tensor<i8, 1> {
+        Tensor::from([("a", 1)], vec![1])
+    }
+    fn tensor_view() -> TensorView<i8, Tensor<i8, 1>, 1> {
+        TensorView::from(tensor())
+    }
+    let mut results = Vec::with_capacity(16);
+    results.push(tensor() + tensor());
+    results.push(tensor() + &tensor());
+    results.push(&tensor() + tensor());
+    results.push(&tensor() + &tensor());
+    results.push(tensor_view() + tensor());
+    results.push(tensor_view() + &tensor());
+    results.push(&tensor_view() + tensor());
+    results.push(&tensor_view() + &tensor());
+    results.push(tensor() + tensor_view());
+    results.push(tensor() + &tensor_view());
+    results.push(&tensor() + tensor_view());
+    results.push(&tensor() + &tensor_view());
+    results.push(tensor_view() + tensor_view());
+    results.push(tensor_view() + &tensor_view());
+    results.push(&tensor_view() + tensor_view());
+    results.push(&tensor_view() + &tensor_view());
+    for total in results {
+        assert_eq!(total.get(["a"]).get([0]), 2); // TODO: Scalar helpers
+    }
 }
 
 #[test]
 fn tmp_addition_test() {
     let tensor_1: Tensor<i32, 2> = Tensor::from([("r", 2), ("c", 2)], vec![ 1, 2, 3, 4 ]);
     let tensor_2: Tensor<i32, 2> = Tensor::from([("r", 2), ("c", 2)], vec![ 3, 2, 8, 1 ]);
-    let added: Tensor<i32, 2> = tensor_addition::<i32, _, _, 2 >(tensor_1, tensor_2);
+    let added: Tensor<i32, 2> = tensor_1 + tensor_2;
     assert_eq!(
         added,
         Tensor::from([("r", 2), ("c", 2)], vec![ 4, 4, 11, 5 ])
@@ -298,5 +794,5 @@ fn tmp_addition_test() {
 fn tmp_addition_test_similar_not_matching() {
     let tensor_1: Tensor<i32, 2> = Tensor::from([("r", 2), ("c", 2)], vec![ 1, 2, 3, 4 ]);
     let tensor_2: Tensor<i32, 2> = Tensor::from([("c", 2), ("r", 2)], vec![ 3, 8, 2, 1 ]);
-    let _: Tensor<i32, 2> = tensor_addition::<i32, _, _, 2 >(tensor_1, tensor_2);
+    let _: Tensor<i32, 2> =  tensor_1 + tensor_2;
 }
