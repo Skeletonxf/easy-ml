@@ -12,7 +12,7 @@ mod tensors {
             5, 6
         ]);
         let row_column = tensor.source_order();
-        let mut iterator = row_column.index_reference_iter();
+        let mut iterator = row_column.index_order_reference_iter();
         assert_eq!(iterator.next(), Some(&1));
         assert_eq!(iterator.next(), Some(&2));
         assert_eq!(iterator.next(), Some(&3));
@@ -30,7 +30,7 @@ mod tensors {
             5, 6
         ]);
         let row_column = tensor.source_order();
-        let mut iterator = row_column.index_reference_iter().with_index();
+        let mut iterator = row_column.index_order_reference_iter().with_index();
         assert_eq!(iterator.next(), Some(([0,0], &1)));
         assert_eq!(iterator.next(), Some(([0,1], &2)));
         assert_eq!(iterator.next(), Some(([1,0], &3)));

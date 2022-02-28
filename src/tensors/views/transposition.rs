@@ -21,7 +21,7 @@ where
         vec![dummy; crate::tensors::dimensions::elements(&source_shape)]
     );
 
-    let mut transposed_elements = transposed_order.index_reference_iter();
+    let mut transposed_elements = transposed_order.index_order_reference_iter();
     for elem in transposed.data.iter_mut() {
         *elem = transposed_elements.next().unwrap().clone();
     }

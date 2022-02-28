@@ -18,8 +18,8 @@ where
     S2: TensorRef<T, D>,
 {
     left.view_shape() == right.view_shape()
-        && TensorAccess::from_source_order(left).index_reference_iter()
-            .zip(TensorAccess::from_source_order(right).index_reference_iter())
+        && TensorAccess::from_source_order(left).index_order_reference_iter()
+            .zip(TensorAccess::from_source_order(right).index_order_reference_iter())
             .all(|(x, y)| x == y)
 }
 
@@ -45,8 +45,8 @@ where
     if left_shape != right_access.shape() {
         return false;
     }
-    left_access.index_reference_iter()
-        .zip(right_access.index_reference_iter())
+    left_access.index_order_reference_iter()
+        .zip(right_access.index_order_reference_iter())
         .all(|(x, y)| x == y)
 }
 
@@ -276,8 +276,8 @@ where
 //     }
 //     Tensor::from(
 //         left.view_shape(),
-//         TensorAccess::from_source_order(left).index_reference_iter()
-//             .zip(TensorAccess::from_source_order(right).index_reference_iter())
+//         TensorAccess::from_source_order(left).index_order_reference_iter()
+//             .zip(TensorAccess::from_source_order(right).index_order_reference_iter())
 //             .map(|(x, y)| x + y)
 //             .collect()
 //     )
@@ -332,9 +332,9 @@ macro_rules! tensor_view_reference_tensor_view_reference_operation_iter {
             #[inline]
             fn $method(self, rhs: &TensorView<T, S2, D>) -> Self::Output {
                 $implementation::<T, _, _, D>(
-                    self.source_order().index_reference_iter(),
+                    self.source_order().index_order_reference_iter(),
                     self.shape(),
-                    rhs.source_order().index_reference_iter(),
+                    rhs.source_order().index_order_reference_iter(),
                     rhs.shape(),
                 )
             }
@@ -360,9 +360,9 @@ macro_rules! tensor_view_reference_tensor_view_value_operation_iter {
             #[inline]
             fn $method(self, rhs: TensorView<T, S2, D>) -> Self::Output {
                 $implementation::<T, _, _, D>(
-                    self.source_order().index_reference_iter(),
+                    self.source_order().index_order_reference_iter(),
                     self.shape(),
-                    rhs.source_order().index_reference_iter(),
+                    rhs.source_order().index_order_reference_iter(),
                     rhs.shape(),
                 )
             }
@@ -388,9 +388,9 @@ macro_rules! tensor_view_value_tensor_view_reference_operation_iter {
             #[inline]
             fn $method(self, rhs: &TensorView<T, S2, D>) -> Self::Output {
                 $implementation::<T, _, _, D>(
-                    self.source_order().index_reference_iter(),
+                    self.source_order().index_order_reference_iter(),
                     self.shape(),
-                    rhs.source_order().index_reference_iter(),
+                    rhs.source_order().index_order_reference_iter(),
                     rhs.shape(),
                 )
             }
@@ -416,9 +416,9 @@ macro_rules! tensor_view_value_tensor_view_value_operation_iter {
             #[inline]
             fn $method(self, rhs: TensorView<T, S2, D>) -> Self::Output {
                 $implementation::<T, _, _, D>(
-                    self.source_order().index_reference_iter(),
+                    self.source_order().index_order_reference_iter(),
                     self.shape(),
-                    rhs.source_order().index_reference_iter(),
+                    rhs.source_order().index_order_reference_iter(),
                     rhs.shape(),
                 )
             }
@@ -443,7 +443,7 @@ macro_rules! tensor_view_reference_tensor_reference_operation_iter {
             #[inline]
             fn $method(self, rhs: &Tensor<T, D>) -> Self::Output {
                 $implementation::<T, _, _, D>(
-                    self.source_order().index_reference_iter(),
+                    self.source_order().index_order_reference_iter(),
                     self.shape(),
                     rhs.direct_index_order_reference_iter(),
                     rhs.shape(),
@@ -470,7 +470,7 @@ macro_rules! tensor_view_reference_tensor_value_operation_iter {
             #[inline]
             fn $method(self, rhs: Tensor<T, D>) -> Self::Output {
                 $implementation::<T, _, _, D>(
-                    self.source_order().index_reference_iter(),
+                    self.source_order().index_order_reference_iter(),
                     self.shape(),
                     rhs.direct_index_order_reference_iter(),
                     rhs.shape(),
@@ -497,7 +497,7 @@ macro_rules! tensor_view_value_tensor_reference_operation_iter {
             #[inline]
             fn $method(self, rhs: &Tensor<T, D>) -> Self::Output {
                 $implementation::<T, _, _, D>(
-                    self.source_order().index_reference_iter(),
+                    self.source_order().index_order_reference_iter(),
                     self.shape(),
                     rhs.direct_index_order_reference_iter(),
                     rhs.shape(),
@@ -524,7 +524,7 @@ macro_rules! tensor_view_value_tensor_value_operation_iter {
             #[inline]
             fn $method(self, rhs: Tensor<T, D>) -> Self::Output {
                 $implementation::<T, _, _, D>(
-                    self.source_order().index_reference_iter(),
+                    self.source_order().index_order_reference_iter(),
                     self.shape(),
                     rhs.direct_index_order_reference_iter(),
                     rhs.shape(),
@@ -553,7 +553,7 @@ macro_rules! tensor_reference_tensor_view_reference_operation_iter {
                 $implementation::<T, _, _, D>(
                     self.direct_index_order_reference_iter(),
                     self.shape(),
-                    rhs.source_order().index_reference_iter(),
+                    rhs.source_order().index_order_reference_iter(),
                     rhs.shape(),
                 )
             }
@@ -580,7 +580,7 @@ macro_rules! tensor_reference_tensor_view_value_operation_iter {
                 $implementation::<T, _, _, D>(
                     self.direct_index_order_reference_iter(),
                     self.shape(),
-                    rhs.source_order().index_reference_iter(),
+                    rhs.source_order().index_order_reference_iter(),
                     rhs.shape(),
                 )
             }
@@ -607,7 +607,7 @@ macro_rules! tensor_value_tensor_view_reference_operation_iter {
                 $implementation::<T, _, _, D>(
                     self.direct_index_order_reference_iter(),
                     self.shape(),
-                    rhs.source_order().index_reference_iter(),
+                    rhs.source_order().index_order_reference_iter(),
                     rhs.shape(),
                 )
             }
@@ -634,7 +634,7 @@ macro_rules! tensor_value_tensor_view_value_operation_iter {
                 $implementation::<T, _, _, D>(
                     self.direct_index_order_reference_iter(),
                     self.shape(),
-                    rhs.source_order().index_reference_iter(),
+                    rhs.source_order().index_order_reference_iter(),
                     rhs.shape(),
                 )
             }
