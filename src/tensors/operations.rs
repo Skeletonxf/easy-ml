@@ -7,7 +7,7 @@ use crate::tensors::{Dimension, Tensor};
 use crate::tensors::indexing::TensorAccess;
 use crate::tensors::views::{TensorRef, TensorView};
 
-use std::ops::Add;
+use std::ops::{Add, Sub};
 
 // Common tensor equality definition (list of dimension names must match, and elements must match)
 #[inline]
@@ -316,6 +316,39 @@ where
     )
 }
 
+#[track_caller]
+#[inline]
+fn tensor_view_subtraction_iter<'l, 'r, T, S1, S2, const D: usize>(
+    left_iter: S1,
+    left_shape: [(Dimension, usize); D],
+    right_iter: S2,
+    right_shape: [(Dimension, usize); D],
+) -> Tensor<T, D>
+where
+    T: Numeric,
+    T: 'l,
+    T: 'r,
+    for<'a> &'a T: NumericRef<T>,
+    S1: Iterator<Item = &'l T>,
+    S2: Iterator<Item = &'r T>,
+{
+    if left_shape != right_shape {
+        panic!(
+            "Dimensions of left and right tensors are not the same: (left: {:?}, right: {:?})",
+            left_shape,
+            right_shape
+        );
+    }
+    // LxM - LxM -> LxM
+    Tensor::from(
+        left_shape,
+        left_iter
+            .zip(right_iter)
+            .map(|(x, y)| x - y)
+            .collect()
+    )
+}
+
 macro_rules! tensor_view_reference_tensor_view_reference_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
@@ -343,6 +376,7 @@ macro_rules! tensor_view_reference_tensor_view_reference_operation_iter {
 }
 
 tensor_view_reference_tensor_view_reference_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for two referenced tensor views");
+tensor_view_reference_tensor_view_reference_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two referenced tensor views");
 
 macro_rules! tensor_view_reference_tensor_view_value_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -371,6 +405,7 @@ macro_rules! tensor_view_reference_tensor_view_value_operation_iter {
 }
 
 tensor_view_reference_tensor_view_value_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for two tensor views with one referenced");
+tensor_view_reference_tensor_view_value_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensor views with one referenced");
 
 macro_rules! tensor_view_value_tensor_view_reference_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -399,6 +434,7 @@ macro_rules! tensor_view_value_tensor_view_reference_operation_iter {
 }
 
 tensor_view_value_tensor_view_reference_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for two tensor views with one referenced");
+tensor_view_value_tensor_view_reference_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensor views with one referenced");
 
 macro_rules! tensor_view_value_tensor_view_value_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -427,6 +463,7 @@ macro_rules! tensor_view_value_tensor_view_value_operation_iter {
 }
 
 tensor_view_value_tensor_view_value_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for two tensor views");
+tensor_view_value_tensor_view_value_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensor views");
 
 macro_rules! tensor_view_reference_tensor_reference_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -454,6 +491,7 @@ macro_rules! tensor_view_reference_tensor_reference_operation_iter {
 }
 
 tensor_view_reference_tensor_reference_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for a referenced tensor view and a referenced tensor");
+tensor_view_reference_tensor_reference_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a referenced tensor view and a referenced tensor");
 
 macro_rules! tensor_view_reference_tensor_value_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -481,6 +519,7 @@ macro_rules! tensor_view_reference_tensor_value_operation_iter {
 }
 
 tensor_view_reference_tensor_value_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for a referenced tensor view and a tensor");
+tensor_view_reference_tensor_value_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a referenced tensor view and a tensor");
 
 macro_rules! tensor_view_value_tensor_reference_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -508,6 +547,7 @@ macro_rules! tensor_view_value_tensor_reference_operation_iter {
 }
 
 tensor_view_value_tensor_reference_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for a tensor view and a referenced tensor");
+tensor_view_value_tensor_reference_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a tensor view and a referenced tensor");
 
 macro_rules! tensor_view_value_tensor_value_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -535,6 +575,7 @@ macro_rules! tensor_view_value_tensor_value_operation_iter {
 }
 
 tensor_view_value_tensor_value_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for a tensor view and a tensor");
+tensor_view_value_tensor_value_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a tensor view and a tensor");
 
 macro_rules! tensor_reference_tensor_view_reference_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -562,6 +603,7 @@ macro_rules! tensor_reference_tensor_view_reference_operation_iter {
 }
 
 tensor_reference_tensor_view_reference_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for a referenced tensor and a referenced tensor view");
+tensor_reference_tensor_view_reference_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a referenced tensor and a referenced tensor view");
 
 macro_rules! tensor_reference_tensor_view_value_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -589,6 +631,7 @@ macro_rules! tensor_reference_tensor_view_value_operation_iter {
 }
 
 tensor_reference_tensor_view_value_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for a referenced tensor and a tensor view");
+tensor_reference_tensor_view_value_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a referenced tensor and a tensor view");
 
 macro_rules! tensor_value_tensor_view_reference_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -616,6 +659,7 @@ macro_rules! tensor_value_tensor_view_reference_operation_iter {
 }
 
 tensor_value_tensor_view_reference_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for a tensor and a referenced tensor view");
+tensor_value_tensor_view_reference_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a tensor and a referenced tensor view");
 
 macro_rules! tensor_value_tensor_view_value_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -643,6 +687,7 @@ macro_rules! tensor_value_tensor_view_value_operation_iter {
 }
 
 tensor_value_tensor_view_value_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for a tensor and a tensor view");
+tensor_value_tensor_view_value_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a tensor and a tensor view");
 
 macro_rules! tensor_reference_tensor_reference_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -669,6 +714,7 @@ macro_rules! tensor_reference_tensor_reference_operation_iter {
 }
 
 tensor_reference_tensor_reference_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for two referenced tensors");
+tensor_reference_tensor_reference_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two referenced tensors");
 
 macro_rules! tensor_reference_tensor_value_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -695,6 +741,7 @@ macro_rules! tensor_reference_tensor_value_operation_iter {
 }
 
 tensor_reference_tensor_value_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for two tensors with one referenced");
+tensor_reference_tensor_value_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensors with one referenced");
 
 macro_rules! tensor_value_tensor_reference_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -721,6 +768,7 @@ macro_rules! tensor_value_tensor_reference_operation_iter {
 }
 
 tensor_value_tensor_reference_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for two tensors with one referenced");
+tensor_value_tensor_reference_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensors with one referenced");
 
 macro_rules! tensor_value_tensor_value_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -747,6 +795,7 @@ macro_rules! tensor_value_tensor_value_operation_iter {
 }
 
 tensor_value_tensor_value_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for two tensors");
+tensor_value_tensor_value_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensors");
 
 #[test]
 fn test_all_16_combinations() {
