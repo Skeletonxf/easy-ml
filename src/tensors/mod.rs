@@ -287,7 +287,10 @@ where
      */
     #[track_caller]
     pub fn transpose(&self, dimensions: [Dimension; D]) -> Tensor<T, D> {
-        crate::tensors::views::transposition::transpose(self, dimensions)
+        // TODO: Handle error case, propagate as Dimension names to transpose to must be the same set of dimension names in the tensor
+        let transposed_order = TensorAccess::from(&self, dimensions);
+        let transposed_shape = transposed_order.shape();
+        Tensor::from(transposed_shape, transposed_order.index_order_iter().collect())
     }
 
     /**
@@ -324,7 +327,6 @@ where
                 let i = index[0];
                 let j = index[1];
                 if j >= i {
-                    println!("{:?}, {:?}", i, j);
                     let mapped_index = map_dimensions(&dimension_mapping, &index);
                     // Swap elements from the upper triangle (using index order of the actual tensor's
                     // shape)

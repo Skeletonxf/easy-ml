@@ -4,7 +4,6 @@ use crate::tensors::indexing::TensorAccess;
 use crate::tensors::{Dimension, Tensor};
 
 mod indexes;
-pub(crate) mod transposition;
 pub mod traits;
 
 pub use indexes::*;
@@ -144,6 +143,9 @@ where
      */
     #[track_caller]
     pub fn transpose(&self, dimensions: [Dimension; D]) -> Tensor<T, D> {
-        crate::tensors::views::transposition::transpose(&self.source, dimensions)
+        // TODO: Handle error case, propagate as Dimension names to transpose to must be the same set of dimension names in the tensor
+        let transposed_order = TensorAccess::from(&self.source, dimensions);
+        let transposed_shape = transposed_order.shape();
+        Tensor::from(transposed_shape, transposed_order.index_order_iter().collect())
     }
 }
