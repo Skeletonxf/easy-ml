@@ -263,7 +263,6 @@ impl<T, const D: usize> Tensor<T, D>
 where
     T: Clone,
 {
-    // TODO: Establish a consistent naming scheme for [(Dimension, usize)], [usize] and [Dimension]
     // TODO: View version
     /**
      * Returns a new Tensor which has the same data as this tensor, but with the order of the
@@ -310,6 +309,7 @@ where
      * order need not match (and if the order does match, this function is just an expensive
      * clone).
      */
+    #[track_caller]
     pub fn transpose_mut(&mut self, dimensions: [Dimension; D]) {
         use crate::tensors::dimensions::{dimension_mapping, dimension_mapping_shape, map_dimensions};
         if D == 2 && crate::tensors::dimensions::is_square(&self.dimensions) {

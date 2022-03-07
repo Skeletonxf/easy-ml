@@ -14,8 +14,10 @@
  * which is done by providing the **index**es only, with a type of `[usize; D]`.
  *
  * Dimensions and dimension names in Easy ML APIs are treated like lists, the order of
- * each dimension does make a difference for equality definitions and can be a facto
- * for the order of iteration and indexing.
+ * each dimension does make a difference for equality definitions, mathematical operations,
+ * and can be a factor for the order of iteration and indexing. However, many high level APIs
+ * that are not directly involved with order or indexing require only a dimension name and these
+ * are usually less concerned with the order of the dimensions.
  */
 
 use crate::tensors::Dimension;
