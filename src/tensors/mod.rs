@@ -264,7 +264,6 @@ where
     T: Clone,
 {
     // TODO: Establish a consistent naming scheme for [(Dimension, usize)], [usize] and [Dimension]
-    // TODO: Mut version
     // TODO: View version
     /**
      * Returns a new Tensor which has the same data as this tensor, but with the order of the
@@ -289,6 +288,69 @@ where
     #[track_caller]
     pub fn transpose(&self, dimensions: [Dimension; D]) -> Tensor<T, D> {
         crate::tensors::views::transposition::transpose(self, dimensions)
+    }
+
+    /**
+     * Edits this tensor to have the same data as before, but with the order of the
+     * dimensions and corresponding order of data changed.
+     *
+     * For example, with a `[("row", x), ("column", y)]` tensor you could call
+     * `transpose_mut(["y", "x"])` which would edit the tensor so every (y,x) of its data
+     * corresponds to (x,y) before the transposition.
+     *
+     * The transposition will try to be in place, but this is currently only supported for
+     * square tensors with 2 dimensions. Other types of tensors will not be transposed in place.
+     *
+     * # Panics
+     *
+     * If the set of dimensions in the tensor does not match the set of dimensions provided. The
+     * order need not match (and if the order does match, this function is just an expensive
+     * clone).
+     */
+    pub fn transpose_mut(&mut self, dimensions: [Dimension; D]) {
+        use crate::tensors::dimensions::{dimension_mapping, dimension_mapping_shape, map_dimensions};
+        if D == 2 && crate::tensors::dimensions::is_square(&self.dimensions) {
+            // TODO: Handle error case, propagate as Dimension names to transpose to must be the same set of dimension names in the tensor
+            let dimension_mapping = dimension_mapping(&self.dimensions, &dimensions).unwrap();
+
+            // Don't actually create an iterator because we need to retain ownership of our
+            // data so we can transpose it while iterating.
+            let mut indexes = [0; D];
+            let mut finished = self.get_reference(map_dimensions(&dimension_mapping, &indexes)).is_none();
+            let shape = dimension_mapping_shape(&self.dimensions, &dimension_mapping);
+
+            while !finished {
+                let index = indexes;
+                let i = index[0];
+                let j = index[1];
+                if j >= i {
+                    println!("{:?}, {:?}", i, j);
+                    let mapped_index = map_dimensions(&dimension_mapping, &index);
+                    // Swap elements from the upper triangle (using index order of the actual tensor's
+                    // shape)
+                    let temp = self.get_reference(index).unwrap().clone();
+                    // tensor[i,j] becomes tensor[mapping(i,j)]
+                    *self.get_reference_mut(index).unwrap() = self
+                        .get_reference(mapped_index).unwrap()
+                        .clone();
+                    // tensor[mapping(i,j)] becomes tensor[i,j]
+                    *self.get_reference_mut(mapped_index).unwrap() = temp;
+                    // If the mapping is a noop we've assigned i,j to i,j
+                    // If the mapping is i,j -> j,i we've assigned i,j to j,i and j,i to i,j
+                }
+                crate::tensors::indexing::index_order_iter(&mut finished, &mut indexes, &shape);
+            }
+
+            // now update our shape and strides to match
+            self.dimensions = shape;
+            self.strides = compute_strides(&shape);
+        } else {
+            // fallback to allocating a new transposed tensor
+            let transposed = self.transpose(dimensions);
+            self.data = transposed.data;
+            self.dimensions = transposed.dimensions;
+            self.strides = transposed.strides;
+        }
     }
 
     /**

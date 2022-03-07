@@ -64,12 +64,12 @@ pub(crate) fn dimension_mapping<const D: usize>(
     Some(mapping)
 }
 
-pub(crate) fn same_dimensions<const D: usize>(
-    source: &[(Dimension, usize); D],
-    requested: &[Dimension; D],
-) -> bool {
-    dimension_mapping(source, requested).is_some()
-}
+// pub(crate) fn same_dimensions<const D: usize>(
+//     source: &[(Dimension, usize); D],
+//     requested: &[Dimension; D],
+// ) -> bool {
+//     dimension_mapping(source, requested).is_some()
+// }
 
 // Reorders some indexes according to the dimension_mapping to return indexes in source order from
 // input indexes in the arbitary order
