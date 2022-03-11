@@ -260,28 +260,20 @@ where
     }
 }
 
-// fn tensor_addition<T, S1, S2, const D: usize>(left: S1, right: S2) -> Tensor<T, D>
-// where
-//     T: Numeric,
-//     for<'a> &'a T: NumericRef<T>,
-//     S1: TensorRef<T, D>,
-//     S2: TensorRef<T, D>,
-// {
-//     if left.view_shape() != right.view_shape() {
-//         panic!(
-//             "Dimensions of left and right tensors are not the same: (left: {:?}, right: {:?})",
-//             left.view_shape(),
-//             right.view_shape()
-//         );
-//     }
-//     Tensor::from(
-//         left.view_shape(),
-//         TensorAccess::from_source_order(left).index_order_reference_iter()
-//             .zip(TensorAccess::from_source_order(right).index_order_reference_iter())
-//             .map(|(x, y)| x + y)
-//             .collect()
-//     )
-// }
+#[track_caller]
+#[inline]
+fn assert_same_dimensions<const D: usize>(
+    left_shape: [(Dimension, usize); D],
+    right_shape: [(Dimension, usize); D],
+) {
+    if left_shape != right_shape {
+        panic!(
+            "Dimensions of left and right tensors are not the same: (left: {:?}, right: {:?})",
+            left_shape,
+            right_shape
+        );
+    }
+}
 
 #[track_caller]
 #[inline]
@@ -299,13 +291,7 @@ where
     S1: Iterator<Item = &'l T>,
     S2: Iterator<Item = &'r T>,
 {
-    if left_shape != right_shape {
-        panic!(
-            "Dimensions of left and right tensors are not the same: (left: {:?}, right: {:?})",
-            left_shape,
-            right_shape
-        );
-    }
+    assert_same_dimensions(left_shape, right_shape);
     // LxM + LxM -> LxM
     Tensor::from(
         left_shape,
@@ -332,13 +318,7 @@ where
     S1: Iterator<Item = &'l T>,
     S2: Iterator<Item = &'r T>,
 {
-    if left_shape != right_shape {
-        panic!(
-            "Dimensions of left and right tensors are not the same: (left: {:?}, right: {:?})",
-            left_shape,
-            right_shape
-        );
-    }
+    assert_same_dimensions(left_shape, right_shape);
     // LxM - LxM -> LxM
     Tensor::from(
         left_shape,
@@ -348,6 +328,86 @@ where
             .collect()
     )
 }
+
+/**
+ * Computes the dot product (also known as scalar product) on two equal length iterators,
+ * yielding a scalar which is the sum of the products of each pair in the iterators.
+ *
+ *
+ * https://en.wikipedia.org/wiki/Dot_product
+ */
+#[inline]
+fn scalar_product<'l, 'r, T, S1, S2>(
+    left_iter: S1, right_iter: S2,
+) -> T
+    where
+    T: Numeric,
+    T: 'l,
+    T: 'r,
+    for<'a> &'a T: NumericRef<T>,
+    S1: Iterator<Item = &'l T>,
+    S2: Iterator<Item = &'r T>,
+{
+    left_iter
+        .zip(right_iter)
+        .map(|(x, y)| x * y)
+        .sum()
+}
+
+#[track_caller]
+#[inline]
+fn tensor_view_vector_product_iter<'l, 'r, T, S1, S2>(
+    left_iter: S1,
+    left_shape: [(Dimension, usize); 1],
+    right_iter: S2,
+    right_shape: [(Dimension, usize); 1],
+) -> T
+where
+    T: Numeric,
+    T: 'l,
+    T: 'r,
+    for<'a> &'a T: NumericRef<T>,
+    S1: Iterator<Item = &'l T>,
+    S2: Iterator<Item = &'r T>,
+{
+    assert_same_dimensions(left_shape, right_shape);
+    // [a,b,c] . [d,e,f] -> a*d + b*e + c*f
+    scalar_product::<T, S1, S2>(left_iter, right_iter)
+}
+
+fn tensor_view_matrix_product<T, S1, S2>(left: S1, right: S2) -> Tensor<T, 2>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+    S1: TensorRef<T, 2>,
+    S2: TensorRef<T, 2>,
+{
+    assert_same_dimensions(left.view_shape(), right.view_shape());
+    // LxM * MxN -> LxN
+    // [a,b,c; d,e,f] * [g,h; i,j; k,l] -> [a*g+b*i+c*k, a*h+b*j+c*l; d*g+e*i+f*k, d*h+e*j+f*l]
+    // Matrix multiplication gives us another Matrix where each element [i,j] is the dot product
+    // of the i'th row in the left matrix and the j'th column in the right matrix.
+    let mut tensor = Tensor::empty([left.view_shape()[0], right.view_shape()[1]], T::zero());
+    let left = TensorView::from(left);
+    let right = TensorView::from(right);
+    for ([i, j], x) in tensor.source_order_mut().index_order_reference_mut_iter().with_index() {
+        // TODO: Need to mask out all but one index of a dimension so we can create the right
+        // row/column iterators here
+        //*x = scalar_product::<T, S1, S2>(left.iter(), right.iter())
+    }
+    tensor
+}
+
+// Tensor multiplication (⊗) gives another Tensor where each element [i,j,k] is the dot product of
+// the [i,j,*] vector in the left tensor and the [*,j,k] vector in the right tensor???
+
+
+
+
+
+
+
+
 
 macro_rules! tensor_view_reference_tensor_view_reference_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {

@@ -263,6 +263,21 @@ impl<T, const D: usize> Tensor<T, D>
 where
     T: Clone,
 {
+    /**
+     * Creates a tensor with a particular number of dimensions and length in each dimension
+     * with all elements initialised to the provided value.
+     *
+     * # Panics
+     *
+     * - If a dimension name is not unique
+     * - If any dimension has 0 elements
+     */
+    #[track_caller]
+    pub fn empty(dimensions: [(Dimension, usize); D], value: T) -> Self {
+        let elements = crate::tensors::dimensions::elements(&dimensions);
+        Tensor::from(dimensions, vec![ value; elements ])
+    }
+
     // TODO: View version
     /**
      * Returns a new Tensor which has the same data as this tensor, but with the order of the
