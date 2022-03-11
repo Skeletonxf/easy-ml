@@ -382,7 +382,12 @@ where
     S1: TensorRef<T, 2>,
     S2: TensorRef<T, 2>,
 {
-    assert_same_dimensions(left.view_shape(), right.view_shape());
+    assert!(
+        left.view_shape()[0] == right.view_shape()[1],
+        "Mismatched Matrices, left is {:?}, right is {:?}, * is only defined for MxN * NxL",
+        left.view_shape(),
+        right.view_shape()
+    );
     // LxM * MxN -> LxN
     // [a,b,c; d,e,f] * [g,h; i,j; k,l] -> [a*g+b*i+c*k, a*h+b*j+c*l; d*g+e*i+f*k, d*h+e*j+f*l]
     // Matrix multiplication gives us another Matrix where each element [i,j] is the dot product
