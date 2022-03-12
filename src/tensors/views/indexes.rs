@@ -134,6 +134,12 @@ fn dimensionality_reduction() {
     assert_eq!(vector, Tensor::from([("row", 2)], vec![
         4, 6
     ]));
+    // equivalent to selecting both together
+    let vector = TensorView::from(TensorIndex::from(&tensor, [("batch", 1), ("column", 0)]));
+    assert_eq!(vector.shape(), [("row", 2)]);
+    assert_eq!(vector, Tensor::from([("row", 2)], vec![
+        4, 6
+    ]));
 
     // selects second row of data
     let matrix = TensorView::from(TensorIndex::from(&tensor, [("row", 1)]));
@@ -152,6 +158,12 @@ fn dimensionality_reduction() {
     ]));
     // selects first batch
     let vector = TensorView::from(TensorIndex::from(matrix.source(), [("batch", 0)]));
+    assert_eq!(vector.shape(), [("row", 2)]);
+    assert_eq!(vector, Tensor::from([("row", 2)], vec![
+        1, 3,
+    ]));
+    // equivalent to selecting both together
+    let vector = TensorView::from(TensorIndex::from(&tensor, [("batch", 0), ("column", 1)]));
     assert_eq!(vector.shape(), [("row", 2)]);
     assert_eq!(vector, Tensor::from([("row", 2)], vec![
         1, 3,
