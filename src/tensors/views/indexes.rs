@@ -47,6 +47,20 @@ where
             _type: PhantomData,
         }
     }
+
+    pub fn source(self) -> S {
+        self.source
+    }
+
+    // # Safety
+    //
+    // Giving out a mutable reference to our source could allow it to be changed out from under us
+    // and make our provided indexes invalid. However, since the source implements TensorRef
+    // interior mutability is not allowed, so we can give out shared references without breaking
+    // our own integrity.
+    pub fn source_ref(&self) -> &S {
+        &self.source
+    }
 }
 
 macro_rules! tensor_ref_impl {
@@ -85,6 +99,20 @@ macro_rules! tensor_ref_impl {
                     .map(|(_, (name, length))| (*name, *length));
                 [ ("", 0); $d - $i ].map(|_| unprovided.next().unwrap())
             }
+
+            unsafe fn get_reference_unchecked(&self, indexes: [usize; $d - $i]) -> &T {
+                // TODO: Can we use unwrap_unchecked here?
+                let mut supplied = indexes.iter();
+                // Indexes have to be in the order of our shape, so they must fill in the None
+                // slots of our provided array since we created that in the same order as our
+                // view_shape
+                let mut combined = self.provided.iter().map(|provided| match provided {
+                    None => *supplied.next().unwrap(),
+                    Some(i) => *i,
+                });
+                let index = [ 0; $d ].map(|_| combined.next().unwrap());
+                self.source.get_reference_unchecked(index)
+            }
         }
     };
 }
@@ -109,6 +137,7 @@ tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 3 2);
 tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 3 3);
 tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 2 1);
 tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 2 2);
+tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 1 1);
 
 #[test]
 fn dimensionality_reduction() {

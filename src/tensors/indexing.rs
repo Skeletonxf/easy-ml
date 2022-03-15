@@ -42,6 +42,9 @@ use std::marker::PhantomData;
 
 pub use crate::matrices::iterators::WithIndex;
 
+// TODO: Unchecked indexing APIs
+// TODO: Iterators should use unchecked indexing once fully stress tested.
+
 /**
  * Access to the data in a Tensor with a particular order of dimension indexing.
  *

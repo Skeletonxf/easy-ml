@@ -8,15 +8,100 @@ pub mod traits;
 
 pub use indexes::*;
 
-// TODO: Document NoInteriorMutability as part of TensorRef (can't use it as a supertrait because then blanket impls would have to be breaking or not useful)
+/**
+* A shared/immutable reference to a tensor (or a portion of it) of some type and number of
+* dimensions.
+*
+* # Indexing
+*
+* A TensorRef has a shape of type `[(Dimension, usize); D]`. This defines the valid indexes along
+* each dimension name and length pair from 0 inclusive to the length exclusive. If the shape was
+* `[("r", 2), ("c", 2)]` the indexes used would be `[0,0]`, `[0,1]`, `[1,0]` and `[1,1]`. Although
+* the dimension name in each pair is used for many high level APIs, for TensorRef the order of
+* dimensions is used, and the indexes (`[usize; D]`) these trait methods are called with must
+* be in the same order as the shape.
+*
+* # Safety
+*
+* In order to support returning references without bounds checking in a useful way, the
+* implementing type is required to uphold several invariants.
+*
+* 1 - Any valid index as described in Indexing will yield a safe reference when calling
+* `get_reference_unchecked` and `get_reference_unchecked_mut`.
+*
+* 2 - The view shape that defines which indexes are valid may not be changed by a shared reference
+* to the TensorRef implementation. ie, the tensor may not be resized while a mutable reference is
+* held to it, except by that reference.
+*
+* Essentially, interior mutability causes problems, since code looping through the range of valid
+* indexes in a TensorRef needs to be able to rely on that range of valid indexes not changing.
+* This is trivially the case by default since a [Tensor](Tensor) does not have any form of
+* interior mutability, and therefore an iterator holding a shared reference to a Tensor prevents
+* that tensor being resized. However, a type *wrongly* implementing TensorRef could introduce
+* interior mutability by putting the Tensor in an `Arc<Mutex<>>` which would allow another thread
+* to resize a tensor while an iterator was looping through previously valid indexes on a different
+* thread. This is the same contract as [`NoInteriorMutability`](NoInteriorMutability) used in in
+* the matrix APIs.
+*
+* Note that it is okay to be able to resize any TensorRef implementation if that always requires
+* an exclusive reference to the TensorRef/Tensor, since the exclusivity prevents the above
+* scenario.
+*/
 pub unsafe trait TensorRef<T, const D: usize> {
+    /**
+     * Gets a reference to the value at the index if the index is in range. Otherwise returns None.
+     */
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T>;
 
+    /**
+     * The shape this tensor has. See [dimensions](crate::easy_ml::tensors::dimensions) for
+     * an overview. The product of the lengths in the pairs define how many elements are in the
+     * tensor (or the portion of it that is visible).
+     */
     fn view_shape(&self) -> [(Dimension, usize); D];
+
+    /**
+     * Gets a reference to the value at the index without doing any bounds checking. For a safe
+     * alternative see [get_reference](TensorRef::get_reference).
+     *
+     * # Safety
+     *
+     * Calling this method with an out-of-bounds index is *[undefined behavior]* even if the
+     * resulting reference is not used. Valid indexes are defined as in [TensorRef].
+     *
+     * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
+     * [TensorRef]: TensorRef
+     */
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T;
 }
 
+/**
+ * A unique/mutable reference to a tensor (or a portion of it) of some type.
+ *
+ * # Safety
+ *
+ * See [TensorRef](TensorRef).
+ */
 pub unsafe trait TensorMut<T, const D: usize>: TensorRef<T, D> {
+    /**
+     * Gets a mutable reference to the value at the index, if the index is in range. Otherwise
+     * returns None.
+     */
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T>;
+
+    /**
+     * Gets a mutable reference to the value at the index without doing any bounds checking.
+     * For a safe alternative see [get_reference_mut](TensorMut::get_reference_mut).
+     *
+     * # Safety
+     *
+     * Calling this method with an out-of-bounds index is *[undefined behavior]* even if the
+     * resulting reference is not used. Valid indexes are defined as in [TensorRef].
+     *
+     * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
+     * [TensorRef]: TensorRef
+     */
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T;
 }
 
 #[derive(Debug)]

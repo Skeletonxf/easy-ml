@@ -115,6 +115,12 @@ impl<T> Tensor<T, 0> {
     }
 }
 
+// # Safety
+//
+// We promise to never implement interior mutability for Tensor.
+/**
+ * A Tatrix implements TensorRef.
+ */
 unsafe impl<T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
         let i = get_index_direct(&indexes, &self.strides, &self.dimensions)?;
@@ -124,12 +130,33 @@ unsafe impl<T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
     fn view_shape(&self) -> [(Dimension, usize); D] {
         Tensor::shape(self)
     }
+
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        // The point of get_reference_unchecked is no bounds checking, and therefore
+        // it does not make any sense to just use `unwrap` here. The trait documents that
+        // it's undefind behaviour to call this method with an out of bounds index, so we
+        // can assume the None case will never happen.
+        let i = get_index_direct(&indexes, &self.strides, &self.dimensions).unwrap_unchecked();
+        self.data.get_unchecked(i)
+    }
 }
 
+// # Safety
+//
+// We promise to never implement interior mutability for Tensor.
 unsafe impl<T, const D: usize> TensorMut<T, D> for Tensor<T, D> {
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
         let i = get_index_direct(&indexes, &self.strides, &self.dimensions)?;
         self.data.get_mut(i)
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        // The point of get_reference_unchecked_mut is no bounds checking, and therefore
+        // it does not make any sense to just use `unwrap` here. The trait documents that
+        // it's undefind behaviour to call this method with an out of bounds index, so we
+        // can assume the None case will never happen.
+        let i = get_index_direct(&indexes, &self.strides, &self.dimensions).unwrap_unchecked();
+        self.data.get_unchecked_mut(i)
     }
 }
 
