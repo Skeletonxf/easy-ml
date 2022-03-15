@@ -268,8 +268,7 @@ where
      * the tensor in place.
      */
     pub fn map_mut(&mut self, mapping_function: impl Fn(T) -> T) {
-        self
-            .index_order_reference_mut_iter()
+        self.index_order_reference_mut_iter()
             .for_each(|x| *x = mapping_function(x.clone()));
     }
 }
