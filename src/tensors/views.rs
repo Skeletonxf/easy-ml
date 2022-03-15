@@ -40,7 +40,8 @@ pub use indexes::*;
 * that tensor being resized. However, a type *wrongly* implementing TensorRef could introduce
 * interior mutability by putting the Tensor in an `Arc<Mutex<>>` which would allow another thread
 * to resize a tensor while an iterator was looping through previously valid indexes on a different
-* thread. This is the same contract as [`NoInteriorMutability`](NoInteriorMutability) used in in
+* thread. This is the same contract as
+* [`NoInteriorMutability`](crate::matrices::views::NoInteriorMutability) used in in
 * the matrix APIs.
 *
 * Note that it is okay to be able to resize any TensorRef implementation if that always requires
@@ -54,9 +55,9 @@ pub unsafe trait TensorRef<T, const D: usize> {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T>;
 
     /**
-     * The shape this tensor has. See [dimensions](crate::easy_ml::tensors::dimensions) for
-     * an overview. The product of the lengths in the pairs define how many elements are in the
-     * tensor (or the portion of it that is visible).
+     * The shape this tensor has. See [dimensions](crate::tensors::dimensions) for an overview.
+     * The product of the lengths in the pairs define how many elements are in the tensor
+     * (or the portion of it that is visible).
      */
     fn view_shape(&self) -> [(Dimension, usize); D];
 
