@@ -27,7 +27,7 @@ where
         if I > D {
             panic!("D - I must be >= 0, D: {:?}, I: {:?}", D, I);
         }
-        let mut provided = [ None; D ];
+        let mut provided = [None; D];
         for (name, index) in &provided_index {
             // Every provided index must match a dimension name in the source and be a valid
             // index within the length
@@ -73,10 +73,10 @@ macro_rules! tensor_ref_impl {
         // array therefore will be in the same order as the source's view_shape. Hence we can
         // index correctly by filling in the None slots of provided with the supplied indexes,
         // which also have to be in order.
-        unsafe impl <T, S> TensorRef<T, {$d - $i}> for TensorIndex<T, S, $d, $i>
+        unsafe impl<T, S> TensorRef<T, { $d - $i }> for TensorIndex<T, S, $d, $i>
         where
-            S: TensorRef<T, $d>
-         {
+            S: TensorRef<T, $d>,
+        {
             fn get_reference(&self, indexes: [usize; $d - $i]) -> Option<&T> {
                 let mut supplied = indexes.iter();
                 // Indexes have to be in the order of our shape, so they must fill in the None
@@ -86,7 +86,7 @@ macro_rules! tensor_ref_impl {
                     None => *supplied.next().unwrap(),
                     Some(i) => *i,
                 });
-                let index = [ 0; $d ].map(|_| combined.next().unwrap());
+                let index = [0; $d].map(|_| combined.next().unwrap());
                 self.source.get_reference(index)
             }
 
@@ -97,7 +97,7 @@ macro_rules! tensor_ref_impl {
                     .enumerate()
                     .filter(|(i, _)| self.provided[*i].is_none())
                     .map(|(_, (name, length))| (*name, *length));
-                [ ("", 0); $d - $i ].map(|_| unprovided.next().unwrap())
+                [("", 0); $d - $i].map(|_| unprovided.next().unwrap())
             }
 
             unsafe fn get_reference_unchecked(&self, indexes: [usize; $d - $i]) -> &T {
@@ -110,7 +110,7 @@ macro_rules! tensor_ref_impl {
                     None => *supplied.next().unwrap(),
                     Some(i) => *i,
                 });
-                let index = [ 0; $d ].map(|_| combined.next().unwrap());
+                let index = [0; $d].map(|_| combined.next().unwrap());
                 self.source.get_reference_unchecked(index)
             }
         }
@@ -141,8 +141,9 @@ tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 1 1);
 
 #[test]
 fn dimensionality_reduction() {
-    use crate::tensors::Tensor;
     use crate::tensors::views::TensorView;
+    use crate::tensors::Tensor;
+    #[rustfmt::skip]
     let tensor = Tensor::from([("batch", 2), ("row", 2), ("column", 2)], vec![
         0, 1,
         2, 3,
@@ -153,48 +154,40 @@ fn dimensionality_reduction() {
     // selects second 2x2
     let matrix = TensorView::from(TensorIndex::from(&tensor, [("batch", 1)]));
     assert_eq!(matrix.shape(), [("row", 2), ("column", 2)]);
-    assert_eq!(matrix, Tensor::from([("row", 2), ("column", 2)], vec![
-        4, 5,
-        6, 7
-    ]));
+    assert_eq!(
+        matrix,
+        Tensor::from([("row", 2), ("column", 2)], vec![4, 5, 6, 7])
+    );
     // selects first column
     let vector = TensorView::from(TensorIndex::from(matrix.source(), [("column", 0)]));
     assert_eq!(vector.shape(), [("row", 2)]);
-    assert_eq!(vector, Tensor::from([("row", 2)], vec![
-        4, 6
-    ]));
+    assert_eq!(vector, Tensor::from([("row", 2)], vec![4, 6]));
     // equivalent to selecting both together
     let vector = TensorView::from(TensorIndex::from(&tensor, [("batch", 1), ("column", 0)]));
     assert_eq!(vector.shape(), [("row", 2)]);
-    assert_eq!(vector, Tensor::from([("row", 2)], vec![
-        4, 6
-    ]));
+    assert_eq!(vector, Tensor::from([("row", 2)], vec![4, 6]));
 
     // selects second row of data
     let matrix = TensorView::from(TensorIndex::from(&tensor, [("row", 1)]));
     assert_eq!(matrix.shape(), [("batch", 2), ("column", 2)]);
-    assert_eq!(matrix, Tensor::from([("batch", 2), ("column", 2)], vec![
-        2, 3,
-        6, 7
-    ]));
+    assert_eq!(
+        matrix,
+        Tensor::from([("batch", 2), ("column", 2)], vec![2, 3, 6, 7])
+    );
 
     // selects second column of data
     let matrix = TensorView::from(TensorIndex::from(&tensor, [("column", 1)]));
     assert_eq!(matrix.shape(), [("batch", 2), ("row", 2)]);
-    assert_eq!(matrix, Tensor::from([("batch", 2), ("row", 2)], vec![
-        1, 3,
-        5, 7
-    ]));
+    assert_eq!(
+        matrix,
+        Tensor::from([("batch", 2), ("row", 2)], vec![1, 3, 5, 7])
+    );
     // selects first batch
     let vector = TensorView::from(TensorIndex::from(matrix.source(), [("batch", 0)]));
     assert_eq!(vector.shape(), [("row", 2)]);
-    assert_eq!(vector, Tensor::from([("row", 2)], vec![
-        1, 3,
-    ]));
+    assert_eq!(vector, Tensor::from([("row", 2)], vec![1, 3,]));
     // equivalent to selecting both together
     let vector = TensorView::from(TensorIndex::from(&tensor, [("batch", 0), ("column", 1)]));
     assert_eq!(vector.shape(), [("row", 2)]);
-    assert_eq!(vector, Tensor::from([("row", 2)], vec![
-        1, 3,
-    ]));
+    assert_eq!(vector, Tensor::from([("row", 2)], vec![1, 3,]));
 }

@@ -75,13 +75,13 @@ where
     ) -> Result<TensorAccess<T, S, D>, InvalidDimensionsError<D>> {
         Ok(TensorAccess {
             dimension_mapping: crate::tensors::dimensions::dimension_mapping(
-                &source.view_shape(), &dimensions
-            ).ok_or_else(
-                || InvalidDimensionsError {
-                    actual: source.view_shape(),
-                    requested: dimensions,
-                },
-            )?,
+                &source.view_shape(),
+                &dimensions,
+            )
+            .ok_or_else(|| InvalidDimensionsError {
+                actual: source.view_shape(),
+                requested: dimensions,
+            })?,
             source,
             _type: PhantomData,
         })
@@ -123,7 +123,8 @@ where
 
     pub fn shape(&self) -> [(Dimension, usize); D] {
         crate::tensors::dimensions::dimension_mapping_shape(
-            &self.source.view_shape(), &self.dimension_mapping
+            &self.source.view_shape(),
+            &self.dimension_mapping,
         )
     }
 }
@@ -167,9 +168,11 @@ where
     S: TensorRef<T, D>,
 {
     pub fn try_get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        self.source.get_reference(
-            crate::tensors::dimensions::map_dimensions(&self.dimension_mapping, &indexes)
-        )
+        self.source
+            .get_reference(crate::tensors::dimensions::map_dimensions(
+                &self.dimension_mapping,
+                &indexes,
+            ))
     }
 
     #[track_caller]
@@ -215,7 +218,10 @@ where
      * function applied to each.
      */
     pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Tensor<U, D> {
-        let mapped = self.index_order_iter().map(|x| mapping_function(x)).collect();
+        let mapped = self
+            .index_order_iter()
+            .map(|x| mapping_function(x))
+            .collect();
         Tensor::from(self.shape(), mapped)
     }
 
@@ -229,9 +235,11 @@ where
     S: TensorMut<T, D>,
 {
     pub fn try_get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
-        self.source.get_reference_mut(
-            crate::tensors::dimensions::map_dimensions(&self.dimension_mapping, &indexes)
-        )
+        self.source
+            .get_reference_mut(crate::tensors::dimensions::map_dimensions(
+                &self.dimension_mapping,
+                &indexes,
+            ))
     }
 
     #[track_caller]
@@ -260,7 +268,9 @@ where
      * the tensor in place.
      */
     pub fn map_mut(&mut self, mapping_function: impl Fn(T) -> T) {
-        self.index_order_reference_mut_iter().for_each(|x| *x = mapping_function(x.clone()));
+        self
+            .index_order_reference_mut_iter()
+            .for_each(|x| *x = mapping_function(x.clone()));
     }
 }
 
@@ -402,9 +412,8 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        index_order_iter(&mut self.finished, &mut self.indexes, &self.shape).map(|indexes| {
-            self.tensor.get(indexes)
-        })
+        index_order_iter(&mut self.finished, &mut self.indexes, &self.shape)
+            .map(|indexes| self.tensor.get(indexes))
     }
 }
 
@@ -521,9 +530,8 @@ where
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        index_order_iter(&mut self.finished, &mut self.indexes, &self.shape).map(|indexes| {
-            self.tensor.get_reference(indexes)
-        })
+        index_order_iter(&mut self.finished, &mut self.indexes, &self.shape)
+            .map(|indexes| self.tensor.get_reference(indexes))
     }
 }
 
@@ -551,7 +559,9 @@ impl<'a, T, S, const D: usize> IndexOrderReferenceMutIterator<'a, T, S, D>
 where
     S: TensorMut<T, D>,
 {
-    pub fn from(tensor_access: &mut TensorAccess<T, S, D>) -> IndexOrderReferenceMutIterator<T, S, D> {
+    pub fn from(
+        tensor_access: &mut TensorAccess<T, S, D>,
+    ) -> IndexOrderReferenceMutIterator<T, S, D> {
         IndexOrderReferenceMutIterator {
             finished: !tensor_access.index_is_valid([0; D]),
             shape: tensor_access.shape(),

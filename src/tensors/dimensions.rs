@@ -87,8 +87,10 @@ pub(crate) fn map_dimensions<const D: usize>(
     lookup
 }
 
-
-pub(crate) fn dimension_mapping_shape<const D: usize>(source: &[(Dimension, usize); D], dimension_mapping: &[usize; D]) -> [(Dimension, usize); D] {
+pub(crate) fn dimension_mapping_shape<const D: usize>(
+    source: &[(Dimension, usize); D],
+    dimension_mapping: &[usize; D],
+) -> [(Dimension, usize); D] {
     #[allow(clippy::clone_on_copy)]
     let mut shape = source.clone();
     for d in 0..D {
@@ -128,15 +130,9 @@ pub fn names_of<const D: usize>(dimensions: &[(Dimension, usize); D]) -> [Dimens
 
 #[test]
 fn test_dimension_mapping() {
-    let mapping = dimension_mapping(
-        &[("x", 0), ("y", 0), ("z", 0)],
-        &["x", "y", "z"],
-    );
+    let mapping = dimension_mapping(&[("x", 0), ("y", 0), ("z", 0)], &["x", "y", "z"]);
     assert_eq!([0, 1, 2], mapping.unwrap());
-    let mapping = dimension_mapping(
-        &[("x", 0), ("y", 0), ("z", 0)],
-        &["z", "y", "x"],
-    );
+    let mapping = dimension_mapping(&[("x", 0), ("y", 0), ("z", 0)], &["z", "y", "x"]);
     assert_eq!([2, 1, 0], mapping.unwrap());
 }
 

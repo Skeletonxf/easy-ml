@@ -83,4 +83,4 @@ assert!(Matrix::from_flat_row_major((2, 2), vec![2, 3, 4, 5]) == view);
 */
 
 #[allow(unused_imports)] // used in doc links
-use crate::matrices::views::{MatrixView, MatrixMut, MatrixRef, NoInteriorMutability};
+use crate::matrices::views::{MatrixMut, MatrixRef, MatrixView, NoInteriorMutability};

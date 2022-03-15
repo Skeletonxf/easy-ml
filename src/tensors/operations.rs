@@ -3,9 +3,9 @@
  */
 
 use crate::numeric::{Numeric, NumericRef};
-use crate::tensors::{Dimension, Tensor};
 use crate::tensors::indexing::TensorAccess;
 use crate::tensors::views::{TensorRef, TensorView};
+use crate::tensors::{Dimension, Tensor};
 
 use std::ops::{Add, Sub};
 
@@ -18,7 +18,8 @@ where
     S2: TensorRef<T, D>,
 {
     left.view_shape() == right.view_shape()
-        && TensorAccess::from_source_order(left).index_order_reference_iter()
+        && TensorAccess::from_source_order(left)
+            .index_order_reference_iter()
             .zip(TensorAccess::from_source_order(right).index_order_reference_iter())
             .all(|(x, y)| x == y)
 }
@@ -45,7 +46,8 @@ where
     if left_shape != right_access.shape() {
         return false;
     }
-    left_access.index_order_reference_iter()
+    left_access
+        .index_order_reference_iter()
         .zip(right_access.index_order_reference_iter())
         .all(|(x, y)| x == y)
 }
@@ -143,8 +145,8 @@ pub trait Similar<Rhs: ?Sized = Self>: private::Sealed {
 }
 
 mod private {
+    use crate::tensors::views::{TensorRef, TensorView};
     use crate::tensors::Tensor;
-    use crate::tensors::views::{TensorView, TensorRef};
 
     pub trait Sealed<Rhs: ?Sized = Self> {}
 
@@ -154,17 +156,20 @@ mod private {
         T: PartialEq,
         S1: TensorRef<T, D>,
         S2: TensorRef<T, D>,
-    {}
+    {
+    }
     impl<T, S, const D: usize> Sealed<TensorView<T, S, D>> for Tensor<T, D>
     where
         T: PartialEq,
         S: TensorRef<T, D>,
-    {}
+    {
+    }
     impl<T, S, const D: usize> Sealed<Tensor<T, D>> for TensorView<T, S, D>
     where
         T: PartialEq,
         S: TensorRef<T, D>,
-    {}
+    {
+    }
 }
 
 impl<T: PartialEq, const D: usize> Similar for Tensor<T, D> {
@@ -221,7 +226,7 @@ where
      * Two TensorViewss are similar if they have the same **set** of dimension names and
      * lengths even if two shapes are not in the same order, and all their elements are equal
      * when comparing both tensors via the same dimension ordering.
-      * Differences in their source types are ignored.
+     * Differences in their source types are ignored.
      */
     fn similar(&self, other: &TensorView<T, S2, D>) -> bool {
         tensor_similarity(self.source_ref(), other.source_ref())
@@ -269,8 +274,7 @@ fn assert_same_dimensions<const D: usize>(
     if left_shape != right_shape {
         panic!(
             "Dimensions of left and right tensors are not the same: (left: {:?}, right: {:?})",
-            left_shape,
-            right_shape
+            left_shape, right_shape
         );
     }
 }
@@ -295,10 +299,7 @@ where
     // LxM + LxM -> LxM
     Tensor::from(
         left_shape,
-        left_iter
-            .zip(right_iter)
-            .map(|(x, y)| x + y)
-            .collect()
+        left_iter.zip(right_iter).map(|(x, y)| x + y).collect(),
     )
 }
 
@@ -322,10 +323,7 @@ where
     // LxM - LxM -> LxM
     Tensor::from(
         left_shape,
-        left_iter
-            .zip(right_iter)
-            .map(|(x, y)| x - y)
-            .collect()
+        left_iter.zip(right_iter).map(|(x, y)| x - y).collect(),
     )
 }
 
@@ -337,10 +335,8 @@ where
  * https://en.wikipedia.org/wiki/Dot_product
  */
 #[inline]
-fn scalar_product<'l, 'r, T, S1, S2>(
-    left_iter: S1, right_iter: S2,
-) -> T
-    where
+fn scalar_product<'l, 'r, T, S1, S2>(left_iter: S1, right_iter: S2) -> T
+where
     T: Numeric,
     T: 'l,
     T: 'r,
@@ -348,10 +344,7 @@ fn scalar_product<'l, 'r, T, S1, S2>(
     S1: Iterator<Item = &'l T>,
     S2: Iterator<Item = &'r T>,
 {
-    left_iter
-        .zip(right_iter)
-        .map(|(x, y)| x * y)
-        .sum()
+    left_iter.zip(right_iter).map(|(x, y)| x * y).sum()
 }
 
 #[track_caller]
@@ -395,7 +388,11 @@ where
     let mut tensor = Tensor::empty([left.view_shape()[0], right.view_shape()[1]], T::zero());
     let left = TensorView::from(left);
     let right = TensorView::from(right);
-    for ([i, j], x) in tensor.source_order_mut().index_order_reference_mut_iter().with_index() {
+    for ([i, j], x) in tensor
+        .source_order_mut()
+        .index_order_reference_mut_iter()
+        .with_index()
+    {
         // TODO: Need to mask out all but one index of a dimension so we can create the right
         // row/column iterators here
         //*x = scalar_product::<T, S1, S2>(left.iter(), right.iter())
@@ -405,14 +402,6 @@ where
 
 // Tensor multiplication (⊗) gives another Tensor where each element [i,j,k] is the dot product of
 // the [i,j,*] vector in the left tensor and the [*,j,k] vector in the right tensor???
-
-
-
-
-
-
-
-
 
 macro_rules! tensor_view_reference_tensor_view_reference_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -894,19 +883,16 @@ fn test_all_16_combinations() {
 
 #[test]
 fn tmp_addition_test() {
-    let tensor_1: Tensor<i32, 2> = Tensor::from([("r", 2), ("c", 2)], vec![ 1, 2, 3, 4 ]);
-    let tensor_2: Tensor<i32, 2> = Tensor::from([("r", 2), ("c", 2)], vec![ 3, 2, 8, 1 ]);
+    let tensor_1: Tensor<i32, 2> = Tensor::from([("r", 2), ("c", 2)], vec![1, 2, 3, 4]);
+    let tensor_2: Tensor<i32, 2> = Tensor::from([("r", 2), ("c", 2)], vec![3, 2, 8, 1]);
     let added: Tensor<i32, 2> = tensor_1 + tensor_2;
-    assert_eq!(
-        added,
-        Tensor::from([("r", 2), ("c", 2)], vec![ 4, 4, 11, 5 ])
-    );
+    assert_eq!(added, Tensor::from([("r", 2), ("c", 2)], vec![4, 4, 11, 5]));
 }
 
 #[should_panic]
 #[test]
 fn tmp_addition_test_similar_not_matching() {
-    let tensor_1: Tensor<i32, 2> = Tensor::from([("r", 2), ("c", 2)], vec![ 1, 2, 3, 4 ]);
-    let tensor_2: Tensor<i32, 2> = Tensor::from([("c", 2), ("r", 2)], vec![ 3, 8, 2, 1 ]);
-    let _: Tensor<i32, 2> =  tensor_1 + tensor_2;
+    let tensor_1: Tensor<i32, 2> = Tensor::from([("r", 2), ("c", 2)], vec![1, 2, 3, 4]);
+    let tensor_2: Tensor<i32, 2> = Tensor::from([("c", 2), ("r", 2)], vec![3, 8, 2, 1]);
+    let _: Tensor<i32, 2> = tensor_1 + tensor_2;
 }

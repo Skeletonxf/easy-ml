@@ -5,7 +5,6 @@
  * then the tensor can be used in a mathematical way. `D` is the number of dimensions in the tensor
  * and a compile time constant.
  */
-
 use crate::tensors::indexing::TensorAccess;
 use crate::tensors::views::{TensorMut, TensorRef, TensorView};
 
@@ -163,11 +162,7 @@ unsafe impl<T, const D: usize> TensorMut<T, D> for Tensor<T, D> {
 fn compute_strides<const D: usize>(dimensions: &[(Dimension, usize); D]) -> [usize; D] {
     let mut strides = [0; D];
     for d in 0..D {
-        strides[d] = dimensions
-            .iter()
-            .skip(d + 1)
-            .map(|d| d.1)
-            .product();
+        strides[d] = dimensions.iter().skip(d + 1).map(|d| d.1).product();
     }
     strides
 }
@@ -302,7 +297,7 @@ where
     #[track_caller]
     pub fn empty(dimensions: [(Dimension, usize); D], value: T) -> Self {
         let elements = crate::tensors::dimensions::elements(&dimensions);
-        Tensor::from(dimensions, vec![ value; elements ])
+        Tensor::from(dimensions, vec![value; elements])
     }
 
     // TODO: View version
@@ -331,7 +326,10 @@ where
         // TODO: Handle error case, propagate as Dimension names to transpose to must be the same set of dimension names in the tensor
         let transposed_order = TensorAccess::from(&self, dimensions);
         let transposed_shape = transposed_order.shape();
-        Tensor::from(transposed_shape, transposed_order.index_order_iter().collect())
+        Tensor::from(
+            transposed_shape,
+            transposed_order.index_order_iter().collect(),
+        )
     }
 
     /**
@@ -353,7 +351,9 @@ where
      */
     #[track_caller]
     pub fn transpose_mut(&mut self, dimensions: [Dimension; D]) {
-        use crate::tensors::dimensions::{dimension_mapping, dimension_mapping_shape, map_dimensions};
+        use crate::tensors::dimensions::{
+            dimension_mapping, dimension_mapping_shape, map_dimensions,
+        };
         if D == 2 && crate::tensors::dimensions::is_square(&self.dimensions) {
             // TODO: Handle error case, propagate as Dimension names to transpose to must be the same set of dimension names in the tensor
             let dimension_mapping = dimension_mapping(&self.dimensions, &dimensions).unwrap();
@@ -361,7 +361,9 @@ where
             // Don't actually create an iterator because we need to retain ownership of our
             // data so we can transpose it while iterating.
             let mut indexes = [0; D];
-            let mut finished = self.get_reference(map_dimensions(&dimension_mapping, &indexes)).is_none();
+            let mut finished = self
+                .get_reference(map_dimensions(&dimension_mapping, &indexes))
+                .is_none();
             let shape = dimension_mapping_shape(&self.dimensions, &dimension_mapping);
 
             while !finished {
@@ -374,9 +376,8 @@ where
                     // shape)
                     let temp = self.get_reference(index).unwrap().clone();
                     // tensor[i,j] becomes tensor[mapping(i,j)]
-                    *self.get_reference_mut(index).unwrap() = self
-                        .get_reference(mapped_index).unwrap()
-                        .clone();
+                    *self.get_reference_mut(index).unwrap() =
+                        self.get_reference(mapped_index).unwrap().clone();
                     // tensor[mapping(i,j)] becomes tensor[i,j]
                     *self.get_reference_mut(mapped_index).unwrap() = temp;
                     // If the mapping is a noop we've assigned i,j to i,j
@@ -416,7 +417,11 @@ where
      * ```
      */
     pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Tensor<U, D> {
-        let mapped = self.data.iter().map(|x| mapping_function(x.clone())).collect();
+        let mapped = self
+            .data
+            .iter()
+            .map(|x| mapping_function(x.clone()))
+            .collect();
         // We're not changing the shape of the Tensor, so don't need to revalidate
         Tensor {
             data: mapped,
@@ -480,7 +485,7 @@ fn transpose() {
         4, 5
     ]);
     let transposed = tensor.transpose(["y", "x"]);
-    assert_eq!(transposed.data, vec![ 0, 2, 4, 1, 3, 5 ]);
+    assert_eq!(transposed.data, vec![0, 2, 4, 1, 3, 5]);
 }
 
 #[test]

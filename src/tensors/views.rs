@@ -135,18 +135,12 @@ where
     }
 
     #[track_caller]
-    pub fn get(
-        &self,
-        dimensions: [Dimension; D],
-    ) -> TensorAccess<T, &S, D> {
+    pub fn get(&self, dimensions: [Dimension; D]) -> TensorAccess<T, &S, D> {
         TensorAccess::from(&self.source, dimensions)
     }
 
     #[track_caller]
-    pub fn get_mut(
-        &mut self,
-        dimensions: [Dimension; D],
-    ) -> TensorAccess<T, &mut S, D> {
+    pub fn get_mut(&mut self, dimensions: [Dimension; D]) -> TensorAccess<T, &mut S, D> {
         TensorAccess::from(&mut self.source, dimensions)
     }
 
@@ -174,12 +168,12 @@ where
      * the Tensor, and can therefore mutate it. See [TensorAccess::from_source_order].
      */
 
-     /**
-      * Creates a TensorAccess which will index into the dimensions of the source this TensorView
-      * was created with in the same order as they were declared. The TensorAccess mutably borrows
-      * the source, and can therefore mutate it if it implements TensorMut.
-      * See [TensorAccess::from_source_order].
-      */
+    /**
+     * Creates a TensorAccess which will index into the dimensions of the source this TensorView
+     * was created with in the same order as they were declared. The TensorAccess mutably borrows
+     * the source, and can therefore mutate it if it implements TensorMut.
+     * See [TensorAccess::from_source_order].
+     */
     pub fn source_order_mut(&mut self) -> TensorAccess<T, &mut S, D> {
         TensorAccess::from_source_order(&mut self.source)
     }
@@ -196,11 +190,7 @@ where
     }
 }
 
-impl<T, S, const D: usize> TensorView<T, S, D>
-where
-    S: TensorMut<T, D>
-{
-}
+impl<T, S, const D: usize> TensorView<T, S, D> where S: TensorMut<T, D> {}
 
 impl<'a, T, S, const D: usize> TensorView<T, S, D>
 where
@@ -232,6 +222,9 @@ where
         // TODO: Handle error case, propagate as Dimension names to transpose to must be the same set of dimension names in the tensor
         let transposed_order = TensorAccess::from(&self.source, dimensions);
         let transposed_shape = transposed_order.shape();
-        Tensor::from(transposed_shape, transposed_order.index_order_iter().collect())
+        Tensor::from(
+            transposed_shape,
+            transposed_order.index_order_iter().collect(),
+        )
     }
 }

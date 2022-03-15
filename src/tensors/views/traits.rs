@@ -1,4 +1,4 @@
-use crate::tensors::views::{TensorRef, TensorMut};
+use crate::tensors::views::{TensorMut, TensorRef};
 use crate::tensors::Dimension;
 
 // # Safety

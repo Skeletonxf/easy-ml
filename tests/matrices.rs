@@ -456,10 +456,16 @@ mod matrices {
         assert_eq!(matrix, Matrix::row(vec![1, 2, 3, 4]));
         let mut matrix = Matrix::from(vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]]);
         matrix.transpose_mut();
-        assert_eq!(matrix, Matrix::from(vec![vec![1, 4, 7], vec![2, 5, 8], vec![3, 6, 9]]));
+        assert_eq!(
+            matrix,
+            Matrix::from(vec![vec![1, 4, 7], vec![2, 5, 8], vec![3, 6, 9]])
+        );
         let mut matrix = Matrix::from(vec![vec![1, 2, 3], vec![4, 5, 6]]);
         matrix.transpose_mut();
-        assert_eq!(matrix, Matrix::from(vec![vec![1, 4], vec![2, 5], vec![3, 6]]));
+        assert_eq!(
+            matrix,
+            Matrix::from(vec![vec![1, 4], vec![2, 5], vec![3, 6]])
+        );
         let mut matrix = Matrix::from(vec![vec![1, 2], vec![3, 4], vec![5, 6]]);
         matrix.transpose_mut();
         assert_eq!(matrix, Matrix::from(vec![vec![1, 3, 5], vec![2, 4, 6]]));
