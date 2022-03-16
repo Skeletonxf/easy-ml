@@ -4,7 +4,7 @@
 
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::TensorAccess;
-use crate::tensors::views::{TensorRef, TensorView};
+use crate::tensors::views::{TensorRef, TensorView, TensorIndex};
 use crate::tensors::{Dimension, Tensor};
 
 use std::ops::{Add, Sub};
@@ -223,7 +223,7 @@ where
     S2: TensorRef<T, D>,
 {
     /**
-     * Two TensorViewss are similar if they have the same **set** of dimension names and
+     * Two TensorViews are similar if they have the same **set** of dimension names and
      * lengths even if two shapes are not in the same order, and all their elements are equal
      * when comparing both tensors via the same dimension ordering.
      * Differences in their source types are ignored.
@@ -331,20 +331,19 @@ where
  * Computes the dot product (also known as scalar product) on two equal length iterators,
  * yielding a scalar which is the sum of the products of each pair in the iterators.
  *
- *
  * https://en.wikipedia.org/wiki/Dot_product
  */
 #[inline]
 fn scalar_product<'l, 'r, T, S1, S2>(left_iter: S1, right_iter: S2) -> T
 where
-    T: Numeric,
+    T: Numeric + std::fmt::Debug,
     T: 'l,
     T: 'r,
     for<'a> &'a T: NumericRef<T>,
     S1: Iterator<Item = &'l T>,
     S2: Iterator<Item = &'r T>,
 {
-    left_iter.zip(right_iter).map(|(x, y)| x * y).sum()
+    left_iter.zip(right_iter).map(|(x, y)| { println!("{:?}*{:?}", x, y); x * y }).sum()
 }
 
 #[track_caller]
@@ -356,7 +355,7 @@ fn tensor_view_vector_product_iter<'l, 'r, T, S1, S2>(
     right_shape: [(Dimension, usize); 1],
 ) -> T
 where
-    T: Numeric,
+    T: Numeric + std::fmt::Debug,
     T: 'l,
     T: 'r,
     for<'a> &'a T: NumericRef<T>,
@@ -370,13 +369,13 @@ where
 
 fn tensor_view_matrix_product<T, S1, S2>(left: S1, right: S2) -> Tensor<T, 2>
 where
-    T: Numeric,
+    T: Numeric + std::fmt::Debug,
     for<'a> &'a T: NumericRef<T>,
     S1: TensorRef<T, 2>,
     S2: TensorRef<T, 2>,
 {
     assert!(
-        left.view_shape()[0] == right.view_shape()[1],
+        left.view_shape()[1] == right.view_shape()[0],
         "Mismatched Matrices, left is {:?}, right is {:?}, * is only defined for MxN * NxL",
         left.view_shape(),
         right.view_shape()
@@ -386,18 +385,46 @@ where
     // Matrix multiplication gives us another Matrix where each element [i,j] is the dot product
     // of the i'th row in the left matrix and the j'th column in the right matrix.
     let mut tensor = Tensor::empty([left.view_shape()[0], right.view_shape()[1]], T::zero());
-    let left = TensorView::from(left);
-    let right = TensorView::from(right);
     for ([i, j], x) in tensor
         .source_order_mut()
         .index_order_reference_mut_iter()
         .with_index()
     {
-        // TODO: Need to mask out all but one index of a dimension so we can create the right
-        // row/column iterators here
-        //*x = scalar_product::<T, S1, S2>(left.iter(), right.iter())
+        // Select the i'th row in the left tensor to give us a vector
+        let left = TensorAccess::from_source_order(
+            TensorIndex::from(&left, [(left.view_shape()[0].0, i)])
+        );
+        // Select the j'th column in the right tensor to give us a vector
+        let right = TensorAccess::from_source_order(
+            TensorIndex::from(&right, [(right.view_shape()[1].0, j)])
+        );
+        // Since we checked earlier that we have MxN * NxL these two vectors have the same length.
+        *x = scalar_product::<T, _, _>(
+            left.index_order_reference_iter(),
+            right.index_order_reference_iter(),
+        )
     }
     tensor
+}
+
+#[test]
+fn test_matrix_product() {
+    #[rustfmt::skip]
+    let left = Tensor::from([("r", 2), ("c", 3)], vec![
+        1, 2, 3,
+        4, 5, 6
+    ]);
+    #[rustfmt::skip]
+    let right = Tensor::from([("c", 3), ("foo", 2)], vec![
+        10, 11,
+        12, 13,
+        14, 15
+    ]);
+    let result = tensor_view_matrix_product::<i32, _, _>(left, right);
+    assert_eq!(result, Tensor::from([("r", 2), ("foo", 2)], vec![
+        1 * 10 + 2 * 12 + 3 * 14, 1 * 11 + 2 * 13 + 3 * 15,
+        4 * 10 + 5 * 12 + 6 * 14, 4 * 11 + 5 * 13 + 6 * 15
+    ]));
 }
 
 // Tensor multiplication (⊗) gives another Tensor where each element [i,j,k] is the dot product of
