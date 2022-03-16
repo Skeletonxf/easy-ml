@@ -1,7 +1,12 @@
-use crate::tensors::views::TensorRef;
+use crate::tensors::views::{TensorRef, TensorMut};
 use crate::tensors::Dimension;
 use std::marker::PhantomData;
 
+/**
+ * A combination of pre provided indexes and a tensor. The provided indexes reduce the
+ * dimensionality of the TensorRef exposed to less than the dimensionality of the TensorRef
+ * this is created from.
+ */
 #[derive(Clone, Debug)]
 pub struct TensorIndex<T, S, const D: usize, const I: usize> {
     source: S,
@@ -112,6 +117,38 @@ macro_rules! tensor_ref_impl {
                 });
                 let index = [0; $d].map(|_| combined.next().unwrap());
                 self.source.get_reference_unchecked(index)
+            }
+        }
+
+        unsafe impl<T, S> TensorMut<T, { $d - $i }> for TensorIndex<T, S, $d, $i>
+        where
+            S: TensorMut<T, $d>,
+        {
+            fn get_reference_mut(&mut self, indexes: [usize; $d - $i]) -> Option<&mut T> {
+                let mut supplied = indexes.iter();
+                // Indexes have to be in the order of our shape, so they must fill in the None
+                // slots of our provided array since we created that in the same order as our
+                // view_shape
+                let mut combined = self.provided.iter().map(|provided| match provided {
+                    None => *supplied.next().unwrap(),
+                    Some(i) => *i,
+                });
+                let index = [0; $d].map(|_| combined.next().unwrap());
+                self.source.get_reference_mut(index)
+            }
+
+            unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d - $i]) -> &mut T {
+                // TODO: Can we use unwrap_unchecked here?
+                let mut supplied = indexes.iter();
+                // Indexes have to be in the order of our shape, so they must fill in the None
+                // slots of our provided array since we created that in the same order as our
+                // view_shape
+                let mut combined = self.provided.iter().map(|provided| match provided {
+                    None => *supplied.next().unwrap(),
+                    Some(i) => *i,
+                });
+                let index = [0; $d].map(|_| combined.next().unwrap());
+                self.source.get_reference_unchecked_mut(index)
             }
         }
     };
