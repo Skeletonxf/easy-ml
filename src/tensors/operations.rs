@@ -336,14 +336,14 @@ where
 #[inline]
 fn scalar_product<'l, 'r, T, S1, S2>(left_iter: S1, right_iter: S2) -> T
 where
-    T: Numeric + std::fmt::Debug,
+    T: Numeric,
     T: 'l,
     T: 'r,
     for<'a> &'a T: NumericRef<T>,
     S1: Iterator<Item = &'l T>,
     S2: Iterator<Item = &'r T>,
 {
-    left_iter.zip(right_iter).map(|(x, y)| { println!("{:?}*{:?}", x, y); x * y }).sum()
+    left_iter.zip(right_iter).map(|(x, y)| x * y).sum()
 }
 
 #[track_caller]
@@ -355,31 +355,36 @@ fn tensor_view_vector_product_iter<'l, 'r, T, S1, S2>(
     right_shape: [(Dimension, usize); 1],
 ) -> T
 where
-    T: Numeric + std::fmt::Debug,
+    T: Numeric,
     T: 'l,
     T: 'r,
     for<'a> &'a T: NumericRef<T>,
     S1: Iterator<Item = &'l T>,
     S2: Iterator<Item = &'r T>,
 {
-    assert_same_dimensions(left_shape, right_shape);
+    if left_shape[0].1 != right_shape[0].1 {
+        panic!(
+            "Dimension lengths of left and right tensors are not the same: (left: {:?}, right: {:?})",
+            left_shape, right_shape
+        );
+    }
     // [a,b,c] . [d,e,f] -> a*d + b*e + c*f
     scalar_product::<T, S1, S2>(left_iter, right_iter)
 }
 
 fn tensor_view_matrix_product<T, S1, S2>(left: S1, right: S2) -> Tensor<T, 2>
 where
-    T: Numeric + std::fmt::Debug,
+    T: Numeric,
     for<'a> &'a T: NumericRef<T>,
     S1: TensorRef<T, 2>,
     S2: TensorRef<T, 2>,
 {
-    assert!(
-        left.view_shape()[1] == right.view_shape()[0],
-        "Mismatched Matrices, left is {:?}, right is {:?}, * is only defined for MxN * NxL",
-        left.view_shape(),
-        right.view_shape()
-    );
+    if left.view_shape()[1].1 != right.view_shape()[0].1 {
+        panic!(
+            "Mismatched tensors, left is {:?}, right is {:?}, * is only defined for MxN * NxL dimension lengths",
+            left.view_shape(), right.view_shape()
+        );
+    }
     // LxM * MxN -> LxN
     // [a,b,c; d,e,f] * [g,h; i,j; k,l] -> [a*g+b*i+c*k, a*h+b*j+c*l; d*g+e*i+f*k, d*h+e*j+f*l]
     // Matrix multiplication gives us another Matrix where each element [i,j] is the dot product
@@ -415,13 +420,13 @@ fn test_matrix_product() {
         4, 5, 6
     ]);
     #[rustfmt::skip]
-    let right = Tensor::from([("c", 3), ("foo", 2)], vec![
+    let right = Tensor::from([("r", 3), ("c", 2)], vec![
         10, 11,
         12, 13,
         14, 15
     ]);
     let result = tensor_view_matrix_product::<i32, _, _>(left, right);
-    assert_eq!(result, Tensor::from([("r", 2), ("foo", 2)], vec![
+    assert_eq!(result, Tensor::from([("r", 2), ("c", 2)], vec![
         1 * 10 + 2 * 12 + 3 * 14, 1 * 11 + 2 * 13 + 3 * 15,
         4 * 10 + 5 * 12 + 6 * 14, 4 * 11 + 5 * 13 + 6 * 15
     ]));
