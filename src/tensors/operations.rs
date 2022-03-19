@@ -7,7 +7,7 @@ use crate::tensors::indexing::TensorAccess;
 use crate::tensors::views::{TensorRef, TensorView, TensorIndex};
 use crate::tensors::{Dimension, Tensor};
 
-use std::ops::{Add, Sub};
+use std::ops::{Add, Sub, Mul};
 
 // Common tensor equality definition (list of dimension names must match, and elements must match)
 #[inline]
@@ -372,6 +372,8 @@ where
     scalar_product::<T, S1, S2>(left_iter, right_iter)
 }
 
+#[track_caller]
+#[inline]
 fn tensor_view_matrix_product<T, S1, S2>(left: S1, right: S2) -> Tensor<T, 2>
 where
     T: Numeric,
@@ -461,8 +463,33 @@ macro_rules! tensor_view_reference_tensor_view_reference_operation_iter {
     };
 }
 
+macro_rules! tensor_view_reference_tensor_view_reference_operation {
+    (impl $op:tt for TensorView $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S1, S2> $op<&TensorView<T, S2, $d>> for &TensorView<T, S1, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S1: TensorRef<T, $d>,
+            S2: TensorRef<T, $d>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &TensorView<T, S2, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self.source_ref(),
+                    rhs.source_ref(),
+                )
+            }
+        }
+    };
+}
+
 tensor_view_reference_tensor_view_reference_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for two referenced tensor views");
 tensor_view_reference_tensor_view_reference_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two referenced tensor views");
+tensor_view_reference_tensor_view_reference_operation!(impl Mul for TensorView 2 { fn mul } tensor_view_matrix_product "Matrix multiplication of two referenced 2-dimensional tensors");
 
 macro_rules! tensor_view_reference_tensor_view_value_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -490,8 +517,33 @@ macro_rules! tensor_view_reference_tensor_view_value_operation_iter {
     };
 }
 
+macro_rules! tensor_view_reference_tensor_view_value_operation {
+    (impl $op:tt for TensorView $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S1, S2> $op<TensorView<T, S2, $d>> for &TensorView<T, S1, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S1: TensorRef<T, $d>,
+            S2: TensorRef<T, $d>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: TensorView<T, S2, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self.source_ref(),
+                    rhs.source_ref(),
+                )
+            }
+        }
+    };
+}
+
 tensor_view_reference_tensor_view_value_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for two tensor views with one referenced");
 tensor_view_reference_tensor_view_value_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensor views with one referenced");
+tensor_view_reference_tensor_view_value_operation!(impl Mul for TensorView 2 { fn mul } tensor_view_matrix_product "Matrix multiplication of two 2-dimensional tensors with one referenced");
 
 macro_rules! tensor_view_value_tensor_view_reference_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -519,8 +571,33 @@ macro_rules! tensor_view_value_tensor_view_reference_operation_iter {
     };
 }
 
+macro_rules! tensor_view_value_tensor_view_reference_operation {
+    (impl $op:tt for TensorView $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S1, S2> $op<&TensorView<T, S2, $d>> for TensorView<T, S1, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S1: TensorRef<T, $d>,
+            S2: TensorRef<T, $d>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &TensorView<T, S2, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self.source_ref(),
+                    rhs.source_ref(),
+                )
+            }
+        }
+    };
+}
+
 tensor_view_value_tensor_view_reference_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for two tensor views with one referenced");
 tensor_view_value_tensor_view_reference_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensor views with one referenced");
+tensor_view_value_tensor_view_reference_operation!(impl Mul for TensorView 2 { fn mul } tensor_view_matrix_product "Matrix multiplication of two 2-dimensional tensors with one referenced");
 
 macro_rules! tensor_view_value_tensor_view_value_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -548,8 +625,33 @@ macro_rules! tensor_view_value_tensor_view_value_operation_iter {
     };
 }
 
+macro_rules! tensor_view_value_tensor_view_value_operation {
+    (impl $op:tt for TensorView $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S1, S2> $op<TensorView<T, S2, $d>> for TensorView<T, S1, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S1: TensorRef<T, $d>,
+            S2: TensorRef<T, $d>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: TensorView<T, S2, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self.source_ref(),
+                    rhs.source_ref(),
+                )
+            }
+        }
+    };
+}
+
 tensor_view_value_tensor_view_value_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for two tensor views");
 tensor_view_value_tensor_view_value_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensor views");
+tensor_view_value_tensor_view_value_operation!(impl Mul for TensorView 2 { fn mul } tensor_view_matrix_product "Matrix multiplication of two 2-dimensional tensors");
 
 macro_rules! tensor_view_reference_tensor_reference_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -576,8 +678,32 @@ macro_rules! tensor_view_reference_tensor_reference_operation_iter {
     };
 }
 
+macro_rules! tensor_view_reference_tensor_reference_operation {
+    (impl $op:tt for TensorView $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S> $op<&Tensor<T, $d>> for &TensorView<T, S, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, $d>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &Tensor<T, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self.source_ref(),
+                    rhs,
+                )
+            }
+        }
+    };
+}
+
 tensor_view_reference_tensor_reference_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for a referenced tensor view and a referenced tensor");
 tensor_view_reference_tensor_reference_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a referenced tensor view and a referenced tensor");
+tensor_view_reference_tensor_reference_operation!(impl Mul for TensorView 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for a 2-dimensional referenced tensor view and a referenced tensor");
 
 macro_rules! tensor_view_reference_tensor_value_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -604,8 +730,32 @@ macro_rules! tensor_view_reference_tensor_value_operation_iter {
     };
 }
 
+macro_rules! tensor_view_reference_tensor_value_operation {
+    (impl $op:tt for TensorView $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S> $op<Tensor<T, $d>> for &TensorView<T, S, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, $d>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: Tensor<T, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self.source_ref(),
+                    rhs,
+                )
+            }
+        }
+    };
+}
+
 tensor_view_reference_tensor_value_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for a referenced tensor view and a tensor");
 tensor_view_reference_tensor_value_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a referenced tensor view and a tensor");
+tensor_view_reference_tensor_value_operation!(impl Mul for TensorView 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for a 2-dimensional referenced tensor view and a tensor");
 
 macro_rules! tensor_view_value_tensor_reference_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -632,8 +782,32 @@ macro_rules! tensor_view_value_tensor_reference_operation_iter {
     };
 }
 
+macro_rules! tensor_view_value_tensor_reference_operation {
+    (impl $op:tt for TensorView $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S> $op<&Tensor<T, $d>> for TensorView<T, S, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, $d>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &Tensor<T, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self.source_ref(),
+                    rhs,
+                )
+            }
+        }
+    };
+}
+
 tensor_view_value_tensor_reference_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for a tensor view and a referenced tensor");
 tensor_view_value_tensor_reference_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a tensor view and a referenced tensor");
+tensor_view_value_tensor_reference_operation!(impl Mul for TensorView 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for a 2-dimensional tensor view and a referenced tensor");
 
 macro_rules! tensor_view_value_tensor_value_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -660,8 +834,32 @@ macro_rules! tensor_view_value_tensor_value_operation_iter {
     };
 }
 
+macro_rules! tensor_view_value_tensor_value_operation {
+    (impl $op:tt for TensorView $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S> $op<Tensor<T, $d>> for TensorView<T, S, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, $d>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: Tensor<T, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self.source_ref(),
+                    rhs,
+                )
+            }
+        }
+    };
+}
+
 tensor_view_value_tensor_value_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for a tensor view and a tensor");
 tensor_view_value_tensor_value_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a tensor view and a tensor");
+tensor_view_value_tensor_value_operation!(impl Mul for TensorView 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for a 2-dimensional tensor view and a tensor");
 
 macro_rules! tensor_reference_tensor_view_reference_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -688,8 +886,32 @@ macro_rules! tensor_reference_tensor_view_reference_operation_iter {
     };
 }
 
+macro_rules! tensor_reference_tensor_view_reference_operation {
+    (impl $op:tt for Tensor $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S> $op<&TensorView<T, S, $d>> for &Tensor<T, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, $d>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &TensorView<T, S, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self,
+                    rhs.source_ref(),
+                )
+            }
+        }
+    };
+}
+
 tensor_reference_tensor_view_reference_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for a referenced tensor and a referenced tensor view");
 tensor_reference_tensor_view_reference_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a referenced tensor and a referenced tensor view");
+tensor_reference_tensor_view_reference_operation!(impl Mul for Tensor 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for a 2-dimensional referenced tensor and a referenced tensor view");
 
 macro_rules! tensor_reference_tensor_view_value_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -716,8 +938,32 @@ macro_rules! tensor_reference_tensor_view_value_operation_iter {
     };
 }
 
+macro_rules! tensor_reference_tensor_view_value_operation {
+    (impl $op:tt for Tensor $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S> $op<TensorView<T, S, $d>> for &Tensor<T, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, $d>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: TensorView<T, S, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self,
+                    rhs.source_ref(),
+                )
+            }
+        }
+    };
+}
+
 tensor_reference_tensor_view_value_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for a referenced tensor and a tensor view");
 tensor_reference_tensor_view_value_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a referenced tensor and a tensor view");
+tensor_reference_tensor_view_value_operation!(impl Mul for Tensor 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for a 2-dimensional referenced tensor and a tensor view");
 
 macro_rules! tensor_value_tensor_view_reference_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -744,8 +990,32 @@ macro_rules! tensor_value_tensor_view_reference_operation_iter {
     };
 }
 
+macro_rules! tensor_value_tensor_view_reference_operation {
+    (impl $op:tt for Tensor $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S> $op<&TensorView<T, S, $d>> for Tensor<T, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, $d>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &TensorView<T, S, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self,
+                    rhs.source_ref(),
+                )
+            }
+        }
+    };
+}
+
 tensor_value_tensor_view_reference_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for a tensor and a referenced tensor view");
 tensor_value_tensor_view_reference_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a tensor and a referenced tensor view");
+tensor_value_tensor_view_reference_operation!(impl Mul for Tensor 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for a 2-dimensional tensor and a referenced tensor view");
 
 macro_rules! tensor_value_tensor_view_value_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -772,8 +1042,32 @@ macro_rules! tensor_value_tensor_view_value_operation_iter {
     };
 }
 
+macro_rules! tensor_value_tensor_view_value_operation {
+    (impl $op:tt for Tensor $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S> $op<TensorView<T, S, $d>> for Tensor<T, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, $d>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: TensorView<T, S, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self,
+                    rhs.source_ref(),
+                )
+            }
+        }
+    };
+}
+
 tensor_value_tensor_view_value_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for a tensor and a tensor view");
 tensor_value_tensor_view_value_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a tensor and a tensor view");
+tensor_value_tensor_view_value_operation!(impl Mul for Tensor 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for a 2-dimensional tensor and a tensor view");
 
 macro_rules! tensor_reference_tensor_reference_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -799,8 +1093,31 @@ macro_rules! tensor_reference_tensor_reference_operation_iter {
     };
 }
 
+macro_rules! tensor_reference_tensor_reference_operation {
+    (impl $op:tt for Tensor $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T> $op<&Tensor<T, $d>> for &Tensor<T, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &Tensor<T, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self,
+                    rhs
+                )
+            }
+        }
+    };
+}
+
 tensor_reference_tensor_reference_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for two referenced tensors");
 tensor_reference_tensor_reference_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two referenced tensors");
+tensor_reference_tensor_reference_operation!(impl Mul for Tensor 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for two 2-dimensional referenced tensors");
 
 macro_rules! tensor_reference_tensor_value_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -826,8 +1143,31 @@ macro_rules! tensor_reference_tensor_value_operation_iter {
     };
 }
 
+macro_rules! tensor_reference_tensor_value_operation {
+    (impl $op:tt for Tensor $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T> $op<Tensor<T, $d>> for &Tensor<T, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: Tensor<T, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self,
+                    rhs
+                )
+            }
+        }
+    };
+}
+
 tensor_reference_tensor_value_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for two tensors with one referenced");
 tensor_reference_tensor_value_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensors with one referenced");
+tensor_reference_tensor_value_operation!(impl Mul for Tensor 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for two 2-dimensional tensors with one referenced");
 
 macro_rules! tensor_value_tensor_reference_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -853,8 +1193,32 @@ macro_rules! tensor_value_tensor_reference_operation_iter {
     };
 }
 
+macro_rules! tensor_value_tensor_reference_operation {
+    (impl $op:tt for Tensor $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T> $op<&Tensor<T, $d>> for Tensor<T, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: &Tensor<T, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self,
+                    rhs
+                )
+            }
+        }
+    };
+}
+
+
 tensor_value_tensor_reference_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for two tensors with one referenced");
 tensor_value_tensor_reference_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensors with one referenced");
+tensor_value_tensor_reference_operation!(impl Mul for Tensor 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for two 2-dimensional tensors with one referenced");
 
 macro_rules! tensor_value_tensor_value_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -880,11 +1244,34 @@ macro_rules! tensor_value_tensor_value_operation_iter {
     };
 }
 
+macro_rules! tensor_value_tensor_value_operation {
+    (impl $op:tt for Tensor $d:literal { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T> $op<Tensor<T, $d>> for Tensor<T, $d>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Tensor<T, $d>;
+
+            #[track_caller]
+            #[inline]
+            fn $method(self, rhs: Tensor<T, $d>) -> Self::Output {
+                $implementation::<T, _, _>(
+                    self,
+                    rhs
+                )
+            }
+        }
+    };
+}
+
 tensor_value_tensor_value_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for two tensors");
 tensor_value_tensor_value_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensors");
+tensor_value_tensor_value_operation!(impl Mul for Tensor 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for two 2-dimensional tensors");
 
 #[test]
-fn test_all_16_combinations() {
+fn elementwise_addition_test_all_16_combinations() {
     fn tensor() -> Tensor<i8, 1> {
         Tensor::from([("a", 1)], vec![1])
     }
@@ -914,7 +1301,7 @@ fn test_all_16_combinations() {
 }
 
 #[test]
-fn tmp_addition_test() {
+fn elementwise_addition_test() {
     let tensor_1: Tensor<i32, 2> = Tensor::from([("r", 2), ("c", 2)], vec![1, 2, 3, 4]);
     let tensor_2: Tensor<i32, 2> = Tensor::from([("r", 2), ("c", 2)], vec![3, 2, 8, 1]);
     let added: Tensor<i32, 2> = tensor_1 + tensor_2;
@@ -923,8 +1310,54 @@ fn tmp_addition_test() {
 
 #[should_panic]
 #[test]
-fn tmp_addition_test_similar_not_matching() {
+fn elementwise_addition_test_similar_not_matching() {
     let tensor_1: Tensor<i32, 2> = Tensor::from([("r", 2), ("c", 2)], vec![1, 2, 3, 4]);
     let tensor_2: Tensor<i32, 2> = Tensor::from([("c", 2), ("r", 2)], vec![3, 8, 2, 1]);
     let _: Tensor<i32, 2> = tensor_1 + tensor_2;
+}
+
+#[test]
+fn matrix_multiplication_test_all_16_combinations() {
+    fn tensor_1() -> Tensor<i8, 2> {
+        Tensor::from([("r", 2), ("c", 3)], vec![
+            1, 2, 3,
+            4, 5, 6,
+        ])
+    }
+    fn tensor_1_view() -> TensorView<i8, Tensor<i8, 2>, 2> {
+        TensorView::from(tensor_1())
+    }
+    fn tensor_2() -> Tensor<i8, 2> {
+        Tensor::from([("a", 3), ("b", 2)], vec![
+            1, 2,
+            3, 4,
+            5, 6,
+        ])
+    }
+    fn tensor_2_view() -> TensorView<i8, Tensor<i8, 2>, 2> {
+        TensorView::from(tensor_2())
+    }
+    let mut results = Vec::with_capacity(16);
+    results.push(tensor_1() * tensor_2());
+    results.push(tensor_1() * &tensor_2());
+    results.push(&tensor_1() * tensor_2());
+    results.push(&tensor_1() * &tensor_2());
+    results.push(tensor_1_view() * tensor_2());
+    results.push(tensor_1_view() * &tensor_2());
+    results.push(&tensor_1_view() * tensor_2());
+    results.push(&tensor_1_view() * &tensor_2());
+    results.push(tensor_1() * tensor_2_view());
+    results.push(tensor_1() * &tensor_2_view());
+    results.push(&tensor_1() * tensor_2_view());
+    results.push(&tensor_1() * &tensor_2_view());
+    results.push(tensor_1_view() * tensor_2_view());
+    results.push(tensor_1_view() * &tensor_2_view());
+    results.push(&tensor_1_view() * tensor_2_view());
+    results.push(&tensor_1_view() * &tensor_2_view());
+    for total in results {
+        assert_eq!(total, Tensor::from([("r", 2), ("b", 2)], vec![
+            1 * 1 + 2 * 3 + 3 * 5, 1 * 2 + 2 * 4 + 3 * 6,
+            4 * 1 + 5 * 3 + 6 * 5, 4 * 2 + 5 * 4 + 6 * 6,
+        ]));
+    }
 }
