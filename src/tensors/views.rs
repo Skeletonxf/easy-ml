@@ -228,3 +228,69 @@ where
         )
     }
 }
+
+macro_rules! tensor_view_select_impl {
+    (impl TensorView $d:literal 1) => {
+        impl<T, S> TensorView<T, S, $d>
+        where
+            S: TensorRef<T, $d>,
+        {
+            /**
+             * Selects the provided dimension name and index pairs in this TensorView, returning a
+             * TensorView which has fewer dimensions than this TensorView, with the removed dimensions
+             * always indexed as the provided values.
+             *
+             * This is a shorthand for manually constructing the TensorView and TensorIndex
+             *
+             * ```
+             * use easy_ml::tensors::Tensor;
+             * use easy_ml::tensors::views::{TensorView, TensorIndex};
+             * let vector = TensorView::from(Tensor::from([("a", 2)], vec![ 16, 8 ]));
+             * let scalar = vector.select([("a", 0)]);
+             * let also_scalar = TensorView::from(TensorIndex::from(vector.source_ref(), [("a", 0)]));
+             * assert_eq!(scalar.get([]).get([]), also_scalar.get([]).get([]));
+             * assert_eq!(scalar.get([]).get([]), 16);
+             * ```
+             *
+             * Note: due to limitations in Rust's const generics support, this method is only
+             * implemented for `provided_indexes` of length 1 and `D` from 1 to 6. You can fall
+             * back to manual construction to create `TensorIndex`es with multiple provided
+             * indexes if you need to reduce dimensionality by more than 1 dimension at a time.
+             */
+            pub fn select(&self, provided_indexes: [(Dimension, usize); 1]) -> TensorView<T, TensorIndex<T, &S, $d, 1>, {$d - 1}> {
+                TensorView::from(TensorIndex::from(&self.source, provided_indexes))
+            }
+
+            /**
+             * Selects the provided dimension name and index pairs in this TensorView, returning a
+             * TensorView which has fewer dimensions than this Tensor, with the removed dimensions
+             * always indexed as the provided values. The TensorIndex mutably borrows this
+             * Tensor, and can therefore mutate it
+             *
+             * See [select](TensorView::select)
+             */
+            pub fn select_mut(&mut self, provided_indexes: [(Dimension, usize); 1]) -> TensorView<T, TensorIndex<T, &mut S, $d, 1>, {$d - 1}> {
+                TensorView::from(TensorIndex::from(&mut self.source, provided_indexes))
+            }
+
+            /**
+             * Selects the provided dimension name and index pairs in this TensorView, returning a
+             * TensorView which has fewer dimensions than this Tensor, with the removed dimensions
+             * always indexed as the provided values. The TensorIndex takes ownership ofthis
+             * Tensor, and can therefore mutate it
+             *
+             * See [select](TensorView::select)
+             */
+            pub fn select_owned(self, provided_indexes: [(Dimension, usize); 1]) -> TensorView<T, TensorIndex<T, S, $d, 1>, {$d - 1}> {
+                TensorView::from(TensorIndex::from(self.source, provided_indexes))
+            }
+        }
+    };
+}
+
+tensor_view_select_impl!(impl TensorView 6 1);
+tensor_view_select_impl!(impl TensorView 5 1);
+tensor_view_select_impl!(impl TensorView 4 1);
+tensor_view_select_impl!(impl TensorView 3 1);
+tensor_view_select_impl!(impl TensorView 2 1);
+tensor_view_select_impl!(impl TensorView 1 1);
