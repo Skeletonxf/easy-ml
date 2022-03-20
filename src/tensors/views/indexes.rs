@@ -6,6 +6,9 @@ use std::marker::PhantomData;
  * A combination of pre provided indexes and a tensor. The provided indexes reduce the
  * dimensionality of the TensorRef exposed to less than the dimensionality of the TensorRef
  * this is created from.
+ *
+ * Note: due to limitations in Rust's const generics support, TensorIndex only implements TensorRef
+ * for D from `1` to `6`.
  */
 #[derive(Clone, Debug)]
 pub struct TensorIndex<T, S, const D: usize, const I: usize> {
@@ -27,20 +30,20 @@ where
      * of D - I, where D is the dimensionality of the source, and I is the dimensionality of the
      * provided indexes.
      */
-    pub fn from(source: S, provided_index: [(Dimension, usize); I]) -> TensorIndex<T, S, D, I> {
+    pub fn from(source: S, provided_indexes: [(Dimension, usize); I]) -> TensorIndex<T, S, D, I> {
         let shape = source.view_shape();
         if I > D {
             panic!("D - I must be >= 0, D: {:?}, I: {:?}", D, I);
         }
         let mut provided = [None; D];
-        for (name, index) in &provided_index {
+        for (name, index) in &provided_indexes {
             // Every provided index must match a dimension name in the source and be a valid
             // index within the length
             match shape.iter().enumerate().find(|(_i, (n, length))| n == name && index < length) {
                 None => panic!(
                     "Provided indexes must all correspond to valid indexes into the source shape, source shape: {:?}, provided: {:?}",
                     shape,
-                    provided_index,
+                    provided_indexes,
                 ),
                 // Assign the provided index to the matching position of the source
                 Some((i, (_n, _length))) => provided[i] = Some(*index),
