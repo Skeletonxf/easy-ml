@@ -257,7 +257,10 @@ macro_rules! tensor_view_select_impl {
              * back to manual construction to create `TensorIndex`es with multiple provided
              * indexes if you need to reduce dimensionality by more than 1 dimension at a time.
              */
-            pub fn select(&self, provided_indexes: [(Dimension, usize); 1]) -> TensorView<T, TensorIndex<T, &S, $d, 1>, {$d - 1}> {
+            pub fn select(
+                &self,
+                provided_indexes: [(Dimension, usize); 1],
+            ) -> TensorView<T, TensorIndex<T, &S, $d, 1>, { $d - 1 }> {
                 TensorView::from(TensorIndex::from(&self.source, provided_indexes))
             }
 
@@ -269,7 +272,10 @@ macro_rules! tensor_view_select_impl {
              *
              * See [select](TensorView::select)
              */
-            pub fn select_mut(&mut self, provided_indexes: [(Dimension, usize); 1]) -> TensorView<T, TensorIndex<T, &mut S, $d, 1>, {$d - 1}> {
+            pub fn select_mut(
+                &mut self,
+                provided_indexes: [(Dimension, usize); 1],
+            ) -> TensorView<T, TensorIndex<T, &mut S, $d, 1>, { $d - 1 }> {
                 TensorView::from(TensorIndex::from(&mut self.source, provided_indexes))
             }
 
@@ -281,7 +287,10 @@ macro_rules! tensor_view_select_impl {
              *
              * See [select](TensorView::select)
              */
-            pub fn select_owned(self, provided_indexes: [(Dimension, usize); 1]) -> TensorView<T, TensorIndex<T, S, $d, 1>, {$d - 1}> {
+            pub fn select_owned(
+                self,
+                provided_indexes: [(Dimension, usize); 1],
+            ) -> TensorView<T, TensorIndex<T, S, $d, 1>, { $d - 1 }> {
                 TensorView::from(TensorIndex::from(self.source, provided_indexes))
             }
         }

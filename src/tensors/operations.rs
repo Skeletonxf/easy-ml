@@ -4,10 +4,10 @@
 
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::TensorAccess;
-use crate::tensors::views::{TensorRef, TensorView, TensorIndex};
+use crate::tensors::views::{TensorIndex, TensorRef, TensorView};
 use crate::tensors::{Dimension, Tensor};
 
-use std::ops::{Add, Sub, Mul};
+use std::ops::{Add, Mul, Sub};
 
 // Common tensor equality definition (list of dimension names must match, and elements must match)
 #[inline]
@@ -398,13 +398,15 @@ where
         .with_index()
     {
         // Select the i'th row in the left tensor to give us a vector
-        let left = TensorAccess::from_source_order(
-            TensorIndex::from(&left, [(left.view_shape()[0].0, i)])
-        );
+        let left = TensorAccess::from_source_order(TensorIndex::from(
+            &left,
+            [(left.view_shape()[0].0, i)],
+        ));
         // Select the j'th column in the right tensor to give us a vector
-        let right = TensorAccess::from_source_order(
-            TensorIndex::from(&right, [(right.view_shape()[1].0, j)])
-        );
+        let right = TensorAccess::from_source_order(TensorIndex::from(
+            &right,
+            [(right.view_shape()[1].0, j)],
+        ));
         // Since we checked earlier that we have MxN * NxL these two vectors have the same length.
         *x = scalar_product::<T, _, _>(
             left.index_order_reference_iter(),
@@ -428,10 +430,17 @@ fn test_matrix_product() {
         14, 15
     ]);
     let result = tensor_view_matrix_product::<i32, _, _>(left, right);
-    assert_eq!(result, Tensor::from([("r", 2), ("c", 2)], vec![
-        1 * 10 + 2 * 12 + 3 * 14, 1 * 11 + 2 * 13 + 3 * 15,
-        4 * 10 + 5 * 12 + 6 * 14, 4 * 11 + 5 * 13 + 6 * 15
-    ]));
+    #[rustfmt::skip]
+    assert_eq!(
+        result,
+        Tensor::from(
+            [("r", 2), ("c", 2)],
+            vec![
+                1 * 10 + 2 * 12 + 3 * 14, 1 * 11 + 2 * 13 + 3 * 15,
+                4 * 10 + 5 * 12 + 6 * 14, 4 * 11 + 5 * 13 + 6 * 15
+            ]
+        )
+    );
 }
 
 // Tensor multiplication (⊗) gives another Tensor where each element [i,j,k] is the dot product of
@@ -478,10 +487,7 @@ macro_rules! tensor_view_reference_tensor_view_reference_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: &TensorView<T, S2, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self.source_ref(),
-                    rhs.source_ref(),
-                )
+                $implementation::<T, _, _>(self.source_ref(), rhs.source_ref())
             }
         }
     };
@@ -532,10 +538,7 @@ macro_rules! tensor_view_reference_tensor_view_value_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: TensorView<T, S2, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self.source_ref(),
-                    rhs.source_ref(),
-                )
+                $implementation::<T, _, _>(self.source_ref(), rhs.source_ref())
             }
         }
     };
@@ -586,10 +589,7 @@ macro_rules! tensor_view_value_tensor_view_reference_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: &TensorView<T, S2, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self.source_ref(),
-                    rhs.source_ref(),
-                )
+                $implementation::<T, _, _>(self.source_ref(), rhs.source_ref())
             }
         }
     };
@@ -640,10 +640,7 @@ macro_rules! tensor_view_value_tensor_view_value_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: TensorView<T, S2, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self.source_ref(),
-                    rhs.source_ref(),
-                )
+                $implementation::<T, _, _>(self.source_ref(), rhs.source_ref())
             }
         }
     };
@@ -692,10 +689,7 @@ macro_rules! tensor_view_reference_tensor_reference_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: &Tensor<T, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self.source_ref(),
-                    rhs,
-                )
+                $implementation::<T, _, _>(self.source_ref(), rhs)
             }
         }
     };
@@ -744,10 +738,7 @@ macro_rules! tensor_view_reference_tensor_value_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: Tensor<T, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self.source_ref(),
-                    rhs,
-                )
+                $implementation::<T, _, _>(self.source_ref(), rhs)
             }
         }
     };
@@ -796,10 +787,7 @@ macro_rules! tensor_view_value_tensor_reference_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: &Tensor<T, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self.source_ref(),
-                    rhs,
-                )
+                $implementation::<T, _, _>(self.source_ref(), rhs)
             }
         }
     };
@@ -848,10 +836,7 @@ macro_rules! tensor_view_value_tensor_value_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: Tensor<T, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self.source_ref(),
-                    rhs,
-                )
+                $implementation::<T, _, _>(self.source_ref(), rhs)
             }
         }
     };
@@ -900,10 +885,7 @@ macro_rules! tensor_reference_tensor_view_reference_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: &TensorView<T, S, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self,
-                    rhs.source_ref(),
-                )
+                $implementation::<T, _, _>(self, rhs.source_ref())
             }
         }
     };
@@ -952,10 +934,7 @@ macro_rules! tensor_reference_tensor_view_value_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: TensorView<T, S, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self,
-                    rhs.source_ref(),
-                )
+                $implementation::<T, _, _>(self, rhs.source_ref())
             }
         }
     };
@@ -1004,10 +983,7 @@ macro_rules! tensor_value_tensor_view_reference_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: &TensorView<T, S, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self,
-                    rhs.source_ref(),
-                )
+                $implementation::<T, _, _>(self, rhs.source_ref())
             }
         }
     };
@@ -1056,10 +1032,7 @@ macro_rules! tensor_value_tensor_view_value_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: TensorView<T, S, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self,
-                    rhs.source_ref(),
-                )
+                $implementation::<T, _, _>(self, rhs.source_ref())
             }
         }
     };
@@ -1106,10 +1079,7 @@ macro_rules! tensor_reference_tensor_reference_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: &Tensor<T, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self,
-                    rhs
-                )
+                $implementation::<T, _, _>(self, rhs)
             }
         }
     };
@@ -1156,10 +1126,7 @@ macro_rules! tensor_reference_tensor_value_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: Tensor<T, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self,
-                    rhs
-                )
+                $implementation::<T, _, _>(self, rhs)
             }
         }
     };
@@ -1206,15 +1173,11 @@ macro_rules! tensor_value_tensor_reference_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: &Tensor<T, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self,
-                    rhs
-                )
+                $implementation::<T, _, _>(self, rhs)
             }
         }
     };
 }
-
 
 tensor_value_tensor_reference_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for two tensors with one referenced");
 tensor_value_tensor_reference_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensors with one referenced");
@@ -1257,10 +1220,7 @@ macro_rules! tensor_value_tensor_value_operation {
             #[track_caller]
             #[inline]
             fn $method(self, rhs: Tensor<T, $d>) -> Self::Output {
-                $implementation::<T, _, _>(
-                    self,
-                    rhs
-                )
+                $implementation::<T, _, _>(self, rhs)
             }
         }
     };
@@ -1318,20 +1278,22 @@ fn elementwise_addition_test_similar_not_matching() {
 
 #[test]
 fn matrix_multiplication_test_all_16_combinations() {
+    #[rustfmt::skip]
     fn tensor_1() -> Tensor<i8, 2> {
         Tensor::from([("r", 2), ("c", 3)], vec![
             1, 2, 3,
-            4, 5, 6,
+            4, 5, 6
         ])
     }
     fn tensor_1_view() -> TensorView<i8, Tensor<i8, 2>, 2> {
         TensorView::from(tensor_1())
     }
+    #[rustfmt::skip]
     fn tensor_2() -> Tensor<i8, 2> {
         Tensor::from([("a", 3), ("b", 2)], vec![
             1, 2,
             3, 4,
-            5, 6,
+            5, 6
         ])
     }
     fn tensor_2_view() -> TensorView<i8, Tensor<i8, 2>, 2> {
@@ -1355,9 +1317,16 @@ fn matrix_multiplication_test_all_16_combinations() {
     results.push(&tensor_1_view() * tensor_2_view());
     results.push(&tensor_1_view() * &tensor_2_view());
     for total in results {
-        assert_eq!(total, Tensor::from([("r", 2), ("b", 2)], vec![
-            1 * 1 + 2 * 3 + 3 * 5, 1 * 2 + 2 * 4 + 3 * 6,
-            4 * 1 + 5 * 3 + 6 * 5, 4 * 2 + 5 * 4 + 6 * 6,
-        ]));
+        #[rustfmt::skip]
+        assert_eq!(
+            total,
+            Tensor::from(
+                [("r", 2), ("b", 2)],
+                vec![
+                    1 * 1 + 2 * 3 + 3 * 5, 1 * 2 + 2 * 4 + 3 * 6,
+                    4 * 1 + 5 * 3 + 6 * 5, 4 * 2 + 5 * 4 + 6 * 6,
+                ]
+            )
+        );
     }
 }
