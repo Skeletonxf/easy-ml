@@ -503,6 +503,14 @@ where
     }
 
     /**
+     * Creates and returns a new tensor with all values from the original and
+     * the index of each value mapped by a function.
+     */
+    pub fn map_with_index<U>(&self, mapping_function: impl Fn([usize; D], T) -> U) -> Tensor<U, D> {
+        self.source_order().map_with_index(mapping_function)
+    }
+
+    /**
      * Applies a function to all values in the tensor, modifying
      * the tensor in place.
      */
@@ -510,6 +518,14 @@ where
         for value in self.data.iter_mut() {
             *value = mapping_function(value.clone());
         }
+    }
+
+    /**
+     * Applies a function to all values and each value's index in the tensor, modifying
+     * the tensor in place.
+     */
+    pub fn map_mut_with_index(&mut self, mapping_function: impl Fn([usize; D], T) -> T) {
+        self.source_order_mut().map_mut_with_index(mapping_function);
     }
 }
 

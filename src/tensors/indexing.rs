@@ -220,7 +220,23 @@ where
     pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Tensor<U, D> {
         let mapped = self
             .index_order_iter()
-            .map(|x| mapping_function(x))
+            .map(mapping_function)
+            .collect();
+        Tensor::from(self.shape(), mapped)
+    }
+
+    /**
+     * Creates and returns a new tensor with all values from the original and
+     * the index of each value mapped by a function. The indexes passed to the mapping
+     * function always increment the rightmost index, starting at all 0s, using the dimension
+     * order that the TensorAccess is indexed by, not neccessarily the index order the
+     * original source uses.
+     */
+    pub fn map_with_index<U>(&self, mapping_function: impl Fn([usize; D], T) -> U) -> Tensor<U, D> {
+        let mapped = self
+            .index_order_iter()
+            .with_index()
+            .map(|(i, x)| mapping_function(i, x))
             .collect();
         Tensor::from(self.shape(), mapped)
     }
@@ -270,6 +286,19 @@ where
     pub fn map_mut(&mut self, mapping_function: impl Fn(T) -> T) {
         self.index_order_reference_mut_iter()
             .for_each(|x| *x = mapping_function(x.clone()));
+    }
+
+    /**
+     * Applies a function to all values and each value's index in the tensor, modifying
+     * the tensor in place. The indexes passed to the mapping function always increment
+     * the rightmost index, starting at all 0s, using the dimension order that the
+     * TensorAccess is indexed by, not neccessarily the index order the original source uses.
+     */
+    pub fn map_mut_with_index(&mut self, mapping_function: impl Fn([usize; D], T) -> T) {
+        self
+            .index_order_reference_mut_iter()
+            .with_index()
+            .for_each(|(i, x)| *x = mapping_function(i, x.clone()));
     }
 }
 

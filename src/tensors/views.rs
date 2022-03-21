@@ -227,6 +227,60 @@ where
             transposed_order.index_order_iter().collect(),
         )
     }
+
+    /**
+     * Creates and returns a new tensor with all values from the original with the
+     * function applied to each. This can be used to change the type of the tensor
+     * such as creating a mask:
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * use easy_ml::tensors::views::TensorView;
+     * let x = TensorView::from(Tensor::from([("a", 2), ("b", 2)], vec![
+     *    0.0, 1.2,
+     *    5.8, 6.9
+     * ]));
+     * let y = x.map(|element| element > 2.0);
+     * let result = Tensor::from([("a", 2), ("b", 2)], vec![
+     *    false, false,
+     *    true, true
+     * ]);
+     * assert_eq!(&y, &result);
+     * ```
+     */
+    pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Tensor<U, D> {
+        self.source_order().map(mapping_function)
+    }
+
+    /**
+     * Creates and returns a new tensor with all values from the original and
+     * the index of each value mapped by a function.
+     */
+    pub fn map_with_index<U>(&self, mapping_function: impl Fn([usize; D], T) -> U) -> Tensor<U, D> {
+        self.source_order().map_with_index(mapping_function)
+    }
+}
+
+impl<'a, T, S, const D: usize> TensorView<T, S, D>
+where
+    T: Clone,
+    S: TensorMut<T, D>,
+
+{
+    /**
+     * Applies a function to all values in the tensor view, modifying
+     * the tensor in place.
+     */
+    pub fn map_mut(&mut self, mapping_function: impl Fn(T) -> T) {
+        self.source_order_mut().map_mut(mapping_function)
+    }
+
+    /**
+     * Applies a function to all values and each value's index in the tensor view, modifying
+     * the tensor view in place.
+     */
+    pub fn map_mut_with_index(&mut self, mapping_function: impl Fn([usize; D], T) -> T) {
+        self.source_order_mut().map_mut_with_index(mapping_function);
+    }
 }
 
 macro_rules! tensor_view_select_impl {
