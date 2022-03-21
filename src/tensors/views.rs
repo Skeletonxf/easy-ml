@@ -264,7 +264,6 @@ impl<'a, T, S, const D: usize> TensorView<T, S, D>
 where
     T: Clone,
     S: TensorMut<T, D>,
-
 {
     /**
      * Applies a function to all values in the tensor view, modifying

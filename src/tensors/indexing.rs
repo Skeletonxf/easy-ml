@@ -218,10 +218,7 @@ where
      * function applied to each.
      */
     pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Tensor<U, D> {
-        let mapped = self
-            .index_order_iter()
-            .map(mapping_function)
-            .collect();
+        let mapped = self.index_order_iter().map(mapping_function).collect();
         Tensor::from(self.shape(), mapped)
     }
 
@@ -295,8 +292,7 @@ where
      * TensorAccess is indexed by, not neccessarily the index order the original source uses.
      */
     pub fn map_mut_with_index(&mut self, mapping_function: impl Fn([usize; D], T) -> T) {
-        self
-            .index_order_reference_mut_iter()
+        self.index_order_reference_mut_iter()
             .with_index()
             .for_each(|(i, x)| *x = mapping_function(i, x.clone()));
     }
