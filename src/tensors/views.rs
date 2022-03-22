@@ -192,7 +192,7 @@ where
 
 impl<T, S, const D: usize> TensorView<T, S, D> where S: TensorMut<T, D> {}
 
-impl<'a, T, S, const D: usize> TensorView<T, S, D>
+impl<T, S, const D: usize> TensorView<T, S, D>
 where
     T: Clone,
     S: TensorRef<T, D>,
@@ -260,7 +260,7 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> TensorView<T, S, D>
+impl<T, S, const D: usize> TensorView<T, S, D>
 where
     T: Clone,
     S: TensorMut<T, D>,
@@ -356,3 +356,56 @@ tensor_view_select_impl!(impl TensorView 4 1);
 tensor_view_select_impl!(impl TensorView 3 1);
 tensor_view_select_impl!(impl TensorView 2 1);
 tensor_view_select_impl!(impl TensorView 1 1);
+
+
+/**
+ * Any tensor view of a Displayable type implements Display
+ */
+impl<T: std::fmt::Display, S> std::fmt::Display for TensorView<T, S, 0>
+where
+    T: std::fmt::Display,
+    S: TensorRef<T, 0>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        crate::tensors::display::format_view(&self.source, f)
+    }
+}
+
+/**
+ * Any tensor view of a Displayable type implements Display
+ */
+impl<T: std::fmt::Display, S> std::fmt::Display for TensorView<T, S, 1>
+where
+    T: std::fmt::Display,
+    S: TensorRef<T, 1>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        crate::tensors::display::format_view(&self.source, f)
+    }
+}
+
+/**
+ * Any tensor view of a Displayable type implements Display
+ */
+impl<T: std::fmt::Display, S> std::fmt::Display for TensorView<T, S, 2>
+where
+    T: std::fmt::Display,
+    S: TensorRef<T, 2>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        crate::tensors::display::format_view(&self.source, f)
+    }
+}
+
+/**
+ * Any tensor view of a Displayable type implements Display
+ */
+impl<T: std::fmt::Display, S> std::fmt::Display for TensorView<T, S, 3>
+where
+    T: std::fmt::Display,
+    S: TensorRef<T, 3>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        crate::tensors::display::format_view(&self.source, f)
+    }
+}

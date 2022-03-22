@@ -9,6 +9,7 @@ use crate::tensors::indexing::TensorAccess;
 use crate::tensors::views::{TensorIndex, TensorMut, TensorRef, TensorView};
 
 pub mod dimensions;
+mod display;
 pub mod indexing;
 pub mod operations;
 pub mod views;
@@ -156,6 +157,42 @@ unsafe impl<T, const D: usize> TensorMut<T, D> for Tensor<T, D> {
         // can assume the None case will never happen.
         let i = get_index_direct(&indexes, &self.strides, &self.dimensions).unwrap_unchecked();
         self.data.get_unchecked_mut(i)
+    }
+}
+
+/**
+ * Any tensor of a Displayable type implements Display
+ */
+impl<T: std::fmt::Display> std::fmt::Display for Tensor<T, 0> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        crate::tensors::display::format_view(self, f)
+    }
+}
+
+/**
+ * Any tensor of a Displayable type implements Display
+ */
+impl<T: std::fmt::Display> std::fmt::Display for Tensor<T, 1> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        crate::tensors::display::format_view(self, f)
+    }
+}
+
+/**
+ * Any tensor of a Displayable type implements Display
+ */
+impl<T: std::fmt::Display> std::fmt::Display for Tensor<T, 2> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        crate::tensors::display::format_view(self, f)
+    }
+}
+
+/**
+ * Any tensor of a Displayable type implements Display
+ */
+impl<T: std::fmt::Display> std::fmt::Display for Tensor<T, 3> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        crate::tensors::display::format_view(self, f)
     }
 }
 
