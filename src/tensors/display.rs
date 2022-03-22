@@ -1,7 +1,10 @@
 use crate::tensors::views::TensorRef;
 
 // Common formatting logic used for Tensor and TensorView Display implementations
-pub(crate) fn format_view<T, S, const D: usize>(view: &S, f: &mut std::fmt::Formatter) -> std::fmt::Result
+pub(crate) fn format_view<T, S, const D: usize>(
+    view: &S,
+    f: &mut std::fmt::Formatter,
+) -> std::fmt::Result
 where
     T: std::fmt::Display,
     S: TensorRef<T, D>,
@@ -24,18 +27,10 @@ where
         0 => {
             let value = match view.get_reference([0; D]) {
                 Some(x) => x,
-                None => panic!(
-                    "Expected [] to be a valid index for {:?}",
-                    shape
-                ),
+                None => panic!("Expected [] to be a valid index for {:?}", shape),
             };
-            write!(
-                f,
-                "[ {:.*} ]",
-                f.precision().unwrap_or(3),
-                value
-            )
-        },
+            write!(f, "[ {:.*} ]", f.precision().unwrap_or(3), value)
+        }
         1 => {
             write!(f, "[ ")?;
             let length = shape[0].1;
@@ -44,11 +39,7 @@ where
                 index[0] = i;
                 let value = match view.get_reference(index) {
                     Some(x) => x,
-                    None => panic!(
-                        "Expected {:?} to be a valid index for {:?}",
-                        index,
-                        shape
-                    ),
+                    None => panic!("Expected {:?} to be a valid index for {:?}", index, shape),
                 };
                 write!(f, "{:.*}", f.precision().unwrap_or(3), value)?;
                 if i < length - 1 {
@@ -56,7 +47,7 @@ where
                 }
             }
             write!(f, " ]")
-        },
+        }
         2 => {
             write!(f, "[ ")?;
             let shape = view.view_shape();
@@ -72,11 +63,7 @@ where
                     index[1] = column;
                     let value = match view.get_reference(index) {
                         Some(x) => x,
-                        None => panic!(
-                            "Expected {:?} to be a valid index for {:?}",
-                            index,
-                            shape
-                        ),
+                        None => panic!("Expected {:?} to be a valid index for {:?}", index, shape),
                     };
 
                     write!(f, "{:.*}", f.precision().unwrap_or(3), value)?;
@@ -89,7 +76,7 @@ where
                 }
             }
             write!(f, " ]")
-        },
+        }
         3 => {
             writeln!(f, "[")?;
             let shape = view.view_shape();
@@ -106,11 +93,9 @@ where
                         index[2] = column;
                         let value = match view.get_reference(index) {
                             Some(x) => x,
-                            None => panic!(
-                                "Expected {:?} to be a valid index for {:?}",
-                                index,
-                                shape
-                            ),
+                            None => {
+                                panic!("Expected {:?} to be a valid index for {:?}", index, shape)
+                            }
                         };
 
                         write!(f, "{:.*}", f.precision().unwrap_or(3), value)?;
@@ -128,7 +113,7 @@ where
                 }
             }
             write!(f, "\n]")
-        },
+        }
         _d => {
             // TODO
             panic!("Dimensions greater than 3 are not yet supported for Display")
@@ -139,17 +124,18 @@ where
 #[test]
 fn test_display() {
     use crate::tensors::Tensor;
-    let mut tensor_3 = Tensor::empty([("b", 3), ("x", 2), ("y", 2)], 0.0);
-    tensor_3.map_mut_with_index(|[b,x,y], _| {
-        (((y as i32) + (x as i32) * 2 + (b as i32) * 4) % 10) as f64
-    });
-    let mut tensor_2 = Tensor::empty([("x", 3), ("y", 4)], 0.0);
-    tensor_2.map_mut_with_index(|[x,y], _| {
-        (((y as i32) + (x as i32) * 4) % 10) as f64
-    });
+    #[rustfmt::skip]
+    let tensor_3 = Tensor::empty([("b", 3), ("x", 2), ("y", 2)], 0.0)
+        .map_with_index(|[b, x, y], _| {
+            (((y as i32) + (x as i32) * 2 + (b as i32) * 4) % 10) as f64
+        });
+    let tensor_2 = Tensor::empty([("x", 3), ("y", 4)], 0.0)
+        .map_with_index(|[x, y], _| (((y as i32) + (x as i32) * 4) % 10) as f64);
     let tensor_1 = Tensor::from([("x", 5)], vec![0.0, 1.0, 2.0, 3.0, 4.0]);
     let tensor_0 = Tensor::from_scalar(0.0);
-    assert_eq!(tensor_3.to_string(), r#"D = 3
+    assert_eq!(
+        tensor_3.to_string(),
+        r#"D = 3
 ("b", 3), ("x", 2), ("y", 2)
 [
   0.000, 1.000
@@ -160,15 +146,25 @@ fn test_display() {
 
   8.000, 9.000
   0.000, 1.000
-]"#);
-    assert_eq!(tensor_2.to_string(), r#"D = 2
+]"#
+    );
+    assert_eq!(
+        tensor_2.to_string(),
+        r#"D = 2
 ("x", 3), ("y", 4)
 [ 0.000, 1.000, 2.000, 3.000
   4.000, 5.000, 6.000, 7.000
-  8.000, 9.000, 0.000, 1.000 ]"#);
-    assert_eq!(tensor_1.to_string(), r#"D = 1
+  8.000, 9.000, 0.000, 1.000 ]"#
+    );
+    assert_eq!(
+        tensor_1.to_string(),
+        r#"D = 1
 ("x", 5)
-[ 0.000, 1.000, 2.000, 3.000, 4.000 ]"#);
-    assert_eq!(tensor_0.to_string(), r#"D = 0
-[ 0.000 ]"#);
+[ 0.000, 1.000, 2.000, 3.000, 4.000 ]"#
+    );
+    assert_eq!(
+        tensor_0.to_string(),
+        r#"D = 0
+[ 0.000 ]"#
+    );
 }

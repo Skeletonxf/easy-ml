@@ -357,7 +357,6 @@ tensor_view_select_impl!(impl TensorView 3 1);
 tensor_view_select_impl!(impl TensorView 2 1);
 tensor_view_select_impl!(impl TensorView 1 1);
 
-
 /**
  * Any tensor view of a Displayable type implements Display
  */
