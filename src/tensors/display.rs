@@ -1,5 +1,5 @@
-use crate::tensors::views::TensorRef;
 use crate::tensors::indexing::TensorAccess;
+use crate::tensors::views::TensorRef;
 
 // Common formatting logic used for Tensor and TensorView Display implementations
 pub(crate) fn format_view<T, S, const D: usize>(
@@ -121,7 +121,10 @@ where
             let rows = shape[n - 2].1;
             let columns = shape[n - 1].1;
             let last_index = shape.map(|(_, l)| l - 1);
-            for (index, value) in TensorAccess::from_source_order(view).index_order_reference_iter().with_index() {
+            for (index, value) in TensorAccess::from_source_order(view)
+                .index_order_reference_iter()
+                .with_index()
+            {
                 let row = index[n - 2];
                 let column = index[n - 1];
                 if column == 0 {
@@ -215,7 +218,7 @@ fn test_display_large_dimensionality() {
     use crate::tensors::Tensor;
     let tensor_5 = Tensor::from(
         [("a", 2), ("b", 2), ("c", 2), ("d", 2), ("e", 2)],
-        (0..10).cycle().take(2 * 2 * 2 * 2 * 2).collect()
+        (0..10).cycle().take(2 * 2 * 2 * 2 * 2).collect(),
     );
     assert_eq!(
         tensor_5.to_string(),
@@ -250,5 +253,5 @@ fn test_display_large_dimensionality() {
   8, 9
   0, 1
 ]"#
-);
+    );
 }
