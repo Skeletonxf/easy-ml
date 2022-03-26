@@ -163,34 +163,7 @@ unsafe impl<T, const D: usize> TensorMut<T, D> for Tensor<T, D> {
 /**
  * Any tensor of a Displayable type implements Display
  */
-impl<T: std::fmt::Display> std::fmt::Display for Tensor<T, 0> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        crate::tensors::display::format_view(self, f)
-    }
-}
-
-/**
- * Any tensor of a Displayable type implements Display
- */
-impl<T: std::fmt::Display> std::fmt::Display for Tensor<T, 1> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        crate::tensors::display::format_view(self, f)
-    }
-}
-
-/**
- * Any tensor of a Displayable type implements Display
- */
-impl<T: std::fmt::Display> std::fmt::Display for Tensor<T, 2> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        crate::tensors::display::format_view(self, f)
-    }
-}
-
-/**
- * Any tensor of a Displayable type implements Display
- */
-impl<T: std::fmt::Display> std::fmt::Display for Tensor<T, 3> {
+impl<T: std::fmt::Display, const D: usize> std::fmt::Display for Tensor<T, D> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         crate::tensors::display::format_view(self, f)
     }

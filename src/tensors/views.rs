@@ -360,49 +360,10 @@ tensor_view_select_impl!(impl TensorView 1 1);
 /**
  * Any tensor view of a Displayable type implements Display
  */
-impl<T: std::fmt::Display, S> std::fmt::Display for TensorView<T, S, 0>
+impl<T: std::fmt::Display, S, const D: usize> std::fmt::Display for TensorView<T, S, D>
 where
     T: std::fmt::Display,
     S: TensorRef<T, 0>,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        crate::tensors::display::format_view(&self.source, f)
-    }
-}
-
-/**
- * Any tensor view of a Displayable type implements Display
- */
-impl<T: std::fmt::Display, S> std::fmt::Display for TensorView<T, S, 1>
-where
-    T: std::fmt::Display,
-    S: TensorRef<T, 1>,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        crate::tensors::display::format_view(&self.source, f)
-    }
-}
-
-/**
- * Any tensor view of a Displayable type implements Display
- */
-impl<T: std::fmt::Display, S> std::fmt::Display for TensorView<T, S, 2>
-where
-    T: std::fmt::Display,
-    S: TensorRef<T, 2>,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        crate::tensors::display::format_view(&self.source, f)
-    }
-}
-
-/**
- * Any tensor view of a Displayable type implements Display
- */
-impl<T: std::fmt::Display, S> std::fmt::Display for TensorView<T, S, 3>
-where
-    T: std::fmt::Display,
-    S: TensorRef<T, 3>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         crate::tensors::display::format_view(&self.source, f)

@@ -1,4 +1,5 @@
 use crate::tensors::views::TensorRef;
+use crate::tensors::indexing::TensorAccess;
 
 // Common formatting logic used for Tensor and TensorView Display implementations
 pub(crate) fn format_view<T, S, const D: usize>(
@@ -114,9 +115,49 @@ where
             }
             write!(f, "\n]")
         }
-        _d => {
-            // TODO
-            panic!("Dimensions greater than 3 are not yet supported for Display")
+        n => {
+            writeln!(f, "[")?;
+            let shape = view.view_shape();
+            let rows = shape[n - 2].1;
+            let columns = shape[n - 1].1;
+            let last_index = shape.map(|(_, l)| l - 1);
+            for (index, value) in TensorAccess::from_source_order(view).index_order_reference_iter().with_index() {
+                let row = index[n - 2];
+                let column = index[n - 1];
+                if column == 0 {
+                    // starting a new row
+                    write!(f, "  ")?;
+                }
+                write!(f, "{:.*}", f.precision().unwrap_or(3), value)?;
+                if column < columns - 1 {
+                    write!(f, ", ")?;
+                }
+                // non final rows end with a newline, which happen when we're at the
+                // end of a column index
+                if row < rows - 1 && column == columns - 1 {
+                    writeln!(f)?;
+                }
+                // the end of each block ends with a newline
+                if row == rows - 1 && column == columns - 1 && index != last_index {
+                    writeln!(f)?;
+                    for dimension in (1..(n - 1)).rev() {
+                        let index = index[dimension];
+                        let length = shape[dimension].1;
+                        // Each successive dimension we reach the end of is another newline
+                        // because the next value will increment the left-er dimension by 1
+                        // This means a 5 dimensional tensor will have a 3 line gap between the
+                        // leftmost dimension, the second dimension gets 2 line gaps, and the third
+                        // dimension gets 1 line gaps with the fourth and fifth dimensions being
+                        // shown in row/column blocks
+                        if index == length - 1 {
+                            writeln!(f)?;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+            write!(f, "\n]")
         }
     }
 }
@@ -167,4 +208,47 @@ fn test_display() {
         r#"D = 0
 [ 0.000 ]"#
     );
+}
+
+#[test]
+fn test_display_large_dimensionality() {
+    use crate::tensors::Tensor;
+    let tensor_5 = Tensor::from(
+        [("a", 2), ("b", 2), ("c", 2), ("d", 2), ("e", 2)],
+        (0..10).cycle().take(2 * 2 * 2 * 2 * 2).collect()
+    );
+    assert_eq!(
+        tensor_5.to_string(),
+        r#"D = 5
+("a", 2), ("b", 2), ("c", 2), ("d", 2), ("e", 2)
+[
+  0, 1
+  2, 3
+
+  4, 5
+  6, 7
+
+
+  8, 9
+  0, 1
+
+  2, 3
+  4, 5
+
+
+
+  6, 7
+  8, 9
+
+  0, 1
+  2, 3
+
+
+  4, 5
+  6, 7
+
+  8, 9
+  0, 1
+]"#
+);
 }
