@@ -149,9 +149,9 @@ where
                         // Each successive dimension we reach the end of is another newline
                         // because the next value will increment the left-er dimension by 1
                         // This means a 5 dimensional tensor will have a 3 line gap between the
-                        // leftmost dimension, the second dimension gets 2 line gaps, and the third
-                        // dimension gets 1 line gaps with the fourth and fifth dimensions being
-                        // shown in row/column blocks
+                        // leftmost dimension increments, the second dimension gets 2 line gaps,
+                        // and the third dimension gets 1 line gaps with the fourth and fifth
+                        // dimensions being shown in row/column blocks
                         if index == length - 1 {
                             writeln!(f)?;
                         } else {
