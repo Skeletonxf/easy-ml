@@ -1,3 +1,16 @@
+/*!
+ * Generic views into a tensor.
+ *
+ * The concept of a view into a tensor is built from the low level [TensorRef](TensorRef) and
+ * [TensorMut](TensorMut) traits which define having read and read/write access to Tensor data
+ * respectively, and the high level API implemented on the [TensorView](TensorView) struct.
+ *
+ * Since a Tensor is itself a TensorRef, the APIs for the traits are a little verbose to
+ * avoid name clashes with methods defined on the Tensor and TensorView types. You should
+ * typically use TensorRef and TensorMut implementations via the TensorView struct which provides
+ * an API closely resembling Tensor.
+ */
+
 use std::marker::PhantomData;
 
 use crate::tensors::indexing::TensorAccess;
@@ -105,16 +118,39 @@ pub unsafe trait TensorMut<T, const D: usize>: TensorRef<T, D> {
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T;
 }
 
+/**
+ * A view into some or all of a tensor.
+ *
+ * A TensorView has a similar relationship to a [`Tensor`](Tensor) as a
+ * `&str` has to a `String`, or an array slice to an array. A TensorView cannot resize
+ * its source, and may span only a portion of the source Tensor in each dimension.
+ *
+ * However a TensorView is generic not only over the type of the data in the Tensor,
+ * but also over the way the Tensor is 'sliced' and the two are orthogonal to each other.
+ *
+ * TensorView closely mirrors the API of Tensor.
+ * Methods that create a new tensor do not return a TensorView, they return a Tensor.
+ */
 #[derive(Debug)]
 pub struct TensorView<T, S, const D: usize> {
     source: S,
     _type: PhantomData<T>,
 }
 
+/**
+ * TensorView methods which require only read access via a [TensorRef](TensorRef) source.
+ */
 impl<T, S, const D: usize> TensorView<T, S, D>
 where
     S: TensorRef<T, D>,
 {
+    /**
+     * Creates a TensorView from a source of some type.
+     *
+     * The lifetime of the source determines the lifetime of the TensorView created. If the
+     * TensorView is created from a reference to a Tensor, then the TensorView cannot live
+     * longer than the Tensor referenced.
+     */
     pub fn from(source: S) -> TensorView<T, S, D> {
         TensorView {
             source,
@@ -122,14 +158,23 @@ where
         }
     }
 
+    /**
+     * Consumes the tensor view, yielding the source it was created from.
+     */
     pub fn source(self) -> S {
         self.source
     }
 
+    /**
+     * Gives a reference to the tensor view's source.
+     */
     pub fn source_ref(&self) -> &S {
         &self.source
     }
 
+    /**
+     * Gives a mutable reference to the tensor view's source.
+     */
     pub fn source_ref_mut(&mut self) -> &mut S {
         &mut self.source
     }
@@ -192,6 +237,11 @@ where
 
 impl<T, S, const D: usize> TensorView<T, S, D> where S: TensorMut<T, D> {}
 
+
+/**
+ * TensorView methods which require only read access via a [TensorRef](TensorRef) source
+ * and a clonable type.
+ */
 impl<T, S, const D: usize> TensorView<T, S, D>
 where
     T: Clone,
@@ -260,6 +310,9 @@ where
     }
 }
 
+/**
+ * TensorView methods which require mutable access via a [TensorMut](TensorMut) source.
+ */
 impl<T, S, const D: usize> TensorView<T, S, D>
 where
     T: Clone,

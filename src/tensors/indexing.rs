@@ -1,7 +1,7 @@
 /*!
  * # Indexing
  *
- * Many libraries represent tensors as n dimensional arrays, however there is often some semantic
+ * Many libraries represent tensors as N dimensional arrays, however there is often some semantic
  * meaning to each dimension. You may have a batch of 2000 images, each 100 pixels wide and high,
  * with each pixel representing 3 numbers for rgb values. This can be represented as a
  * 2000 x 100 x 100 x 3 tensor, but a 4 dimensional array does not track the semantic meaning
@@ -12,7 +12,7 @@
  * and at worst silently reading the wrong data without realising. *Was it width then height or
  * height then width?*...
  *
- * Easy ML moves the n dimensional array to an implementation detail, and most of its APIs work
+ * Easy ML moves the N dimensional array to an implementation detail, and most of its APIs work
  * on the names of each dimension in a tensor instead of just the order. Instead of a
  * 2000 x 100 x 100 x 3 tensor in which the last element is at [1999, 99, 99, 2], Easy ML tracks
  * the names of the dimensions, so you have a
@@ -28,7 +28,7 @@
  * they are stored in memory.
  *
  * Even with a name for each dimension, at some point you still need to say what order you want
- * to index each dimension with, and this is where `[TensorAccess]`(TensorAccess) comes in. It
+ * to index each dimension with, and this is where [`TensorAccess`](TensorAccess) comes in. It
  * creates a mapping from the dimension name order you want to access elements with to the order
  * the dimensions are stored as.
  */
