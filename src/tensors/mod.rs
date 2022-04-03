@@ -76,21 +76,7 @@ impl<T, const D: usize> Tensor<T, D> {
      */
     #[track_caller]
     pub fn from(dimensions: [(Dimension, usize); D], data: Vec<T>) -> Self {
-        let elements = crate::tensors::dimensions::elements(&dimensions);
-        if data.len() != elements {
-            panic!(
-                "Product of dimension lengths must match size of data. {} != {}",
-                elements,
-                data.len()
-            );
-        }
-        if has_duplicates(&dimensions) {
-            panic!("Dimension names must all be unique: {:?}", &dimensions);
-        }
-        if dimensions.iter().any(|d| d.1 == 0) {
-            panic!("No dimension can have 0 elements: {:?}", &dimensions);
-        }
-
+        validate_dimensions(&dimensions, data.len());
         let strides = compute_strides(&dimensions);
         Tensor {
             data,
@@ -101,6 +87,26 @@ impl<T, const D: usize> Tensor<T, D> {
 
     pub fn shape(&self) -> [(Dimension, usize); D] {
         self.dimensions
+    }
+}
+
+// Panics if the dimensions are invalid for any reason with the appropriate error message.
+#[track_caller]
+#[inline]
+fn validate_dimensions<const D: usize>(dimensions: &[(Dimension, usize); D], data_len: usize) {
+    let elements = crate::tensors::dimensions::elements(dimensions);
+    if data_len != elements {
+        panic!(
+            "Product of dimension lengths must match size of data. {} != {}",
+            elements,
+            data_len
+        );
+    }
+    if has_duplicates(dimensions) {
+        panic!("Dimension names must all be unique: {:?}", &dimensions);
+    }
+    if dimensions.iter().any(|d| d.1 == 0) {
+        panic!("No dimension can have 0 elements: {:?}", &dimensions);
     }
 }
 
@@ -210,6 +216,16 @@ fn has_duplicates(dimensions: &[(Dimension, usize)]) -> bool {
     false
 }
 
+fn has_duplicates_names(dimensions: &[Dimension]) -> bool {
+    for i in 1..dimensions.len() {
+        let name = dimensions[i - 1];
+        if dimensions[i..].iter().any(|&d| d == name) {
+            return true;
+        }
+    }
+    false
+}
+
 impl<T, const D: usize> Tensor<T, D> {
     pub fn view(&self) -> TensorView<T, &Tensor<T, D>, D> {
         TensorView::from(self)
@@ -280,12 +296,79 @@ impl<T, const D: usize> Tensor<T, D> {
      * tensor.rename(["y", "z"]);
      * assert_eq!([("y", 2), ("z", 3)], tensor.shape());
      * ```
+     *
+     * # Panics
+     *
+     * - If a dimension name is not unique
      */
     // TODO: View version
+    #[track_caller]
     pub fn rename(&mut self, dimensions: [Dimension; D]) {
+        if has_duplicates_names(&dimensions) {
+            panic!("Dimension names must all be unique: {:?}", &dimensions);
+        }
         for d in 0..D {
             self.dimensions[d].0 = dimensions[d];
         }
+    }
+
+    /**
+     * Changes the shape of the tensor without changing the number of dimensions or moving any
+     * data around.
+     *
+     * # Panics
+     *
+     * - If the number of provided elements in the new shape does not match the product of the
+     * dimension lengths in the existing tensor's shape.
+     * - If a dimension name is not unique
+     * - If any dimension has 0 elements
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * let mut tensor = Tensor::from([("width", 2), ("height", 2)], vec![
+     *     1, 2,
+     *     3, 4
+     * ]);
+     * tensor.reshape_mut([("batch", 1), ("image", 4)]);
+     * assert_eq!(tensor, Tensor::from([("batch", 1), ("image", 4)], vec![ 1, 2, 3, 4 ]));
+     * ```
+     */
+    #[track_caller]
+    pub fn reshape_mut(&mut self, dimensions: [(Dimension, usize); D]) {
+        validate_dimensions(&dimensions, self.data.len());
+        let strides = compute_strides(&dimensions);
+        self.dimensions = dimensions;
+        self.strides = strides;
+    }
+
+    /**
+     * Consumes the tensor and changes the shape of the tensor without moving any
+     * data around. The new Tensor may also have a different number of dimensions.
+     *
+     * # Panics
+     *
+     * - If the number of provided elements in the new shape does not match the product of the
+     * dimension lengths in the existing tensor's shape.
+     * - If a dimension name is not unique
+     * - If any dimension has 0 elements
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * let tensor = Tensor::from([("width", 2), ("height", 2)], vec![
+     *     1, 2,
+     *     3, 4
+     * ]);
+     * let flattened = tensor.reshape_owned([("image", 4)]);
+     * assert_eq!(flattened, Tensor::from([("image", 4)], vec![ 1, 2, 3, 4 ]));
+     * ```
+     */
+    // TODO: View version
+     #[track_caller]
+    pub fn reshape_owned<const D2: usize>(
+        self,
+        dimensions: [(Dimension, usize); D2]
+    ) -> Tensor<T, D2> {
+        Tensor::from(dimensions, self.data)
     }
 }
 
@@ -359,6 +442,9 @@ where
      */
     #[track_caller]
     pub fn transpose_mut(&mut self, dimensions: [Dimension; D]) {
+        if has_duplicates_names(&dimensions) {
+            panic!("Dimension names must all be unique: {:?}", &dimensions);
+        }
         use crate::tensors::dimensions::{
             dimension_mapping, dimension_mapping_shape, map_dimensions,
         };

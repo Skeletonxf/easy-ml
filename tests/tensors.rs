@@ -105,4 +105,38 @@ mod tensors {
             )
         );
     }
+
+    #[test]
+    fn test_reshaping() {
+        let tensor = Tensor::from([("everything", 20)], (0..20).collect());
+        let mut five_by_four = tensor.reshape_owned([("fives", 5), ("fours", 4)]);
+        #[rustfmt::skip]
+        assert_eq!(
+            Tensor::from([("fives", 5), ("fours", 4)], vec![
+                0, 1, 2, 3,
+                4, 5, 6, 7,
+                8, 9, 10, 11,
+                12, 13, 14, 15,
+                16, 17, 18, 19
+            ]),
+            five_by_four
+        );
+        five_by_four.reshape_mut([("twos", 2), ("tens", 10)]);
+        assert_eq!(
+            Tensor::from([("twos", 2), ("tens", 10)], vec![
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+                10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+            ]),
+            five_by_four
+        );
+        let flattened = five_by_four.reshape_owned([("data", 20)]);
+        assert_eq!(flattened, Tensor::from([("data", 20)], (0..20).collect()));
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_reshape() {
+        let mut square = Tensor::from([("r", 2), ("c", 2)], (0..4).collect());
+        square.reshape_mut([("not", 3), ("square", 1)]);
+    }
 }
