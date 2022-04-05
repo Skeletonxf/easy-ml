@@ -128,6 +128,26 @@ pub fn names_of<const D: usize>(dimensions: &[(Dimension, usize); D]) -> [Dimens
     dimensions.map(|(dimension, _length)| dimension)
 }
 
+pub(crate) fn has_duplicates(dimensions: &[(Dimension, usize)]) -> bool {
+    for i in 1..dimensions.len() {
+        let name = dimensions[i - 1].0;
+        if dimensions[i..].iter().any(|d| d.0 == name) {
+            return true;
+        }
+    }
+    false
+}
+
+pub(crate) fn has_duplicates_names(dimensions: &[Dimension]) -> bool {
+    for i in 1..dimensions.len() {
+        let name = dimensions[i - 1];
+        if dimensions[i..].iter().any(|&d| d == name) {
+            return true;
+        }
+    }
+    false
+}
+
 #[test]
 fn test_dimension_mapping() {
     let mapping = dimension_mapping(&[("x", 0), ("y", 0), ("z", 0)], &["x", "y", "z"]);

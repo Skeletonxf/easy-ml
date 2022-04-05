@@ -8,7 +8,7 @@
  * and a compile time constant. Each tensor also carries `D` dimension name and length pairs.
  */
 use crate::tensors::indexing::TensorAccess;
-use crate::tensors::views::{TensorIndex, TensorMut, TensorRef, TensorView};
+use crate::tensors::views::{TensorIndex, TensorMut, TensorRef, TensorView, TensorRename};
 
 pub mod dimensions;
 mod display;
@@ -102,7 +102,7 @@ fn validate_dimensions<const D: usize>(dimensions: &[(Dimension, usize); D], dat
             data_len
         );
     }
-    if has_duplicates(dimensions) {
+    if crate::tensors::dimensions::has_duplicates(dimensions) {
         panic!("Dimension names must all be unique: {:?}", &dimensions);
     }
     if dimensions.iter().any(|d| d.1 == 0) {
@@ -206,26 +206,6 @@ fn get_index_direct<const D: usize>(
     Some(index)
 }
 
-fn has_duplicates(dimensions: &[(Dimension, usize)]) -> bool {
-    for i in 1..dimensions.len() {
-        let name = dimensions[i - 1].0;
-        if dimensions[i..].iter().any(|d| d.0 == name) {
-            return true;
-        }
-    }
-    false
-}
-
-fn has_duplicates_names(dimensions: &[Dimension]) -> bool {
-    for i in 1..dimensions.len() {
-        let name = dimensions[i - 1];
-        if dimensions[i..].iter().any(|&d| d == name) {
-            return true;
-        }
-    }
-    false
-}
-
 impl<T, const D: usize> Tensor<T, D> {
     pub fn view(&self) -> TensorView<T, &Tensor<T, D>, D> {
         TensorView::from(self)
@@ -304,12 +284,16 @@ impl<T, const D: usize> Tensor<T, D> {
     // TODO: View version
     #[track_caller]
     pub fn rename(&mut self, dimensions: [Dimension; D]) {
-        if has_duplicates_names(&dimensions) {
+        if crate::tensors::dimensions::has_duplicates_names(&dimensions) {
             panic!("Dimension names must all be unique: {:?}", &dimensions);
         }
         for d in 0..D {
             self.dimensions[d].0 = dimensions[d];
         }
+    }
+
+    pub fn rename_view(&self, dimensions: [Dimension; D]) -> TensorView<T, TensorRename<T, &Tensor<T, D>, D>, D> {
+        TensorView::from(TensorRename::from(self, dimensions))
     }
 
     /**
@@ -442,7 +426,7 @@ where
      */
     #[track_caller]
     pub fn transpose_mut(&mut self, dimensions: [Dimension; D]) {
-        if has_duplicates_names(&dimensions) {
+        if crate::tensors::dimensions::has_duplicates_names(&dimensions) {
             panic!("Dimension names must all be unique: {:?}", &dimensions);
         }
         use crate::tensors::dimensions::{

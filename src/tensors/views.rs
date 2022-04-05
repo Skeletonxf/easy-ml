@@ -17,9 +17,11 @@ use crate::tensors::indexing::TensorAccess;
 use crate::tensors::{Dimension, Tensor};
 
 mod indexes;
+mod renamed;
 pub mod traits;
 
 pub use indexes::*;
+pub use renamed::*;
 
 /**
 * A shared/immutable reference to a tensor (or a portion of it) of some type and number of
@@ -37,7 +39,8 @@ pub use indexes::*;
 * # Safety
 *
 * In order to support returning references without bounds checking in a useful way, the
-* implementing type is required to uphold several invariants.
+* implementing type is required to uphold several invariants that cannot be checked by
+* the compiler.
 *
 * 1 - Any valid index as described in Indexing will yield a safe reference when calling
 * `get_reference_unchecked` and `get_reference_unchecked_mut`.
@@ -45,6 +48,10 @@ pub use indexes::*;
 * 2 - The view shape that defines which indexes are valid may not be changed by a shared reference
 * to the TensorRef implementation. ie, the tensor may not be resized while a mutable reference is
 * held to it, except by that reference.
+*
+* 3 - All dimension names in the view_shape must be unique.
+*
+* 4 - All dimension lengths in the view_shape must be non zero.
 *
 * Essentially, interior mutability causes problems, since code looping through the range of valid
 * indexes in a TensorRef needs to be able to rely on that range of valid indexes not changing.
