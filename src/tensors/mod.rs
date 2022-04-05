@@ -8,7 +8,7 @@
  * and a compile time constant. Each tensor also carries `D` dimension name and length pairs.
  */
 use crate::tensors::indexing::TensorAccess;
-use crate::tensors::views::{TensorIndex, TensorMut, TensorRef, TensorView, TensorRename};
+use crate::tensors::views::{TensorIndex, TensorMut, TensorRef, TensorRename, TensorView};
 
 pub mod dimensions;
 mod display;
@@ -98,8 +98,7 @@ fn validate_dimensions<const D: usize>(dimensions: &[(Dimension, usize); D], dat
     if data_len != elements {
         panic!(
             "Product of dimension lengths must match size of data. {} != {}",
-            elements,
-            data_len
+            elements, data_len
         );
     }
     if crate::tensors::dimensions::has_duplicates(dimensions) {
@@ -281,7 +280,6 @@ impl<T, const D: usize> Tensor<T, D> {
      *
      * - If a dimension name is not unique
      */
-    // TODO: View version
     #[track_caller]
     pub fn rename(&mut self, dimensions: [Dimension; D]) {
         if crate::tensors::dimensions::has_duplicates_names(&dimensions) {
@@ -292,7 +290,11 @@ impl<T, const D: usize> Tensor<T, D> {
         }
     }
 
-    pub fn rename_view(&self, dimensions: [Dimension; D]) -> TensorView<T, TensorRename<T, &Tensor<T, D>, D>, D> {
+    // TODO: docs
+    pub fn rename_view(
+        &self,
+        dimensions: [Dimension; D],
+    ) -> TensorView<T, TensorRename<T, &Tensor<T, D>, D>, D> {
         TensorView::from(TensorRename::from(self, dimensions))
     }
 
@@ -347,10 +349,10 @@ impl<T, const D: usize> Tensor<T, D> {
      * ```
      */
     // TODO: View version
-     #[track_caller]
+    #[track_caller]
     pub fn reshape_owned<const D2: usize>(
         self,
-        dimensions: [(Dimension, usize); D2]
+        dimensions: [(Dimension, usize); D2],
     ) -> Tensor<T, D2> {
         Tensor::from(dimensions, self.data)
     }
@@ -534,7 +536,6 @@ where
         self.source_order_mut().map_mut_with_index(mapping_function);
     }
 }
-
 
 macro_rules! tensor_select_impl {
     (impl Tensor $d:literal 1) => {

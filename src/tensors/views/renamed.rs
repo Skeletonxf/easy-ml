@@ -42,7 +42,11 @@ where
         if crate::tensors::dimensions::has_duplicates_names(&dimensions) {
             panic!("Dimension names must all be unique: {:?}", &dimensions);
         }
-        TensorRename { source, dimensions, _type: PhantomData }
+        TensorRename {
+            source,
+            dimensions,
+            _type: PhantomData,
+        }
     }
 
     /**
@@ -109,7 +113,7 @@ where
  */
 unsafe impl<T, S, const D: usize> TensorRef<T, D> for TensorRename<T, S, D>
 where
-    S: TensorRef<T, D>
+    S: TensorRef<T, D>,
 {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
         self.source.get_reference(indexes)

@@ -244,7 +244,6 @@ where
 
 impl<T, S, const D: usize> TensorView<T, S, D> where S: TensorMut<T, D> {}
 
-
 /**
  * TensorView methods which require only read access via a [TensorRef](TensorRef) source
  * and a clonable type.

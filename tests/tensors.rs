@@ -122,6 +122,7 @@ mod tensors {
             five_by_four
         );
         five_by_four.reshape_mut([("twos", 2), ("tens", 10)]);
+        #[rustfmt::skip]
         assert_eq!(
             Tensor::from([("twos", 2), ("tens", 10)], vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
