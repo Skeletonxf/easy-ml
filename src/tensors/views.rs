@@ -61,8 +61,7 @@ pub use renamed::*;
 * interior mutability by putting the Tensor in an `Arc<Mutex<>>` which would allow another thread
 * to resize a tensor while an iterator was looping through previously valid indexes on a different
 * thread. This is the same contract as
-* [`NoInteriorMutability`](crate::matrices::views::NoInteriorMutability) used in in
-* the matrix APIs.
+* [`NoInteriorMutability`](crate::matrices::views::NoInteriorMutability) used in the matrix APIs.
 *
 * Note that it is okay to be able to resize any TensorRef implementation if that always requires
 * an exclusive reference to the TensorRef/Tensor, since the exclusivity prevents the above
