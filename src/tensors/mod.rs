@@ -37,7 +37,7 @@ pub mod views;
  * uses `Dimension` whenever dimension names are expected to distinguish the types from just
  * strings.
  */
-type Dimension = &'static str;
+pub type Dimension = &'static str;
 
 /**
  * A [named tensor](http://nlp.seas.harvard.edu/NamedTensor).
