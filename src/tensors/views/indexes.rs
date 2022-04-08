@@ -30,6 +30,7 @@ where
      * of D - I, where D is the dimensionality of the source, and I is the dimensionality of the
      * provided indexes.
      */
+    #[track_caller]
     pub fn from(source: S, provided_indexes: [(Dimension, usize); I]) -> TensorIndex<T, S, D, I> {
         let shape = source.view_shape();
         if I > D {
@@ -230,4 +231,78 @@ fn dimensionality_reduction() {
     let vector = TensorView::from(TensorIndex::from(&tensor, [("batch", 0), ("column", 1)]));
     assert_eq!(vector.shape(), [("row", 2)]);
     assert_eq!(vector, Tensor::from([("row", 2)], vec![1, 3,]));
+}
+
+/**
+ * A combination of dimension names and a tensor. The provided dimensions increase
+ * the dimensionality of the TensorRef exposed to more than the dimensionality of the TensorRef
+ * this is created from, by adding additional dimensions with a length of one.
+ *
+ * Note: due to limitations in Rust's const generics support, TensorExpansion only implements
+ * TensorRef for D from `1` to `6`.
+ */
+#[derive(Clone, Debug)]
+pub struct TensorExpansion<T, S, const D: usize, const I: usize> {
+    source: S,
+    extra: [(usize, Dimension); I],
+    _type: PhantomData<T>,
+}
+
+impl<T, S, const D: usize, const I: usize> TensorExpansion<T, S, D, I>
+where
+    S: TensorRef<T, D>,
+{
+    /**
+     * Creates a TensorExpansion from a source and an extra dimension inserted as the d'th
+     * in the shape.
+     *
+     * Each extra dimension adds a dimension to the tensor with a length of 1 so they
+     * do not change the total number of elements. Hence a vector can be viewed as a matrix
+     * if you provide an extra row/column dimension to index. More generally, the tensor
+     * the TensorIndex exposes will have a dimensionality of D + I, where D is the
+     * dimensionality of the source, and I is the dimensionality of the extra dimensions.
+     *
+     * # Panics
+     *
+     * - If the extra dimension is already in use
+     * - If the dimension number to insert the extra dimension `d` into is not 0 <= `d` <= D
+     */
+    #[track_caller]
+    pub fn from_single(source: S, dimension: Dimension, d: usize) -> TensorExpansion<T, S, D, 1> {
+        let shape = source.view_shape();
+        if d > D {
+            panic!("d must be <= D, D: {:?}, d: {:?}", D, d);
+        }
+
+        let extra = [(d, dimension)];
+        for (name, _) in &shape {
+            if dimension == *name {
+                panic!(
+                    "Dimension name {:?} is already present in the source shape, source shape: {:?}",
+                    dimension,
+                    shape
+                );
+            }
+        }
+
+        TensorExpansion {
+            source,
+            extra,
+            _type: PhantomData,
+        }
+    }
+
+    pub fn source(self) -> S {
+        self.source
+    }
+
+    // # Safety
+    //
+    // Giving out a mutable reference to our source could allow it to be changed out from under us
+    // and make our extra dimensions invalid. However, since the source implements TensorRef
+    // interior mutability is not allowed, so we can give out shared references without breaking
+    // our own integrity.
+    pub fn source_ref(&self) -> &S {
+        &self.source
+    }
 }
