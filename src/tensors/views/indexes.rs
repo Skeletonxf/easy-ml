@@ -257,10 +257,10 @@ where
      * in the shape.
      *
      * Each extra dimension adds a dimension to the tensor with a length of 1 so they
-     * do not change the total number of elements. Hence a vector can be viewed as a matrix
-     * if you provide an extra row/column dimension to index. More generally, the tensor
-     * the TensorIndex exposes will have a dimensionality of D + I, where D is the
-     * dimensionality of the source, and I is the dimensionality of the extra dimensions.
+     * do not change the total number of elements. Hence, a vector can be viewed as a matrix
+     * if you provide an extra row/column dimension. More generally, the tensor the TensorIndex
+     * exposes will have a dimensionality of D + I, where D is the dimensionality of the source,
+     * and I is the dimensionality of the extra dimensions.
      *
      * # Panics
      *
@@ -305,4 +305,152 @@ where
     pub fn source_ref(&self) -> &S {
         &self.source
     }
+}
+
+macro_rules! tensor_expansion_ref_impl {
+    (unsafe impl TensorRef for TensorExpansion $d:literal $i:literal $helper_name:ident) => {
+        impl<T, S> TensorExpansion<T, S, $d, $i>
+        where
+            S: TensorRef<T, $d>,
+        {
+            fn $helper_name(&self, indexes: [usize; $d + $i]) -> Option<[usize; $d]> {
+                let mut used = [0; $d];
+                let mut i = 0; // index from 0..D
+                let mut extra = 0; // index from 0..I
+                for &index in indexes.iter() {
+                    match self.extra.get(extra) {
+                        // Simple case is when we've already matched against each index for the
+                        // extra dimensions, in which case the rest of the provided indexes will
+                        // be used on the source.
+                        None => {
+                            used[i] = index;
+                            i += 1;
+                        }
+                        Some((j, _name)) => {
+                            if *j == i {
+                                // The i'th actual dimension in our source is preceeded by this
+                                // dimension in our extra dimensions.
+                                if index != 0 {
+                                    // Invalid index
+                                    return None;
+                                }
+                                extra += 1;
+                                // Do not increment i, and don't actually index our source with
+                                // this index value as it indexes against the extra dimension
+                            } else {
+                                used[i] = index;
+                                i += 1;
+                            }
+                        }
+                    }
+                }
+                // Now we've filtered out the indexes that were for extra dimensions from the
+                // input, we can index our source with the real indexes.
+                Some(used)
+            }
+        }
+
+        unsafe impl<T, S> TensorRef<T, { $d + $i }> for TensorExpansion<T, S, $d, $i>
+        where
+            S: TensorRef<T, $d>,
+        {
+            fn get_reference(&self, indexes: [usize; $d + $i]) -> Option<&T> {
+                self.source.get_reference(self.$helper_name(indexes)?)
+            }
+
+            fn view_shape(&self) -> [(Dimension, usize); $d + $i] {
+                let shape = self.source.view_shape();
+                let mut extra_shape = [("", 0); $d + $i];
+                let mut i = 0; // index from 0..D
+                let mut extra = 0; // index from 0..I
+                for dimension in extra_shape.iter_mut() {
+                    match self.extra.get(extra) {
+                        None => {
+                            *dimension = shape[i];
+                            i += 1;
+                        }
+                        Some((j, extra_name)) => {
+                            if *j == i {
+                                *dimension = (extra_name, 1);
+                                extra += 1;
+                                // Do not increment i, this was an extra dimension
+                            } else {
+                                *dimension = shape[i];
+                                i += 1;
+                            }
+                        }
+                    }
+                }
+                extra_shape
+            }
+
+            unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + $i]) -> &T {
+                // TODO: Can we use unwrap_unchecked here?
+                self.source.get_reference_unchecked(self.$helper_name(indexes).unwrap())
+            }
+        }
+
+        unsafe impl<T, S> TensorMut<T, { $d + $i }> for TensorExpansion<T, S, $d, $i>
+        where
+            S: TensorMut<T, $d>,
+        {
+            fn get_reference_mut(&mut self, indexes: [usize; $d + $i]) -> Option<&mut T> {
+                self.source.get_reference_mut(self.$helper_name(indexes)?)
+            }
+
+            unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + $i]) -> &mut T {
+                // TODO: Can we use unwrap_unchecked here?
+                self.source.get_reference_unchecked_mut(self.$helper_name(indexes).unwrap())
+            }
+        }
+    };
+}
+
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 1 1 compute_expansion_indexes_1_1);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 1 2 compute_expansion_indexes_1_2);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 1 3 compute_expansion_indexes_1_3);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 1 4 compute_expansion_indexes_1_4);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 1 5 compute_expansion_indexes_1_5);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 2 1 compute_expansion_indexes_2_1);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 2 2 compute_expansion_indexes_2_2);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 2 3 compute_expansion_indexes_2_3);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 2 4 compute_expansion_indexes_2_4);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 3 1 compute_expansion_indexes_3_1);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 3 2 compute_expansion_indexes_3_2);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 3 3 compute_expansion_indexes_3_3);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 4 1 compute_expansion_indexes_4_1);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 4 2 compute_expansion_indexes_4_2);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 5 1 compute_expansion_indexes_5_1);
+
+#[test]
+fn dimensionality_expansion() {
+    use crate::tensors::views::TensorView;
+    use crate::tensors::Tensor;
+    #[rustfmt::skip]
+    let tensor = Tensor::from([("row", 2), ("column", 2)], vec![
+        0, 1,
+        2, 3,
+    ]);
+    // TODO: Remove from_single and validate generic from properly to remove this papercut
+    let tensor_3 = TensorView::from(TensorExpansion::<_, _, 2, 1>::from_single(&tensor, "batch", 0));
+    assert_eq!(tensor_3.shape(), [("batch", 1), ("row", 2), ("column", 2)]);
+    assert_eq!(
+        tensor_3,
+        Tensor::from([("batch", 1), ("row", 2), ("column", 2)], vec![
+            0, 1,
+            2, 3,
+        ])
+    );
+}
+
+#[test]
+#[should_panic(expected = "Unable to index with [2, 2, 2, 2], Tensor dimensions are [(\"a\", 2), (\"b\", 2), (\"c\", 1), (\"d\", 2)].")]
+fn dimensionality_reduction_invalid_extra_index() {
+    use crate::tensors::views::TensorView;
+    use crate::tensors::Tensor;
+    #[rustfmt::skip]
+    let tensor = Tensor::from([("a", 2), ("b", 2), ("d", 2)], (0..8).collect());
+    let tensor = TensorView::from(TensorExpansion::<_, _, 3, 1>::from_single(&tensor, "c", 2));
+    assert_eq!(tensor.shape(), [("a", 2), ("b", 2), ("c", 1), ("d", 2)]);
+    tensor.source_order().get_reference([2, 2, 2, 2]);
 }
