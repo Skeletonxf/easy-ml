@@ -72,8 +72,33 @@ where
     }
 }
 
-macro_rules! tensor_ref_impl {
-    (unsafe impl TensorRef for TensorIndex $d:literal $i:literal) => {
+macro_rules! tensor_index_ref_impl {
+    (unsafe impl TensorRef for TensorIndex $d:literal $i:literal $helper_name:ident) => {
+        impl<T, S> TensorIndex<T, S, $d, $i>
+        where
+            S: TensorRef<T, $d>,
+        {
+            fn $helper_name(&self, indexes: [usize; $d - $i]) -> Option<[usize; $d]> {
+                let mut supplied = indexes.iter();
+                // Indexes have to be in the order of our shape, so they must fill in the None
+                // slots of our provided array since we created that in the same order as our
+                // view_shape
+                let mut combined = [0; $d];
+                let mut d = 0;
+                for provided in self.provided.iter() {
+                    combined[d] = match provided {
+                        // This error case should never happen but depending on if we're using
+                        // this method in an unsafe function or not we may want to handle it
+                        // differently
+                        None => *supplied.next()?,
+                        Some(i) => *i,
+                    };
+                    d += 1;
+                }
+                Some(combined)
+            }
+        }
+
         // # Safety
         // The source we index into implements TensorRef, and we do not give out any mutable
         // references to it. Since it may not implement interior mutability due to implementing
@@ -87,16 +112,9 @@ macro_rules! tensor_ref_impl {
             S: TensorRef<T, $d>,
         {
             fn get_reference(&self, indexes: [usize; $d - $i]) -> Option<&T> {
-                let mut supplied = indexes.iter();
-                // Indexes have to be in the order of our shape, so they must fill in the None
-                // slots of our provided array since we created that in the same order as our
-                // view_shape
-                let mut combined = self.provided.iter().map(|provided| match provided {
-                    None => *supplied.next().unwrap(),
-                    Some(i) => *i,
-                });
-                let index = [0; $d].map(|_| combined.next().unwrap());
-                self.source.get_reference(index)
+                // unwrap because None returns from the helper method are not input error, they
+                // should never happen for any input
+                self.source.get_reference(self.$helper_name(indexes).unwrap())
             }
 
             fn view_shape(&self) -> [(Dimension, usize); $d - $i] {
@@ -111,16 +129,7 @@ macro_rules! tensor_ref_impl {
 
             unsafe fn get_reference_unchecked(&self, indexes: [usize; $d - $i]) -> &T {
                 // TODO: Can we use unwrap_unchecked here?
-                let mut supplied = indexes.iter();
-                // Indexes have to be in the order of our shape, so they must fill in the None
-                // slots of our provided array since we created that in the same order as our
-                // view_shape
-                let mut combined = self.provided.iter().map(|provided| match provided {
-                    None => *supplied.next().unwrap(),
-                    Some(i) => *i,
-                });
-                let index = [0; $d].map(|_| combined.next().unwrap());
-                self.source.get_reference_unchecked(index)
+                self.source.get_reference_unchecked(self.$helper_name(indexes).unwrap())
             }
         }
 
@@ -129,56 +138,38 @@ macro_rules! tensor_ref_impl {
             S: TensorMut<T, $d>,
         {
             fn get_reference_mut(&mut self, indexes: [usize; $d - $i]) -> Option<&mut T> {
-                let mut supplied = indexes.iter();
-                // Indexes have to be in the order of our shape, so they must fill in the None
-                // slots of our provided array since we created that in the same order as our
-                // view_shape
-                let mut combined = self.provided.iter().map(|provided| match provided {
-                    None => *supplied.next().unwrap(),
-                    Some(i) => *i,
-                });
-                let index = [0; $d].map(|_| combined.next().unwrap());
-                self.source.get_reference_mut(index)
+                self.source.get_reference_mut(self.$helper_name(indexes).unwrap())
             }
 
             unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d - $i]) -> &mut T {
                 // TODO: Can we use unwrap_unchecked here?
-                let mut supplied = indexes.iter();
-                // Indexes have to be in the order of our shape, so they must fill in the None
-                // slots of our provided array since we created that in the same order as our
-                // view_shape
-                let mut combined = self.provided.iter().map(|provided| match provided {
-                    None => *supplied.next().unwrap(),
-                    Some(i) => *i,
-                });
-                let index = [0; $d].map(|_| combined.next().unwrap());
-                self.source.get_reference_unchecked_mut(index)
+                self.source.get_reference_unchecked_mut(self.$helper_name(indexes).unwrap())
             }
         }
     };
 }
 
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 6 1);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 6 2);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 6 3);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 6 4);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 6 5);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 6 6);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 5 1);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 5 2);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 5 3);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 5 4);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 5 5);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 4 1);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 4 2);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 4 3);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 4 4);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 3 1);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 3 2);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 3 3);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 2 1);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 2 2);
-tensor_ref_impl!(unsafe impl TensorRef for TensorIndex 1 1);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 6 1 compute_select_indexes_6_1);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 6 2 compute_select_indexes_6_2);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 6 3 compute_select_indexes_6_3);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 6 4 compute_select_indexes_6_4);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 6 5 compute_select_indexes_6_5);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 6 6 compute_select_indexes_6_6);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 5 1 compute_select_indexes_5_1);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 5 2 compute_select_indexes_5_2);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 5 3 compute_select_indexes_5_3);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 5 4 compute_select_indexes_5_4);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 5 5 compute_select_indexes_5_5);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 4 1 compute_select_indexes_4_1);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 4 2 compute_select_indexes_4_2);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 4 3 compute_select_indexes_4_3);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 4 4 compute_select_indexes_4_4);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 3 1 compute_select_indexes_3_1);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 3 2 compute_select_indexes_3_2);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 3 3 compute_select_indexes_3_3);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 2 1 compute_select_indexes_2_1);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 2 2 compute_select_indexes_2_2);
+tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 1 1 compute_select_indexes_1_1);
 
 #[test]
 fn dimensionality_reduction() {
