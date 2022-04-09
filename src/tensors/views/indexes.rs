@@ -397,6 +397,12 @@ macro_rules! tensor_expansion_ref_impl {
     };
 }
 
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 0 1 compute_expansion_indexes_0_1);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 0 2 compute_expansion_indexes_0_2);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 0 3 compute_expansion_indexes_0_3);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 0 4 compute_expansion_indexes_0_4);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 0 5 compute_expansion_indexes_0_5);
+tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 0 6 compute_expansion_indexes_0_6);
 tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 1 1 compute_expansion_indexes_1_1);
 tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 1 2 compute_expansion_indexes_1_2);
 tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 1 3 compute_expansion_indexes_1_3);
