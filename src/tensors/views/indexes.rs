@@ -244,41 +244,53 @@ where
     S: TensorRef<T, D>,
 {
     /**
-     * Creates a TensorExpansion from a source and an extra dimension inserted as the d'th
-     * in the shape.
+     * Creates a TensorExpansion from a source and extra dimension names inserted into the shape
+     * at the provided indexes.
      *
-     * Each extra dimension adds a dimension to the tensor with a length of 1 so they
+     * Each extra dimension name adds a dimension to the tensor with a length of 1 so they
      * do not change the total number of elements. Hence, a vector can be viewed as a matrix
-     * if you provide an extra row/column dimension. More generally, the tensor the TensorIndex
+     * if you provide an extra row/column dimension. More generally, the tensor the TensorExpansion
      * exposes will have a dimensionality of D + I, where D is the dimensionality of the source,
      * and I is the dimensionality of the extra dimensions.
      *
+     * The extra dimension names can be added before any dimensions in the source's shape, in
+     * the range 0 inclusive to D inclusive. It is possible to add multiple dimension names before
+     * an existing dimension.
+     *
      * # Panics
      *
-     * - If the extra dimension is already in use
-     * - If the dimension number to insert the extra dimension `d` into is not 0 <= `d` <= D
+     * - If any extra dimension name is already in use
+     * - If any dimension number `d` to insert an extra dimension name into is not 0 <= `d` <= D
      */
     #[track_caller]
-    pub fn from_single(source: S, dimension: Dimension, d: usize) -> TensorExpansion<T, S, D, 1> {
+    pub fn from(source: S, extra_dimension_names: [(usize, Dimension); I]) -> TensorExpansion<T, S, D, I> {
+        let mut dimensions = extra_dimension_names;
         let shape = source.view_shape();
-        if d > D {
-            panic!("d must be <= D, D: {:?}, d: {:?}", D, d);
-        }
-
-        let extra = [(d, dimension)];
-        for (name, _) in &shape {
-            if dimension == *name {
+        for &(d, name) in &dimensions {
+            if d > D {
                 panic!(
-                    "Dimension name {:?} is already present in the source shape, source shape: {:?}",
-                    dimension,
+                    "All extra dimensions {:?} must be inserted in the range 0 <= d <= D of the source shape {:?}",
+                    dimensions,
                     shape
                 );
             }
+            for &(n, _) in &shape {
+                if name == n {
+                    panic!(
+                        "All extra dimension names {:?} must not be already present in the source shape {:?}",
+                        dimensions,
+                        shape
+                    );
+                }
+            }
         }
+
+        // Sort by ascending insertion positions
+        dimensions.sort_by(|a, b| a.0.cmp(&b.0));
 
         TensorExpansion {
             source,
-            extra,
+            extra: dimensions,
             _type: PhantomData,
         }
     }
@@ -423,13 +435,8 @@ tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 5 1 compute
 fn dimensionality_expansion() {
     use crate::tensors::views::TensorView;
     use crate::tensors::Tensor;
-    #[rustfmt::skip]
-    let tensor = Tensor::from([("row", 2), ("column", 2)], vec![
-        0, 1,
-        2, 3,
-    ]);
-    // TODO: Remove from_single and validate generic from properly to remove this papercut
-    let tensor_3 = TensorView::from(TensorExpansion::<_, _, 2, 1>::from_single(&tensor, "batch", 0));
+    let tensor = Tensor::from([("row", 2), ("column", 2)], (0..4).collect());
+    let tensor_3 = TensorView::from(TensorExpansion::from(&tensor, [(0, "batch")]));
     assert_eq!(tensor_3.shape(), [("batch", 1), ("row", 2), ("column", 2)]);
     assert_eq!(
         tensor_3,
@@ -445,9 +452,8 @@ fn dimensionality_expansion() {
 fn dimensionality_reduction_invalid_extra_index() {
     use crate::tensors::views::TensorView;
     use crate::tensors::Tensor;
-    #[rustfmt::skip]
     let tensor = Tensor::from([("a", 2), ("b", 2), ("d", 2)], (0..8).collect());
-    let tensor = TensorView::from(TensorExpansion::<_, _, 3, 1>::from_single(&tensor, "c", 2));
+    let tensor = TensorView::from(TensorExpansion::from(&tensor, [(2, "c")]));
     assert_eq!(tensor.shape(), [("a", 2), ("b", 2), ("c", 1), ("d", 2)]);
     tensor.source_order().get_reference([2, 2, 2, 2]);
 }
