@@ -445,6 +445,18 @@ fn dimensionality_expansion() {
             2, 3,
         ])
     );
+    let vector = Tensor::from([("a", 5)], (0..5).collect());
+    let tensor = TensorView::from(TensorExpansion::from(&vector, [(1, "b"), (1, "c")]));
+    assert_eq!(
+        tensor,
+        Tensor::from([("a", 5), ("b", 1), ("c", 1)], (0..5).collect())
+    );
+    let matrix = Tensor::from([("row", 2), ("column", 2)], (0..4).collect());
+    let dataset = TensorView::from(TensorExpansion::from(&matrix, [(2, "color"), (0, "batch")]));
+    assert_eq!(
+        dataset,
+        Tensor::from([("batch", 1), ("row", 2), ("column", 2), ("color", 1)], (0..4).collect())
+    );
 }
 
 #[test]
