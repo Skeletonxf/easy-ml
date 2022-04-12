@@ -8,7 +8,7 @@
  * and a compile time constant. Each tensor also carries `D` dimension name and length pairs.
  */
 use crate::tensors::indexing::TensorAccess;
-use crate::tensors::views::{TensorIndex, TensorMut, TensorRef, TensorRename, TensorView};
+use crate::tensors::views::{TensorExpansion, TensorIndex, TensorMut, TensorRef, TensorRename, TensorView};
 
 pub mod dimensions;
 mod display;
@@ -382,7 +382,7 @@ where
      * Returns a new Tensor which has the same data as this tensor, but with the order of the
      * dimensions and corresponding order of data changed.
      *
-     * For example, with a `[("row", x), ("column", y)]` tensor you could call
+     * For example, with a `[("x", x), ("y", y)]` tensor you could call
      * `transpose(["y", "x"])` which would return a new tensor where every (y,x) of its data
      * corresponds to (x,y) in the original.
      *
@@ -410,10 +410,10 @@ where
     }
 
     /**
-     * Edits this tensor to have the same data as before, but with the order of the
+     * Modifies this tensor to have the same data as before, but with the order of the
      * dimensions and corresponding order of data changed.
      *
-     * For example, with a `[("row", x), ("column", y)]` tensor you could call
+     * For example, with a `[("x", x), ("y", y)]` tensor you could call
      * `transpose_mut(["y", "x"])` which would edit the tensor so every (y,x) of its data
      * corresponds to (x,y) before the transposition.
      *
@@ -545,7 +545,8 @@ macro_rules! tensor_select_impl {
              * TensorView which has fewer dimensions than this Tensor, with the removed dimensions
              * always indexed as the provided values.
              *
-             * This is a shorthand for manually constructing the TensorView and TensorIndex
+             * This is a shorthand for manually constructing the TensorView and
+             * [TensorIndex](TensorIndex)
              *
              * ```
              * use easy_ml::tensors::Tensor;
@@ -562,6 +563,7 @@ macro_rules! tensor_select_impl {
              * back to manual construction to create `TensorIndex`es with multiple provided
              * indexes if you need to reduce dimensionality by more than 1 dimension at a time.
              */
+            #[track_caller]
             pub fn select(
                 &self,
                 provided_indexes: [(Dimension, usize); 1],
@@ -577,6 +579,7 @@ macro_rules! tensor_select_impl {
              *
              * See [select](Tensor::select)
              */
+            #[track_caller]
             pub fn select_mut(
                 &mut self,
                 provided_indexes: [(Dimension, usize); 1],
@@ -587,11 +590,12 @@ macro_rules! tensor_select_impl {
             /**
              * Selects the provided dimension name and index pairs in this Tensor, returning a
              * TensorView which has fewer dimensions than this Tensor, with the removed dimensions
-             * always indexed as the provided values. The TensorIndex takes ownership ofthis
+             * always indexed as the provided values. The TensorIndex takes ownership of this
              * Tensor, and can therefore mutate it
              *
              * See [select](Tensor::select)
              */
+            #[track_caller]
             pub fn select_owned(
                 self,
                 provided_indexes: [(Dimension, usize); 1],
@@ -608,6 +612,82 @@ tensor_select_impl!(impl Tensor 4 1);
 tensor_select_impl!(impl Tensor 3 1);
 tensor_select_impl!(impl Tensor 2 1);
 tensor_select_impl!(impl Tensor 1 1);
+
+macro_rules! tensor_expand_impl {
+    (impl Tensor $d:literal 1) => {
+        impl<T> Tensor<T, $d> {
+            /**
+             * Expands the dimensionality of this tensor by adding dimensions of length 1 at
+             * a particular position within the shape, returning a TensorView which has more
+             * dimensions than this Tensor.
+             *
+             * This is a shorthand for manually constructing the TensorView and
+             * [TensorExpansion](TensorExpansion)
+             *
+             * ```
+             * use easy_ml::tensors::Tensor;
+             * use easy_ml::tensors::views::{TensorView, TensorExpansion};
+             * let vector = Tensor::from([("a", 2)], vec![ 16, 8 ]);
+             * let matrix = vector.expand([(1, "b")]);
+             * let also_matrix = TensorView::from(TensorExpansion::from(&vector, [(1, "b")]));
+             * assert_eq!(matrix, also_matrix);
+             * assert_eq!(matrix, Tensor::from([("a", 2), ("b", 1)], vec![ 16, 8 ]));
+             * ```
+             *
+             * Note: due to limitations in Rust's const generics support, this method is only
+             * implemented for `extra_dimension_names` of length 1 and `D` from 0 to 5. You can
+             * fall back to manual construction to create `TensorExpansion`s with multiple provided
+             * indexes if you need to increase dimensionality by more than 1 dimension at a time.
+             */
+            #[track_caller]
+            pub fn expand(
+                &self,
+                extra_dimension_names: [(usize, Dimension); 1]
+            ) -> TensorView<T, TensorExpansion<T, &Tensor<T, $d>, $d, 1>, { $d + 1 }> {
+                TensorView::from(TensorExpansion::from(self, extra_dimension_names))
+            }
+
+            /**
+             * Expands the dimensionality of this tensor by adding dimensions of length 1 at
+             * a particular position within the shape, returning a TensorView which has more
+             * dimensions than this Tensor. The TensorIndex mutably borrows this
+             * Tensor, and can therefore mutate it
+             *
+             * See [expand](Tensor::expand)
+             */
+            #[track_caller]
+            pub fn expand_mut(
+                &mut self,
+                extra_dimension_names: [(usize, Dimension); 1]
+            ) -> TensorView<T, TensorExpansion<T, &mut Tensor<T, $d>, $d, 1>, { $d + 1 }> {
+                TensorView::from(TensorExpansion::from(self, extra_dimension_names))
+            }
+
+            /**
+             * Expands the dimensionality of this tensor by adding dimensions of length 1 at
+             * a particular position within the shape, returning a TensorView which has more
+             * dimensions than this Tensor. The TensorIndex takes ownership of this
+             * Tensor, and can therefore mutate it
+             *
+             * See [expand](Tensor::expand)
+             */
+            #[track_caller]
+            pub fn expand_owned(
+                self,
+                extra_dimension_names: [(usize, Dimension); 1]
+            ) -> TensorView<T, TensorExpansion<T, Tensor<T, $d>, $d, 1>, { $d + 1 }> {
+                TensorView::from(TensorExpansion::from(self, extra_dimension_names))
+            }
+        }
+    };
+}
+
+tensor_expand_impl!(impl Tensor 0 1);
+tensor_expand_impl!(impl Tensor 1 1);
+tensor_expand_impl!(impl Tensor 2 1);
+tensor_expand_impl!(impl Tensor 3 1);
+tensor_expand_impl!(impl Tensor 4 1);
+tensor_expand_impl!(impl Tensor 5 1);
 
 #[test]
 fn indexing_test() {

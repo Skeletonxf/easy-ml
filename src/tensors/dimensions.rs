@@ -148,6 +148,16 @@ pub(crate) fn has_duplicates_names(dimensions: &[Dimension]) -> bool {
     false
 }
 
+pub(crate) fn has_duplicates_extra_names(dimensions: &[(usize, Dimension)]) -> bool {
+    for i in 1..dimensions.len() {
+        let name = dimensions[i - 1].1;
+        if dimensions[i..].iter().any(|&d| d.1 == name) {
+            return true;
+        }
+    }
+    false
+}
+
 #[test]
 fn test_dimension_mapping() {
     let mapping = dimension_mapping(&[("x", 0), ("y", 0), ("z", 0)], &["x", "y", "z"]);
@@ -165,4 +175,13 @@ fn test_is_square() {
     assert_eq!(false, is_square(&[("x", 4), ("y", 3)]));
     assert_eq!(true, is_square(&[("x", 3), ("y", 3), ("z", 3)]));
     assert_eq!(false, is_square(&[("x", 3), ("y", 4), ("z", 3)]));
+}
+
+#[test]
+fn test_duplicate_names() {
+    assert_eq!(has_duplicates_names(&["a", "b", "b", "c"]), true);
+    assert_eq!(has_duplicates_names(&["a", "b", "c", "d"]), false);
+    assert_eq!(has_duplicates_names(&["a", "b", "a", "c"]), true);
+    assert_eq!(has_duplicates_names(&["a", "a", "a", "a"]), true);
+    assert_eq!(has_duplicates_names(&["a", "b", "c", "c"]), true);
 }

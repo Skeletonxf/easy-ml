@@ -29,12 +29,24 @@ where
      * index to use. More generally, the tensor the TensorIndex exposes will have a dimensionality
      * of D - I, where D is the dimensionality of the source, and I is the dimensionality of the
      * provided indexes.
+     *
+     * # Panics
+     *
+     * - If any provided index is for a dimension that does not exist in the source's shape.
+     * - If any provided index is not within range for the length of the dimension.
+     * - If multiple indexes are provided for the same dimension.
      */
     #[track_caller]
     pub fn from(source: S, provided_indexes: [(Dimension, usize); I]) -> TensorIndex<T, S, D, I> {
         let shape = source.view_shape();
         if I > D {
             panic!("D - I must be >= 0, D: {:?}, I: {:?}", D, I);
+        }
+        if crate::tensors::dimensions::has_duplicates(&provided_indexes) {
+            panic!(
+                "Multiple indexes cannot be provided for the same dimension name, provided: {:?}",
+                provided_indexes,
+            );
         }
         let mut provided = [None; D];
         for (name, index) in &provided_indexes {
@@ -261,10 +273,17 @@ where
      *
      * - If any extra dimension name is already in use
      * - If any dimension number `d` to insert an extra dimension name into is not 0 <= `d` <= D
+     * - If the extra dimension names are not unique
      */
     #[track_caller]
     pub fn from(source: S, extra_dimension_names: [(usize, Dimension); I]) -> TensorExpansion<T, S, D, I> {
         let mut dimensions = extra_dimension_names;
+        if crate::tensors::dimensions::has_duplicates_extra_names(&extra_dimension_names) {
+            panic!(
+                "All extra dimension names {:?} must be unique",
+                dimensions,
+            );
+        }
         let shape = source.view_shape();
         for &(d, name) in &dimensions {
             if d > D {
