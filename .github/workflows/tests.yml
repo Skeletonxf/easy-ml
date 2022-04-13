@@ -1,0 +1,42 @@
+name: Run tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Print rust version
+      run: rustc --version
+    - name: Run Tests
+      run: cargo test
+    - name: Run Tests with serde feature
+      run: cargo test --features serde
+    - name: Install wasm target
+      run: rustup target add wasm32-unknown-unknown
+    - name: Build for wasm
+      run: cargo build --target wasm32-unknown-unknown
+    - name: Build for wasm with serde feature
+      run: cargo build --target wasm32-unknown-unknown --features serde
