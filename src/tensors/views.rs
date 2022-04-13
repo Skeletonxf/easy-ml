@@ -354,16 +354,6 @@ macro_rules! tensor_view_select_impl {
              * This is a shorthand for manually constructing the TensorView and
              * [TensorIndex](TensorIndex)
              *
-             * ```
-             * use easy_ml::tensors::Tensor;
-             * use easy_ml::tensors::views::{TensorView, TensorIndex};
-             * let vector = TensorView::from(Tensor::from([("a", 2)], vec![ 16, 8 ]));
-             * let scalar = vector.select([("a", 0)]);
-             * let also_scalar = TensorView::from(TensorIndex::from(vector.source_ref(), [("a", 0)]));
-             * assert_eq!(scalar.get([]).get([]), also_scalar.get([]).get([]));
-             * assert_eq!(scalar.get([]).get([]), 16);
-             * ```
-             *
              * Note: due to limitations in Rust's const generics support, this method is only
              * implemented for `provided_indexes` of length 1 and `D` from 1 to 6. You can fall
              * back to manual construction to create `TensorIndex`es with multiple provided
@@ -432,16 +422,6 @@ macro_rules! tensor_view_expand_impl {
              *
              * This is a shorthand for manually constructing the TensorView and
              * [TensorExpansion](TensorExpansion)
-             *
-             * ```
-             * use easy_ml::tensors::Tensor;
-             * use easy_ml::tensors::views::{TensorView, TensorExpansion};
-             * let vector = TensorView::from(Tensor::from([("a", 2)], vec![ 16, 8 ]));
-             * let matrix = vector.expand([(1, "b")]);
-             * let also_matrix = TensorView::from(TensorExpansion::from(vector.source_ref(), [(1, "b")]));
-             * assert_eq!(matrix, also_matrix);
-             * assert_eq!(matrix, Tensor::from([("a", 2), ("b", 1)], vec![ 16, 8 ]));
-             * ```
              *
              * Note: due to limitations in Rust's const generics support, this method is only
              * implemented for `extra_dimension_names` of length 1 and `D` from 0 to 5. You can

@@ -7,8 +7,19 @@ use std::marker::PhantomData;
  * dimensionality of the TensorRef exposed to less than the dimensionality of the TensorRef
  * this is created from.
  *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ * use easy_ml::tensors::views::{TensorView, TensorIndex};
+ * let vector = Tensor::from([("a", 2)], vec![ 16, 8 ]);
+ * let scalar = vector.select([("a", 0)]);
+ * let also_scalar = TensorView::from(TensorIndex::from(&vector, [("a", 0)]));
+ * assert_eq!(scalar.get([]).get([]), also_scalar.get([]).get([]));
+ * assert_eq!(scalar.get([]).get([]), 16);
+ * ```
+ *
  * Note: due to limitations in Rust's const generics support, TensorIndex only implements TensorRef
  * for D from `1` to `6`.
+
  */
 #[derive(Clone, Debug)]
 pub struct TensorIndex<T, S, const D: usize, const I: usize> {
@@ -240,6 +251,16 @@ fn dimensionality_reduction() {
  * A combination of dimension names and a tensor. The provided dimensions increase
  * the dimensionality of the TensorRef exposed to more than the dimensionality of the TensorRef
  * this is created from, by adding additional dimensions with a length of one.
+ *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ * use easy_ml::tensors::views::{TensorView, TensorExpansion};
+ * let vector = Tensor::from([("a", 2)], vec![ 16, 8 ]);
+ * let matrix = vector.expand([(1, "b")]);
+ * let also_matrix = TensorView::from(TensorExpansion::from(&vector, [(1, "b")]));
+ * assert_eq!(matrix, also_matrix);
+ * assert_eq!(matrix, Tensor::from([("a", 2), ("b", 1)], vec![ 16, 8 ]));
+ * ```
  *
  * Note: due to limitations in Rust's const generics support, TensorExpansion only implements
  * TensorRef for D from `1` to `6`.
