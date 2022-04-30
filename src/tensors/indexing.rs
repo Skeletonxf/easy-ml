@@ -42,13 +42,17 @@ use std::marker::PhantomData;
 
 pub use crate::matrices::iterators::WithIndex;
 
-// TODO: Unchecked indexing APIs
 // TODO: Iterators should use unchecked indexing once fully stress tested.
 
 /**
  * Access to the data in a Tensor with a particular order of dimension indexing.
  *
  * See the [module level documentation](crate::tensors::indexing) for more information.
+ *
+ * Note: A TensorAccess is intended for indexing into a tensor, and expected to be obtained from
+ * either a Tensor or a TensorView. Hence it does not implement TensorRef/TensorMut itself, but
+ * if you need to construct a TensorView with the new order of dimensions you can wrap the
+ * TensorAccess in a [TensorOrder](crate::tensors::views::TensorOrder).
  */
 #[derive(Clone, Debug)]
 pub struct TensorAccess<T, S, const D: usize> {
@@ -167,6 +171,10 @@ impl<T, S, const D: usize> TensorAccess<T, S, D>
 where
     S: TensorRef<T, D>,
 {
+    /**
+     * Using the dimension ordering of the TensorAccess, gets a reference to the value at the
+     * index if the index is in range. Otherwise returns None.
+     */
     pub fn try_get_reference(&self, indexes: [usize; D]) -> Option<&T> {
         self.source
             .get_reference(crate::tensors::dimensions::map_dimensions(
@@ -175,6 +183,10 @@ where
             ))
     }
 
+    /**
+     * Using the dimension ordering of the TensorAccess, gets a reference to the value at the
+     * index if the index is in range, panicking if the index is out of range.
+     */
     #[track_caller]
     pub fn get_reference(&self, indexes: [usize; D]) -> &T {
         match self.try_get_reference(indexes) {
@@ -187,8 +199,26 @@ where
         }
     }
 
-    fn index_is_valid(&self, indexes: [usize; D]) -> bool {
-        self.try_get_reference(indexes).is_some()
+    /**
+     * Using the dimension ordering of the TensorAccess, gets a reference to the value at the
+     * index wihout any bounds checking.
+     *
+     * # Safety
+     *
+     * Calling this method with an out-of-bounds index is *[undefined behavior]* even if the
+     * resulting reference is not used. Valid indexes are defined as in [TensorRef]. Note that
+     * the order of the indexes needed here must match with
+     * [`TensorAccess::shape`](TensorAccess::shape) which may not neccessarily be the same
+     * as the `view_shape` of the `TensorRef` implementation this TensorAccess was created from).
+     *
+     * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
+     * [TensorRef]: TensorRef
+     */
+    pub unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        self.source.get_reference_unchecked(crate::tensors::dimensions::map_dimensions(
+            &self.dimension_mapping,
+            &indexes,
+        ))
     }
 
     pub fn index_order_reference_iter(&self) -> IndexOrderReferenceIterator<T, S, D> {
@@ -201,6 +231,12 @@ where
     S: TensorRef<T, D>,
     T: Clone,
 {
+    /**
+     * Using the dimension ordering of the TensorAccess, gets a copy of the value at the
+     * index if the index is in range, panicking if the index is out of range.
+     *
+     * For a non panicking API see [`try_get_reference`](TensorAccess::try_get_reference)
+     */
     #[track_caller]
     pub fn get(&self, indexes: [usize; D]) -> T {
         match self.try_get_reference(indexes) {
@@ -247,6 +283,10 @@ impl<T, S, const D: usize> TensorAccess<T, S, D>
 where
     S: TensorMut<T, D>,
 {
+    /**
+     * Using the dimension ordering of the TensorAccess, gets a mutable reference to the value at
+     * the index if the index is in range. Otherwise returns None.
+     */
     pub fn try_get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
         self.source
             .get_reference_mut(crate::tensors::dimensions::map_dimensions(
@@ -255,6 +295,10 @@ where
             ))
     }
 
+    /**
+     * Using the dimension ordering of the TensorAccess, gets a mutable reference to the value at
+     * the index if the index is in range, panicking if the index is out of range.
+     */
     #[track_caller]
     pub fn get_reference_mut(&mut self, indexes: [usize; D]) -> &mut T {
         match self.try_get_reference_mut(indexes) {
@@ -264,6 +308,28 @@ where
             // self.shape() and a bad error is better than cloning self.shape() on every call
             None => panic!("Unable to index with {:?}", indexes),
         }
+    }
+
+    /**
+     * Using the dimension ordering of the TensorAccess, gets a mutable reference to the value at
+     * the index wihout any bounds checking.
+     *
+     * # Safety
+     *
+     * Calling this method with an out-of-bounds index is *[undefined behavior]* even if the
+     * resulting reference is not used. Valid indexes are defined as in [TensorRef]. Note that
+     * the order of the indexes needed here must match with
+     * [`TensorAccess::shape`](TensorAccess::shape) which may not neccessarily be the same
+     * as the `view_shape` of the `TensorRef` implementation this TensorAccess was created from).
+     *
+     * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
+     * [TensorRef]: TensorRef
+     */
+    pub unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        self.source.get_reference_unchecked_mut(crate::tensors::dimensions::map_dimensions(
+            &self.dimension_mapping,
+            &indexes,
+        ))
     }
 
     pub fn index_order_reference_mut_iter(&mut self) -> IndexOrderReferenceMutIterator<T, S, D> {
