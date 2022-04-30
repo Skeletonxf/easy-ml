@@ -312,6 +312,7 @@ where
  * `ShapeIterator` directly, take care to ensure you don't accidentally reshape the tensor and
  * continue to use indexes from `ShapeIterator` as they would then be invalid.
  */
+#[derive(Clone, Debug)]
 pub struct ShapeIterator<const D: usize> {
     shape: [(Dimension, usize); D],
     indexes: [usize; D],
@@ -449,10 +450,8 @@ fn index_order_iter<const D: usize>(
  */
 #[derive(Debug)]
 pub struct IndexOrderIterator<'a, T, S, const D: usize> {
+    shape_iterator: ShapeIterator<D>,
     tensor: &'a TensorAccess<T, S, D>,
-    shape: [(Dimension, usize); D],
-    indexes: [usize; D],
-    finished: bool,
 }
 
 impl<'a, T, S, const D: usize> IndexOrderIterator<'a, T, S, D>
@@ -462,10 +461,8 @@ where
 {
     pub fn from(tensor_access: &TensorAccess<T, S, D>) -> IndexOrderIterator<T, S, D> {
         IndexOrderIterator {
-            finished: !tensor_access.index_is_valid([0; D]),
-            shape: tensor_access.shape(),
+            shape_iterator: ShapeIterator::from(tensor_access.shape()),
             tensor: tensor_access,
-            indexes: [0; D],
         }
     }
 
@@ -486,8 +483,7 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        index_order_iter(&mut self.finished, &mut self.indexes, &self.shape)
-            .map(|indexes| self.tensor.get(indexes))
+        self.shape_iterator.next().map(|indexes| self.tensor.get(indexes))
     }
 }
 
@@ -499,7 +495,7 @@ where
     type Item = ([usize; D], T);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.iterator.indexes;
+        let index = self.iterator.shape_iterator.indexes;
         self.iterator.next().map(|x| (index, x))
     }
 }
@@ -569,10 +565,8 @@ where
  */
 #[derive(Debug)]
 pub struct IndexOrderReferenceIterator<'a, T, S, const D: usize> {
+    shape_iterator: ShapeIterator<D>,
     tensor: &'a TensorAccess<T, S, D>,
-    shape: [(Dimension, usize); D],
-    indexes: [usize; D],
-    finished: bool,
 }
 
 impl<'a, T, S, const D: usize> IndexOrderReferenceIterator<'a, T, S, D>
@@ -581,10 +575,8 @@ where
 {
     pub fn from(tensor_access: &TensorAccess<T, S, D>) -> IndexOrderReferenceIterator<T, S, D> {
         IndexOrderReferenceIterator {
-            finished: !tensor_access.index_is_valid([0; D]),
-            shape: tensor_access.shape(),
+            shape_iterator: ShapeIterator::from(tensor_access.shape()),
             tensor: tensor_access,
-            indexes: [0; D],
         }
     }
 
@@ -604,8 +596,7 @@ where
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        index_order_iter(&mut self.finished, &mut self.indexes, &self.shape)
-            .map(|indexes| self.tensor.get_reference(indexes))
+        self.shape_iterator.next().map(|indexes| self.tensor.get_reference(indexes))
     }
 }
 
@@ -616,17 +607,15 @@ where
     type Item = ([usize; D], &'a T);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.iterator.indexes;
+        let index = self.iterator.shape_iterator.indexes;
         self.iterator.next().map(|x| (index, x))
     }
 }
 
 #[derive(Debug)]
 pub struct IndexOrderReferenceMutIterator<'a, T, S, const D: usize> {
+    shape_iterator: ShapeIterator<D>,
     tensor: &'a mut TensorAccess<T, S, D>,
-    shape: [(Dimension, usize); D],
-    indexes: [usize; D],
-    finished: bool,
 }
 
 impl<'a, T, S, const D: usize> IndexOrderReferenceMutIterator<'a, T, S, D>
@@ -637,10 +626,8 @@ where
         tensor_access: &mut TensorAccess<T, S, D>,
     ) -> IndexOrderReferenceMutIterator<T, S, D> {
         IndexOrderReferenceMutIterator {
-            finished: !tensor_access.index_is_valid([0; D]),
-            shape: tensor_access.shape(),
+            shape_iterator: ShapeIterator::from(tensor_access.shape()),
             tensor: tensor_access,
-            indexes: [0; D],
         }
     }
 
@@ -660,7 +647,7 @@ where
     type Item = &'a mut T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        index_order_iter(&mut self.finished, &mut self.indexes, &self.shape).map(|indexes| {
+        self.shape_iterator.next().map(|indexes| {
             unsafe {
                 // Safety: We are not allowed to give out overlapping mutable references,
                 // but since we will always increment the counter on every call to next()
@@ -679,7 +666,7 @@ where
     type Item = ([usize; D], &'a mut T);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.iterator.indexes;
+        let index = self.iterator.shape_iterator.indexes;
         self.iterator.next().map(|x| (index, x))
     }
 }
