@@ -298,8 +298,58 @@ where
     }
 }
 
+/**
+ * An iterator over all indexes in a shape.
+ *
+ * First the all 0 index is iterated, then each iteration increments the rightmost index.
+ * For a shape of `[("a", 2), ("b", 2), ("c", 2)]` this will yield indexes in order of: `[0,0,0]`,
+ * `[0,0,1]`, `[0,1,0]`, `[0,1,1]`, `[1,0,0]`, `[1,0,1]`, `[1,1,0]`, `[1,1,1]`,
+ *
+ * You don't typically need to use this directly, as tensors have iterators that iterate over
+ * them and return values to you (using this under the hood), but `ShapeIterator` can be useful
+ * if you need to hold a mutable reference to a tensor while iterating as `ShapeIterator` does
+ * not borrow the tensor. NB: if you do index into a tensor you're mutably borrowing using
+ * `ShapeIterator` directly, take care to ensure you don't accidentally reshape the tensor and
+ * continue to use indexes from `ShapeIterator` as they would then be invalid.
+ */
+pub struct ShapeIterator<const D: usize> {
+    shape: [(Dimension, usize); D],
+    indexes: [usize; D],
+    finished: bool,
+}
+
+impl<const D: usize> ShapeIterator<D> {
+    /**
+     * Constructs a ShapeIterator for a shape.
+     *
+     * If the shape has any dimensions with a length of zero, the iterator will immediately
+     * return None on [`next()`](Iterator::next).
+     */
+    pub fn from(shape: [(Dimension, usize); D]) -> ShapeIterator<D> {
+        // If we're given an invalid shape (shape input is not neccessarily going to meet the no
+        // 0 lengths contract of TensorRef because that's not actually required here), return
+        // a finished iterator
+        // Since this is an iterator over an owned shape, it's not going to become invalid later
+        // when we start iterating so this is the only check we need.
+        let starting_index_valid = shape.iter().all(|(_, l)| *l > 0);
+        ShapeIterator {
+            shape,
+            indexes: [0; D],
+            finished: !starting_index_valid
+        }
+    }
+}
+
+impl<const D: usize> Iterator for ShapeIterator<D> {
+    type Item = [usize; D];
+
+    fn next(&mut self) -> Option<Self::Item> {
+        index_order_iter(&mut self.finished, &mut self.indexes, &self.shape)
+    }
+}
+
 // Common index order iterator logic
-pub(crate) fn index_order_iter<const D: usize>(
+fn index_order_iter<const D: usize>(
     finished: &mut bool,
     indexes: &mut [usize; D],
     shape: &[(Dimension, usize); D],

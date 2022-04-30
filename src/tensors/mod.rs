@@ -7,7 +7,7 @@
  * then the tensor can be used in a mathematical way. `D` is the number of dimensions in the tensor
  * and a compile time constant. Each tensor also carries `D` dimension name and length pairs.
  */
-use crate::tensors::indexing::TensorAccess;
+use crate::tensors::indexing::{ShapeIterator, TensorAccess};
 use crate::tensors::views::{TensorExpansion, TensorIndex, TensorMut, TensorRef, TensorRename, TensorView};
 
 pub mod dimensions;
@@ -438,16 +438,10 @@ where
             // TODO: Handle error case, propagate as Dimension names to transpose to must be the same set of dimension names in the tensor
             let dimension_mapping = dimension_mapping(&self.dimensions, &dimensions).unwrap();
 
-            // Don't actually create an iterator because we need to retain ownership of our
-            // data so we can transpose it while iterating.
-            let mut indexes = [0; D];
-            let mut finished = self
-                .get_reference(map_dimensions(&dimension_mapping, &indexes))
-                .is_none();
             let shape = dimension_mapping_shape(&self.dimensions, &dimension_mapping);
+            let shape_iterator = ShapeIterator::from(shape);
 
-            while !finished {
-                let index = indexes;
+            for index in shape_iterator {
                 let i = index[0];
                 let j = index[1];
                 if j >= i {
@@ -463,7 +457,6 @@ where
                     // If the mapping is a noop we've assigned i,j to i,j
                     // If the mapping is i,j -> j,i we've assigned i,j to j,i and j,i to i,j
                 }
-                crate::tensors::indexing::index_order_iter(&mut finished, &mut indexes, &shape);
             }
 
             // now update our shape and strides to match
