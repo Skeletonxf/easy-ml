@@ -7,7 +7,7 @@
  * then the tensor can be used in a mathematical way. `D` is the number of dimensions in the tensor
  * and a compile time constant. Each tensor also carries `D` dimension name and length pairs.
  */
-use crate::tensors::indexing::{ShapeIterator, TensorAccess};
+use crate::tensors::indexing::{ShapeIterator, TensorAccess, IndexOrderIterator, IndexOrderReferenceIterator, IndexOrderReferenceMutIterator};
 use crate::tensors::views::{TensorExpansion, TensorIndex, TensorMut, TensorRef, TensorRename, TensorView};
 
 pub mod dimensions;
@@ -259,6 +259,20 @@ impl<T, const D: usize> Tensor<T, D> {
         TensorAccess::from_source_order(self)
     }
 
+    /**
+     * Returns an iterator over references to the data in this Tensor.
+     */
+    pub fn index_order_reference_iter(&self) -> IndexOrderReferenceIterator<T, Tensor<T, D>, D> {
+        IndexOrderReferenceIterator::from(self)
+    }
+
+    /**
+     * Returns an iterator over mutable references to the data in this Tensor.
+     */
+    pub fn index_order_reference_mut_iter(&mut self) -> IndexOrderReferenceMutIterator<T, Tensor<T, D>, D> {
+        IndexOrderReferenceMutIterator::from(self)
+    }
+
     // Non public index order reference iterator since we don't want to expose our implementation
     // details to public API since then we could never change them.
     pub(crate) fn direct_index_order_reference_iter(&self) -> std::slice::Iter<T> {
@@ -469,6 +483,13 @@ where
             self.dimensions = transposed.dimensions;
             self.strides = transposed.strides;
         }
+    }
+
+    /**
+     * Returns an iterator over copes of the data in this Tensor.
+     */
+    pub fn index_order_iter(&self) -> IndexOrderIterator<T, Tensor<T, D>, D> {
+        IndexOrderIterator::from(self)
     }
 
     /**

@@ -230,6 +230,10 @@ where
         ))
     }
 
+    /**
+     * Returns an iterator over references to the data in this TensorAccess, in the order of
+     * the TensorAccess shape.
+     */
     pub fn index_order_reference_iter(&self) -> IndexOrderReferenceIterator<T, TensorAccess<T, S, D>, D> {
         IndexOrderReferenceIterator::from(self)
     }
@@ -283,6 +287,10 @@ where
         Tensor::from(self.shape(), mapped)
     }
 
+    /**
+     * Returns an iterator over copies of the data in this TensorAccess, in the order of
+     * the TensorAccess shape.
+     */
     pub fn index_order_iter(&self) -> IndexOrderIterator<T, TensorAccess<T, S, D>, D> {
         IndexOrderIterator::from(self)
     }
@@ -341,6 +349,10 @@ where
         ))
     }
 
+    /**
+     * Returns an iterator over mutable references to the data in this TensorAccess, in the order
+     * of the TensorAccess shape.
+     */
     pub fn index_order_reference_mut_iter(&mut self) -> IndexOrderReferenceMutIterator<T, TensorAccess<T, S, D>, D> {
         IndexOrderReferenceMutIterator::from(self)
     }

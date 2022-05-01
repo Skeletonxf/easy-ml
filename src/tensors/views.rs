@@ -13,7 +13,7 @@
 
 use std::marker::PhantomData;
 
-use crate::tensors::indexing::TensorAccess;
+use crate::tensors::indexing::{TensorAccess, IndexOrderIterator, IndexOrderReferenceIterator, IndexOrderReferenceMutIterator};
 use crate::tensors::{Dimension, Tensor};
 
 mod indexes;
@@ -214,12 +214,6 @@ where
     }
 
     /**
-     * Creates a TensorAccess which will index into the dimensions this Tensor was
-     * created with in the same order as they were provided. The TensorAccess mutably borrows
-     * the Tensor, and can therefore mutate it. See [TensorAccess::from_source_order].
-     */
-
-    /**
      * Creates a TensorAccess which will index into the dimensions of the source this TensorView
      * was created with in the same order as they were declared. The TensorAccess mutably borrows
      * the source, and can therefore mutate it if it implements TensorMut.
@@ -239,9 +233,23 @@ where
     pub fn source_order_owned(self) -> TensorAccess<T, S, D> {
         TensorAccess::from_source_order(self.source)
     }
+
+    /**
+     * Returns an iterator over references to the data in this TensorView.
+     */
+    pub fn index_order_reference_iter(&self) -> IndexOrderReferenceIterator<T, S, D> {
+        IndexOrderReferenceIterator::from(&self.source)
+    }
 }
 
-impl<T, S, const D: usize> TensorView<T, S, D> where S: TensorMut<T, D> {}
+impl<T, S, const D: usize> TensorView<T, S, D> where S: TensorMut<T, D> {
+    /**
+     * Returns an iterator over mutable references to the data in this TensorView.
+     */
+    pub fn index_order_reference_mut_iter(&mut self) -> IndexOrderReferenceMutIterator<T, S, D> {
+        IndexOrderReferenceMutIterator::from(&mut self.source)
+    }
+}
 
 /**
  * TensorView methods which require only read access via a [TensorRef](TensorRef) source
@@ -312,6 +320,13 @@ where
      */
     pub fn map_with_index<U>(&self, mapping_function: impl Fn([usize; D], T) -> U) -> Tensor<U, D> {
         self.source_order().map_with_index(mapping_function)
+    }
+
+    /**
+     * Returns an iterator over copies of the data in this TensorView.
+     */
+    pub fn index_order_iter(&self) -> IndexOrderIterator<T, S, D> {
+        IndexOrderIterator::from(&self.source)
     }
 }
 
