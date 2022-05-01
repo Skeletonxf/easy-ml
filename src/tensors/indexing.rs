@@ -48,11 +48,6 @@ pub use crate::matrices::iterators::WithIndex;
  * Access to the data in a Tensor with a particular order of dimension indexing.
  *
  * See the [module level documentation](crate::tensors::indexing) for more information.
- *
- * Note: A TensorAccess is intended for indexing into a tensor, and expected to be obtained from
- * either a Tensor or a TensorView. Hence it does not implement TensorRef/TensorMut itself, but
- * if you need to construct a TensorView with the new order of dimensions you can wrap the
- * TensorAccess in a [TensorOrder](crate::tensors::views::TensorOrder).
  */
 #[derive(Clone, Debug)]
 pub struct TensorAccess<T, S, const D: usize> {
@@ -130,6 +125,20 @@ where
             &self.source.view_shape(),
             &self.dimension_mapping,
         )
+    }
+
+    pub fn source(self) -> S {
+        self.source
+    }
+
+    // # Safety
+    //
+    // Giving out a mutable reference to our source could allow it to be changed out from under us
+    // and make our dimmension mapping invalid. However, since the source implements TensorRef
+    // interior mutability is not allowed, so we can give out shared references without breaking
+    // our own integrity.
+    pub fn source_ref(&self) -> &S {
+        &self.source
     }
 }
 
@@ -221,7 +230,7 @@ where
         ))
     }
 
-    pub fn index_order_reference_iter(&self) -> IndexOrderReferenceIterator<T, S, D> {
+    pub fn index_order_reference_iter(&self) -> IndexOrderReferenceIterator<T, TensorAccess<T, S, D>, D> {
         IndexOrderReferenceIterator::from(self)
     }
 }
@@ -274,7 +283,7 @@ where
         Tensor::from(self.shape(), mapped)
     }
 
-    pub fn index_order_iter(&self) -> IndexOrderIterator<T, S, D> {
+    pub fn index_order_iter(&self) -> IndexOrderIterator<T, TensorAccess<T, S, D>, D> {
         IndexOrderIterator::from(self)
     }
 }
@@ -332,7 +341,7 @@ where
         ))
     }
 
-    pub fn index_order_reference_mut_iter(&mut self) -> IndexOrderReferenceMutIterator<T, S, D> {
+    pub fn index_order_reference_mut_iter(&mut self) -> IndexOrderReferenceMutIterator<T, TensorAccess<T, S, D>, D> {
         IndexOrderReferenceMutIterator::from(self)
     }
 }
@@ -361,6 +370,54 @@ where
         self.index_order_reference_mut_iter()
             .with_index()
             .for_each(|(i, x)| *x = mapping_function(i, x.clone()));
+    }
+}
+
+// # Safety
+//
+// The type implementing TensorRef inside the TensorAccess must implement it correctly, so by
+// delegating to it without changing anything other than the order we index it, we implement
+// TensorRef correctly as well.
+/**
+ * A TensorAccess implements TensorRef, with the dimension order and indexing matching that of the
+ * TensorAccess shape.
+ */
+unsafe impl<T, S, const D: usize> TensorRef<T, D> for TensorAccess<T, S, D>
+where
+    S: TensorRef<T, D>,
+{
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        self.try_get_reference(indexes)
+    }
+
+    fn view_shape(&self) -> [(Dimension, usize); D] {
+        self.shape()
+    }
+
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        self.get_reference_unchecked(indexes)
+    }
+}
+
+// # Safety
+//
+// The type implementing TensorMut inside the TensorAccess must implement it correctly, so by
+// delegating to it without changing anything other than the order we index it, we implement
+// TensorMut correctly as well.
+/**
+ * A TensorAccess implements TensorMut, with the dimension order and indexing matching that of the
+ * TensorAccess shape.
+ */
+unsafe impl<T, S, const D: usize> TensorMut<T, D> for TensorAccess<T, S, D>
+where
+    S: TensorMut<T, D>,
+{
+    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
+        self.try_get_reference_mut(indexes)
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        self.get_reference_unchecked_mut(indexes)
     }
 }
 
@@ -517,7 +574,8 @@ fn index_order_iter<const D: usize>(
 #[derive(Debug)]
 pub struct IndexOrderIterator<'a, T, S, const D: usize> {
     shape_iterator: ShapeIterator<D>,
-    tensor: &'a TensorAccess<T, S, D>,
+    source: &'a S,
+    _type: PhantomData<T>,
 }
 
 impl<'a, T, S, const D: usize> IndexOrderIterator<'a, T, S, D>
@@ -525,10 +583,11 @@ where
     T: Clone,
     S: TensorRef<T, D>,
 {
-    pub fn from(tensor_access: &TensorAccess<T, S, D>) -> IndexOrderIterator<T, S, D> {
+    pub fn from(source: &S) -> IndexOrderIterator<T, S, D> {
         IndexOrderIterator {
-            shape_iterator: ShapeIterator::from(tensor_access.shape()),
-            tensor: tensor_access,
+            shape_iterator: ShapeIterator::from(source.view_shape()),
+            source,
+            _type: PhantomData,
         }
     }
 
@@ -549,7 +608,7 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.shape_iterator.next().map(|indexes| self.tensor.get(indexes))
+        self.shape_iterator.next().map(|indexes| self.source.get_reference(indexes).unwrap().clone()) // TODO: Can use unchecked here
     }
 }
 
@@ -632,17 +691,19 @@ where
 #[derive(Debug)]
 pub struct IndexOrderReferenceIterator<'a, T, S, const D: usize> {
     shape_iterator: ShapeIterator<D>,
-    tensor: &'a TensorAccess<T, S, D>,
+    source: &'a S,
+    _type: PhantomData<&'a T>,
 }
 
 impl<'a, T, S, const D: usize> IndexOrderReferenceIterator<'a, T, S, D>
 where
     S: TensorRef<T, D>,
 {
-    pub fn from(tensor_access: &TensorAccess<T, S, D>) -> IndexOrderReferenceIterator<T, S, D> {
+    pub fn from(source: &S) -> IndexOrderReferenceIterator<T, S, D> {
         IndexOrderReferenceIterator {
-            shape_iterator: ShapeIterator::from(tensor_access.shape()),
-            tensor: tensor_access,
+            shape_iterator: ShapeIterator::from(source.view_shape()),
+            source,
+            _type: PhantomData,
         }
     }
 
@@ -662,7 +723,7 @@ where
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.shape_iterator.next().map(|indexes| self.tensor.get_reference(indexes))
+        self.shape_iterator.next().map(|indexes| self.source.get_reference(indexes).unwrap()) // TODO: Can use unchecked here
     }
 }
 
@@ -681,19 +742,19 @@ where
 #[derive(Debug)]
 pub struct IndexOrderReferenceMutIterator<'a, T, S, const D: usize> {
     shape_iterator: ShapeIterator<D>,
-    tensor: &'a mut TensorAccess<T, S, D>,
+    source: &'a mut S,
+    _type: PhantomData<&'a mut T>,
 }
 
 impl<'a, T, S, const D: usize> IndexOrderReferenceMutIterator<'a, T, S, D>
 where
     S: TensorMut<T, D>,
 {
-    pub fn from(
-        tensor_access: &mut TensorAccess<T, S, D>,
-    ) -> IndexOrderReferenceMutIterator<T, S, D> {
+    pub fn from(source: &mut S) -> IndexOrderReferenceMutIterator<T, S, D> {
         IndexOrderReferenceMutIterator {
-            shape_iterator: ShapeIterator::from(tensor_access.shape()),
-            tensor: tensor_access,
+            shape_iterator: ShapeIterator::from(source.view_shape()),
+            source,
+            _type: PhantomData,
         }
     }
 
@@ -719,7 +780,7 @@ where
                 // but since we will always increment the counter on every call to next()
                 // and stop when we reach the end no references will overlap.
                 // The compiler doesn't know this, so transmute the lifetime for it.
-                std::mem::transmute(self.tensor.get_reference_mut(indexes))
+                std::mem::transmute(self.source.get_reference_mut(indexes).unwrap()) // TODO: Can use unchecked here
             }
         })
     }

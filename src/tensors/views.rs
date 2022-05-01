@@ -17,12 +17,10 @@ use crate::tensors::indexing::TensorAccess;
 use crate::tensors::{Dimension, Tensor};
 
 mod indexes;
-mod order;
 mod renamed;
 pub mod traits;
 
 pub use indexes::*;
-pub use order::*;
 pub use renamed::*;
 
 /**
