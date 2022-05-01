@@ -13,7 +13,9 @@
 
 use std::marker::PhantomData;
 
-use crate::tensors::indexing::{TensorAccess, IndexOrderIterator, IndexOrderReferenceIterator, IndexOrderReferenceMutIterator};
+use crate::tensors::indexing::{
+    IndexOrderIterator, IndexOrderReferenceIterator, IndexOrderReferenceMutIterator, TensorAccess,
+};
 use crate::tensors::{Dimension, Tensor};
 
 mod indexes;
@@ -242,7 +244,10 @@ where
     }
 }
 
-impl<T, S, const D: usize> TensorView<T, S, D> where S: TensorMut<T, D> {
+impl<T, S, const D: usize> TensorView<T, S, D>
+where
+    S: TensorMut<T, D>,
+{
     /**
      * Returns an iterator over mutable references to the data in this TensorView.
      */
@@ -446,7 +451,7 @@ macro_rules! tensor_view_expand_impl {
             #[track_caller]
             pub fn expand(
                 &self,
-                extra_dimension_names: [(usize, Dimension); 1]
+                extra_dimension_names: [(usize, Dimension); 1],
             ) -> TensorView<T, TensorExpansion<T, &S, $d, 1>, { $d + 1 }> {
                 TensorView::from(TensorExpansion::from(&self.source, extra_dimension_names))
             }
@@ -462,9 +467,12 @@ macro_rules! tensor_view_expand_impl {
             #[track_caller]
             pub fn expand_mut(
                 &mut self,
-                extra_dimension_names: [(usize, Dimension); 1]
+                extra_dimension_names: [(usize, Dimension); 1],
             ) -> TensorView<T, TensorExpansion<T, &mut S, $d, 1>, { $d + 1 }> {
-                TensorView::from(TensorExpansion::from(&mut self.source, extra_dimension_names))
+                TensorView::from(TensorExpansion::from(
+                    &mut self.source,
+                    extra_dimension_names,
+                ))
             }
 
             /**
@@ -478,7 +486,7 @@ macro_rules! tensor_view_expand_impl {
             #[track_caller]
             pub fn expand_owned(
                 self,
-                extra_dimension_names: [(usize, Dimension); 1]
+                extra_dimension_names: [(usize, Dimension); 1],
             ) -> TensorView<T, TensorExpansion<T, S, $d, 1>, { $d + 1 }> {
                 TensorView::from(TensorExpansion::from(self.source, extra_dimension_names))
             }

@@ -7,8 +7,13 @@
  * then the tensor can be used in a mathematical way. `D` is the number of dimensions in the tensor
  * and a compile time constant. Each tensor also carries `D` dimension name and length pairs.
  */
-use crate::tensors::indexing::{ShapeIterator, TensorAccess, IndexOrderIterator, IndexOrderReferenceIterator, IndexOrderReferenceMutIterator};
-use crate::tensors::views::{TensorExpansion, TensorIndex, TensorMut, TensorRef, TensorRename, TensorView};
+use crate::tensors::indexing::{
+    IndexOrderIterator, IndexOrderReferenceIterator, IndexOrderReferenceMutIterator, ShapeIterator,
+    TensorAccess,
+};
+use crate::tensors::views::{
+    TensorExpansion, TensorIndex, TensorMut, TensorRef, TensorRename, TensorView,
+};
 
 pub mod dimensions;
 mod display;
@@ -269,7 +274,9 @@ impl<T, const D: usize> Tensor<T, D> {
     /**
      * Returns an iterator over mutable references to the data in this Tensor.
      */
-    pub fn index_order_reference_mut_iter(&mut self) -> IndexOrderReferenceMutIterator<T, Tensor<T, D>, D> {
+    pub fn index_order_reference_mut_iter(
+        &mut self,
+    ) -> IndexOrderReferenceMutIterator<T, Tensor<T, D>, D> {
         IndexOrderReferenceMutIterator::from(self)
     }
 
@@ -636,7 +643,7 @@ macro_rules! tensor_expand_impl {
             #[track_caller]
             pub fn expand(
                 &self,
-                extra_dimension_names: [(usize, Dimension); 1]
+                extra_dimension_names: [(usize, Dimension); 1],
             ) -> TensorView<T, TensorExpansion<T, &Tensor<T, $d>, $d, 1>, { $d + 1 }> {
                 TensorView::from(TensorExpansion::from(self, extra_dimension_names))
             }
@@ -652,7 +659,7 @@ macro_rules! tensor_expand_impl {
             #[track_caller]
             pub fn expand_mut(
                 &mut self,
-                extra_dimension_names: [(usize, Dimension); 1]
+                extra_dimension_names: [(usize, Dimension); 1],
             ) -> TensorView<T, TensorExpansion<T, &mut Tensor<T, $d>, $d, 1>, { $d + 1 }> {
                 TensorView::from(TensorExpansion::from(self, extra_dimension_names))
             }
@@ -668,7 +675,7 @@ macro_rules! tensor_expand_impl {
             #[track_caller]
             pub fn expand_owned(
                 self,
-                extra_dimension_names: [(usize, Dimension); 1]
+                extra_dimension_names: [(usize, Dimension); 1],
             ) -> TensorView<T, TensorExpansion<T, Tensor<T, $d>, $d, 1>, { $d + 1 }> {
                 TensorView::from(TensorExpansion::from(self, extra_dimension_names))
             }

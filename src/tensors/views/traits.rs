@@ -10,10 +10,10 @@
  * Boxed TensorRef and TensorMut values also implement TensorRef and TensorMut respectively.
  */
 
-#[allow(unused_imports)] // used in doc links
-use crate::tensors::Tensor;
 use crate::tensors::views::{TensorMut, TensorRef};
 use crate::tensors::Dimension;
+#[allow(unused_imports)] // used in doc links
+use crate::tensors::Tensor;
 
 // # Safety
 //
@@ -98,7 +98,7 @@ where
  */
 unsafe impl<T, S, const D: usize> TensorRef<T, D> for Box<S>
 where
-    S: TensorRef<T, D>
+    S: TensorRef<T, D>,
 {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
         self.as_ref().get_reference(indexes)
@@ -123,7 +123,7 @@ where
  */
 unsafe impl<T, S, const D: usize> TensorMut<T, D> for Box<S>
 where
-    S: TensorMut<T, D>
+    S: TensorMut<T, D>,
 {
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
         self.as_mut().get_reference_mut(indexes)
@@ -164,8 +164,7 @@ unsafe impl<T, const D: usize> TensorRef<T, D> for Box<dyn TensorRef<T, D>> {
 /**
  * A box of a dynamic TensorMut also implements TensorRef.
  */
-unsafe impl<T, const D: usize> TensorRef<T, D> for Box<dyn TensorMut<T, D>>
-{
+unsafe impl<T, const D: usize> TensorRef<T, D> for Box<dyn TensorMut<T, D>> {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
         self.as_ref().get_reference(indexes)
     }
@@ -187,8 +186,7 @@ unsafe impl<T, const D: usize> TensorRef<T, D> for Box<dyn TensorMut<T, D>>
 /**
  * A box of a dynamic TensorMut also implements TensorMut.
  */
-unsafe impl<T, const D: usize> TensorMut<T, D> for Box<dyn TensorMut<T, D>>
-{
+unsafe impl<T, const D: usize> TensorMut<T, D> for Box<dyn TensorMut<T, D>> {
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
         self.as_mut().get_reference_mut(indexes)
     }

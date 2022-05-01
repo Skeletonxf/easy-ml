@@ -3,24 +3,24 @@ use crate::tensors::Dimension;
 use std::marker::PhantomData;
 
 /**
- * A combination of pre provided indexes and a tensor. The provided indexes reduce the
- * dimensionality of the TensorRef exposed to less than the dimensionality of the TensorRef
- * this is created from.
- *
- * ```
- * use easy_ml::tensors::Tensor;
- * use easy_ml::tensors::views::{TensorView, TensorIndex};
- * let vector = Tensor::from([("a", 2)], vec![ 16, 8 ]);
- * let scalar = vector.select([("a", 0)]);
- * let also_scalar = TensorView::from(TensorIndex::from(&vector, [("a", 0)]));
- * assert_eq!(scalar.get([]).get([]), also_scalar.get([]).get([]));
- * assert_eq!(scalar.get([]).get([]), 16);
- * ```
- *
- * Note: due to limitations in Rust's const generics support, TensorIndex only implements TensorRef
- * for D from `1` to `6`.
+* A combination of pre provided indexes and a tensor. The provided indexes reduce the
+* dimensionality of the TensorRef exposed to less than the dimensionality of the TensorRef
+* this is created from.
+*
+* ```
+* use easy_ml::tensors::Tensor;
+* use easy_ml::tensors::views::{TensorView, TensorIndex};
+* let vector = Tensor::from([("a", 2)], vec![ 16, 8 ]);
+* let scalar = vector.select([("a", 0)]);
+* let also_scalar = TensorView::from(TensorIndex::from(&vector, [("a", 0)]));
+* assert_eq!(scalar.get([]).get([]), also_scalar.get([]).get([]));
+* assert_eq!(scalar.get([]).get([]), 16);
+* ```
+*
+* Note: due to limitations in Rust's const generics support, TensorIndex only implements TensorRef
+* for D from `1` to `6`.
 
- */
+*/
 #[derive(Clone, Debug)]
 pub struct TensorIndex<T, S, const D: usize, const I: usize> {
     source: S,
@@ -137,7 +137,8 @@ macro_rules! tensor_index_ref_impl {
             fn get_reference(&self, indexes: [usize; $d - $i]) -> Option<&T> {
                 // unwrap because None returns from the helper method are not input error, they
                 // should never happen for any input
-                self.source.get_reference(self.$helper_name(indexes).unwrap())
+                self.source
+                    .get_reference(self.$helper_name(indexes).unwrap())
             }
 
             fn view_shape(&self) -> [(Dimension, usize); $d - $i] {
@@ -152,7 +153,8 @@ macro_rules! tensor_index_ref_impl {
 
             unsafe fn get_reference_unchecked(&self, indexes: [usize; $d - $i]) -> &T {
                 // TODO: Can we use unwrap_unchecked here?
-                self.source.get_reference_unchecked(self.$helper_name(indexes).unwrap())
+                self.source
+                    .get_reference_unchecked(self.$helper_name(indexes).unwrap())
             }
         }
 
@@ -161,12 +163,14 @@ macro_rules! tensor_index_ref_impl {
             S: TensorMut<T, $d>,
         {
             fn get_reference_mut(&mut self, indexes: [usize; $d - $i]) -> Option<&mut T> {
-                self.source.get_reference_mut(self.$helper_name(indexes).unwrap())
+                self.source
+                    .get_reference_mut(self.$helper_name(indexes).unwrap())
             }
 
             unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d - $i]) -> &mut T {
                 // TODO: Can we use unwrap_unchecked here?
-                self.source.get_reference_unchecked_mut(self.$helper_name(indexes).unwrap())
+                self.source
+                    .get_reference_unchecked_mut(self.$helper_name(indexes).unwrap())
             }
         }
     };
@@ -297,13 +301,13 @@ where
      * - If the extra dimension names are not unique
      */
     #[track_caller]
-    pub fn from(source: S, extra_dimension_names: [(usize, Dimension); I]) -> TensorExpansion<T, S, D, I> {
+    pub fn from(
+        source: S,
+        extra_dimension_names: [(usize, Dimension); I],
+    ) -> TensorExpansion<T, S, D, I> {
         let mut dimensions = extra_dimension_names;
         if crate::tensors::dimensions::has_duplicates_extra_names(&extra_dimension_names) {
-            panic!(
-                "All extra dimension names {:?} must be unique",
-                dimensions,
-            );
+            panic!("All extra dimension names {:?} must be unique", dimensions,);
         }
         let shape = source.view_shape();
         for &(d, name) in &dimensions {
@@ -429,7 +433,8 @@ macro_rules! tensor_expansion_ref_impl {
 
             unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + $i]) -> &T {
                 // TODO: Can we use unwrap_unchecked here?
-                self.source.get_reference_unchecked(self.$helper_name(indexes).unwrap())
+                self.source
+                    .get_reference_unchecked(self.$helper_name(indexes).unwrap())
             }
         }
 
@@ -443,7 +448,8 @@ macro_rules! tensor_expansion_ref_impl {
 
             unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + $i]) -> &mut T {
                 // TODO: Can we use unwrap_unchecked here?
-                self.source.get_reference_unchecked_mut(self.$helper_name(indexes).unwrap())
+                self.source
+                    .get_reference_unchecked_mut(self.$helper_name(indexes).unwrap())
             }
         }
     };
@@ -480,10 +486,7 @@ fn dimensionality_expansion() {
     assert_eq!(tensor_3.shape(), [("batch", 1), ("row", 2), ("column", 2)]);
     assert_eq!(
         tensor_3,
-        Tensor::from([("batch", 1), ("row", 2), ("column", 2)], vec![
-            0, 1,
-            2, 3,
-        ])
+        Tensor::from([("batch", 1), ("row", 2), ("column", 2)], vec![0, 1, 2, 3,])
     );
     let vector = Tensor::from([("a", 5)], (0..5).collect());
     let tensor = TensorView::from(TensorExpansion::from(&vector, [(1, "b"), (1, "c")]));
@@ -495,12 +498,17 @@ fn dimensionality_expansion() {
     let dataset = TensorView::from(TensorExpansion::from(&matrix, [(2, "color"), (0, "batch")]));
     assert_eq!(
         dataset,
-        Tensor::from([("batch", 1), ("row", 2), ("column", 2), ("color", 1)], (0..4).collect())
+        Tensor::from(
+            [("batch", 1), ("row", 2), ("column", 2), ("color", 1)],
+            (0..4).collect()
+        )
     );
 }
 
 #[test]
-#[should_panic(expected = "Unable to index with [2, 2, 2, 2], Tensor dimensions are [(\"a\", 2), (\"b\", 2), (\"c\", 1), (\"d\", 2)].")]
+#[should_panic(
+    expected = "Unable to index with [2, 2, 2, 2], Tensor dimensions are [(\"a\", 2), (\"b\", 2), (\"c\", 1), (\"d\", 2)]."
+)]
 fn dimensionality_reduction_invalid_extra_index() {
     use crate::tensors::views::TensorView;
     use crate::tensors::Tensor;

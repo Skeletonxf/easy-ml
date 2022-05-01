@@ -226,17 +226,20 @@ where
      * [TensorRef]: TensorRef
      */
     pub unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
-        self.source.get_reference_unchecked(crate::tensors::dimensions::map_dimensions(
-            &self.dimension_mapping,
-            &indexes,
-        ))
+        self.source
+            .get_reference_unchecked(crate::tensors::dimensions::map_dimensions(
+                &self.dimension_mapping,
+                &indexes,
+            ))
     }
 
     /**
      * Returns an iterator over references to the data in this TensorAccess, in the order of
      * the TensorAccess shape.
      */
-    pub fn index_order_reference_iter(&self) -> IndexOrderReferenceIterator<T, TensorAccess<T, S, D>, D> {
+    pub fn index_order_reference_iter(
+        &self,
+    ) -> IndexOrderReferenceIterator<T, TensorAccess<T, S, D>, D> {
         IndexOrderReferenceIterator::from(self)
     }
 }
@@ -345,17 +348,20 @@ where
      * [TensorRef]: TensorRef
      */
     pub unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
-        self.source.get_reference_unchecked_mut(crate::tensors::dimensions::map_dimensions(
-            &self.dimension_mapping,
-            &indexes,
-        ))
+        self.source
+            .get_reference_unchecked_mut(crate::tensors::dimensions::map_dimensions(
+                &self.dimension_mapping,
+                &indexes,
+            ))
     }
 
     /**
      * Returns an iterator over mutable references to the data in this TensorAccess, in the order
      * of the TensorAccess shape.
      */
-    pub fn index_order_reference_mut_iter(&mut self) -> IndexOrderReferenceMutIterator<T, TensorAccess<T, S, D>, D> {
+    pub fn index_order_reference_mut_iter(
+        &mut self,
+    ) -> IndexOrderReferenceMutIterator<T, TensorAccess<T, S, D>, D> {
         IndexOrderReferenceMutIterator::from(self)
     }
 }
@@ -473,7 +479,7 @@ impl<const D: usize> ShapeIterator<D> {
         ShapeIterator {
             shape,
             indexes: [0; D],
-            finished: !starting_index_valid
+            finished: !starting_index_valid,
         }
     }
 }
@@ -622,7 +628,9 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.shape_iterator.next().map(|indexes| self.source.get_reference(indexes).unwrap().clone()) // TODO: Can use unchecked here
+        self.shape_iterator
+            .next()
+            .map(|indexes| self.source.get_reference(indexes).unwrap().clone()) // TODO: Can use unchecked here
     }
 }
 
@@ -737,7 +745,9 @@ where
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.shape_iterator.next().map(|indexes| self.source.get_reference(indexes).unwrap()) // TODO: Can use unchecked here
+        self.shape_iterator
+            .next()
+            .map(|indexes| self.source.get_reference(indexes).unwrap()) // TODO: Can use unchecked here
     }
 }
 
@@ -794,7 +804,8 @@ where
                 // but since we will always increment the counter on every call to next()
                 // and stop when we reach the end no references will overlap.
                 // The compiler doesn't know this, so transmute the lifetime for it.
-                std::mem::transmute(self.source.get_reference_mut(indexes).unwrap()) // TODO: Can use unchecked here
+                std::mem::transmute(self.source.get_reference_mut(indexes).unwrap())
+                // TODO: Can use unchecked here
             }
         })
     }
