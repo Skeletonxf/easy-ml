@@ -12,15 +12,14 @@ mod tensors {
             3, 4,
             5, 6
         ]);
-        let row_column = tensor.source_order();
-        let mut iterator = row_column.index_order_reference_iter();
-        assert_eq!(iterator.next(), Some(&1));
-        assert_eq!(iterator.next(), Some(&2));
-        assert_eq!(iterator.next(), Some(&3));
-        assert_eq!(iterator.next(), Some(&4));
-        assert_eq!(iterator.next(), Some(&5));
-        assert_eq!(iterator.next(), Some(&6));
-        assert_eq!(iterator.next(), None);
+        let mut row_column_iterator = tensor.index_order_reference_iter();
+        assert_eq!(row_column_iterator.next(), Some(&1));
+        assert_eq!(row_column_iterator.next(), Some(&2));
+        assert_eq!(row_column_iterator.next(), Some(&3));
+        assert_eq!(row_column_iterator.next(), Some(&4));
+        assert_eq!(row_column_iterator.next(), Some(&5));
+        assert_eq!(row_column_iterator.next(), Some(&6));
+        assert_eq!(row_column_iterator.next(), None);
     }
 
     #[test]

@@ -43,6 +43,8 @@ use std::marker::PhantomData;
 pub use crate::matrices::iterators::WithIndex;
 
 // TODO: Iterators should use unchecked indexing once fully stress tested.
+// TODO: Should probably extract mapping functions to working with a TensorRef/TensorMut as well
+// to avoid needing no op dimension mappings when mapping a Tensor/TensorView
 
 /**
  * Access to the data in a Tensor with a particular order of dimension indexing.
