@@ -3,7 +3,7 @@ use crate::tensors::Dimension;
 use std::marker::PhantomData;
 
 /**
- * A combination of dimension names and a tensor.
+ * A combination of new dimension names and a tensor.
  *
  * The provided dimension names override the dimension names in the
  * [`view_shape`](TensorRef::view_shape) of the TensorRef exposed.

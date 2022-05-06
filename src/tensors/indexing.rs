@@ -23,9 +23,10 @@
  * so adding a `[("batch", 2000), ("width", 100), ("height", 100), ("rgb", 3)]` shaped tensor
  * to a `[("batch", 2000), ("height", 100), ("width", 100), ("rgb", 3)]` will fail unless you
  * transpose one first, and you could access an element as
- * [batch: 1999, width: 0, height: 99, rgb: 3] or [batch: 1999, height: 99, width: 0, rgb: 3]
- * and read the same data, because you index into dimensions based on their name, not the order
- * they are stored in memory.
+ * `tensor.get(["batch", "width", "height", "rgb"]).get([1999, 0, 99, 3])` or
+ * `tensor.get(["batch", "height", "width", "rgb"]).get([1999, 99, 0, 3])` and read the same data,
+ * because you index into dimensions based on their name, not just the order they are stored in
+ * memory.
  *
  * Even with a name for each dimension, at some point you still need to say what order you want
  * to index each dimension with, and this is where [`TensorAccess`](TensorAccess) comes in. It
@@ -566,12 +567,24 @@ fn index_order_iter<const D: usize>(
  * let tensor_access_3 = tensor_3.get(["a", "b", "c"]);
  * let tensor_access_3_rev = tensor_3.get(["c", "b", "a"]);
  * assert_eq!(
+ *     tensor_0.index_order_iter().collect::<Vec<i32>>(),
+ *     vec![1]
+ * );
+ * assert_eq!(
  *     tensor_access_0.index_order_iter().collect::<Vec<i32>>(),
  *     vec![1]
  * );
  * assert_eq!(
+ *     tensor_1.index_order_iter().collect::<Vec<i32>>(),
+ *     vec![1, 2, 3, 4, 5, 6, 7]
+ * );
+ * assert_eq!(
  *     tensor_access_1.index_order_iter().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4, 5, 6, 7]
+ * );
+ * assert_eq!(
+ *     tensor_2.index_order_iter().collect::<Vec<i32>>(),
+ *     vec![1, 2, 3, 4, 5, 6]
  * );
  * assert_eq!(
  *     tensor_access_2.index_order_iter().collect::<Vec<i32>>(),
@@ -580,6 +593,10 @@ fn index_order_iter<const D: usize>(
  * assert_eq!(
  *     tensor_access_2_rev.index_order_iter().collect::<Vec<i32>>(),
  *     vec![1, 4, 2, 5, 3, 6]
+ * );
+ * assert_eq!(
+ *     tensor_3.index_order_iter().collect::<Vec<i32>>(),
+ *     vec![1, 2, 3, 4]
  * );
  * assert_eq!(
  *     tensor_access_3.index_order_iter().collect::<Vec<i32>>(),
@@ -685,12 +702,24 @@ where
  * let tensor_access_3 = tensor_3.get(["a", "b", "c"]);
  * let tensor_access_3_rev = tensor_3.get(["c", "b", "a"]);
  * assert_eq!(
+ *     tensor_0.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     vec![1]
+ * );
+ * assert_eq!(
  *     tensor_access_0.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
  *     vec![1]
  * );
  * assert_eq!(
+ *     tensor_1.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     vec![1, 2, 3, 4, 5, 6, 7]
+ * );
+ * assert_eq!(
  *     tensor_access_1.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4, 5, 6, 7]
+ * );
+ * assert_eq!(
+ *     tensor_2.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     vec![1, 2, 3, 4, 5, 6]
  * );
  * assert_eq!(
  *     tensor_access_2.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
@@ -699,6 +728,10 @@ where
  * assert_eq!(
  *     tensor_access_2_rev.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
  *     vec![1, 4, 2, 5, 3, 6]
+ * );
+ * assert_eq!(
+ *     tensor_3.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     vec![1, 2, 3, 4]
  * );
  * assert_eq!(
  *     tensor_access_3.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
@@ -763,6 +796,35 @@ where
     }
 }
 
+/**
+ * An iterator over mutable references to all values in a tensor.
+ *
+ * First the all 0 index is iterated, then each iteration increments the rightmost index.
+ * If the tensor access is created with the same dimension order as the data in the tensor,
+ * this will take a single step in memory on each iteration, akin to iterating through the
+ * flattened data of the tensor.
+ *
+ * If the tensor access is created with a different dimension order, this iterator will still
+ * iterate the rightmost index of the index order defined by the tensor access but the tensor
+ * access will map those dimensions to the order the data in the tensor is stored, allowing
+ * iteration through dimensions in a different order to how they are stored, but no longer
+ * taking a single step in memory on each iteration.
+ *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ * let mut tensor = Tensor::from([("a", 7)], vec![ 1, 2, 3, 4, 5, 6, 7 ]);
+ * let doubled = tensor.map(|x| 2 * x);
+ * // mutating a tensor in place can also be done with Tensor::map_mut and
+ * // Tensor::map_mut_with_index
+ * for elem in tensor.index_order_reference_mut_iter() {
+ *    *elem = 2 * *elem;
+ * }
+ * assert_eq!(
+ *     tensor,
+ *     doubled,
+ * );
+ * ```
+ */
 #[derive(Debug)]
 pub struct IndexOrderReferenceMutIterator<'a, T, S, const D: usize> {
     shape_iterator: ShapeIterator<D>,

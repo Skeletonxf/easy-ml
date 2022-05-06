@@ -90,6 +90,14 @@ impl<T, const D: usize> Tensor<T, D> {
         }
     }
 
+    /**
+     * The shape of this tensor. Since Tensors are named Tensors, their shape is not just a
+     * list of length along each dimension, but instead a list of pairs of names and lengths.
+     *
+     * See also
+     * - [dimensions](crate::tensors::dimensions)
+     * - [indexing](crate::tensors::indexing)
+     */
     pub fn shape(&self) -> [(Dimension, usize); D] {
         self.dimensions
     }

@@ -188,6 +188,22 @@ where
     }
 
     /**
+     * The shape of this tensor view. Since Tensors are named Tensors, their shape is not just a
+     * list of length along each dimension, but instead a list of pairs of names and lengths.
+     *
+     * Note that a TensorView may have a shape which is different than the Tensor it is providing
+     * access to the data of. The TensorView might be [masking dimensions](TensorIndex) or
+     * elements from the shape, or exposing [false ones](TensorExpansion).
+     *
+     * See also
+     * - [dimensions](crate::tensors::dimensions)
+     * - [indexing](crate::tensors::indexing)
+     */
+    pub fn shape(&self) -> [(Dimension, usize); D] {
+        self.source.view_shape()
+    }
+
+    /**
      * Returns a TensorAccess which can be indexed in the order of the supplied dimensions
      * to read values from this tensor view.
      *
@@ -224,10 +240,6 @@ where
     #[track_caller]
     pub fn get_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, S, D> {
         TensorAccess::from(self.source, dimensions)
-    }
-
-    pub fn shape(&self) -> [(Dimension, usize); D] {
-        self.source.view_shape()
     }
 
     /**
