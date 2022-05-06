@@ -125,7 +125,34 @@ impl<T> Tensor<T, 0> {
             strides: [],
         }
     }
+
+    /**
+     * Returns the sole element of the 0 dimensional tensor.
+     */
+    pub fn into_scalar(self) -> T {
+        self.data.into_iter().next().unwrap()
+    }
 }
+
+impl<T> Tensor<T, 0>
+where
+    T: Clone,
+{
+    /**
+     * Returns a copy of the sole element in the 0 dimensional tensor.
+     */
+    pub fn scalar(&self) -> T {
+        self.data.get(0).unwrap().clone()
+    }
+}
+
+impl<T> From<T> for Tensor<T, 0> {
+    fn from(scalar: T) -> Tensor<T, 0> {
+        Tensor::from_scalar(scalar)
+    }
+}
+// TODO: See if we can find a way to write the reverse Tensor<T, 0> -> T conversion using From or Into (doesn't seem like we can?)
+
 
 // # Safety
 //

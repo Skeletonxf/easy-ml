@@ -336,6 +336,23 @@ where
 }
 
 /**
+ * TensorView methods which require only read access via a scalar [TensorRef](TensorRef) source
+ * and a clonable type.
+ */
+impl<T, S> TensorView<T, S, 0>
+where
+    T: Clone,
+    S: TensorRef<T, 0>,
+{
+    /**
+     * Returns a copy of the sole element in the 0 dimensional tensor.
+     */
+    pub fn scalar(&self) -> T {
+        self.source.get_reference([]).unwrap().clone()
+    }
+}
+
+/**
  * TensorView methods which require mutable access via a [TensorMut](TensorMut) source.
  */
 impl<T, S, const D: usize> TensorView<T, S, D>

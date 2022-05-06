@@ -1256,7 +1256,7 @@ fn elementwise_addition_test_all_16_combinations() {
     results.push(&tensor_view() + tensor_view());
     results.push(&tensor_view() + &tensor_view());
     for total in results {
-        assert_eq!(total.get(["a"]).get([0]), 2); // TODO: Scalar helpers
+        assert_eq!(total.get(["a"]).get([0]), 2);
     }
 }
 
