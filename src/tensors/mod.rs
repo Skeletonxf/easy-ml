@@ -250,16 +250,40 @@ impl<T, const D: usize> Tensor<T, D> {
         TensorView::from(self)
     }
 
+    /**
+     * Returns a TensorAccess which can be indexed in the order of the supplied dimensions
+     * to read values from this tensor.
+     *
+     * # Panics
+     *
+     * If the set of dimensions supplied do not match the set of dimensions in this tensor's shape.
+     */
     #[track_caller]
     pub fn get(&self, dimensions: [Dimension; D]) -> TensorAccess<T, &Tensor<T, D>, D> {
         TensorAccess::from(self, dimensions)
     }
 
+    /**
+     * Returns a TensorAccess which can be indexed in the order of the supplied dimensions
+     * to read or write values from this tensor.
+     *
+     * # Panics
+     *
+     * If the set of dimensions supplied do not match the set of dimensions in this tensor's shape.
+     */
     #[track_caller]
     pub fn get_mut(&mut self, dimensions: [Dimension; D]) -> TensorAccess<T, &mut Tensor<T, D>, D> {
         TensorAccess::from(self, dimensions)
     }
 
+    /**
+     * Returns a TensorAccess which can be indexed in the order of the supplied dimensions
+     * to read or write values from this tensor.
+     *
+     * # Panics
+     *
+     * If the set of dimensions supplied do not match the set of dimensions in this tensor's shape.
+     */
     #[track_caller]
     pub fn get_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, Tensor<T, D>, D> {
         TensorAccess::from(self, dimensions)
@@ -338,7 +362,27 @@ impl<T, const D: usize> Tensor<T, D> {
         }
     }
 
-    // TODO: docs
+    /**
+     * Returns a TensorView with the dimension names of the shape renamed to the provided
+     * dimensions. The data of this tensor and the dimension lengths and order remain unchanged.
+     *
+     * This is a shorthand for constructing the TensorView from this Tensor.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * use easy_ml::tensors::views::{TensorView, TensorRename};
+     * let abc = Tensor::from([("a", 3), ("b", 3), ("c", 3)], (0..27).collect());
+     * let xyz = abc.rename_view(["x", "y", "z"]);
+     * let also_xyz = TensorView::from(TensorRename::from(&abc, ["x", "y", "z"]));
+     * assert_eq!(xyz, also_xyz);
+     * assert_eq!(xyz, Tensor::from([("x", 3), ("y", 3), ("z", 3)], (0..27).collect()));
+     * ```
+     *
+     * # Panics
+     *
+     * If a dimension name is not unique
+     */
+    #[track_caller]
     pub fn rename_view(
         &self,
         dimensions: [Dimension; D],
