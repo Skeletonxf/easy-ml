@@ -3,7 +3,7 @@
  */
 
 use crate::numeric::{Numeric, NumericRef};
-use crate::tensors::indexing::TensorAccess;
+use crate::tensors::indexing::{TensorAccess, IndexOrderReferenceIterator};
 use crate::tensors::views::{TensorIndex, TensorRef, TensorView};
 use crate::tensors::{Dimension, Tensor};
 
@@ -18,9 +18,8 @@ where
     S2: TensorRef<T, D>,
 {
     left.view_shape() == right.view_shape()
-        && TensorAccess::from_source_order(left)
-            .index_order_reference_iter()
-            .zip(TensorAccess::from_source_order(right).index_order_reference_iter())
+        && IndexOrderReferenceIterator::from(left)
+            .zip(IndexOrderReferenceIterator::from(right))
             .all(|(x, y)| x == y)
 }
 

@@ -388,6 +388,53 @@ where
     pub fn index_order_iter(&self) -> IndexOrderIterator<T, S, D> {
         IndexOrderIterator::from(&self.source)
     }
+
+    /**
+     * Creates and returns a new tensor with all value pairs of two tensors with the same shape
+     * mapped by a function.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * use easy_ml::tensors::views::TensorView;
+     * let lhs = TensorView::from(Tensor::from([("a", 4)], vec![1, 2, 3, 4]));
+     * let rhs = TensorView::from(Tensor::from([("a", 4)], vec![0, 1, 2, 3]));
+     * let multiplied = lhs.elementwise(rhs.source_ref(), |l, r| l * r);
+     * assert_eq!(
+     *     multiplied,
+     *     Tensor::from([("a", 4)], vec![0, 2, 6, 12])
+     * );
+     * ```
+     *
+     * # Generics
+     *
+     * This method can be called with any right hand side that implements TensorRef, including
+     * `Tensor` as well as many tensor wrapper types. It notably does not include `TensorView`,
+     * you'll need to call `TensorView::source_ref` on one first.
+     *
+     * # Panics
+     *
+     * If the two tensors have different shapes.
+     */
+    pub fn elementwise<S2, M>(&self, rhs: S2, mapping_function: M) -> Tensor<T, D>
+    where
+        S2: TensorRef<T, D>,
+        M: Fn(T, T) -> T,
+    {
+        let left_shape = self.shape();
+        let right_shape = rhs.view_shape();
+        if left_shape != right_shape {
+            panic!(
+                "Dimensions of left and right tensors are not the same: (left: {:?}, right: {:?})",
+                left_shape, right_shape
+            );
+        }
+        let mapped = self
+            .index_order_reference_iter()
+            .zip(IndexOrderReferenceIterator::from(&rhs))
+            .map(|(x, y)| mapping_function(x.clone(), y.clone()))
+            .collect();
+        Tensor::from(left_shape, mapped)
+    }
 }
 
 /**
