@@ -398,7 +398,7 @@ where
      * use easy_ml::tensors::views::TensorView;
      * let lhs = TensorView::from(Tensor::from([("a", 4)], vec![1, 2, 3, 4]));
      * let rhs = TensorView::from(Tensor::from([("a", 4)], vec![0, 1, 2, 3]));
-     * let multiplied = lhs.elementwise(rhs.source_ref(), |l, r| l * r);
+     * let multiplied = lhs.elementwise(&rhs, |l, r| l * r);
      * assert_eq!(
      *     multiplied,
      *     Tensor::from([("a", 4)], vec![0, 2, 6, 12])
@@ -407,21 +407,29 @@ where
      *
      * # Generics
      *
-     * This method can be called with any right hand side that implements TensorRef, including
-     * `Tensor` as well as many tensor wrapper types. It notably does not include `TensorView`,
-     * you'll need to call `TensorView::source_ref` on one first.
+     * This method can be called with any right hand side that can be converted to a TensorView,
+     * which includes `Tensor`, `&Tensor`, `&mut Tensor` as well as references to a `TensorView`.
      *
      * # Panics
      *
      * If the two tensors have different shapes.
      */
-    pub fn elementwise<S2, M>(&self, rhs: S2, mapping_function: M) -> Tensor<T, D>
+    pub fn elementwise<S2, I, M>(&self, rhs: I, mapping_function: M) -> Tensor<T, D>
+    where
+        I: Into<TensorView<T, S2, D>>,
+        S2: TensorRef<T, D>,
+        M: Fn(T, T) -> T,
+    {
+        self.elementwise_less_generic(rhs.into(), mapping_function)
+    }
+
+    fn elementwise_less_generic<S2, M>(&self, rhs: TensorView<T, S2, D>, mapping_function: M) -> Tensor<T, D>
     where
         S2: TensorRef<T, D>,
         M: Fn(T, T) -> T,
     {
         let left_shape = self.shape();
-        let right_shape = rhs.view_shape();
+        let right_shape = rhs.shape();
         if left_shape != right_shape {
             panic!(
                 "Dimensions of left and right tensors are not the same: (left: {:?}, right: {:?})",
@@ -430,7 +438,7 @@ where
         }
         let mapped = self
             .index_order_reference_iter()
-            .zip(IndexOrderReferenceIterator::from(&rhs))
+            .zip(rhs.index_order_reference_iter())
             .map(|(x, y)| mapping_function(x.clone(), y.clone()))
             .collect();
         Tensor::from(left_shape, mapped)
@@ -630,5 +638,60 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         crate::tensors::display::format_view(&self.source, f)
+    }
+}
+
+
+/**
+ * A Tensor can be converted to a TensorView of that Tensor.
+ */
+impl<T, const D: usize> From<Tensor<T, D>> for TensorView<T, Tensor<T, D>, D> {
+    fn from(tensor: Tensor<T, D>) -> TensorView<T, Tensor<T, D>, D> {
+        TensorView::from(tensor)
+    }
+}
+
+/**
+ * A reference to a Tensor can be converted to a TensorView of that referenced Tensor.
+ */
+impl<'a, T, const D: usize> From<&'a Tensor<T, D>> for TensorView<T, &'a Tensor<T, D>, D> {
+    fn from(tensor: &Tensor<T, D>) -> TensorView<T, &Tensor<T, D>, D> {
+        TensorView::from(tensor)
+    }
+}
+
+/**
+ * A mutable reference to a Tensor can be converted to a TensorView of that mutably referenced
+ * Tensor.
+ */
+impl<'a, T, const D: usize> From<&'a mut Tensor<T, D>> for TensorView<T, &'a mut Tensor<T, D>, D> {
+    fn from(tensor: &mut Tensor<T, D>) -> TensorView<T, &mut Tensor<T, D>, D> {
+        TensorView::from(tensor)
+    }
+}
+
+/**
+ * A reference to a TensorView can be converted to an owned TensorView with a reference to the
+ * source type of that first TensorView.
+ */
+impl<'a, T, S, const D: usize> From<&'a TensorView<T, S, D>> for TensorView<T, &'a S, D>
+where
+    S: TensorRef<T, D>,
+{
+    fn from(tensor_view: &TensorView<T, S, D>) -> TensorView<T, &S, D> {
+        TensorView::from(tensor_view.source_ref())
+    }
+}
+
+/**
+ * A mutable reference to a TensorView can be converted to an owned TensorView with a mutable
+ * reference to the source type of that first TensorView.
+ */
+impl<'a, T, S, const D: usize> From<&'a mut TensorView<T, S, D>> for TensorView<T, &'a mut S, D>
+where
+    S: TensorRef<T, D>,
+{
+    fn from(tensor_view: &mut TensorView<T, S, D>) -> TensorView<T, &mut S, D> {
+        TensorView::from(tensor_view.source_ref_mut())
     }
 }

@@ -101,6 +101,16 @@ impl<T, const D: usize> Tensor<T, D> {
     pub fn shape(&self) -> [(Dimension, usize); D] {
         self.dimensions
     }
+
+    // Unverified constructor for interal use when we know the dimensions/data/strides are
+    // unchanged and don't need reverification
+    pub(crate) fn direct_from(data: Vec<T>, dimensions: [(Dimension, usize); D], strides: [usize; D]) -> Self {
+        Tensor {
+            data,
+            dimensions,
+            strides,
+        }
+    }
 }
 
 // Panics if the dimensions are invalid for any reason with the appropriate error message.
@@ -603,11 +613,7 @@ where
             .map(|x| mapping_function(x.clone()))
             .collect();
         // We're not changing the shape of the Tensor, so don't need to revalidate
-        Tensor {
-            data: mapped,
-            dimensions: self.dimensions,
-            strides: self.strides,
-        }
+        Tensor::direct_from(mapped, self.dimensions, self.strides)
     }
 
     /**
@@ -653,21 +659,29 @@ where
      *
      * # Generics
      *
-     * This method can be called with any right hand side that implements TensorRef, including
-     * `Tensor` as well as many tensor wrapper types. It notably does not include `TensorView`,
-     * you'll need to call `TensorView::source_ref` on one first.
+     * This method can be called with any right hand side that can be converted to a TensorView,
+     * which includes `Tensor`, `&Tensor`, `&mut Tensor` as well as references to a `TensorView`.
      *
      * # Panics
      *
      * If the two tensors have different shapes.
      */
-    pub fn elementwise<S, M>(&self, rhs: S, mapping_function: M) -> Tensor<T, D>
+    pub fn elementwise<S2, I, M>(&self, rhs: I, mapping_function: M) -> Tensor<T, D>
     where
-        S: TensorRef<T, D>,
+        I: Into<TensorView<T, S2, D>>,
+        S2: TensorRef<T, D>,
+        M: Fn(T, T) -> T,
+    {
+        self.elementwise_less_generic(rhs.into(), mapping_function)
+    }
+
+    fn elementwise_less_generic<S2, M>(&self, rhs: TensorView<T, S2, D>, mapping_function: M) -> Tensor<T, D>
+    where
+        S2: TensorRef<T, D>,
         M: Fn(T, T) -> T,
     {
         let left_shape = self.shape();
-        let right_shape = rhs.view_shape();
+        let right_shape = rhs.shape();
         if left_shape != right_shape {
             panic!(
                 "Dimensions of left and right tensors are not the same: (left: {:?}, right: {:?})",
@@ -676,15 +690,11 @@ where
         }
         let mapped = self
             .direct_index_order_reference_iter()
-            .zip(IndexOrderReferenceIterator::from(&rhs))
+            .zip(rhs.index_order_reference_iter())
             .map(|(x, y)| mapping_function(x.clone(), y.clone()))
             .collect();
         // We're not changing the shape of the Tensor, so don't need to revalidate
-        Tensor {
-            data: mapped,
-            dimensions: self.dimensions,
-            strides: self.strides,
-        }
+        Tensor::direct_from(mapped, self.dimensions, self.strides)
     }
 }
 
