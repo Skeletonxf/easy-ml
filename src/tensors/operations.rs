@@ -171,62 +171,62 @@ mod private {
     }
 }
 
+/**
+ * Two Tensors are similar if they have the same **set** of dimension names and lengths even
+ * if two shapes are not in the same order, and all their elements are equal
+ * when comparing both tensors via the same dimension ordering.
+ *
+ * Elements are compared by iterating through the right most index of the left tensor
+ * and the corresponding index in the right tensor when [accessed](TensorAccess) using
+ * the dimension order of the left. When both tensors have their dimensions in the same
+ * order, this corresponds to the right most index of the right tensor as well, and will
+ * be an elementwise comparison.
+ *
+ * If two Tensors are similar, you can transpose one of them to the dimension order of the
+ * other and they will be equal.
+ *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ * use easy_ml::tensors::operations::Similar;
+ * let one = Tensor::from([("a", 2), ("b", 3)], vec![
+ *     1, 2, 3,
+ *     4, 5, 6
+ * ]);
+ * let two = Tensor::from([("b", 3), ("a", 2)], vec![
+ *     1, 4,
+ *     2, 5,
+ *     3, 6
+ * ]);
+ * let three = Tensor::from([("b", 2), ("a", 3)], vec![
+ *     1, 2, 3,
+ *     4, 5, 6
+ * ]);
+ * assert!(one.similar(&one));
+ * assert!(two.similar(&two));
+ * assert!(three.similar(&three));
+ * assert!(one.similar(&two)); // similar, dimension order is not the same
+ * assert!(!one.similar(&three)); // elementwise data is same, but dimensions are not equal
+ * assert!(!two.similar(&three)); // dimension lengths are not the same, and elementwise data is not the same
+ * ```
+ */
 impl<T: PartialEq, const D: usize> Similar for Tensor<T, D> {
-    /**
-     * Two Tensors are similar if they have the same **set** of dimension names and lengths even
-     * if two shapes are not in the same order, and all their elements are equal
-     * when comparing both tensors via the same dimension ordering.
-     *
-     * Elements are compared by iterating through the right most index of the left tensor
-     * and the corresponding index in the right tensor when [accessed](TensorAccess) using
-     * the dimension order of the left. When both tensors have their dimensions in the same
-     * order, this corresponds to the right most index of the right tensor as well, and will
-     * be an elementwise comparison.
-     *
-     * If two Tensors are similar, you can transpose one of them to the dimension order of the
-     * other and they will be equal.
-     *
-     * ```
-     * use easy_ml::tensors::Tensor;
-     * use easy_ml::tensors::operations::Similar;
-     * let one = Tensor::from([("a", 2), ("b", 3)], vec![
-     *     1, 2, 3,
-     *     4, 5, 6
-     * ]);
-     * let two = Tensor::from([("b", 3), ("a", 2)], vec![
-     *     1, 4,
-     *     2, 5,
-     *     3, 6
-     * ]);
-     * let three = Tensor::from([("b", 2), ("a", 3)], vec![
-     *     1, 2, 3,
-     *     4, 5, 6
-     * ]);
-     * assert!(one.similar(&one));
-     * assert!(two.similar(&two));
-     * assert!(three.similar(&three));
-     * assert!(one.similar(&two)); // similar, dimension order is not the same
-     * assert!(!one.similar(&three)); // elementwise data is same, but dimensions are not equal
-     * assert!(!two.similar(&three)); // dimension lengths are not the same, and elementwise data is not the same
-     * ```
-     */
     fn similar(&self, other: &Tensor<T, D>) -> bool {
         tensor_similarity(self, other)
     }
 }
 
+/**
+ * Two TensorViews are similar if they have the same **set** of dimension names and
+ * lengths even if two shapes are not in the same order, and all their elements are equal
+ * when comparing both tensors via the same dimension ordering.
+ * Differences in their source types are ignored.
+ */
 impl<T, S1, S2, const D: usize> Similar<TensorView<T, S2, D>> for TensorView<T, S1, D>
 where
     T: PartialEq,
     S1: TensorRef<T, D>,
     S2: TensorRef<T, D>,
 {
-    /**
-     * Two TensorViews are similar if they have the same **set** of dimension names and
-     * lengths even if two shapes are not in the same order, and all their elements are equal
-     * when comparing both tensors via the same dimension ordering.
-     * Differences in their source types are ignored.
-     */
     fn similar(&self, other: &TensorView<T, S2, D>) -> bool {
         tensor_similarity(self.source_ref(), other.source_ref())
     }
