@@ -1329,3 +1329,46 @@ fn matrix_multiplication_test_all_16_combinations() {
         );
     }
 }
+
+impl<T> Tensor<T, 1>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+{
+    pub(crate) fn scalar_product_less_generic<S>(&self, rhs: TensorView<T, S, 1>) -> T
+    where
+        S: TensorRef<T, 1>,
+    {
+        let left_shape = self.shape();
+        let right_shape = rhs.shape();
+        assert_same_dimensions(left_shape, right_shape);
+        tensor_view_vector_product_iter::<T, _, _>(
+            self.direct_index_order_reference_iter(),
+            left_shape,
+            rhs.index_order_reference_iter(),
+            right_shape,
+        )
+    }
+}
+
+impl<T, S> TensorView<T, S, 1>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+    S: TensorRef<T, 1>,
+{
+    pub(crate) fn scalar_product_less_generic<S2>(&self, rhs: TensorView<T, S2, 1>) -> T
+    where
+        S2: TensorRef<T, 1>,
+    {
+        let left_shape = self.shape();
+        let right_shape = rhs.shape();
+        assert_same_dimensions(left_shape, right_shape);
+        tensor_view_vector_product_iter::<T, _, _>(
+            self.index_order_reference_iter(),
+            left_shape,
+            rhs.index_order_reference_iter(),
+            right_shape,
+        )
+    }
+}

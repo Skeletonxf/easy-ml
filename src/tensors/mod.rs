@@ -7,6 +7,7 @@
  * then the tensor can be used in a mathematical way. `D` is the number of dimensions in the tensor
  * and a compile time constant. Each tensor also carries `D` dimension name and length pairs.
  */
+use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::{
     IndexOrderIterator, IndexOrderReferenceIterator, IndexOrderReferenceMutIterator, ShapeIterator,
     TensorAccess,
@@ -666,18 +667,18 @@ where
      *
      * If the two tensors have different shapes.
      */
-    pub fn elementwise<S2, I, M>(&self, rhs: I, mapping_function: M) -> Tensor<T, D>
+    pub fn elementwise<S, I, M>(&self, rhs: I, mapping_function: M) -> Tensor<T, D>
     where
-        I: Into<TensorView<T, S2, D>>,
-        S2: TensorRef<T, D>,
+        I: Into<TensorView<T, S, D>>,
+        S: TensorRef<T, D>,
         M: Fn(T, T) -> T,
     {
         self.elementwise_less_generic(rhs.into(), mapping_function)
     }
 
-    fn elementwise_less_generic<S2, M>(&self, rhs: TensorView<T, S2, D>, mapping_function: M) -> Tensor<T, D>
+    fn elementwise_less_generic<S, M>(&self, rhs: TensorView<T, S, D>, mapping_function: M) -> Tensor<T, D>
     where
-        S2: TensorRef<T, D>,
+        S: TensorRef<T, D>,
         M: Fn(T, T) -> T,
     {
         let left_shape = self.shape();
@@ -695,6 +696,41 @@ where
             .collect();
         // We're not changing the shape of the Tensor, so don't need to revalidate
         Tensor::direct_from(mapped, self.dimensions, self.strides)
+    }
+}
+
+impl<T> Tensor<T, 1>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+{
+    /**
+     * Computes the scalar product of two equal length vectors. For two vectors `[a,b,c]` and
+     * `[d,e,f]`, returns `a*d + b*e + c*f`. This is also known as the dot product.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * let tensor = Tensor::from([("sequence", 5)], vec![3, 4, 5, 6, 7]);
+     * assert_eq!(tensor.scalar_product(&tensor), 3*3 + 4*4 + 5*5 + 6*6 + 7*7);
+     * ```
+     *
+     * # Generics
+     *
+     * This method can be called with any right hand side that can be converted to a TensorView,
+     * which includes `Tensor`, `&Tensor`, `&mut Tensor` as well as references to a `TensorView`.
+     *
+     * # Panics
+     *
+     * If the two vectors are not of equal length or their dimension names do not match.
+     */
+    // Would like this impl block to be in operations.rs too but then it would show first in the
+    // Tensor docs which isn't ideal
+    pub fn scalar_product<S, I>(&self, rhs: I) -> T
+    where
+        I: Into<TensorView<T, S, 1>>,
+        S: TensorRef<T, 1>,
+    {
+        self.scalar_product_less_generic(rhs.into())
     }
 }
 
