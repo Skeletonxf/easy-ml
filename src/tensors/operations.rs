@@ -3,7 +3,7 @@
  */
 
 use crate::numeric::{Numeric, NumericRef};
-use crate::tensors::indexing::{TensorAccess, IndexOrderReferenceIterator};
+use crate::tensors::indexing::{IndexOrderReferenceIterator, TensorAccess};
 use crate::tensors::views::{TensorIndex, TensorRef, TensorView};
 use crate::tensors::{Dimension, Tensor};
 

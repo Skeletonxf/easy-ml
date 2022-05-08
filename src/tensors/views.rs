@@ -424,7 +424,11 @@ where
         self.elementwise_less_generic(rhs.into(), mapping_function)
     }
 
-    fn elementwise_less_generic<S2, M>(&self, rhs: TensorView<T, S2, D>, mapping_function: M) -> Tensor<T, D>
+    fn elementwise_less_generic<S2, M>(
+        &self,
+        rhs: TensorView<T, S2, D>,
+        mapping_function: M,
+    ) -> Tensor<T, D>
     where
         S2: TensorRef<T, D>,
         M: Fn(T, T) -> T,
@@ -678,7 +682,6 @@ where
         crate::tensors::display::format_view(&self.source, f)
     }
 }
-
 
 /**
  * A Tensor can be converted to a TensorView of that Tensor.

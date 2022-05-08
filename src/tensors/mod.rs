@@ -105,7 +105,11 @@ impl<T, const D: usize> Tensor<T, D> {
 
     // Unverified constructor for interal use when we know the dimensions/data/strides are
     // unchanged and don't need reverification
-    pub(crate) fn direct_from(data: Vec<T>, dimensions: [(Dimension, usize); D], strides: [usize; D]) -> Self {
+    pub(crate) fn direct_from(
+        data: Vec<T>,
+        dimensions: [(Dimension, usize); D],
+        strides: [usize; D],
+    ) -> Self {
         Tensor {
             data,
             dimensions,
@@ -171,7 +175,6 @@ impl<T> From<T> for Tensor<T, 0> {
     }
 }
 // TODO: See if we can find a way to write the reverse Tensor<T, 0> -> T conversion using From or Into (doesn't seem like we can?)
-
 
 // # Safety
 //
@@ -676,7 +679,11 @@ where
         self.elementwise_less_generic(rhs.into(), mapping_function)
     }
 
-    fn elementwise_less_generic<S, M>(&self, rhs: TensorView<T, S, D>, mapping_function: M) -> Tensor<T, D>
+    fn elementwise_less_generic<S, M>(
+        &self,
+        rhs: TensorView<T, S, D>,
+        mapping_function: M,
+    ) -> Tensor<T, D>
     where
         S: TensorRef<T, D>,
         M: Fn(T, T) -> T,
