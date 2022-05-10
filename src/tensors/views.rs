@@ -298,6 +298,107 @@ where
     ) -> TensorView<T, TensorRename<T, &S, D>, D> {
         TensorView::from(TensorRename::from(&self.source, dimensions))
     }
+
+    /**
+     * Creates and returns a new tensor with all value pairs of two tensors with the same shape
+     * mapped by a function. The value pairs are not copied for you, if you're using `Copy` types
+     * or need to clone the values anyway, you can use
+     * [`TensorView::elementwise`](TensorView::elementwise) instead.
+     *
+     * # Generics
+     *
+     * This method can be called with any right hand side that can be converted to a TensorView,
+     * which includes `Tensor`, `&Tensor`, `&mut Tensor` as well as references to a `TensorView`.
+     *
+     * # Panics
+     *
+     * If the two tensors have different shapes.
+     */
+    pub fn elementwise_reference<S2, I, M>(&self, rhs: I, mapping_function: M) -> Tensor<T, D>
+    where
+        I: Into<TensorView<T, S2, D>>,
+        S2: TensorRef<T, D>,
+        M: Fn(&T, &T) -> T,
+    {
+        self.elementwise_reference_less_generic(rhs.into(), mapping_function)
+    }
+
+    /**
+     * Creates and returns a new tensor with all value pairs of two tensors with the same shape
+     * mapped by a function. The mapping function also receives each index corresponding to the
+     * value pairs. The value pairs are not copied for you, if you're using `Copy` types
+     * or need to clone the values anyway, you can use
+     * [`TensorView::elementwise_with_index`](TensorView::elementwise_with_index) instead.
+     *
+     * # Generics
+     *
+     * This method can be called with any right hand side that can be converted to a TensorView,
+     * which includes `Tensor`, `&Tensor`, `&mut Tensor` as well as references to a `TensorView`.
+     *
+     * # Panics
+     *
+     * If the two tensors have different shapes.
+     */
+    pub fn elementwise_reference_with_index<S2, I, M>(&self, rhs: I, mapping_function: M) -> Tensor<T, D>
+    where
+        I: Into<TensorView<T, S2, D>>,
+        S2: TensorRef<T, D>,
+        M: Fn([usize; D], &T, &T) -> T,
+    {
+        self.elementwise_reference_less_generic_with_index(rhs.into(), mapping_function)
+    }
+
+    fn elementwise_reference_less_generic<S2, M>(
+        &self,
+        rhs: TensorView<T, S2, D>,
+        mapping_function: M,
+    ) -> Tensor<T, D>
+    where
+        S2: TensorRef<T, D>,
+        M: Fn(&T, &T) -> T,
+    {
+        let left_shape = self.shape();
+        let right_shape = rhs.shape();
+        if left_shape != right_shape {
+            panic!(
+                "Dimensions of left and right tensors are not the same: (left: {:?}, right: {:?})",
+                left_shape, right_shape
+            );
+        }
+        let mapped = self
+            .index_order_reference_iter()
+            .zip(rhs.index_order_reference_iter())
+            .map(|(x, y)| mapping_function(x, y))
+            .collect();
+        Tensor::from(left_shape, mapped)
+    }
+
+    fn elementwise_reference_less_generic_with_index<S2, M>(
+        &self,
+        rhs: TensorView<T, S2, D>,
+        mapping_function: M,
+    ) -> Tensor<T, D>
+    where
+        S2: TensorRef<T, D>,
+        M: Fn([usize; D], &T, &T) -> T,
+    {
+        let left_shape = self.shape();
+        let right_shape = rhs.shape();
+        if left_shape != right_shape {
+            panic!(
+                "Dimensions of left and right tensors are not the same: (left: {:?}, right: {:?})",
+                left_shape, right_shape
+            );
+        }
+        // we just checked both shapes were the same, so we don't need to propagate indexes
+        // for both tensors because they'll be identical
+        let mapped = self
+            .index_order_reference_iter().with_index()
+            .zip(rhs.index_order_reference_iter())
+            .map(|((i, x), y)| mapping_function(i, x, y))
+            .collect();
+        Tensor::from(left_shape, mapped)
+    }
 }
 
 impl<T, S, const D: usize> TensorView<T, S, D>
@@ -421,32 +522,30 @@ where
         S2: TensorRef<T, D>,
         M: Fn(T, T) -> T,
     {
-        self.elementwise_less_generic(rhs.into(), mapping_function)
+        self.elementwise_reference_less_generic(rhs.into(), |lhs, rhs| mapping_function(lhs.clone(), rhs.clone()))
     }
 
-    fn elementwise_less_generic<S2, M>(
-        &self,
-        rhs: TensorView<T, S2, D>,
-        mapping_function: M,
-    ) -> Tensor<T, D>
+    /**
+     * Creates and returns a new tensor with all value pairs of two tensors with the same shape
+     * mapped by a function. The mapping function also receives each index corresponding to the
+     * value pairs.
+     *
+     * # Generics
+     *
+     * This method can be called with any right hand side that can be converted to a TensorView,
+     * which includes `Tensor`, `&Tensor`, `&mut Tensor` as well as references to a `TensorView`.
+     *
+     * # Panics
+     *
+     * If the two tensors have different shapes.
+     */
+    pub fn elementwise_with_index<S2, I, M>(&self, rhs: I, mapping_function: M) -> Tensor<T, D>
     where
+        I: Into<TensorView<T, S2, D>>,
         S2: TensorRef<T, D>,
-        M: Fn(T, T) -> T,
+        M: Fn([usize; D], T, T) -> T,
     {
-        let left_shape = self.shape();
-        let right_shape = rhs.shape();
-        if left_shape != right_shape {
-            panic!(
-                "Dimensions of left and right tensors are not the same: (left: {:?}, right: {:?})",
-                left_shape, right_shape
-            );
-        }
-        let mapped = self
-            .index_order_reference_iter()
-            .zip(rhs.index_order_reference_iter())
-            .map(|(x, y)| mapping_function(x.clone(), y.clone()))
-            .collect();
-        Tensor::from(left_shape, mapped)
+        self.elementwise_reference_less_generic_with_index(rhs.into(), |i, lhs, rhs| mapping_function(i, lhs.clone(), rhs.clone()))
     }
 }
 
