@@ -24,8 +24,8 @@
 use crate::matrices::{Column, Matrix, Row};
 use crate::numeric::extra::{Real, RealRef, Sqrt};
 use crate::numeric::{Numeric, NumericRef};
+use crate::tensors::views::{TensorRef, TensorView};
 use crate::tensors::{Dimension, Tensor};
-use crate::tensors::views::{TensorView, TensorRef};
 
 /**
  * Computes the inverse of a matrix provided that it exists. To have an inverse
@@ -548,7 +548,10 @@ where
 }
 
 #[track_caller]
-fn covariance_less_generic<T, S>(tensor: TensorView<T, S, 2>, feature_dimension: Dimension) -> Tensor<T, 2>
+fn covariance_less_generic<T, S>(
+    tensor: TensorView<T, S, 2>,
+    feature_dimension: Dimension,
+) -> Tensor<T, 2>
 where
     T: Numeric,
     for<'a> &'a T: NumericRef<T>,
@@ -563,8 +566,7 @@ where
         } else {
             panic!(
                 "Feature dimension {:?} is not present in the input tensor's shape: {:?}",
-                feature_dimension,
-                shape
+                feature_dimension, shape
             );
         }
     };
@@ -593,7 +595,7 @@ where
                 tensor
                     .select([(feature_dimension, j)])
                     .index_order_reference_iter()
-                    .map(|y| y - &feature_j_mean)
+                    .map(|y| y - &feature_j_mean),
             )
             .map(|(x, y)| x * y)
             .sum::<T>()

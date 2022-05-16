@@ -340,7 +340,11 @@ where
      *
      * If the two tensors have different shapes.
      */
-    pub fn elementwise_reference_with_index<S2, I, M>(&self, rhs: I, mapping_function: M) -> Tensor<T, D>
+    pub fn elementwise_reference_with_index<S2, I, M>(
+        &self,
+        rhs: I,
+        mapping_function: M,
+    ) -> Tensor<T, D>
     where
         I: Into<TensorView<T, S2, D>>,
         S2: TensorRef<T, D>,
@@ -394,7 +398,8 @@ where
         // we just checked both shapes were the same, so we don't need to propagate indexes
         // for both tensors because they'll be identical
         let mapped = self
-            .index_order_reference_iter().with_index()
+            .index_order_reference_iter()
+            .with_index()
             .zip(rhs.index_order_reference_iter())
             .map(|((i, x), y)| mapping_function(i, x, y))
             .collect();
@@ -523,7 +528,9 @@ where
         S2: TensorRef<T, D>,
         M: Fn(T, T) -> T,
     {
-        self.elementwise_reference_less_generic(rhs.into(), |lhs, rhs| mapping_function(lhs.clone(), rhs.clone()))
+        self.elementwise_reference_less_generic(rhs.into(), |lhs, rhs| {
+            mapping_function(lhs.clone(), rhs.clone())
+        })
     }
 
     /**
@@ -546,7 +553,9 @@ where
         S2: TensorRef<T, D>,
         M: Fn([usize; D], T, T) -> T,
     {
-        self.elementwise_reference_less_generic_with_index(rhs.into(), |i, lhs, rhs| mapping_function(i, lhs.clone(), rhs.clone()))
+        self.elementwise_reference_less_generic_with_index(rhs.into(), |i, lhs, rhs| {
+            mapping_function(i, lhs.clone(), rhs.clone())
+        })
     }
 }
 

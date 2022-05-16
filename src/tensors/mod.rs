@@ -512,7 +512,11 @@ impl<T, const D: usize> Tensor<T, D> {
      *
      * If the two tensors have different shapes.
      */
-    pub fn elementwise_reference_with_index<S, I, M>(&self, rhs: I, mapping_function: M) -> Tensor<T, D>
+    pub fn elementwise_reference_with_index<S, I, M>(
+        &self,
+        rhs: I,
+        mapping_function: M,
+    ) -> Tensor<T, D>
     where
         I: Into<TensorView<T, S, D>>,
         S: TensorRef<T, D>,
@@ -780,7 +784,9 @@ where
         S: TensorRef<T, D>,
         M: Fn(T, T) -> T,
     {
-        self.elementwise_reference_less_generic(rhs.into(), |lhs, rhs| mapping_function(lhs.clone(), rhs.clone()))
+        self.elementwise_reference_less_generic(rhs.into(), |lhs, rhs| {
+            mapping_function(lhs.clone(), rhs.clone())
+        })
     }
 
     /**
@@ -803,7 +809,9 @@ where
         S: TensorRef<T, D>,
         M: Fn([usize; D], T, T) -> T,
     {
-        self.elementwise_reference_less_generic_with_index(rhs.into(), |i, lhs, rhs| mapping_function(i, lhs.clone(), rhs.clone()))
+        self.elementwise_reference_less_generic_with_index(rhs.into(), |i, lhs, rhs| {
+            mapping_function(i, lhs.clone(), rhs.clone())
+        })
     }
 }
 
