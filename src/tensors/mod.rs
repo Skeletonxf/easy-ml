@@ -7,6 +7,7 @@
  * then the tensor can be used in a mathematical way. `D` is the number of dimensions in the tensor
  * and a compile time constant. Each tensor also carries `D` dimension name and length pairs.
  */
+use crate::linear_algebra;
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::{
     IndexOrderIterator, IndexOrderReferenceIterator, IndexOrderReferenceMutIterator, ShapeIterator,
@@ -838,6 +839,20 @@ where
         S: TensorRef<T, 1>,
     {
         self.scalar_product_less_generic(rhs.into())
+    }
+}
+
+impl<T> Tensor<T, 2>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+{
+    /**
+     * Computes the covariance matrix for this feature matrix along the specified feature
+     * dimension in this matrix. See [`linear_algebra`](crate::linear_algebra::covariance()).
+     */
+    pub fn covariance(&self, feature_dimension: Dimension) -> Tensor<T, 2> {
+        linear_algebra::covariance::<T, _, _>(self, feature_dimension)
     }
 }
 

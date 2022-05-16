@@ -2,9 +2,9 @@
  * Linear algebra algorithms on numbers and matrices
  *
  * Note that many of these functions are also exposed as corresponding methods on the Matrix type,
- * but in depth documentation is only presented here.
+ * and the Tensor type, but in depth documentation is only presented here.
  *
- * It is recommended to favor the corresponding methods on the Matrix type as the
+ * It is recommended to favor the corresponding methods on the Matrix and Tensor types as the
  * Rust compiler can get confused with the generics on these functions if you use
  * these methods without turbofish syntax.
  *
@@ -24,6 +24,8 @@
 use crate::matrices::{Column, Matrix, Row};
 use crate::numeric::extra::{Real, RealRef, Sqrt};
 use crate::numeric::{Numeric, NumericRef};
+use crate::tensors::{Dimension, Tensor};
+use crate::tensors::views::{TensorView, TensorRef};
 
 /**
  * Computes the inverse of a matrix provided that it exists. To have an inverse
@@ -377,7 +379,7 @@ fn test_permutations() {
  *
  * In this case you need to manually specify the type of T by using the
  * turbofish syntax like:
- * `linear_algebra::covariance::<f32>(&matrix)`
+ * `linear_algebra::covariance_column_features::<f32>(&matrix)`
  *
  * Alternatively, the compiler doesn't seem to run into this problem if you
  * use the equivalent methods on the matrix type like so:
@@ -438,7 +440,7 @@ where
  *
  * In this case you need to manually specify the type of T by using the
  * turbofish syntax like:
- * `linear_algebra::covariance::<f32>(&matrix)`
+ * `linear_algebra::covariance_row_features::<f32>(&matrix)`
  *
  * Alternatively, the compiler doesn't seem to run into this problem if you
  * use the equivalent methods on the matrix type like so:
@@ -461,6 +463,138 @@ where
             .row_reference_iter(i)
             .map(|x| x - &feature_i_mean)
             .zip(matrix.row_reference_iter(j).map(|y| y - &feature_j_mean))
+            .map(|(x, y)| x * y)
+            .sum::<T>()
+            / &samples
+    });
+    covariance_matrix
+}
+
+/**
+ * Computes the covariance matrix for a 2 dimensional Tensor feature matrix.
+ *
+ * The `feature_dimension` specifies which dimension holds the features. The other dimension
+ * is assumed to hold the samples. For a Tensor with a `feature_dimension` of length N, and
+ * the other dimension of length M, returns an NxN covariance matrix with a shape of
+ * `[("i", N), ("j", N)]`.
+ *
+ * Each element in the covariance matrix at (i, j) will be the variance of the ith and jth
+ * features from the feature matrix, defined as the zero meaned dot product of the two
+ * feature vectors divided by the number of samples (M).
+ *
+ * If all the features in the input have a variance of one then the covariance matrix
+ * returned by this function will be equivalent to the correlation matrix of the input
+ *
+ * This function does not perform [Bessel's correction](https://en.wikipedia.org/wiki/Bessel%27s_correction)
+ *
+ * # Panics
+ *
+ * - If the numeric type is unable to represent the number of samples for each feature
+ * (ie if `T: i8` and you have 1000 samples)
+ * - If the provided feature_dimension is not a dimension in the tensor
+ *
+ * # Warning
+ *
+ * With some uses of this function the Rust compiler gets confused about what type `T`
+ * should be and you will get the error:
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ *
+ * In this case you need to manually specify the type of T by using the
+ * turbofish syntax like:
+ * `linear_algebra::covariance::<f32, _, _>(&matrix)`
+ *
+ * Alternatively, the compiler doesn't seem to run into this problem if you
+ * use the equivalent methods on the matrix type like so:
+ * `tensor.covariance("features")`
+ *
+ * # Example
+ *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ * let matrix = Tensor::from([("samples", 5), ("features", 3)], vec![
+ * //  X     Y    Z
+ *     1.0,  0.0, 0.5,
+ *     1.2, -1.0, 0.4,
+ *     1.8, -1.2, 0.7,
+ *     0.9,  0.1, 0.3,
+ *     0.7,  0.5, 0.6
+ * ]);
+ * let covariance_matrix = matrix.covariance("features");
+ * let (x, y, z) = (0, 1, 2);
+ * let x_y_z = covariance_matrix.source_order();
+ * // the variance of each feature with itself is positive
+ * assert!(x_y_z.get([x, x]) > 0.0);
+ * assert!(x_y_z.get([y, y]) > 0.0);
+ * assert!(x_y_z.get([z, z]) > 0.0);
+ * // first feature X and second feature Y have negative covariance (as X goes up Y goes down)
+ * assert!(x_y_z.get([x, y]) < 0.0);
+ * println!("{}", covariance_matrix);
+ * // D = 2
+ * // ("i", 3), ("j", 3)
+ * // [ 0.142, -0.226, 0.026
+ * //   -0.226, 0.438, -0.022
+ * //   0.026, -0.022, 0.020 ]
+ * ```
+ */
+#[track_caller]
+pub fn covariance<T, S, I>(tensor: I, feature_dimension: Dimension) -> Tensor<T, 2>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+    I: Into<TensorView<T, S, 2>>,
+    S: TensorRef<T, 2>,
+{
+    covariance_less_generic::<T, S>(tensor.into(), feature_dimension)
+}
+
+#[track_caller]
+fn covariance_less_generic<T, S>(tensor: TensorView<T, S, 2>, feature_dimension: Dimension) -> Tensor<T, 2>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+    S: TensorRef<T, 2>,
+{
+    let shape = tensor.shape();
+    let features_index = {
+        if shape[0].0 == feature_dimension {
+            0
+        } else if shape[1].0 == feature_dimension {
+            1
+        } else {
+            panic!(
+                "Feature dimension {:?} is not present in the input tensor's shape: {:?}",
+                feature_dimension,
+                shape
+            );
+        }
+    };
+    let (feature_dimension, features) = shape[features_index];
+    let (_sample_dimension, samples) = shape[1 - features_index];
+    let samples = T::from_usize(samples)
+        .expect("The maximum value of the matrix type T cannot represent this many samples");
+    let mut covariance_matrix = Tensor::empty([("i", features), ("j", features)], T::zero());
+    covariance_matrix.map_mut_with_index(|[i, j], _| {
+        // set each element of the covariance matrix to the variance of features i and j
+        let feature_i_mean: T = tensor
+            .select([(feature_dimension, i)])
+            .index_order_iter()
+            .sum::<T>()
+            / &samples;
+        let feature_j_mean: T = tensor
+            .select([(feature_dimension, j)])
+            .index_order_iter()
+            .sum::<T>()
+            / &samples;
+        tensor
+            .select([(feature_dimension, i)])
+            .index_order_reference_iter()
+            .map(|x| x - &feature_i_mean)
+            .zip(
+                tensor
+                    .select([(feature_dimension, j)])
+                    .index_order_reference_iter()
+                    .map(|y| y - &feature_j_mean)
+            )
             .map(|(x, y)| x * y)
             .sum::<T>()
             / &samples
