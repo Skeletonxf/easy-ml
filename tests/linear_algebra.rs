@@ -4,6 +4,7 @@ extern crate easy_ml;
 mod linear_algebra {
     use easy_ml::linear_algebra;
     use easy_ml::matrices::Matrix;
+    use easy_ml::tensors::Tensor;
 
     use rand::{Rng, SeedableRng};
 
@@ -40,6 +41,43 @@ mod linear_algebra {
             - (matrix.get(0, 2) * matrix.get(1, 1) * matrix.get(2, 0));
 
         assert_eq!(determinant, matrix.determinant().unwrap());
+    }
+
+    #[test]
+    fn check_determinant_2_by_2_tensor() {
+        let tensor = Tensor::from([("x", 2), ("y", 2)], vec![1.0, 2.0, 3.0, 4.0]);
+        let x_y = tensor.source_order();
+        let a = x_y.get([0, 0]);
+        let b = x_y.get([0, 1]);
+        let c = x_y.get([1, 0]);
+        let d = x_y.get([1, 1]);
+        let determinant = (a * d) - (b * c);
+        assert_eq!(
+            determinant,
+            linear_algebra::determinant_tensor::<f32, _, _>(&tensor).unwrap()
+        );
+    }
+
+    #[test]
+    fn check_determinant_3_by_3_tensor() {
+        // use the example from wikipedia
+        // https://en.wikipedia.org/wiki/Determinant#n_%C3%97_n_matrices
+        #[rustfmt::skip]
+        let tensor = Tensor::from([("x", 3), ("y", 3)], vec![
+            -1.0,  2.0,  3.0,
+            3.0,  4.0, -5.0,
+            5.0, -2.0,  3.0
+        ]);
+        let x_y = tensor.source_order();
+
+        let determinant = 0.0 + (x_y.get([0, 0]) * x_y.get([1, 1]) * x_y.get([2, 2]))
+            - (x_y.get([0, 0]) * x_y.get([1, 2]) * x_y.get([2, 1]))
+            - (x_y.get([0, 1]) * x_y.get([1, 0]) * x_y.get([2, 2]))
+            + (x_y.get([0, 1]) * x_y.get([1, 2]) * x_y.get([2, 0]))
+            + (x_y.get([0, 2]) * x_y.get([1, 0]) * x_y.get([2, 1]))
+            - (x_y.get([0, 2]) * x_y.get([1, 1]) * x_y.get([2, 0]));
+
+        assert_eq!(determinant, tensor.determinant().unwrap());
     }
 
     #[test]

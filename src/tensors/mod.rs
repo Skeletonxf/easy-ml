@@ -856,6 +856,14 @@ where
     for<'a> &'a T: NumericRef<T>,
 {
     /**
+     * Returns the determinant of this square matrix, or None if the matrix
+     * does not have a determinant. See [`linear_algebra`](super::linear_algebra::determinant_tensor())
+     */
+    pub fn determinant(&self) -> Option<T> {
+        linear_algebra::determinant_tensor::<T, _, _>(self)
+    }
+
+    /**
      * Computes the covariance matrix for this feature matrix along the specified feature
      * dimension in this matrix. See [`linear_algebra`](crate::linear_algebra::covariance()).
      */

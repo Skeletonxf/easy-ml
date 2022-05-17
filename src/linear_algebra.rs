@@ -194,12 +194,13 @@ where
  *
  * Alternatively, the compiler doesn't seem to run into this problem if you
  * use the equivalent methods on the matrix type like so:
- * `matrix.determinant()`
+ * [`matrix.determinant()`](Matrix::determinant)
  */
 pub fn determinant<T: Numeric>(matrix: &Matrix<T>) -> Option<T>
 where
     for<'a> &'a T: NumericRef<T>,
 {
+    // TODO: Convert &Matrix<T> to a TensorView and call into determinant_less_generic instead
     if matrix.rows() != matrix.columns() {
         return None;
     }
@@ -233,6 +234,111 @@ where
             // Get the element at the index corresponding to n and the n'th
             // element in the permutation list.
             let element = matrix.get_reference(n, *i);
+            product = product * element;
+        }
+        // copying the sum to prevent a move that stops us from returning it
+        // still massively reduces the amount of copies compared to using
+        // generate_permutations which would instead require copying the
+        // permutation list N! times though allow to not copy the sum.
+        sum = sum.clone() + (signature * product);
+    });
+
+    Some(sum)
+}
+
+/**
+ * Computes the determinant of a square matrix. For a 2 x 2 matrix this is given by
+ * `ad - bc` for:
+ * ```ignore
+ * [
+ *   a, b
+ *   c, d
+ * ]
+ * ```
+ *
+ * This function will return the determinant only if it exists. Non square matrices
+ * do not have a determinant. A determinant is a scalar value computed from the
+ * elements of a square matrix and often corresponds to matrices with special properties.
+ *
+ * The first dimension in the Tensor's shape will be taken as the rows of the matrix, and the
+ * second dimension as the columns. If you instead have columns and then rows for the Tensor's
+ * shape, you should transpose the Tensor before calling this function to get the appropriate
+ * matrix.
+ *
+ * Note that the determinant of a 1 x 1 matrix is just the element in the matrix.
+ *
+ * This function computes the determinant using the same type as that of the Tensor,
+ * hence if the input type is unsigned (such as Wrapping&lt;u8&gt;) the value computed
+ * is likely to not make any sense because a determinant may be negative.
+ *
+ * [https://en.wikipedia.org/wiki/Determinant](https://en.wikipedia.org/wiki/Determinant)
+ *
+ * # Warning
+ *
+ * With some uses of this function the Rust compiler gets confused about what type `T`
+ * should be and you will get the error:
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ *
+ * In this case you need to manually specify the type of T by using the
+ * turbofish syntax like:
+ * `linear_algebra::determinant_tensor::<f32, _, _>(&tensor)`
+ *
+ * Alternatively, the compiler doesn't seem to run into this problem if you
+ * use the equivalent methods on the tensor type like so:
+ * [`tensor.determinant()`](Tensor::determinant)
+ */
+pub fn determinant_tensor<T, S, I>(tensor: I) -> Option<T>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+    I: Into<TensorView<T, S, 2>>,
+    S: TensorRef<T, 2>,
+{
+    determinant_less_generic::<T, S>(tensor.into())
+}
+
+fn determinant_less_generic<T, S>(tensor: TensorView<T, S, 2>) -> Option<T>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+    S: TensorRef<T, 2>,
+{
+    let shape = tensor.shape();
+    if !crate::tensors::dimensions::is_square(&shape) {
+        return None;
+    }
+    let length = shape[0].1;
+
+    if length == 0 {
+        return None;
+    }
+
+    let matrix = tensor.source_order();
+
+    if length == 1 {
+        return Some(matrix.get([0, 0]));
+    }
+
+    // compute the general case for the determinant of an N x N matrix with
+    // N >= 2
+
+    let mut sum = T::zero();
+
+    // iterate through all permutations of the numbers in the range from 0 to N - 1
+    // which we will use for indexing
+    with_each_permutation(&mut (0..length).collect(), &mut |permutation, even_swap| {
+        // Compute the signature for this permutation, such that we
+        // have +1 for an even number and -1 for an odd number of swaps
+        let signature = if even_swap {
+            T::one()
+        } else {
+            T::zero() - T::one()
+        };
+        let mut product = T::one();
+        for (n, i) in permutation.iter().enumerate() {
+            // Get the element at the index corresponding to n and the n'th
+            // element in the permutation list.
+            let element = matrix.get_reference([n, *i]);
             product = product * element;
         }
         // copying the sum to prevent a move that stops us from returning it
