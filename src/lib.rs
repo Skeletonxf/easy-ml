@@ -29,6 +29,7 @@ pub mod linear_algebra;
 pub mod matrices;
 pub mod numeric;
 pub mod tensors;
+pub mod interop;
 
 // examples
 pub mod k_means;
