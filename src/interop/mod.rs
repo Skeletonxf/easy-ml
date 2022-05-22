@@ -68,7 +68,7 @@ impl DimensionNames for RowAndColumn {
  */
 impl DimensionNames for [Dimension; 2] {
     fn names(&self) -> [Dimension; 2] {
-        self.clone()
+        *self
     }
 }
 
