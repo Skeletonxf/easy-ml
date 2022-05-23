@@ -200,50 +200,20 @@ pub fn determinant<T: Numeric>(matrix: &Matrix<T>) -> Option<T>
 where
     for<'a> &'a T: NumericRef<T>,
 {
-    // TODO: Convert &Matrix<T> to a TensorView and call into determinant_less_generic instead
     if matrix.rows() != matrix.columns() {
         return None;
     }
     let length = matrix.rows();
 
-    if length == 0 {
-        return None;
-    }
+    match length {
+        0 => return None,
+        1 => return Some(matrix.scalar()),
+        _ => (),
+    };
 
-    if length == 1 {
-        return Some(matrix.scalar());
-    }
-
-    // compute the general case for the determinant of an N x N matrix with
-    // N >= 2
-
-    let mut sum = T::zero();
-
-    // iterate through all permutations of the numbers in the range from 0 to N - 1
-    // which we will use for indexing
-    with_each_permutation(&mut (0..length).collect(), &mut |permutation, even_swap| {
-        // Compute the signature for this permutation, such that we
-        // have +1 for an even number and -1 for an odd number of swaps
-        let signature = if even_swap {
-            T::one()
-        } else {
-            T::zero() - T::one()
-        };
-        let mut product = T::one();
-        for (n, i) in permutation.iter().enumerate() {
-            // Get the element at the index corresponding to n and the n'th
-            // element in the permutation list.
-            let element = matrix.get_reference(n, *i);
-            product = product * element;
-        }
-        // copying the sum to prevent a move that stops us from returning it
-        // still massively reduces the amount of copies compared to using
-        // generate_permutations which would instead require copying the
-        // permutation list N! times though allow to not copy the sum.
-        sum = sum.clone() + (signature * product);
-    });
-
-    Some(sum)
+    determinant_less_generic::<T, _>(
+        TensorView::from(crate::interop::TensorRefMatrix::from(matrix).ok()?)
+    )
 }
 
 /**
