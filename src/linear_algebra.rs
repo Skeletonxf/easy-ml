@@ -211,9 +211,9 @@ where
         _ => (),
     };
 
-    determinant_less_generic::<T, _>(
-        TensorView::from(crate::interop::TensorRefMatrix::from(matrix).ok()?)
-    )
+    determinant_less_generic::<T, _>(TensorView::from(
+        crate::interop::TensorRefMatrix::from(matrix).ok()?,
+    ))
 }
 
 /**

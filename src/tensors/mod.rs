@@ -17,6 +17,8 @@ use crate::tensors::views::{
     TensorExpansion, TensorIndex, TensorMut, TensorRef, TensorRename, TensorView,
 };
 
+use std::fmt;
+
 pub mod dimensions;
 mod display;
 pub mod indexing;
@@ -45,6 +47,64 @@ pub mod views;
  * strings.
  */
 pub type Dimension = &'static str;
+
+/**
+ * An error indicating failure to do something with a Tensor because the requested shape
+ * is not valid.
+ */
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InvalidShapeError<const D: usize> {
+    shape: [(Dimension, usize); D],
+}
+
+impl<const D: usize> InvalidShapeError<D> {
+    /**
+     * Checks if this shape is valid. This is mainly for internal library use but may also be
+     * useful for unit testing.
+     */
+    pub fn is_valid(&self) -> bool {
+        !crate::tensors::dimensions::has_duplicates(&self.shape)
+            && !self.shape.iter().any(|d| d.1 == 0)
+    }
+
+    /**
+     * Constructs an InvalidShapeError for assistance with unit testing. Note that you can
+     * construct an InvalidShapeError that *is* a valid shape in this way.
+     */
+    pub fn new(shape: [(Dimension, usize); D]) -> InvalidShapeError<D> {
+        InvalidShapeError { shape }
+    }
+
+    pub fn shape(&self) -> [(Dimension, usize); D] {
+        self.shape
+    }
+
+    pub fn shape_ref(&self) -> &[(Dimension, usize); D] {
+        &self.shape
+    }
+}
+
+impl<const D: usize> fmt::Display for InvalidShapeError<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Dimensions must all be at least length 1 with unique names: {:?}",
+            self.shape
+        )
+    }
+}
+
+#[test]
+fn test_sync() {
+    fn assert_sync<T: Sync>() {}
+    assert_sync::<InvalidShapeError<2>>();
+}
+
+#[test]
+fn test_send() {
+    fn assert_send<T: Send>() {}
+    assert_send::<InvalidShapeError<2>>();
+}
 
 /**
  * A [named tensor](http://nlp.seas.harvard.edu/NamedTensor).
@@ -119,6 +179,7 @@ impl<T, const D: usize> Tensor<T, D> {
     }
 }
 
+// TODO: Merge with InvalidShapeError type
 // Panics if the dimensions are invalid for any reason with the appropriate error message.
 #[track_caller]
 #[inline]

@@ -21,10 +21,12 @@ use crate::tensors::indexing::{
 use crate::tensors::{Dimension, Tensor};
 
 mod indexes;
+mod ranges;
 mod renamed;
 pub mod traits;
 
 pub use indexes::*;
+pub use ranges::*;
 pub use renamed::*;
 
 /**

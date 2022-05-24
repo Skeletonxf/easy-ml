@@ -6,9 +6,8 @@
 
 use crate::matrices::views::{MatrixRef, NoInteriorMutability};
 use crate::tensors::views::TensorRef;
-use crate::tensors::Dimension;
+use crate::tensors::{Dimension, InvalidShapeError};
 
-use std::fmt;
 use std::marker::PhantomData;
 
 // TODO: MatrixRefTensor, instead of augmenting it with dimension names, we strip them.
@@ -72,47 +71,6 @@ impl DimensionNames for [Dimension; 2] {
     }
 }
 
-// TODO: Generalise this to be usable for all the tensor APIs even if we opt to prefer panicking
-// for the cases where only programmer error would reach the error path.
-/**
- * An error indicating failure to do something with a Tensor because the requested shape
- * is not valid.
- */
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct InvalidShapeError {
-    shape: [(Dimension, usize); 2],
-}
-
-impl InvalidShapeError {
-    fn is_valid(&self) -> bool {
-        !crate::tensors::dimensions::has_duplicates(&self.shape)
-            && self.shape[0].1 > 0
-            && self.shape[1].1 > 0
-    }
-}
-
-impl fmt::Display for InvalidShapeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Dimensions must be at least 1x1 with unique names: {:?}",
-            self.shape
-        )
-    }
-}
-
-#[test]
-fn test_sync() {
-    fn assert_sync<T: Sync>() {}
-    assert_sync::<InvalidShapeError>();
-}
-
-#[test]
-fn test_send() {
-    fn assert_send<T: Send>() {}
-    assert_send::<InvalidShapeError>();
-}
-
 impl<T, S> TensorRefMatrix<T, S, RowAndColumn>
 where
     S: MatrixRef<T> + NoInteriorMutability,
@@ -123,7 +81,7 @@ where
      *
      * Result::Err is returned if the matrix dimension lengths are not at least 1x1.
      */
-    pub fn from(source: S) -> Result<TensorRefMatrix<T, S, RowAndColumn>, InvalidShapeError> {
+    pub fn from(source: S) -> Result<TensorRefMatrix<T, S, RowAndColumn>, InvalidShapeError<2>> {
         TensorRefMatrix::with_names(source, RowAndColumn)
     }
 }
@@ -151,14 +109,15 @@ where
      * );
      * ```
      */
-    pub fn with_names(source: S, names: N) -> Result<TensorRefMatrix<T, S, N>, InvalidShapeError> {
+    pub fn with_names(
+        source: S,
+        names: N,
+    ) -> Result<TensorRefMatrix<T, S, N>, InvalidShapeError<2>> {
         let dimensions = names.names();
-        let shape = InvalidShapeError {
-            shape: [
-                (dimensions[0], source.view_rows()),
-                (dimensions[1], source.view_columns()),
-            ],
-        };
+        let shape = InvalidShapeError::new([
+            (dimensions[0], source.view_rows()),
+            (dimensions[1], source.view_columns()),
+        ]);
         if shape.is_valid() {
             Ok(TensorRefMatrix {
                 source,
