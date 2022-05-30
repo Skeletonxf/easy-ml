@@ -4,13 +4,12 @@
  * [Tensor](crate::tensors::Tensor)/[TensorView](crate::tensors::views::TensorView).
  */
 
-use crate::matrices::views::{MatrixRef, NoInteriorMutability};
-use crate::tensors::views::TensorRef;
+use crate::matrices::{Row, Column};
+use crate::matrices::views::{DataLayout, MatrixRef, MatrixMut, NoInteriorMutability};
+use crate::tensors::views::{TensorRef, TensorMut};
 use crate::tensors::{Dimension, InvalidShapeError};
 
 use std::marker::PhantomData;
-
-// TODO: MatrixRefTensor, instead of augmenting it with dimension names, we strip them.
 
 /**
  * A wrapper around a Matrix type that implements TensorRef and can thus be used in a
@@ -155,3 +154,117 @@ where
         self.source.get_reference_unchecked(indexes[0], indexes[1])
     }
 }
+
+// # Safety
+// The contract of MatrixMut<T> + NoInteriorMutability is essentially the ungeneralised version of
+// TensorMut, so we're good on no interior mutability and valid indexing behaviour. The
+// TensorMut only requirements are that "all dimension names in the view_shape must be unique"
+// and "all dimension lengths in the view_shape must be non zero". We enforce both of these during
+// construction, and the NoInteriorMutability bounds ensures these invariants remain valid.
+unsafe impl<T, S, N> TensorMut<T, 2> for TensorRefMatrix<T, S, N>
+where
+    S: MatrixMut<T> + NoInteriorMutability,
+    N: DimensionNames,
+{
+    fn get_reference_mut(&mut self, indexes: [usize; 2]) -> Option<&mut T> {
+        self.source.try_get_reference_mut(indexes[0], indexes[1])
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; 2]) -> &mut T {
+        self.source.get_reference_unchecked_mut(indexes[0], indexes[1])
+    }
+}
+
+/**
+ * A wrapper around a Tensor<_, 2> type that implements MatrixRef and can thus be used in a
+ * [MatrixView](crate::matrices::views::MatrixView)
+ *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ * use easy_ml::matrices::views::MatrixView;
+ * use easy_ml::interop::MatrixRefTensor;
+ * let tensor = Tensor::from([("row", 2), ("column", 4)], vec![
+ *     1, 3, 5, 7,
+ *     2, 4, 6, 8
+ * ]);
+ * let matrix_view = MatrixView::from(MatrixRefTensor::from(&tensor));
+ * assert_eq!(
+ *     matrix_view.row_iter(1).eq(tensor.select([("row", 1)]).index_order_iter()),
+ *     true
+ * );
+ * ```
+ */
+pub struct MatrixRefTensor<T, S> {
+    source: S,
+    _type: PhantomData<T>,
+}
+
+impl<T, S> MatrixRefTensor<T, S>
+where
+    S: TensorRef<T, 2>,
+{
+    /**
+     * Creates a MatrixRefTensor wrapping a TensorRef type and stripping the dimension names.
+     *
+     * The first dimension in the TensorRef type becomes the rows, and the second dimension the
+     * columns. If your tensor is the other way around,
+     * [transpose it first](crate::tensors::indexing::TensorAccess).
+     */
+    pub fn from(source: S) -> MatrixRefTensor<T, S> {
+        MatrixRefTensor {
+            source,
+            _type: PhantomData,
+        }
+    }
+}
+
+// # Safety
+// The contract of TensorRef<T, 2> covers everything the compiler can't check for MatrixRef<T>
+// so if we just delegate to the tensor source and hide the dimension names, the index based API
+// meets every requirement by default.
+unsafe impl<T, S> MatrixRef<T> for MatrixRefTensor<T, S>
+where
+    S: TensorRef<T, 2>,
+{
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        self.source.get_reference([row, column])
+    }
+
+    fn view_rows(&self) -> Row {
+        self.source.view_shape()[0].1
+    }
+
+    fn view_columns(&self) -> Column {
+        self.source.view_shape()[1].1
+    }
+
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        self.source.get_reference_unchecked([row, column])
+    }
+
+    // TODO: We need some equivalent on TensorRef to provide a sane value here
+    fn data_layout(&self) -> DataLayout {
+        DataLayout::RowMajor
+    }
+}
+
+// # Safety
+// The contract of TensorMut<T, 2> covers everything the compiler can't check for MatrixMut<T>
+// so if we just delegate to the tensor source and hide the dimension names, the index based API
+// meets every requirement by default.
+unsafe impl<T, S> MatrixMut<T> for MatrixRefTensor<T, S>
+where
+    S: TensorMut<T, 2>,
+{
+    fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
+        self.source.get_reference_mut([row, column])
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+        self.source.get_reference_unchecked_mut([row, column])
+    }
+}
+
+// # Safety
+// No interior mutability is implied by TensorRef
+unsafe impl<T, S> NoInteriorMutability for MatrixRefTensor<T, S> where S: TensorRef<T, 2> {}
