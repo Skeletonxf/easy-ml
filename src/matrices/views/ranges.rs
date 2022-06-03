@@ -64,6 +64,8 @@ where
     where
         R: Into<IndexRange>,
     {
+        // FIXME: Clamp rows and columns to our source's length! We could report a length we
+        // don't actually have otherwise!
         MatrixRange {
             source,
             rows: rows.into(),
@@ -89,8 +91,8 @@ where
  */
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct IndexRange {
-    pub start: usize,
-    pub length: usize,
+    pub(crate) start: usize,
+    pub(crate) length: usize,
 }
 
 impl IndexRange {
