@@ -17,7 +17,7 @@ use crate::matrices::views::IndexRange;
 #[derive(Clone, Debug)]
 pub struct TensorRange<T, S, const D: usize> {
     source: S,
-    range: [Option<IndexRange>; D], // TODO: We can probably coerce None to IndexRanges that cover start to end to save a condition when indexing
+    range: [IndexRange; D],
     _type: PhantomData<T>,
 }
 
@@ -41,7 +41,7 @@ pub enum IndexRangeValidationError<const D: usize> {
     RangeOutsideShape {
         shape: [(Dimension, usize); D],
         index_range: [Option<IndexRange>; D],
-    }
+    },
 }
 
 impl<T, S, const D: usize> TensorRange<T, S, D>
@@ -56,16 +56,34 @@ where
      *
      * Returns the Err variant if any dimension would have a length of 0.
      */
-    fn from<R>(
+    pub fn from<R>(
         source: S,
         range: [Option<R>; D],
     ) -> Result<TensorRange<T, S, D>, InvalidShapeError<D>>
     where
         R: Into<IndexRange>,
     {
-        let range = range.map(|option| option.map(|range| range.into()));
+        TensorRange::clip_from(source, range.map(|option| option.map(|range| range.into())))
+    }
+
+    fn clip_from(
+        source: S,
+        range: [Option<IndexRange>; D],
+    ) -> Result<TensorRange<T, S, D>, InvalidShapeError<D>> {
+        let shape = source.view_shape();
+        let mut range = {
+            // TODO: A iterator enumerate call would be much cleaner here but everything
+            // except array::map is not stable yet.
+            let mut d = 0;
+            range.map(|option| {
+                // convert None to ranges that select the entire length of the tensor
+                let range = option.unwrap_or_else(|| IndexRange::new(0, shape[d].1));
+                d += 1;
+                range
+            })
+        };
         let shape = InvalidShapeError {
-            shape: range_shape(&source.view_shape(), &range),
+            shape: clip_range_shape(&shape, &mut range),
         };
         if !shape.is_valid() {
             return Err(shape);
@@ -86,32 +104,70 @@ where
      * beyond the length of that dimension in the tensor.
      *
      */
-    fn from_strict<R>(
+    pub fn from_strict<R>(
         source: S,
         range: [Option<R>; D],
     ) -> Result<TensorRange<T, S, D>, IndexRangeValidationError<D>>
     where
         R: Into<IndexRange>,
     {
-        unimplemented!()
+        let shape = source.view_shape();
+        let range = range.map(|option| option.map(|range| range.into()));
+        if range_exceeds_bounds(&shape, &range) {
+            return Err(IndexRangeValidationError::RangeOutsideShape {
+                shape,
+                index_range: range,
+            });
+        }
+
+        match TensorRange::clip_from(source, range) {
+            Ok(tensor_range) => Ok(tensor_range),
+            Err(invalid_shape) => Err(IndexRangeValidationError::InvalidMaskedShape(invalid_shape))
+        }
     }
 }
 
-// TODO: Maybe we should convert Option<IndexRange> to IndexRange and clamp the range to match our lengths so the range is our shape?
-fn range_shape<const D: usize>(source: &[(Dimension, usize); D], range: &[Option<IndexRange>; D]) -> [(Dimension, usize); D] {
-    let mut shape = *source;
-    for (d, (_, length)) in shape.iter_mut().enumerate() {
-        let start = 0;
-        let end = source[d].1;
+fn range_exceeds_bounds<const D: usize>(
+    source: &[(Dimension, usize); D],
+    range: &[Option<IndexRange>; D],
+) -> bool {
+    let mut range_out_of_bounds = false;
+    for (d, (_, end)) in source.iter().enumerate() {
+        let _start = 0;
+        let end = *end;
         match &range[d] {
             None => continue,
             Some(range) => {
-                let range_start = range.start;
+                let _range_start = range.start;
                 let range_end = range.start + range.length;
-                let range_end = std::cmp::min(range_end, end);
-                *length = range_end - range_start;
-            },
+                match range_end > end {
+                    true => range_out_of_bounds = true,
+                    false => (),
+                };
+            }
+        }
+    }
+    range_out_of_bounds
+}
+
+// Returns the shape the tensor's shape will be left as with the range applied, clipping any
+// ranges that exceed the bounds of the tensor's shape.
+fn clip_range_shape<const D: usize>(
+    source: &[(Dimension, usize); D],
+    range: &mut [IndexRange; D],
+) -> [(Dimension, usize); D] {
+    let mut shape = *source;
+    for (d, (_, length)) in shape.iter_mut().enumerate() {
+        let _start = 0;
+        let end = *length;
+        let range = &range[d];
+        let range_start = range.start;
+        let range_end = range.start + range.length;
+        let range_end = match range_end > end {
+            true => end,
+            false => range_end,
         };
+        *length = range_end - range_start;
     }
     shape
 }
@@ -128,10 +184,7 @@ where
      *
      * Returns the Err variant if any masked dimension would have a length of 0.
      */
-    fn from<R>(
-        source: S,
-        mask: [Option<R>; D],
-    ) -> Result<TensorMask<T, S, D>, InvalidShapeError<D>>
+    fn from<R>(source: S, mask: [Option<R>; D]) -> Result<TensorMask<T, S, D>, InvalidShapeError<D>>
     where
         R: Into<IndexRange>,
     {
@@ -181,18 +234,21 @@ where
                                 return Err(IndexRangeValidationError::RangeOutsideShape {
                                     shape,
                                     index_range: mask,
-                                })
+                                });
                             }
-                        },
+                        }
                     };
                 }
                 Ok(tensor_mask)
-            },
+            }
         }
     }
 }
 
-fn masked_shape<const D: usize>(source: &[(Dimension, usize); D], mask: &[Option<IndexRange>; D]) -> [(Dimension, usize); D] {
+fn masked_shape<const D: usize>(
+    source: &[(Dimension, usize); D],
+    mask: &[Option<IndexRange>; D],
+) -> [(Dimension, usize); D] {
     let mut shape = *source;
     for (d, (_, length)) in shape.iter_mut().enumerate() {
         let start = 0;
@@ -205,7 +261,7 @@ fn masked_shape<const D: usize>(source: &[(Dimension, usize); D], mask: &[Option
                 let before_mask = mask_start - start;
                 let after_mask = mask_end - end;
                 *length = before_mask + after_mask;
-            },
+            }
         };
     }
     shape
