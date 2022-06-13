@@ -30,7 +30,7 @@ pub struct TensorRange<T, S, const D: usize> {
 #[derive(Clone, Debug)]
 pub struct TensorMask<T, S, const D: usize> {
     source: S,
-    mask: [Option<IndexRange>; D], // TODO: We can probably coerce None to IndexRanges that have a length of 0 to save a condition when indexing
+    mask: [IndexRange; D],
     _type: PhantomData<T>,
 }
 
@@ -122,7 +122,7 @@ where
 
         match TensorRange::clip_from(source, range) {
             Ok(tensor_range) => Ok(tensor_range),
-            Err(invalid_shape) => Err(IndexRangeValidationError::InvalidMaskedShape(invalid_shape))
+            Err(invalid_shape) => Err(IndexRangeValidationError::InvalidMaskedShape(invalid_shape)),
         }
     }
 }
@@ -131,23 +131,20 @@ fn range_exceeds_bounds<const D: usize>(
     source: &[(Dimension, usize); D],
     range: &[Option<IndexRange>; D],
 ) -> bool {
-    let mut range_out_of_bounds = false;
     for (d, (_, end)) in source.iter().enumerate() {
-        let _start = 0;
         let end = *end;
         match &range[d] {
             None => continue,
             Some(range) => {
-                let _range_start = range.start;
                 let range_end = range.start + range.length;
                 match range_end > end {
-                    true => range_out_of_bounds = true,
+                    true => return true,
                     false => (),
                 };
             }
         }
     }
-    range_out_of_bounds
+    false
 }
 
 // Returns the shape the tensor's shape will be left as with the range applied, clipping any
@@ -163,10 +160,7 @@ fn clip_range_shape<const D: usize>(
         let range = &range[d];
         let range_start = range.start;
         let range_end = range.start + range.length;
-        let range_end = match range_end > end {
-            true => end,
-            false => range_end,
-        };
+        let range_end = std::cmp::min(range_end, end);
         *length = range_end - range_start;
     }
     shape
@@ -184,13 +178,21 @@ where
      *
      * Returns the Err variant if any masked dimension would have a length of 0.
      */
-    fn from<R>(source: S, mask: [Option<R>; D]) -> Result<TensorMask<T, S, D>, InvalidShapeError<D>>
+    pub fn from<R>(source: S, mask: [Option<R>; D]) -> Result<TensorMask<T, S, D>, InvalidShapeError<D>>
     where
         R: Into<IndexRange>,
     {
-        let mask = mask.map(|option| option.map(|range| range.into()));
+        TensorMask::clip_from(source, mask.map(|option| option.map(|mask| mask.into())))
+    }
+
+    fn clip_from(
+        source: S,
+        mask: [Option<IndexRange>; D],
+    ) -> Result<TensorMask<T, S, D>, InvalidShapeError<D>> {
+        let shape = source.view_shape();
+        let mut mask = mask.map(|option| option.unwrap_or_else(|| IndexRange::new(0, 0)));
         let shape = InvalidShapeError {
-            shape: masked_shape(&source.view_shape(), &mask),
+            shape: clip_masked_shape(&shape, &mut mask),
         };
         if !shape.is_valid() {
             return Err(shape);
@@ -211,58 +213,54 @@ where
      * extends beyond the length of that dimension in the tensor.
      *
      */
-    fn from_strict<R>(
+    pub fn from_strict<R>(
         source: S,
         mask: [Option<R>; D],
     ) -> Result<TensorMask<T, S, D>, IndexRangeValidationError<D>>
     where
         R: Into<IndexRange>,
     {
-        match TensorMask::from(source, mask) {
+        let shape = source.view_shape();
+        let mask = mask.map(|option| option.map(|mask| mask.into()));
+        if mask_exceeds_bounds(&shape, &mask) {
+            return Err(IndexRangeValidationError::RangeOutsideShape {
+                shape,
+                index_range: mask,
+            });
+        }
+
+        match TensorMask::clip_from(source, mask) {
+            Ok(tensor_mask) => Ok(tensor_mask),
             Err(invalid_shape) => Err(IndexRangeValidationError::InvalidMaskedShape(invalid_shape)),
-            Ok(tensor_mask) => {
-                let shape = tensor_mask.source.view_shape();
-                let mask = tensor_mask.mask.clone();
-                for d in 0..D {
-                    let end = shape[d].1;
-                    match &mask[d] {
-                        None => continue,
-                        Some(m) => {
-                            let mask_start = m.start;
-                            let mask_end = mask_start + m.length;
-                            if mask_end > end {
-                                return Err(IndexRangeValidationError::RangeOutsideShape {
-                                    shape,
-                                    index_range: mask,
-                                });
-                            }
-                        }
-                    };
-                }
-                Ok(tensor_mask)
-            }
         }
     }
 }
 
-fn masked_shape<const D: usize>(
+// Returns the shape the tensor's shape will be left as with the mask applied, clipping any
+// masks that exceed the bounds of the tensor's shape.
+fn clip_masked_shape<const D: usize>(
     source: &[(Dimension, usize); D],
-    mask: &[Option<IndexRange>; D],
+    mask: &mut [IndexRange; D],
 ) -> [(Dimension, usize); D] {
     let mut shape = *source;
     for (d, (_, length)) in shape.iter_mut().enumerate() {
         let start = 0;
-        let end = source[d].1;
-        match &mask[d] {
-            None => continue,
-            Some(mask) => {
-                let mask_start = mask.start;
-                let mask_end = mask.start + mask.length;
-                let before_mask = mask_start - start;
-                let after_mask = mask_end - end;
-                *length = before_mask + after_mask;
-            }
-        };
+        let end = *length;
+        let mask = &mask[d];
+        let mask_start = mask.start;
+        let mask_end = mask.start + mask.length;
+        let mask_end = std::cmp::min(mask_end, end);
+        let before_mask = mask_start - start;
+        let after_mask = mask_end - end;
+        *length = before_mask + after_mask;
     }
     shape
+}
+
+fn mask_exceeds_bounds<const D: usize>(
+    source: &[(Dimension, usize); D],
+    mask: &[Option<IndexRange>; D],
+) -> bool {
+    // same test for a mask extending past a shape as for a range
+    range_exceeds_bounds(source, mask)
 }
