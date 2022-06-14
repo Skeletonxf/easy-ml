@@ -94,17 +94,87 @@ impl<const D: usize> fmt::Display for InvalidShapeError<D> {
     }
 }
 
+/**
+ * An error indicating failure to do something with a Tensor because the dimension names that
+ * were provided did not match with the dimension names that were valid.
+ *
+ * Typically this would be due to the same dimension name being provided multiple times, or a
+ * dimension name being provided that is not present in the shape of the Tensor in use.
+ */
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InvalidDimensionsError<const D: usize, const P: usize> {
+    valid: [Dimension; D],
+    provided: [Dimension; P],
+}
+
+impl<const D: usize, const P: usize> InvalidDimensionsError<D, P> {
+    /**
+     * Checks if the provided dimensions have duplicate names. This is mainly for internal library
+     * use but may also be useful for unit testing.
+     */
+    pub fn has_duplicates(&self) -> bool {
+        crate::tensors::dimensions::has_duplicates_names(&self.provided)
+    }
+
+    // TODO: method to check provided is a subset of valid
+
+    /**
+     * Constructs an InvalidDimensions for assistance with unit testing.
+     */
+    pub fn new(provided: [Dimension; P], valid: [Dimension; D]) -> InvalidDimensionsError<D, P> {
+        InvalidDimensionsError { valid, provided }
+    }
+
+    pub fn provided_names(&self) -> [Dimension; P] {
+        self.provided
+    }
+
+    pub fn provided_names_ref(&self) -> &[Dimension; P] {
+        &self.provided
+    }
+
+    pub fn valid_names(&self) -> [Dimension; D] {
+        self.valid
+    }
+
+    pub fn valid_names_ref(&self) -> &[Dimension; D] {
+        &self.valid
+    }
+}
+
+impl<const D: usize, const P: usize> fmt::Display for InvalidDimensionsError<D, P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if P > 0 {
+            write!(
+                f,
+                "Dimensions names {:?} were incorrect, valid dimensions in this context are: {:?}",
+                self.provided,
+                self.valid
+            )
+        } else {
+            write!(
+                f,
+                "Dimensions names {:?} were incorrect",
+                self.provided
+            )
+        }
+    }
+}
+
 #[test]
 fn test_sync() {
     fn assert_sync<T: Sync>() {}
     assert_sync::<InvalidShapeError<2>>();
+    assert_sync::<InvalidDimensionsError<2, 2>>();
 }
 
 #[test]
 fn test_send() {
     fn assert_send<T: Send>() {}
     assert_send::<InvalidShapeError<2>>();
+    assert_send::<InvalidDimensionsError<2, 2>>();
 }
+
 
 /**
  * A [named tensor](http://nlp.seas.harvard.edu/NamedTensor).
