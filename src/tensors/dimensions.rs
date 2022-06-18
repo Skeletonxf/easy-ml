@@ -33,6 +33,15 @@ pub fn elements<const D: usize>(dimensions: &[(Dimension, usize); D]) -> usize {
     dimensions.iter().map(|d| d.1).product()
 }
 
+/**
+ * Finds the position of the dimension name in the set of dimensions.
+ */
+pub fn position_of<const D: usize>(
+    dimensions: &[(Dimension, usize); D], dimension: Dimension
+) -> Option<usize> {
+    dimensions.iter().position(|(d, _)| d == &dimension)
+}
+
 // Computes a mapping from a set of dimensions in source order to a matching set of
 // dimensions in an arbitary order.
 // Returns a list where each dimension in the source order is mapped to the requested order,

@@ -69,13 +69,36 @@ pub enum StrictIndexRangeValidationError<const D: usize, const P: usize> {
     Error(IndexRangeValidationError<D, P>),
 }
 
+// Given input is verified to have no duplicates, looks up each dimension name and returns a
+// list of index ranges for all dimensions in the shape.
+// None is returned if any lookup fails, in which case the ranges don't match the shape.
+fn from_named_to_all<const D: usize, const P: usize>(
+    shape: &[(Dimension, usize); D],
+    ranges: [(Dimension, IndexRange); P],
+) -> Option<[Option<IndexRange>; D]> {
+    // Since we now know there's no duplicates, we can lookup the dimension index for each name
+    // in the shape and we know we'll get different indexes on each lookup.
+    let mut all_ranges: [Option<IndexRange>; D] = [(); D].map(|_| None);
+    for (name, range) in ranges.into_iter() {
+        match crate::tensors::dimensions::position_of(shape, name) {
+            Some(d) => all_ranges[d] = Some(range),
+            None => return None,
+        };
+    }
+    Some(all_ranges)
+}
+
 impl<T, S, const D: usize> TensorRange<T, S, D>
 where
     S: TensorRef<T, D>,
 {
-    // TODO: Alternate named constructors that take M dimension names and index ranges and call into
-    // from/from_strict
-
+    /**
+     * Constructs a TensorRange from a tensor and set of dimension name/range pairs.
+     *
+     * Returns the Err variant if any dimension would have a length of 0 after the mask,
+     * if multiple pairs with the same name are provided, or if any dimension names aren't
+     * in the source.
+     */
     pub fn from<R, const P: usize>(
         source: S,
         ranges: [(Dimension, R); P]
@@ -84,46 +107,88 @@ where
         R: Into<IndexRange>
     {
         let shape = source.view_shape();
-        let names_in_tensor = shape.map(|(d, _)| d);
-        let names_in_ranges = ranges.map(|(d, _)| d);
+        let ranges = ranges.map(|(d, r)| (d, r.into()));
         let dimensions = InvalidDimensionsError {
-            provided: names_in_ranges,
-            valid: names_in_tensor,
+            provided: ranges.clone().map(|(d, _)| d),
+            valid: shape.map(|(d, _)| d),
         };
         if dimensions.has_duplicates() {
             return Err(IndexRangeValidationError::InvalidDimensions(dimensions));
         }
-        // TODO: Check provided is subset of valid
-        // TODO: Call into from_all
-        unimplemented!()
+        let all_ranges = match from_named_to_all(&shape, ranges) {
+            None => return Err(IndexRangeValidationError::InvalidDimensions(dimensions)),
+            Some(all_ranges) => all_ranges,
+        };
+        match TensorRange::from_all(source, all_ranges) {
+            Ok(tensor_range) => Ok(tensor_range),
+            Err(invalid_shape) => Err(IndexRangeValidationError::InvalidShape(invalid_shape)),
+        }
+    }
+
+    pub fn from_strict<R, const P: usize>(
+        source: S,
+        ranges: [(Dimension, R); P]
+    ) -> Result<TensorRange<T, S, D>, StrictIndexRangeValidationError<D, P>>
+    where
+        R: Into<IndexRange>
+    {
+        let shape = source.view_shape();
+        let ranges = ranges.map(|(d, r)| (d, r.into()));
+        let dimensions = InvalidDimensionsError {
+            provided: ranges.clone().map(|(d, _)| d),
+            valid: shape.map(|(d, _)| d),
+        };
+        use StrictIndexRangeValidationError as S;
+        if dimensions.has_duplicates() {
+            return Err(S::Error(IndexRangeValidationError::InvalidDimensions(dimensions)));
+        }
+        let all_ranges = match from_named_to_all(&shape, ranges) {
+            None => return Err(S::Error(IndexRangeValidationError::InvalidDimensions(dimensions))),
+            Some(all_ranges) => all_ranges,
+        };
+        match TensorRange::from_all_strict(source, all_ranges) {
+            Ok(tensor_range) => Ok(tensor_range),
+            Err(S::OutsideShape { shape, index_range }) => Err(
+                S::OutsideShape { shape, index_range }
+            ),
+            Err(S::Error(IndexRangeValidationError::InvalidShape(error))) => Err(
+                S::Error(IndexRangeValidationError::InvalidShape(error))
+            ),
+            // Need to change the const generic type of this error back to our input (this
+            // is just to please the compiler, this should be an impossible branch since we
+            // checked this earlier anyway)
+            Err(S::Error(IndexRangeValidationError::InvalidDimensions(_))) => Err(
+                S::Error(IndexRangeValidationError::InvalidDimensions(dimensions))
+            ),
+        }
     }
 
     /**
      * Constructs a TensorRange from a tensor and a range for each dimension in the tensor
      * (provided in the same order as the tensor's shape).
      *
-     * Returns the Err variant if any dimension would have a length of 0.
+     * Returns the Err variant if any dimension would have a length of 0 after the mask.
      */
     pub fn from_all<R>(
         source: S,
-        range: [Option<R>; D],
+        ranges: [Option<R>; D],
     ) -> Result<TensorRange<T, S, D>, InvalidShapeError<D>>
     where
         R: Into<IndexRange>,
     {
-        TensorRange::clip_from(source, range.map(|option| option.map(|range| range.into())))
+        TensorRange::clip_from(source, ranges.map(|option| option.map(|range| range.into())))
     }
 
     fn clip_from(
         source: S,
-        range: [Option<IndexRange>; D],
+        ranges: [Option<IndexRange>; D],
     ) -> Result<TensorRange<T, S, D>, InvalidShapeError<D>> {
         let shape = source.view_shape();
-        let mut range = {
+        let mut ranges = {
             // TODO: A iterator enumerate call would be much cleaner here but everything
             // except array::map is not stable yet.
             let mut d = 0;
-            range.map(|option| {
+            ranges.map(|option| {
                 // convert None to ranges that select the entire length of the tensor
                 let range = option.unwrap_or_else(|| IndexRange::new(0, shape[d].1));
                 d += 1;
@@ -131,7 +196,7 @@ where
             })
         };
         let shape = InvalidShapeError {
-            shape: clip_range_shape(&shape, &mut range),
+            shape: clip_range_shape(&shape, &mut ranges),
         };
         if !shape.is_valid() {
             return Err(shape);
@@ -139,7 +204,7 @@ where
 
         Ok(TensorRange {
             source,
-            range,
+            range: ranges,
             _type: PhantomData,
         })
     }
@@ -148,9 +213,8 @@ where
      * Constructs a TensorRange from a tensor and a range, ensuring the range is within the
      * lengths of the tensor.
      *
-     * Returns the Err variant if any dimension would have a length of 0 or any range extends
-     * beyond the length of that dimension in the tensor.
-     *
+     * Returns the Err variant if any dimension would have a length of 0 after the mask or
+     * any range extends beyond the length of that dimension in the tensor.
      */
     pub fn from_all_strict<R>(
         source: S,
@@ -242,12 +306,12 @@ where
 
     fn clip_from(
         source: S,
-        mask: [Option<IndexRange>; D],
+        masks: [Option<IndexRange>; D],
     ) -> Result<TensorMask<T, S, D>, InvalidShapeError<D>> {
         let shape = source.view_shape();
-        let mut mask = mask.map(|option| option.unwrap_or_else(|| IndexRange::new(0, 0)));
+        let mut masks = masks.map(|option| option.unwrap_or_else(|| IndexRange::new(0, 0)));
         let shape = InvalidShapeError {
-            shape: clip_masked_shape(&shape, &mut mask),
+            shape: clip_masked_shape(&shape, &mut masks),
         };
         if !shape.is_valid() {
             return Err(shape);
@@ -255,7 +319,7 @@ where
 
         Ok(TensorMask {
             source,
-            mask,
+            mask: masks,
             _type: PhantomData,
         })
     }
@@ -270,21 +334,21 @@ where
      */
     pub fn from_strict<R>(
         source: S,
-        mask: [Option<R>; D],
+        masks: [Option<R>; D],
     ) -> Result<TensorMask<T, S, D>, StrictIndexRangeValidationError<D, D>>
     where
         R: Into<IndexRange>,
     {
         let shape = source.view_shape();
-        let mask = mask.map(|option| option.map(|mask| mask.into()));
-        if mask_exceeds_bounds(&shape, &mask) {
+        let masks = masks.map(|option| option.map(|mask| mask.into()));
+        if mask_exceeds_bounds(&shape, &masks) {
             return Err(StrictIndexRangeValidationError::OutsideShape {
                 shape,
-                index_range: mask,
+                index_range: masks,
             });
         }
 
-        match TensorMask::clip_from(source, mask) {
+        match TensorMask::clip_from(source, masks) {
             Ok(tensor_mask) => Ok(tensor_mask),
             Err(invalid_shape) => Err(
                 StrictIndexRangeValidationError::Error(
