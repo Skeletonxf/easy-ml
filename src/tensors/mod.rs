@@ -18,6 +18,7 @@ use crate::tensors::views::{
 };
 
 use std::fmt;
+use std::error::Error;
 
 pub mod dimensions;
 mod display;
@@ -94,6 +95,8 @@ impl<const D: usize> fmt::Display for InvalidShapeError<D> {
     }
 }
 
+impl<const D: usize> Error for InvalidShapeError<D> {}
+
 /**
  * An error indicating failure to do something with a Tensor because the dimension names that
  * were provided did not match with the dimension names that were valid.
@@ -160,6 +163,8 @@ impl<const D: usize, const P: usize> fmt::Display for InvalidDimensionsError<D, 
         }
     }
 }
+
+impl<const D: usize, const P: usize> Error for InvalidDimensionsError<D, P> {}
 
 #[test]
 fn test_sync() {
