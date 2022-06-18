@@ -69,23 +69,33 @@ pub enum StrictIndexRangeValidationError<const D: usize, const P: usize> {
     Error(IndexRangeValidationError<D, P>),
 }
 
-// Given input is verified to have no duplicates, looks up each dimension name and returns a
-// list of index ranges for all dimensions in the shape.
-// None is returned if any lookup fails, in which case the ranges don't match the shape.
-fn from_named_to_all<const D: usize, const P: usize>(
-    shape: &[(Dimension, usize); D],
-    ranges: [(Dimension, IndexRange); P],
-) -> Option<[Option<IndexRange>; D]> {
+fn from_named_to_all<T, S, R, const D: usize, const P: usize>(
+    source: &S,
+    ranges: [(Dimension, R); P],
+) -> Result<[Option<IndexRange>; D], IndexRangeValidationError<D, P>>
+where
+    S: TensorRef<T, D>,
+    R: Into<IndexRange>
+{
+    let shape = source.view_shape();
+    let ranges = ranges.map(|(d, r)| (d, r.into()));
+    let dimensions = InvalidDimensionsError {
+        provided: ranges.clone().map(|(d, _)| d),
+        valid: shape.map(|(d, _)| d),
+    };
+    if dimensions.has_duplicates() {
+        return Err(IndexRangeValidationError::InvalidDimensions(dimensions));
+    }
     // Since we now know there's no duplicates, we can lookup the dimension index for each name
     // in the shape and we know we'll get different indexes on each lookup.
     let mut all_ranges: [Option<IndexRange>; D] = [(); D].map(|_| None);
     for (name, range) in ranges.into_iter() {
-        match crate::tensors::dimensions::position_of(shape, name) {
+        match crate::tensors::dimensions::position_of(&shape, name) {
             Some(d) => all_ranges[d] = Some(range),
-            None => return None,
+            None => return Err(IndexRangeValidationError::InvalidDimensions(dimensions)),
         };
     }
-    Some(all_ranges)
+    Ok(all_ranges)
 }
 
 impl<T, S, const D: usize> TensorRange<T, S, D>
@@ -95,8 +105,8 @@ where
     /**
      * Constructs a TensorRange from a tensor and set of dimension name/range pairs.
      *
-     * Returns the Err variant if any dimension would have a length of 0 after the mask,
-     * if multiple pairs with the same name are provided, or if any dimension names aren't
+     * Returns the Err variant if any dimension would have a length of 0 after applying the
+     * ranges, if multiple pairs with the same name are provided, or if any dimension names aren't
      * in the source.
      */
     pub fn from<R, const P: usize>(
@@ -106,25 +116,20 @@ where
     where
         R: Into<IndexRange>
     {
-        let shape = source.view_shape();
-        let ranges = ranges.map(|(d, r)| (d, r.into()));
-        let dimensions = InvalidDimensionsError {
-            provided: ranges.clone().map(|(d, _)| d),
-            valid: shape.map(|(d, _)| d),
-        };
-        if dimensions.has_duplicates() {
-            return Err(IndexRangeValidationError::InvalidDimensions(dimensions));
-        }
-        let all_ranges = match from_named_to_all(&shape, ranges) {
-            None => return Err(IndexRangeValidationError::InvalidDimensions(dimensions)),
-            Some(all_ranges) => all_ranges,
-        };
+        let all_ranges = from_named_to_all(&source, ranges)?;
         match TensorRange::from_all(source, all_ranges) {
             Ok(tensor_range) => Ok(tensor_range),
             Err(invalid_shape) => Err(IndexRangeValidationError::InvalidShape(invalid_shape)),
         }
     }
 
+    /**
+     * Constructs a TensorRange from a tensor and set of dimension name/range pairs.
+     *
+     * Returns the Err variant if any dimension would have a length of 0 after applying the
+     * ranges, if multiple pairs with the same name are provided, or if any dimension names aren't
+     * in the source, or any range extends beyond the length of that dimension in the tensor.
+     */
     pub fn from_strict<R, const P: usize>(
         source: S,
         ranges: [(Dimension, R); P]
@@ -132,19 +137,10 @@ where
     where
         R: Into<IndexRange>
     {
-        let shape = source.view_shape();
-        let ranges = ranges.map(|(d, r)| (d, r.into()));
-        let dimensions = InvalidDimensionsError {
-            provided: ranges.clone().map(|(d, _)| d),
-            valid: shape.map(|(d, _)| d),
-        };
         use StrictIndexRangeValidationError as S;
-        if dimensions.has_duplicates() {
-            return Err(S::Error(IndexRangeValidationError::InvalidDimensions(dimensions)));
-        }
-        let all_ranges = match from_named_to_all(&shape, ranges) {
-            None => return Err(S::Error(IndexRangeValidationError::InvalidDimensions(dimensions))),
-            Some(all_ranges) => all_ranges,
+        let all_ranges = match from_named_to_all(&source, ranges) {
+            Ok(all_ranges) => all_ranges,
+            Err(error) => return Err(S::Error(error)),
         };
         match TensorRange::from_all_strict(source, all_ranges) {
             Ok(tensor_range) => Ok(tensor_range),
@@ -154,11 +150,8 @@ where
             Err(S::Error(IndexRangeValidationError::InvalidShape(error))) => Err(
                 S::Error(IndexRangeValidationError::InvalidShape(error))
             ),
-            // Need to change the const generic type of this error back to our input (this
-            // is just to please the compiler, this should be an impossible branch since we
-            // checked this earlier anyway)
-            Err(S::Error(IndexRangeValidationError::InvalidDimensions(_))) => Err(
-                S::Error(IndexRangeValidationError::InvalidDimensions(dimensions))
+            Err(S::Error(IndexRangeValidationError::InvalidDimensions(_))) => panic!(
+                "Unexpected InvalidDimensions error case after validating for InvalidDimensions already"
             ),
         }
     }
@@ -167,7 +160,7 @@ where
      * Constructs a TensorRange from a tensor and a range for each dimension in the tensor
      * (provided in the same order as the tensor's shape).
      *
-     * Returns the Err variant if any dimension would have a length of 0 after the mask.
+     * Returns the Err variant if any dimension would have a length of 0 after applying the ranges.
      */
     pub fn from_all<R>(
         source: S,
@@ -210,11 +203,12 @@ where
     }
 
     /**
-     * Constructs a TensorRange from a tensor and a range, ensuring the range is within the
+     * Constructs a TensorRange from a tensor and a range for each dimension in the tensor
+     * (provided in the same order as the tensor's shape), ensuring the range is within the
      * lengths of the tensor.
      *
-     * Returns the Err variant if any dimension would have a length of 0 after the mask or
-     * any range extends beyond the length of that dimension in the tensor.
+     * Returns the Err variant if any dimension would have a length of 0 after applying the
+     * ranges or any range extends beyond the length of that dimension in the tensor.
      */
     pub fn from_all_strict<R>(
         source: S,
@@ -286,11 +280,62 @@ impl<T, S, const D: usize> TensorMask<T, S, D>
 where
     S: TensorRef<T, D>,
 {
-    // TODO: Alternate named constructors that take M dimension names and index ranges and call into
-    // from/from_strict
+    /**
+     * Constructs a TensorMask from a tensor and set of dimension name/mask pairs.
+     *
+     * Returns the Err variant if any masked dimension would have a length of 0, if multiple
+     * pairs with the same name are provided, or if any dimension names aren't in the source.
+     */
+    pub fn from<R, const P: usize>(
+        source: S,
+        masks: [(Dimension, R); P]
+    ) -> Result<TensorMask<T, S, D>, IndexRangeValidationError<D, P>>
+    where
+        R: Into<IndexRange>
+    {
+        let all_masks = from_named_to_all(&source, masks)?;
+        match TensorMask::from_all(source, all_masks) {
+            Ok(tensor_mask) => Ok(tensor_mask),
+            Err(invalid_shape) => Err(IndexRangeValidationError::InvalidShape(invalid_shape)),
+        }
+    }
 
     /**
-     * Constructs a TensorMask from a tensor and a mask.
+     * Constructs a TensorMask from a tensor and set of dimension name/range pairs.
+     *
+     * Returns the Err variant if any masked dimension would have a length of 0, if multiple
+     * pairs with the same name are provided, or if any dimension names aren't in the source,
+     * or any mask extends beyond the length of that dimension in the tensor.
+     */
+    pub fn from_strict<R, const P: usize>(
+        source: S,
+        masks: [(Dimension, R); P]
+    ) -> Result<TensorMask<T, S, D>, StrictIndexRangeValidationError<D, P>>
+    where
+        R: Into<IndexRange>
+    {
+        use StrictIndexRangeValidationError as S;
+        let all_masks = match from_named_to_all(&source, masks) {
+            Ok(all_masks) => all_masks,
+            Err(error) => return Err(S::Error(error)),
+        };
+        match TensorMask::from_all_strict(source, all_masks) {
+            Ok(tensor_mask) => Ok(tensor_mask),
+            Err(S::OutsideShape { shape, index_range }) => Err(
+                S::OutsideShape { shape, index_range }
+            ),
+            Err(S::Error(IndexRangeValidationError::InvalidShape(error))) => Err(
+                S::Error(IndexRangeValidationError::InvalidShape(error))
+            ),
+            Err(S::Error(IndexRangeValidationError::InvalidDimensions(_))) => panic!(
+                "Unexpected InvalidDimensions error case after validating for InvalidDimensions already"
+            ),
+        }
+    }
+
+    /**
+     * Constructs a TensorMask from a tensor and a mask for each dimension in the tensor
+     * (provided in the same order as the tensor's shape).
      *
      * Returns the Err variant if any masked dimension would have a length of 0.
      */
@@ -325,14 +370,14 @@ where
     }
 
     /**
-     * Constructs a TensorMask from a tensor and a mask, ensuring the mask is within range of
-     * the tensor.
+     * Constructs a TensorMask from a tensor and a mask for each dimension in the tensor
+     * (provided in the same order as the tensor's shape), ensuring the mask is within the
+     * lengths of the tensor.
      *
      * Returns the Err variant if any masked dimension would have a length of 0 or any mask
      * extends beyond the length of that dimension in the tensor.
-     *
      */
-    pub fn from_strict<R>(
+    pub fn from_all_strict<R>(
         source: S,
         masks: [Option<R>; D],
     ) -> Result<TensorMask<T, S, D>, StrictIndexRangeValidationError<D, D>>
