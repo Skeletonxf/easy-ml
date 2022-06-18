@@ -17,8 +17,8 @@ use crate::tensors::views::{
     TensorExpansion, TensorIndex, TensorMut, TensorRef, TensorRename, TensorView,
 };
 
-use std::fmt;
 use std::error::Error;
+use std::fmt;
 
 pub mod dimensions;
 mod display;
@@ -151,15 +151,10 @@ impl<const D: usize, const P: usize> fmt::Display for InvalidDimensionsError<D, 
             write!(
                 f,
                 "Dimensions names {:?} were incorrect, valid dimensions in this context are: {:?}",
-                self.provided,
-                self.valid
+                self.provided, self.valid
             )
         } else {
-            write!(
-                f,
-                "Dimensions names {:?} were incorrect",
-                self.provided
-            )
+            write!(f, "Dimensions names {:?} were incorrect", self.provided)
         }
     }
 }
@@ -179,7 +174,6 @@ fn test_send() {
     assert_send::<InvalidShapeError<2>>();
     assert_send::<InvalidDimensionsError<2, 2>>();
 }
-
 
 /**
  * A [named tensor](http://nlp.seas.harvard.edu/NamedTensor).

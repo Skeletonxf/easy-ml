@@ -1,18 +1,18 @@
 use crate::tensors::views::TensorRef;
-use crate::tensors::{Dimension, InvalidShapeError, InvalidDimensionsError};
+use crate::tensors::{Dimension, InvalidDimensionsError, InvalidShapeError};
+use std::error::Error;
+use std::fmt;
 use std::marker::PhantomData;
 
 use crate::matrices::views::IndexRange;
-
-// two ways to mask, together they allow arbitary mask shapes:
-// mask by x to y EXCLUDED, keeping the rest
-// mask by x to y INCLUDED, dropping the rest
 
 /**
  * A range over a tensor in D dimensions, hiding the values **outside** the range from view.
  *
  * The entire source is still owned by the TensorRange however, so this does not permit
  * creating multiple mutable ranges into a single tensor even if they wouldn't overlap.
+ *
+ * See also: [TensorMask](TensorMask)
  */
 #[derive(Clone, Debug)]
 pub struct TensorRange<T, S, const D: usize> {
@@ -26,6 +26,8 @@ pub struct TensorRange<T, S, const D: usize> {
  *
  * The entire source is still owned by the TensorMask however, so this does not permit
  * creating multiple mutable masks into a single tensor even if they wouldn't overlap.
+ *
+ * See also: [TensorRange](TensorRange)
  */
 #[derive(Clone, Debug)]
 pub struct TensorMask<T, S, const D: usize> {
@@ -50,6 +52,24 @@ pub enum IndexRangeValidationError<const D: usize, const P: usize> {
     InvalidDimensions(InvalidDimensionsError<D, P>),
 }
 
+impl<const D: usize, const P: usize> fmt::Display for IndexRangeValidationError<D, P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            IndexRangeValidationError::InvalidShape(error) => write!(f, "{:?}", error),
+            IndexRangeValidationError::InvalidDimensions(error) => write!(f, "{:?}", error),
+        }
+    }
+}
+
+impl<const D: usize, const P: usize> Error for IndexRangeValidationError<D, P> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            IndexRangeValidationError::InvalidShape(error) => Some(error),
+            IndexRangeValidationError::InvalidDimensions(error) => Some(error),
+        }
+    }
+}
+
 /**
  * An error in creating a [TensorRange](TensorRange) or a [TensorMask](TensorMask) using
  * strict validation.
@@ -69,13 +89,40 @@ pub enum StrictIndexRangeValidationError<const D: usize, const P: usize> {
     Error(IndexRangeValidationError<D, P>),
 }
 
+impl<const D: usize, const P: usize> fmt::Display for StrictIndexRangeValidationError<D, P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use StrictIndexRangeValidationError as S;
+        match self {
+            S::OutsideShape { shape, index_range } => write!(
+                f,
+                "IndexRange array {:?} is out of bounds of shape {:?}",
+                index_range, shape
+            ),
+            S::Error(error) => write!(f, "{:?}", error),
+        }
+    }
+}
+
+impl<const D: usize, const P: usize> Error for StrictIndexRangeValidationError<D, P> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        use StrictIndexRangeValidationError as S;
+        match self {
+            S::OutsideShape {
+                shape: _,
+                index_range: _,
+            } => None,
+            S::Error(error) => Some(error),
+        }
+    }
+}
+
 fn from_named_to_all<T, S, R, const D: usize, const P: usize>(
     source: &S,
     ranges: [(Dimension, R); P],
 ) -> Result<[Option<IndexRange>; D], IndexRangeValidationError<D, P>>
 where
     S: TensorRef<T, D>,
-    R: Into<IndexRange>
+    R: Into<IndexRange>,
 {
     let shape = source.view_shape();
     let ranges = ranges.map(|(d, r)| (d, r.into()));
@@ -111,10 +158,10 @@ where
      */
     pub fn from<R, const P: usize>(
         source: S,
-        ranges: [(Dimension, R); P]
+        ranges: [(Dimension, R); P],
     ) -> Result<TensorRange<T, S, D>, IndexRangeValidationError<D, P>>
     where
-        R: Into<IndexRange>
+        R: Into<IndexRange>,
     {
         let all_ranges = from_named_to_all(&source, ranges)?;
         match TensorRange::from_all(source, all_ranges) {
@@ -132,10 +179,10 @@ where
      */
     pub fn from_strict<R, const P: usize>(
         source: S,
-        ranges: [(Dimension, R); P]
+        ranges: [(Dimension, R); P],
     ) -> Result<TensorRange<T, S, D>, StrictIndexRangeValidationError<D, P>>
     where
-        R: Into<IndexRange>
+        R: Into<IndexRange>,
     {
         use StrictIndexRangeValidationError as S;
         let all_ranges = match from_named_to_all(&source, ranges) {
@@ -169,7 +216,10 @@ where
     where
         R: Into<IndexRange>,
     {
-        TensorRange::clip_from(source, ranges.map(|option| option.map(|range| range.into())))
+        TensorRange::clip_from(
+            source,
+            ranges.map(|option| option.map(|range| range.into())),
+        )
     }
 
     fn clip_from(
@@ -228,11 +278,9 @@ where
 
         match TensorRange::clip_from(source, range) {
             Ok(tensor_range) => Ok(tensor_range),
-            Err(invalid_shape) => Err(
-                StrictIndexRangeValidationError::Error(
-                    IndexRangeValidationError::InvalidShape(invalid_shape)
-                )
-            ),
+            Err(invalid_shape) => Err(StrictIndexRangeValidationError::Error(
+                IndexRangeValidationError::InvalidShape(invalid_shape),
+            )),
         }
     }
 }
@@ -288,10 +336,10 @@ where
      */
     pub fn from<R, const P: usize>(
         source: S,
-        masks: [(Dimension, R); P]
+        masks: [(Dimension, R); P],
     ) -> Result<TensorMask<T, S, D>, IndexRangeValidationError<D, P>>
     where
-        R: Into<IndexRange>
+        R: Into<IndexRange>,
     {
         let all_masks = from_named_to_all(&source, masks)?;
         match TensorMask::from_all(source, all_masks) {
@@ -309,10 +357,10 @@ where
      */
     pub fn from_strict<R, const P: usize>(
         source: S,
-        masks: [(Dimension, R); P]
+        masks: [(Dimension, R); P],
     ) -> Result<TensorMask<T, S, D>, StrictIndexRangeValidationError<D, P>>
     where
-        R: Into<IndexRange>
+        R: Into<IndexRange>,
     {
         use StrictIndexRangeValidationError as S;
         let all_masks = match from_named_to_all(&source, masks) {
@@ -341,7 +389,7 @@ where
      */
     pub fn from_all<R>(
         source: S,
-        mask: [Option<R>; D]
+        mask: [Option<R>; D],
     ) -> Result<TensorMask<T, S, D>, InvalidShapeError<D>>
     where
         R: Into<IndexRange>,
@@ -395,11 +443,9 @@ where
 
         match TensorMask::clip_from(source, masks) {
             Ok(tensor_mask) => Ok(tensor_mask),
-            Err(invalid_shape) => Err(
-                StrictIndexRangeValidationError::Error(
-                    IndexRangeValidationError::InvalidShape(invalid_shape)
-                )
-            ),
+            Err(invalid_shape) => Err(StrictIndexRangeValidationError::Error(
+                IndexRangeValidationError::InvalidShape(invalid_shape),
+            )),
         }
     }
 }

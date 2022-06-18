@@ -4,9 +4,9 @@
  * [Tensor](crate::tensors::Tensor)/[TensorView](crate::tensors::views::TensorView).
  */
 
-use crate::matrices::{Row, Column};
-use crate::matrices::views::{DataLayout, MatrixRef, MatrixMut, NoInteriorMutability};
-use crate::tensors::views::{TensorRef, TensorMut};
+use crate::matrices::views::{DataLayout, MatrixMut, MatrixRef, NoInteriorMutability};
+use crate::matrices::{Column, Row};
+use crate::tensors::views::{TensorMut, TensorRef};
 use crate::tensors::{Dimension, InvalidShapeError};
 
 use std::marker::PhantomData;
@@ -171,7 +171,8 @@ where
     }
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; 2]) -> &mut T {
-        self.source.get_reference_unchecked_mut(indexes[0], indexes[1])
+        self.source
+            .get_reference_unchecked_mut(indexes[0], indexes[1])
     }
 }
 

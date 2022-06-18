@@ -37,7 +37,8 @@ pub fn elements<const D: usize>(dimensions: &[(Dimension, usize); D]) -> usize {
  * Finds the position of the dimension name in the set of dimensions.
  */
 pub fn position_of<const D: usize>(
-    dimensions: &[(Dimension, usize); D], dimension: Dimension
+    dimensions: &[(Dimension, usize); D],
+    dimension: Dimension,
 ) -> Option<usize> {
     dimensions.iter().position(|(d, _)| d == &dimension)
 }
