@@ -100,16 +100,30 @@ impl IndexRange {
         IndexRange { start, length }
     }
 
+    // TODO: If we make these public we need to disambiguate Range from Mask behaviour better
     /**
      * Maps from a coordinate space of the ith index accessible by this range to the actual index
-     * into the entire matrix data.
+     * into the entire dimension's data.
      */
     #[inline]
-    fn map(&self, index: usize) -> Option<usize> {
+    pub(crate) fn map(&self, index: usize) -> Option<usize> {
         if index < self.length {
             Some(index + self.start)
         } else {
             None
+        }
+    }
+
+    // NOTE: This doesn't perform bounds checks, adding the length of the mask could push
+    // the index out of the valid bounds of the dimension it is for, but if we performed
+    // bounds checks here they would be redundant since performing the get with the masked index
+    // will bounds check if required
+    #[inline]
+    pub(crate) fn mask(&self, index: usize) -> usize {
+        if index < self.start {
+            index
+        } else {
+            index + self.length
         }
     }
 }

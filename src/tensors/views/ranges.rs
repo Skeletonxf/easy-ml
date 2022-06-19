@@ -1,10 +1,12 @@
-use crate::tensors::views::TensorRef;
+use crate::tensors::views::{TensorRef, TensorMut};
 use crate::tensors::{Dimension, InvalidDimensionsError, InvalidShapeError};
 use std::error::Error;
 use std::fmt;
 use std::marker::PhantomData;
 
 use crate::matrices::views::IndexRange;
+
+// TODO: Test all the TensorRef/TensorMut implemenations and constructor validation
 
 /**
  * A range over a tensor in D dimensions, hiding the values **outside** the range from view.
@@ -477,4 +479,146 @@ fn mask_exceeds_bounds<const D: usize>(
 ) -> bool {
     // same test for a mask extending past a shape as for a range
     range_exceeds_bounds(source, mask)
+}
+
+fn map_indexes_by_range<const D: usize>(
+    indexes: [usize; D],
+    ranges: &[IndexRange; D]
+) -> Option<[usize; D]> {
+    let mut mapped = [0; D];
+    for (d, (r, i)) in ranges.iter().zip(indexes.into_iter()).enumerate() {
+        mapped[d] = r.map(i)?;
+    }
+    Some(mapped)
+}
+
+// # Safety
+//
+// The type implementing TensorRef must implement it correctly, so by delegating to it
+// and just hiding some of the valid indexes from view, we implement TensorRef correctly as well.
+/**
+ * A TensorRange implements TensorRef, with the dimension lengths reduced to the range the
+ * the TensorRange was created with.
+ */
+unsafe impl<T, S, const D: usize> TensorRef<T, D> for TensorRange<T, S, D>
+where
+    S: TensorRef<T, D>,
+{
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        self.source.get_reference(map_indexes_by_range(indexes, &self.range)?)
+    }
+
+    fn view_shape(&self) -> [(Dimension, usize); D] {
+        // Since when we were constructed we clipped the length of each range to no more than
+        // our source, we can just return the length of each range now
+        let mut shape = self.source.view_shape();
+        // TODO: zip would work really nicely here but it's not stable yet
+        for (mut pair, range) in shape.iter_mut().zip(self.range.iter()) {
+            pair.1 = range.length;
+        }
+        shape
+    }
+
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        // It is the caller's responsibiltiy to always call with indexes in range,
+        // therefore the unwrap() case should never happen because on an arbitary TensorRef
+        // it would be undefined behavior.
+        // TODO: Can we use unwrap_unchecked here?
+        self.source.get_reference_unchecked(map_indexes_by_range(indexes, &self.range).unwrap())
+    }
+}
+
+// # Safety
+//
+// The type implementing TensorMut must implement it correctly, so by delegating to it
+// and just hiding some of the valid indexes from view, we implement TensorMut correctly as well.
+/**
+ * A TensorRange implements TensorMut, with the dimension lengths reduced to the range the
+ * the TensorRange was created with.
+ */
+unsafe impl<T, S, const D: usize> TensorMut<T, D> for TensorRange<T, S, D>
+where
+    S: TensorMut<T, D>,
+{
+    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
+        self.source.get_reference_mut(map_indexes_by_range(indexes, &self.range)?)
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        // It is the caller's responsibiltiy to always call with indexes in range,
+        // therefore the unwrap() case should never happen because on an arbitary TensorMut
+        // it would be undefined behavior.
+        // TODO: Can we use unwrap_unchecked here?
+        self.source.get_reference_unchecked_mut(
+            map_indexes_by_range(indexes, &self.range).unwrap()
+        )
+    }
+}
+
+fn map_indexes_by_mask<const D: usize>(
+    indexes: [usize; D],
+    masks: &[IndexRange; D]
+) -> [usize; D] {
+    let mut mapped = [0; D];
+    for (d, (r, i)) in masks.iter().zip(indexes.into_iter()).enumerate() {
+        mapped[d] = r.mask(i);
+    }
+    mapped
+}
+
+// # Safety
+//
+// The type implementing TensorRef must implement it correctly, so by delegating to it
+// and just hiding some of the valid indexes from view, we implement TensorRef correctly as well.
+/**
+ * A TensorMask implements TensorRef, with the dimension lengths reduced by the mask the
+ * the TensorMask was created with.
+ */
+unsafe impl<T, S, const D: usize> TensorRef<T, D> for TensorMask<T, S, D>
+where
+    S: TensorRef<T, D>,
+{
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        self.source.get_reference(map_indexes_by_mask(indexes, &self.mask))
+    }
+
+    fn view_shape(&self) -> [(Dimension, usize); D] {
+        // Since when we were constructed we clipped the length of each mask to no more than
+        // our source, we can just return subtract length of each mask now
+        let mut shape = self.source.view_shape();
+        // TODO: zip would work really nicely here but it's not stable yet
+        for (mut pair, mask) in shape.iter_mut().zip(self.mask.iter()) {
+            pair.1 -= mask.length;
+        }
+        shape
+    }
+
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        // It is the caller's responsibiltiy to always call with indexes in range,
+        // therefore out of bounds lookups created by map_indexes_by_mask should never happen.
+        self.source.get_reference_unchecked(map_indexes_by_mask(indexes, &self.mask))
+    }
+}
+
+// # Safety
+//
+// The type implementing TensorMut must implement it correctly, so by delegating to it
+// and just hiding some of the valid indexes from view, we implement TensorMut correctly as well.
+/**
+ * A TensorMask implements TensorMut, with the dimension lengths reduced by the mask the
+ * the TensorMask was created with.
+ */
+unsafe impl<T, S, const D: usize> TensorMut<T, D> for TensorMask<T, S, D>
+where
+    S: TensorMut<T, D>,
+{
+    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
+        self.source.get_reference_mut(map_indexes_by_mask(indexes, &self.mask))
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        // It is the caller's responsibiltiy to always call with indexes in range,
+        // therefore out of bounds lookups created by map_indexes_by_mask should never happen.
+        self.source.get_reference_unchecked_mut(map_indexes_by_mask(indexes, &self.mask))
+    }
 }
