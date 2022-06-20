@@ -622,3 +622,37 @@ where
         self.source.get_reference_unchecked_mut(map_indexes_by_mask(indexes, &self.mask))
     }
 }
+
+#[test]
+fn test_constructors() {
+    use crate::tensors::Tensor;
+    use crate::tensors::views::TensorView;
+    let tensor = Tensor::from([("rows", 3), ("columns", 3)], (0..9).collect());
+    assert_eq!(
+        TensorView::from(TensorRange::from(&tensor, [("rows", IndexRange::new(1, 2))]).unwrap()),
+        Tensor::from([("rows", 2), ("columns", 3)], vec![
+            3, 4, 5,
+            6, 7, 8
+        ])
+    );
+    assert_eq!(
+        TensorView::from(TensorRange::from(&tensor, [("columns", 2..3)]).unwrap()),
+        Tensor::from([("rows", 3), ("columns", 1)], vec![
+            2,
+            5,
+            8
+        ])
+    );
+    assert_eq!(
+        TensorView::from(TensorRange::from(&tensor, [("rows", (1, 1)), ("columns", (2, 1))]).unwrap()),
+        Tensor::from([("rows", 1), ("columns", 1)], vec![5])
+    );
+    assert_eq!(
+        TensorView::from(TensorRange::from(&tensor, [("columns", 1..3)]).unwrap()),
+        Tensor::from([("rows", 3), ("columns", 2)], vec![
+            1, 2,
+            4, 5,
+            7, 8
+        ])
+    );
+}
