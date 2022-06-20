@@ -131,7 +131,7 @@ impl IndexRange {
 /** Converts from a range of start..end to an IndexRange of start and length */
 impl From<Range<usize>> for IndexRange {
     fn from(range: Range<usize>) -> IndexRange {
-        IndexRange::new(range.start, range.end - range.start)
+        IndexRange::new(range.start, range.end.saturating_sub(range.start))
     }
 }
 
