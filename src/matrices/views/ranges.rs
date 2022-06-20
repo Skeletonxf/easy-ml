@@ -145,19 +145,29 @@ impl From<IndexRange> for Range<usize> {
     }
 }
 
-/** Converts from a tuple of start and length to an IndexRange */
+/**
+ * Converts from a tuple of start and length to an IndexRange
+ *
+ * NOTE: In previous versions, this was erroneously implemented as conversion from a tuple of
+ * start and end, not start and length as documented.
+ */
 impl From<(usize, usize)> for IndexRange {
     fn from(range: (usize, usize)) -> IndexRange {
-        let (start, end) = range;
-        IndexRange::new(start, end - start)
+        let (start, length) = range;
+        IndexRange::new(start, length)
     }
 }
 
-/** Converts from an array of start and length to an IndexRange */
+/**
+ * Converts from an array of start and length to an IndexRange
+ *
+ * NOTE: In previous versions, this was erroneously implemented as conversion from an array of
+ * start and end, not start and length as documented.
+ */
 impl From<[usize; 2]> for IndexRange {
     fn from(range: [usize; 2]) -> IndexRange {
-        let [start, end] = range;
-        IndexRange::new(start, end - start)
+        let [start, length] = range;
+        IndexRange::new(start, length)
     }
 }
 
