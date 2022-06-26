@@ -321,7 +321,8 @@ fn clip_range_shape<const D: usize>(
         let range_start = range.start;
         let range_end = range.start + range.length;
         let range_end = std::cmp::min(range_end, end);
-        *length = range_end - range_start;
+        let range_length = range_end - range_start;
+        *length = range_length;
     }
     shape
 }
@@ -460,15 +461,16 @@ fn clip_masked_shape<const D: usize>(
 ) -> [(Dimension, usize); D] {
     let mut shape = *source;
     for (d, (_, length)) in shape.iter_mut().enumerate() {
-        let start = 0;
+        let _start = 0;
         let end = *length;
         let mask = &mask[d];
         let mask_start = mask.start;
         let mask_end = mask.start + mask.length;
         let mask_end = std::cmp::min(mask_end, end);
-        let before_mask = mask_start - start;
-        let after_mask = mask_end - end;
-        *length = before_mask + after_mask;
+        // recalculate mask length after bounding it by our shape's length (now we know it's
+        // less than or equal to our shape's length)
+        let mask_length = mask_end - mask_start;
+        *length -= mask_length;
     }
     shape
 }
@@ -653,6 +655,21 @@ fn test_constructors() {
             1, 2,
             4, 5,
             7, 8
+        ])
+    );
+
+    assert_eq!(
+        TensorView::from(TensorMask::from(&tensor, [("rows", IndexRange::new(1, 1))]).unwrap()),
+        Tensor::from([("rows", 2), ("columns", 3)], vec![
+            0, 1, 2,
+            6, 7, 8
+        ])
+    );
+    assert_eq!(
+        TensorView::from(TensorMask::from(&tensor, [("rows", 2..3), ("columns", 0..1)]).unwrap()),
+        Tensor::from([("rows", 2), ("columns", 2)], vec![
+            3, 4,
+            6, 7
         ])
     );
 }
