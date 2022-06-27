@@ -810,7 +810,7 @@ tensor_view_expand_impl!(impl Tensor 5 1);
 impl<T: std::fmt::Display, S, const D: usize> std::fmt::Display for TensorView<T, S, D>
 where
     T: std::fmt::Display,
-    S: TensorRef<T, 0>,
+    S: TensorRef<T, D>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         crate::tensors::display::format_view(&self.source, f)
