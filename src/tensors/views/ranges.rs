@@ -1,4 +1,4 @@
-use crate::tensors::views::{TensorRef, TensorMut};
+use crate::tensors::views::{TensorMut, TensorRef};
 use crate::tensors::{Dimension, InvalidDimensionsError, InvalidShapeError};
 use std::error::Error;
 use std::fmt;
@@ -485,7 +485,7 @@ fn mask_exceeds_bounds<const D: usize>(
 
 fn map_indexes_by_range<const D: usize>(
     indexes: [usize; D],
-    ranges: &[IndexRange; D]
+    ranges: &[IndexRange; D],
 ) -> Option<[usize; D]> {
     let mut mapped = [0; D];
     for (d, (r, i)) in ranges.iter().zip(indexes.into_iter()).enumerate() {
@@ -507,7 +507,8 @@ where
     S: TensorRef<T, D>,
 {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        self.source.get_reference(map_indexes_by_range(indexes, &self.range)?)
+        self.source
+            .get_reference(map_indexes_by_range(indexes, &self.range)?)
     }
 
     fn view_shape(&self) -> [(Dimension, usize); D] {
@@ -526,7 +527,8 @@ where
         // therefore the unwrap() case should never happen because on an arbitary TensorRef
         // it would be undefined behavior.
         // TODO: Can we use unwrap_unchecked here?
-        self.source.get_reference_unchecked(map_indexes_by_range(indexes, &self.range).unwrap())
+        self.source
+            .get_reference_unchecked(map_indexes_by_range(indexes, &self.range).unwrap())
     }
 }
 
@@ -543,7 +545,8 @@ where
     S: TensorMut<T, D>,
 {
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
-        self.source.get_reference_mut(map_indexes_by_range(indexes, &self.range)?)
+        self.source
+            .get_reference_mut(map_indexes_by_range(indexes, &self.range)?)
     }
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
@@ -551,16 +554,12 @@ where
         // therefore the unwrap() case should never happen because on an arbitary TensorMut
         // it would be undefined behavior.
         // TODO: Can we use unwrap_unchecked here?
-        self.source.get_reference_unchecked_mut(
-            map_indexes_by_range(indexes, &self.range).unwrap()
-        )
+        self.source
+            .get_reference_unchecked_mut(map_indexes_by_range(indexes, &self.range).unwrap())
     }
 }
 
-fn map_indexes_by_mask<const D: usize>(
-    indexes: [usize; D],
-    masks: &[IndexRange; D]
-) -> [usize; D] {
+fn map_indexes_by_mask<const D: usize>(indexes: [usize; D], masks: &[IndexRange; D]) -> [usize; D] {
     let mut mapped = [0; D];
     for (d, (r, i)) in masks.iter().zip(indexes.into_iter()).enumerate() {
         mapped[d] = r.mask(i);
@@ -581,7 +580,8 @@ where
     S: TensorRef<T, D>,
 {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        self.source.get_reference(map_indexes_by_mask(indexes, &self.mask))
+        self.source
+            .get_reference(map_indexes_by_mask(indexes, &self.mask))
     }
 
     fn view_shape(&self) -> [(Dimension, usize); D] {
@@ -598,7 +598,8 @@ where
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         // It is the caller's responsibiltiy to always call with indexes in range,
         // therefore out of bounds lookups created by map_indexes_by_mask should never happen.
-        self.source.get_reference_unchecked(map_indexes_by_mask(indexes, &self.mask))
+        self.source
+            .get_reference_unchecked(map_indexes_by_mask(indexes, &self.mask))
     }
 }
 
@@ -615,17 +616,20 @@ where
     S: TensorMut<T, D>,
 {
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
-        self.source.get_reference_mut(map_indexes_by_mask(indexes, &self.mask))
+        self.source
+            .get_reference_mut(map_indexes_by_mask(indexes, &self.mask))
     }
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
         // It is the caller's responsibiltiy to always call with indexes in range,
         // therefore out of bounds lookups created by map_indexes_by_mask should never happen.
-        self.source.get_reference_unchecked_mut(map_indexes_by_mask(indexes, &self.mask))
+        self.source
+            .get_reference_unchecked_mut(map_indexes_by_mask(indexes, &self.mask))
     }
 }
 
 #[test]
+#[rustfmt::skip]
 fn test_constructors() {
     use crate::tensors::Tensor;
     use crate::tensors::views::TensorView;
@@ -668,8 +672,8 @@ fn test_constructors() {
     assert_eq!(
         TensorView::from(TensorMask::from(&tensor, [("rows", 2..3), ("columns", 0..1)]).unwrap()),
         Tensor::from([("rows", 2), ("columns", 2)], vec![
-            3, 4,
-            6, 7
+            1, 2,
+            4, 5
         ])
     );
 }
