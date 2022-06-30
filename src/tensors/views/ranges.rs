@@ -311,7 +311,7 @@ fn range_exceeds_bounds<const D: usize>(
 // ranges that exceed the bounds of the tensor's shape.
 fn clip_range_shape<const D: usize>(
     source: &[(Dimension, usize); D],
-    range: &mut [IndexRange; D],
+    range: &mut [IndexRange; D], // FIXME: At no point did we actually clip the range input!
 ) -> [(Dimension, usize); D] {
     let mut shape = *source;
     for (d, (_, length)) in shape.iter_mut().enumerate() {
@@ -457,7 +457,7 @@ where
 // masks that exceed the bounds of the tensor's shape.
 fn clip_masked_shape<const D: usize>(
     source: &[(Dimension, usize); D],
-    mask: &mut [IndexRange; D],
+    mask: &mut [IndexRange; D], // FIXME: At no point did we actually clip the mask input!
 ) -> [(Dimension, usize); D] {
     let mut shape = *source;
     for (d, (_, length)) in shape.iter_mut().enumerate() {
@@ -634,6 +634,7 @@ fn test_constructors() {
     use crate::tensors::Tensor;
     use crate::tensors::views::TensorView;
     let tensor = Tensor::from([("rows", 3), ("columns", 3)], (0..9).collect());
+    // Happy path
     assert_eq!(
         TensorView::from(TensorRange::from(&tensor, [("rows", IndexRange::new(1, 2))]).unwrap()),
         Tensor::from([("rows", 2), ("columns", 3)], vec![
@@ -675,5 +676,95 @@ fn test_constructors() {
             1, 2,
             4, 5
         ])
+    );
+
+    use IndexRangeValidationError as IRVError;
+    use InvalidShapeError as ShapeError;
+    use StrictIndexRangeValidationError::Error as SError;
+    use StrictIndexRangeValidationError::OutsideShape as OutsideShape;
+    use InvalidDimensionsError as DError;
+    // Dimension names that aren't present
+    assert_eq!(
+        TensorRange::from(&tensor, [("invalid", 1..2)]).unwrap_err(),
+        IRVError::InvalidDimensions(DError::new(["invalid"], ["rows", "columns"]))
+    );
+    assert_eq!(
+        TensorMask::from(&tensor, [("wrong", 0..1)]).unwrap_err(),
+        IRVError::InvalidDimensions(DError::new(["wrong"], ["rows", "columns"]))
+    );
+    assert_eq!(
+        TensorRange::from_strict(&tensor, [("invalid", 1..2)]).unwrap_err(),
+        SError(IRVError::InvalidDimensions(DError::new(["invalid"], ["rows", "columns"])))
+    );
+    assert_eq!(
+        TensorMask::from_strict(&tensor, [("wrong", 0..1)]).unwrap_err(),
+        SError(IRVError::InvalidDimensions(DError::new(["wrong"], ["rows", "columns"])))
+    );
+
+    // Mask / Range creates a 0 length dimension
+    assert_eq!(
+        TensorRange::from(&tensor, [("rows", 0..0)]).unwrap_err(),
+        IRVError::InvalidShape(ShapeError::new([("rows", 0), ("columns", 3)]))
+    );
+    assert_eq!(
+        TensorMask::from(&tensor, [("columns", 0..3)]).unwrap_err(),
+        IRVError::InvalidShape(ShapeError::new([("rows", 3), ("columns", 0)]))
+    );
+    assert_eq!(
+        TensorRange::from_strict(&tensor, [("rows", 0..0)]).unwrap_err(),
+        SError(IRVError::InvalidShape(ShapeError::new([("rows", 0), ("columns", 3)])))
+    );
+    assert_eq!(
+        TensorMask::from_strict(&tensor, [("columns", 0..3)]).unwrap_err(),
+        SError(IRVError::InvalidShape(ShapeError::new([("rows", 3), ("columns", 0)])))
+    );
+
+    // Dimension name specified twice
+    assert_eq!(
+        TensorRange::from(&tensor, [("rows", 1..2), ("rows", 2..3)]).unwrap_err(),
+        IRVError::InvalidDimensions(DError::new(["rows", "rows"], ["rows", "columns"]))
+    );
+    assert_eq!(
+        TensorMask::from(&tensor, [("columns", 1..2), ("columns", 2..3)]).unwrap_err(),
+        IRVError::InvalidDimensions(DError::new(["columns", "columns"], ["rows", "columns"]))
+    );
+    assert_eq!(
+        TensorRange::from_strict(&tensor, [("rows", 1..2), ("rows", 2..3)]).unwrap_err(),
+        SError(IRVError::InvalidDimensions(DError::new(["rows", "rows"], ["rows", "columns"])))
+    );
+    assert_eq!(
+        TensorMask::from_strict(&tensor, [("columns", 1..2), ("columns", 2..3)]).unwrap_err(),
+        SError(IRVError::InvalidDimensions(DError::new(["columns", "columns"], ["rows", "columns"])))
+    );
+
+    // Mask / Range needs clipping
+    // FIXME: Clipping isn't actually happening!
+    // println!("tensor:\n{}", &tensor);
+    // println!("useless range:\n{}", TensorView::from(TensorRange::from(&tensor, [("rows", 0..4)]).unwrap()));
+    // assert!(
+    //     TensorView::from(TensorRange::from(&tensor, [("rows", 0..4)]).unwrap()).eq(&tensor),
+    // );
+    assert_eq!(
+        TensorRange::from_strict(&tensor, [("rows", 0..4)]).unwrap_err(),
+        OutsideShape {
+            shape: [("rows", 3), ("columns", 3)],
+            index_range: [Some(IndexRange::new(0, 4)), None],
+        }
+    );
+    // FIXME: Clipping isn't actually happening!
+    // assert_eq!(
+    //     TensorView::from(TensorMask::from(&tensor, [("columns", 1..4)]).unwrap()),
+    //     Tensor::from([("rows", 3), ("columns", 1)], vec![
+    //         0,
+    //         3,
+    //         6,
+    //     ])
+    // );
+    assert_eq!(
+        TensorMask::from_strict(&tensor, [("columns", 1..4)]).unwrap_err(),
+        OutsideShape {
+            shape: [("rows", 3), ("columns", 3)],
+            index_range: [None, Some(IndexRange::new(1, 3))],
+        }
     );
 }
