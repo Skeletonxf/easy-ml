@@ -6,8 +6,6 @@ use std::marker::PhantomData;
 
 use crate::matrices::views::IndexRange;
 
-// TODO: Test all the TensorRef/TensorMut implemenations and constructor validation
-
 /**
  * A range over a tensor in D dimensions, hiding the values **outside** the range from view.
  *
@@ -15,6 +13,67 @@ use crate::matrices::views::IndexRange;
  * creating multiple mutable ranges into a single tensor even if they wouldn't overlap.
  *
  * See also: [TensorMask](TensorMask)
+ *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ * use easy_ml::tensors::views::{TensorView, TensorRange};
+ * let numbers = Tensor::from([("batch", 4), ("rows", 8), ("columns", 8)], vec![
+ *     0, 0, 0, 1, 1, 0, 0, 0,
+ *     0, 0, 1, 1, 1, 0, 0, 0,
+ *     0, 0, 0, 1, 1, 0, 0, 0,
+ *     0, 0, 0, 1, 1, 0, 0, 0,
+ *     0, 0, 0, 1, 1, 0, 0, 0,
+ *     0, 0, 0, 1, 1, 0, 0, 0,
+ *     0, 0, 1, 1, 1, 1, 0, 0,
+ *     0, 0, 1, 1, 1, 1, 0, 0,
+ *
+ *     0, 0, 0, 0, 0, 0, 0, 0,
+ *     0, 0, 0, 2, 2, 0, 0, 0,
+ *     0, 0, 2, 0, 0, 2, 0, 0,
+ *     0, 0, 0, 0, 0, 2, 0, 0,
+ *     0, 0, 0, 0, 2, 0, 0, 0,
+ *     0, 0, 0, 2, 0, 0, 0, 0,
+ *     0, 0, 2, 0, 0, 0, 0, 0,
+ *     0, 0, 2, 2, 2, 2, 0, 0,
+ *
+ *     0, 0, 0, 3, 3, 0, 0, 0,
+ *     0, 0, 3, 0, 0, 3, 0, 0,
+ *     0, 0, 0, 0, 0, 3, 0, 0,
+ *     0, 0, 0, 0, 3, 0, 0, 0,
+ *     0, 0, 0, 0, 3, 0, 0, 0,
+ *     0, 0, 0, 0, 0, 3, 0, 0,
+ *     0, 0, 3, 0, 0, 3, 0, 0,
+ *     0, 0, 0, 3, 3, 0, 0, 0,
+ *
+ *     0, 0, 0, 0, 0, 0, 0, 0,
+ *     0, 0, 0, 0, 4, 0, 0, 0,
+ *     0, 0, 0, 4, 4, 0, 0, 0,
+ *     0, 0, 4, 0, 4, 0, 0, 0,
+ *     0, 4, 4, 4, 4, 4, 0, 0,
+ *     0, 0, 0, 0, 4, 0, 0, 0,
+ *     0, 0, 0, 0, 4, 0, 0, 0,
+ *     0, 0, 0, 0, 4, 0, 0, 0
+ * ]);
+ * let one_and_two = TensorView::from(
+ *     TensorRange::from(&numbers, [("batch", 0..2)])
+ *         .expect("Input is constucted so that our range is valid")
+ * );
+ * let framed = TensorView::from(
+ *     TensorRange::from(&numbers, [("rows", [1, 6]), ("columns", [1, 6])])
+ *         .expect("Input is constucted so that our range is valid")
+ * );
+ * assert_eq!(one_and_two.shape(), [("batch", 2), ("rows", 8), ("columns", 8)]);
+ * assert_eq!(framed.shape(), [("batch", 4), ("rows", 6), ("columns", 6)]);
+ * println!("{}", framed.select([("batch", 3)]));
+ * // D = 2
+ * // ("rows", 6), ("columns", 6)
+ * // [ 0, 0, 0, 4, 0, 0
+ * //   0, 0, 4, 4, 0, 0
+ * //   0, 4, 0, 4, 0, 0
+ * //   4, 4, 4, 4, 4, 0
+ * //   0, 0, 0, 4, 0, 0
+ * //   0, 0, 0, 4, 0, 0 ]
+ * ```
  */
 #[derive(Clone, Debug)]
 pub struct TensorRange<T, S, const D: usize> {
@@ -750,7 +809,6 @@ fn test_constructors() {
             index_range: [Some(IndexRange::new(0, 4)), None],
         }
     );
-    // FIXME: Clipping isn't actually happening!
     assert_eq!(
         TensorView::from(TensorMask::from(&tensor, [("columns", 1..4)]).unwrap()),
         Tensor::from([("rows", 3), ("columns", 1)], vec![
