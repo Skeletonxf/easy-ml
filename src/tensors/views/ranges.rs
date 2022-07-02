@@ -311,17 +311,18 @@ fn range_exceeds_bounds<const D: usize>(
 // ranges that exceed the bounds of the tensor's shape.
 fn clip_range_shape<const D: usize>(
     source: &[(Dimension, usize); D],
-    range: &mut [IndexRange; D], // FIXME: At no point did we actually clip the range input!
+    range: &mut [IndexRange; D],
 ) -> [(Dimension, usize); D] {
     let mut shape = *source;
     for (d, (_, length)) in shape.iter_mut().enumerate() {
         let _start = 0;
         let end = *length;
-        let range = &range[d];
+        let range = &mut range[d];
         let range_start = range.start;
         let range_end = range.start + range.length;
         let range_end = std::cmp::min(range_end, end);
         let range_length = range_end - range_start;
+        range.length = range_length;
         *length = range_length;
     }
     shape
@@ -457,19 +458,20 @@ where
 // masks that exceed the bounds of the tensor's shape.
 fn clip_masked_shape<const D: usize>(
     source: &[(Dimension, usize); D],
-    mask: &mut [IndexRange; D], // FIXME: At no point did we actually clip the mask input!
+    mask: &mut [IndexRange; D],
 ) -> [(Dimension, usize); D] {
     let mut shape = *source;
     for (d, (_, length)) in shape.iter_mut().enumerate() {
         let _start = 0;
         let end = *length;
-        let mask = &mask[d];
+        let mask = &mut mask[d];
         let mask_start = mask.start;
         let mask_end = mask.start + mask.length;
         let mask_end = std::cmp::min(mask_end, end);
         // recalculate mask length after bounding it by our shape's length (now we know it's
         // less than or equal to our shape's length)
         let mask_length = mask_end - mask_start;
+        mask.length = mask_length;
         *length -= mask_length;
     }
     shape
@@ -738,12 +740,9 @@ fn test_constructors() {
     );
 
     // Mask / Range needs clipping
-    // FIXME: Clipping isn't actually happening!
-    // println!("tensor:\n{}", &tensor);
-    // println!("useless range:\n{}", TensorView::from(TensorRange::from(&tensor, [("rows", 0..4)]).unwrap()));
-    // assert!(
-    //     TensorView::from(TensorRange::from(&tensor, [("rows", 0..4)]).unwrap()).eq(&tensor),
-    // );
+    assert!(
+        TensorView::from(TensorRange::from(&tensor, [("rows", 0..4)]).unwrap()).eq(&tensor),
+    );
     assert_eq!(
         TensorRange::from_strict(&tensor, [("rows", 0..4)]).unwrap_err(),
         OutsideShape {
@@ -752,14 +751,14 @@ fn test_constructors() {
         }
     );
     // FIXME: Clipping isn't actually happening!
-    // assert_eq!(
-    //     TensorView::from(TensorMask::from(&tensor, [("columns", 1..4)]).unwrap()),
-    //     Tensor::from([("rows", 3), ("columns", 1)], vec![
-    //         0,
-    //         3,
-    //         6,
-    //     ])
-    // );
+    assert_eq!(
+        TensorView::from(TensorMask::from(&tensor, [("columns", 1..4)]).unwrap()),
+        Tensor::from([("rows", 3), ("columns", 1)], vec![
+            0,
+            3,
+            6,
+        ])
+    );
     assert_eq!(
         TensorMask::from_strict(&tensor, [("columns", 1..4)]).unwrap_err(),
         OutsideShape {
