@@ -89,6 +89,67 @@ pub struct TensorRange<T, S, const D: usize> {
  * creating multiple mutable masks into a single tensor even if they wouldn't overlap.
  *
  * See also: [TensorRange](TensorRange)
+ *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ * use easy_ml::tensors::views::{TensorView, TensorMask};
+ * let numbers = Tensor::from([("batch", 4), ("rows", 8), ("columns", 8)], vec![
+ *     0, 0, 0, 1, 1, 0, 0, 0,
+ *     0, 0, 1, 1, 1, 0, 0, 0,
+ *     0, 0, 0, 1, 1, 0, 0, 0,
+ *     0, 0, 0, 1, 1, 0, 0, 0,
+ *     0, 0, 0, 1, 1, 0, 0, 0,
+ *     0, 0, 0, 1, 1, 0, 0, 0,
+ *     0, 0, 1, 1, 1, 1, 0, 0,
+ *     0, 0, 1, 1, 1, 1, 0, 0,
+ *
+ *     0, 0, 0, 0, 0, 0, 0, 0,
+ *     0, 0, 0, 2, 2, 0, 0, 0,
+ *     0, 0, 2, 0, 0, 2, 0, 0,
+ *     0, 0, 0, 0, 0, 2, 0, 0,
+ *     0, 0, 0, 0, 2, 0, 0, 0,
+ *     0, 0, 0, 2, 0, 0, 0, 0,
+ *     0, 0, 2, 0, 0, 0, 0, 0,
+ *     0, 0, 2, 2, 2, 2, 0, 0,
+ *
+ *     0, 0, 0, 3, 3, 0, 0, 0,
+ *     0, 0, 3, 0, 0, 3, 0, 0,
+ *     0, 0, 0, 0, 0, 3, 0, 0,
+ *     0, 0, 0, 0, 3, 0, 0, 0,
+ *     0, 0, 0, 0, 3, 0, 0, 0,
+ *     0, 0, 0, 0, 0, 3, 0, 0,
+ *     0, 0, 3, 0, 0, 3, 0, 0,
+ *     0, 0, 0, 3, 3, 0, 0, 0,
+ *
+ *     0, 0, 0, 0, 0, 0, 0, 0,
+ *     0, 0, 0, 0, 4, 0, 0, 0,
+ *     0, 0, 0, 4, 4, 0, 0, 0,
+ *     0, 0, 4, 0, 4, 0, 0, 0,
+ *     0, 4, 4, 4, 4, 4, 0, 0,
+ *     0, 0, 0, 0, 4, 0, 0, 0,
+ *     0, 0, 0, 0, 4, 0, 0, 0,
+ *     0, 0, 0, 0, 4, 0, 0, 0
+ * ]);
+ * let one_and_four = TensorView::from(
+ *     TensorMask::from(&numbers, [("batch", 1..3)])
+ *         .expect("Input is constucted so that our mask is valid")
+ * );
+ * let corners = TensorView::from(
+ *     TensorMask::from(&numbers, [("rows", [3, 2]), ("columns", [3, 2])])
+ *         .expect("Input is constucted so that our mask is valid")
+ * );
+ * assert_eq!(one_and_four.shape(), [("batch", 2), ("rows", 8), ("columns", 8)]);
+ * assert_eq!(corners.shape(), [("batch", 4), ("rows", 6), ("columns", 6)]);
+ * println!("{}", corners.select([("batch", 2)]));
+ * // D = 2
+ * // ("rows", 6), ("columns", 6)
+ * // [ 0, 0, 0, 0, 0, 0
+ * //   0, 0, 3, 3, 0, 0
+ * //   0, 0, 0, 3, 0, 0
+ * //   0, 0, 0, 3, 0, 0
+ * //   0, 0, 3, 3, 0, 0
+ * //   0, 0, 0, 0, 0, 0 ]
+ * ```
  */
 #[derive(Clone, Debug)]
 pub struct TensorMask<T, S, const D: usize> {
