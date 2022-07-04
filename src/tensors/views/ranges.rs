@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::matrices::views::IndexRange;
+pub use crate::matrices::views::IndexRange;
 
 /**
  * A range over a tensor in D dimensions, hiding the values **outside** the range from view.
