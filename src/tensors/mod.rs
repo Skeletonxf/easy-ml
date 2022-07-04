@@ -14,7 +14,8 @@ use crate::tensors::indexing::{
     TensorAccess,
 };
 use crate::tensors::views::{
-    TensorExpansion, TensorIndex, TensorMut, TensorRef, TensorRename, TensorView,
+    IndexRange, IndexRangeValidationError, TensorExpansion, TensorIndex, TensorMask, TensorMut,
+    TensorRange, TensorRef, TensorRename, TensorView,
 };
 
 use std::error::Error;
@@ -600,6 +601,64 @@ impl<T, const D: usize> Tensor<T, D> {
         dimensions: [(Dimension, usize); D2],
     ) -> Tensor<T, D2> {
         Tensor::from(dimensions, self.data)
+    }
+
+    /**
+     * Returns a TensorView with a range taken in P dimensions, hiding the values **outside** the
+     * range from view. Error cases are documented on [TensorRange](TensorRange).
+     *
+     * This is a shorthand for constructing the TensorView from this Tensor.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * use easy_ml::tensors::views::{TensorView, TensorRange, IndexRange};
+     * # use easy_ml::tensors::views::IndexRangeValidationError;
+     * # fn main() -> Result<(), IndexRangeValidationError<3, 2>> {
+     * let samples = Tensor::from([("batch", 5), ("x", 7), ("y", 7)], (0..(5 * 7 * 7)).collect());
+     * let cropped = samples.range([("x", IndexRange::new(1, 5)), ("y", IndexRange::new(1, 5))])?;
+     * let also_cropped = TensorView::from(
+     *     TensorRange::from(&samples, [("x", 1..6), ("y", 1..6)])?
+     * );
+     * assert_eq!(cropped, also_cropped);
+     * assert_eq!(
+     *     cropped.select([("batch", 0)]),
+     *     Tensor::from([("x", 5), ("y", 5)], vec![
+     *          8,  9, 10, 11, 12,
+     *         15, 16, 17, 18, 19,
+     *         22, 23, 24, 25, 26,
+     *         29, 30, 31, 32, 33,
+     *         36, 37, 38, 39, 40
+     *     ])
+     * );
+     * # Ok(())
+     * # }
+     * ```
+     */
+    pub fn range<R, const P: usize>(
+        &self,
+        ranges: [(Dimension, R); P],
+    ) -> Result<TensorView<T, TensorRange<T, &Tensor<T, D>, D>, D>, IndexRangeValidationError<D, P>>
+    where
+        R: Into<IndexRange>,
+    {
+        TensorRange::from(self, ranges).map(|range| TensorView::from(range))
+    }
+
+    /**
+     * Returns a TensorView with a mask taken in P dimensions, hiding the values **inside** the
+     * range from view. Error cases are documented on [TensorMask](TensorMask).
+     *
+     * This is a shorthand for constructing the TensorView from this Tensor.
+     */
+    // TODO: Doc example
+    pub fn mask<R, const P: usize>(
+        &self,
+        masks: [(Dimension, R); P],
+    ) -> Result<TensorView<T, TensorMask<T, &Tensor<T, D>, D>, D>, IndexRangeValidationError<D, P>>
+    where
+        R: Into<IndexRange>,
+    {
+        TensorMask::from(self, masks).map(|mask| TensorView::from(mask))
     }
 
     /**

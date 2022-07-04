@@ -303,6 +303,40 @@ where
     }
 
     /**
+     * Returns a TensorView with a range taken in P dimensions, hiding the values **outside** the
+     * range from view. Error cases are documented on [TensorRange](TensorRange).
+     *
+     * This is a shorthand for constructing the TensorView from this TensorView. See
+     * [`Tensor::range`](Tensor::range).
+     */
+    pub fn range<R, const P: usize>(
+        &self,
+        ranges: [(Dimension, R); P],
+    ) -> Result<TensorView<T, TensorRange<T, &S, D>, D>, IndexRangeValidationError<D, P>>
+    where
+        R: Into<IndexRange>,
+    {
+        TensorRange::from(&self.source, ranges).map(|range| TensorView::from(range))
+    }
+
+    /**
+     * Returns a TensorView with a mask taken in P dimensions, hiding the values **inside** the
+     * range from view. Error cases are documented on [TensorMask](TensorMask).
+     *
+     * This is a shorthand for constructing the TensorView from this TensorView. See
+     * [`Tensor::mask`](Tensor::mask).
+     */
+    pub fn mask<R, const P: usize>(
+        &self,
+        masks: [(Dimension, R); P],
+    ) -> Result<TensorView<T, TensorMask<T, &S, D>, D>, IndexRangeValidationError<D, P>>
+    where
+        R: Into<IndexRange>,
+    {
+        TensorMask::from(&self.source, masks).map(|mask| TensorView::from(mask))
+    }
+
+    /**
      * Creates and returns a new tensor with all value pairs of two tensors with the same shape
      * mapped by a function. The value pairs are not copied for you, if you're using `Copy` types
      * or need to clone the values anyway, you can use

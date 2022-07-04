@@ -89,6 +89,7 @@ where
  * assert_eq!(IndexRange::new(0, 4), (0..4).into());
  * ```
  */
+// TODO: Document all ways of constructing an IndexRange via From/Into impls here
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct IndexRange {
     pub(crate) start: usize,
