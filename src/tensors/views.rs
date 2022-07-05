@@ -268,7 +268,7 @@ where
     /**
      * Creates a TensorAccess which will index into the dimensions this Tensor was
      * created with in the same order as they were provided. The TensorAccess takes ownership
-     * of the Tensor, and can therefore mutate it. The TensorAccess mutably borrows
+     * of the Tensor, and can therefore mutate it. The TensorAccess takes ownership of
      * the source, and can therefore mutate it if it implements TensorMut.
      * See [TensorAccess::from_source_order].
      */
@@ -320,6 +320,42 @@ where
     }
 
     /**
+     * Returns a TensorView with a range taken in P dimensions, hiding the values **outside** the
+     * range from view. Error cases are documented on [TensorRange](TensorRange). The TensorRange
+     * mutably borrows the source, and can therefore mutate it if it implements TensorMut.
+     *
+     * This is a shorthand for constructing the TensorView from this TensorView. See
+     * [`Tensor::range`](Tensor::range).
+     */
+    pub fn range_mut<R, const P: usize>(
+        &mut self,
+        ranges: [(Dimension, R); P],
+    ) -> Result<TensorView<T, TensorRange<T, &mut S, D>, D>, IndexRangeValidationError<D, P>>
+    where
+        R: Into<IndexRange>,
+    {
+        TensorRange::from(&mut self.source, ranges).map(|range| TensorView::from(range))
+    }
+
+    /**
+     * Returns a TensorView with a range taken in P dimensions, hiding the values **outside** the
+     * range from view. Error cases are documented on [TensorRange](TensorRange). The TensorRange
+     * takes ownership of the source, and can therefore mutate it if it implements TensorMut.
+     *
+     * This is a shorthand for constructing the TensorView from this TensorView. See
+     * [`Tensor::range`](Tensor::range).
+     */
+    pub fn range_owned<R, const P: usize>(
+        self,
+        ranges: [(Dimension, R); P],
+    ) -> Result<TensorView<T, TensorRange<T, S, D>, D>, IndexRangeValidationError<D, P>>
+    where
+        R: Into<IndexRange>,
+    {
+        TensorRange::from(self.source, ranges).map(|range| TensorView::from(range))
+    }
+
+    /**
      * Returns a TensorView with a mask taken in P dimensions, hiding the values **inside** the
      * range from view. Error cases are documented on [TensorMask](TensorMask).
      *
@@ -334,6 +370,42 @@ where
         R: Into<IndexRange>,
     {
         TensorMask::from(&self.source, masks).map(|mask| TensorView::from(mask))
+    }
+
+    /**
+     * Returns a TensorView with a mask taken in P dimensions, hiding the values **inside** the
+     * range from view. Error cases are documented on [TensorMask](TensorMask). The TensorMask
+     * mutably borrows the source, and can therefore mutate it if it implements TensorMut.
+     *
+     * This is a shorthand for constructing the TensorView from this TensorView. See
+     * [`Tensor::mask`](Tensor::mask).
+     */
+    pub fn mask_mut<R, const P: usize>(
+        &mut self,
+        masks: [(Dimension, R); P],
+    ) -> Result<TensorView<T, TensorMask<T, &mut S, D>, D>, IndexRangeValidationError<D, P>>
+    where
+        R: Into<IndexRange>,
+    {
+        TensorMask::from(&mut self.source, masks).map(|mask| TensorView::from(mask))
+    }
+
+    /**
+     * Returns a TensorView with a mask taken in P dimensions, hiding the values **inside** the
+     * range from view. Error cases are documented on [TensorMask](TensorMask). The TensorMask
+     * takes ownership of the source, and can therefore mutate it if it implements TensorMut.
+     *
+     * This is a shorthand for constructing the TensorView from this TensorView. See
+     * [`Tensor::mask`](Tensor::mask).
+     */
+    pub fn mask_owned<R, const P: usize>(
+        self,
+        masks: [(Dimension, R); P],
+    ) -> Result<TensorView<T, TensorMask<T, S, D>, D>, IndexRangeValidationError<D, P>>
+    where
+        R: Into<IndexRange>,
+    {
+        TensorMask::from(self.source, masks).map(|mask| TensorView::from(mask))
     }
 
     /**
