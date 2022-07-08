@@ -143,7 +143,6 @@ pub unsafe trait TensorMut<T, const D: usize>: TensorRef<T, D> {
  * TensorView closely mirrors the API of Tensor.
  * Methods that create a new tensor do not return a TensorView, they return a Tensor.
  */
-#[derive(Debug)]
 pub struct TensorView<T, S, const D: usize> {
     source: S,
     _type: PhantomData<T>,
@@ -909,6 +908,155 @@ tensor_view_expand_impl!(impl Tensor 2 1);
 tensor_view_expand_impl!(impl Tensor 3 1);
 tensor_view_expand_impl!(impl Tensor 4 1);
 tensor_view_expand_impl!(impl Tensor 5 1);
+
+/**
+ * Debug implementations for TensorView additionally show the visible data and visible dimensions
+ * reported by the source as fields. This is in addition to recursive debug content of the actual
+ * source.
+ */
+impl<T, S, const D: usize> std::fmt::Debug for TensorView<T, S, D>
+where
+    T: std::fmt::Debug,
+    S: std::fmt::Debug + TensorRef<T, D>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("TensorView")
+            .field("visible", &DebugSourceVisible::from(&self.source))
+            .field("dimensions", &self.source.view_shape())
+            .field("source", &self.source)
+            .finish()
+    }
+}
+
+struct DebugSourceVisible<T, S, const D: usize> {
+    source: S,
+    _type: PhantomData<T>,
+}
+
+impl<T, S, const D: usize> DebugSourceVisible<T, S, D>
+where
+    T: std::fmt::Debug,
+    S: std::fmt::Debug + TensorRef<T, D>,
+{
+    fn from(source: S) -> DebugSourceVisible<T, S, D> {
+        DebugSourceVisible {
+            source,
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<T, S, const D: usize> std::fmt::Debug for DebugSourceVisible<T, S, D>
+where
+    T: std::fmt::Debug,
+    S: std::fmt::Debug + TensorRef<T, D>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_list().entries(IndexOrderReferenceIterator::from(&self.source)).finish()
+    }
+}
+
+#[test]
+fn test_debug() {
+    let x = Tensor::from([("rows", 3), ("columns", 4)], (0..12).collect());
+    let view = TensorView::from(&x);
+    let debugged = format!("{:?}\n{:?}", x, view);
+    assert_eq!(
+        debugged,
+        r#"Tensor { data: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], dimensions: [("rows", 3), ("columns", 4)], strides: [4, 1] }
+TensorView { visible: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], dimensions: [("rows", 3), ("columns", 4)], source: Tensor { data: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], dimensions: [("rows", 3), ("columns", 4)], strides: [4, 1] } }"#
+    )
+}
+
+#[test]
+fn test_debug_clipped() {
+    let x = Tensor::from([("rows", 2), ("columns", 3)], (0..6).collect());
+    let view = TensorView::from(&x).range_owned([("columns", IndexRange::new(1, 2))]).unwrap();
+    let debugged = format!("{:#?}\n{:#?}", x, view);
+    println!("{:#?}\n{:#?}", x, view);
+    assert_eq!(
+        debugged,
+        r#"Tensor {
+    data: [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+    ],
+    dimensions: [
+        (
+            "rows",
+            2,
+        ),
+        (
+            "columns",
+            3,
+        ),
+    ],
+    strides: [
+        3,
+        1,
+    ],
+}
+TensorView {
+    visible: [
+        1,
+        2,
+        4,
+        5,
+    ],
+    dimensions: [
+        (
+            "rows",
+            2,
+        ),
+        (
+            "columns",
+            2,
+        ),
+    ],
+    source: TensorRange {
+        source: Tensor {
+            data: [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+            ],
+            dimensions: [
+                (
+                    "rows",
+                    2,
+                ),
+                (
+                    "columns",
+                    3,
+                ),
+            ],
+            strides: [
+                3,
+                1,
+            ],
+        },
+        range: [
+            IndexRange {
+                start: 0,
+                length: 2,
+            },
+            IndexRange {
+                start: 1,
+                length: 2,
+            },
+        ],
+        _type: PhantomData,
+    },
+}"#
+    )
+}
 
 /**
  * Any tensor view of a Displayable type implements Display
