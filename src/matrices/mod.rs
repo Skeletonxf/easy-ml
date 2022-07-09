@@ -1380,8 +1380,6 @@ where
      * non zero determinant. See [`linear_algebra`](super::linear_algebra::inverse())
      */
     pub fn inverse(&self) -> Option<Matrix<T>>
-    where
-        T: Add<Output = T> + Mul<Output = T> + Sub<Output = T> + Div<Output = T>,
     {
         linear_algebra::inverse::<T>(self)
     }
