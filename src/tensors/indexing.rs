@@ -63,6 +63,7 @@ impl<T, S, const D: usize> TensorAccess<T, S, D>
 where
     S: TensorRef<T, D>,
 {
+    // TODO: Docs
     #[track_caller]
     pub fn from(source: S, dimensions: [Dimension; D]) -> TensorAccess<T, S, D> {
         match TensorAccess::try_from(source, dimensions) {
@@ -71,6 +72,7 @@ where
         }
     }
 
+    // TODO: Docs
     pub fn try_from(
         source: S,
         dimensions: [Dimension; D],
@@ -533,15 +535,14 @@ fn index_order_iter<const D: usize>(
  * An iterator over copies of all values in a tensor.
  *
  * First the all 0 index is iterated, then each iteration increments the rightmost index.
- * If the tensor access is created with the same dimension order as the data in the tensor,
+ * For [Tensor](Tensor) or [TensorRef](TensorRef)s which do not reorder the underlying Tensor
  * this will take a single step in memory on each iteration, akin to iterating through the
  * flattened data of the tensor.
  *
- * If the tensor access is created with a different dimension order, this iterator will still
- * iterate the rightmost index of the index order defined by the tensor access but the tensor
- * access will map those dimensions to the order the data in the tensor is stored, allowing
- * iteration through dimensions in a different order to how they are stored, but no longer
- * taking a single step in memory on each iteration.
+ * If the TensorRef reorders the tensor data (e.g. [TensorAccess](TensorAccess)) this iterator
+ * will still iterate the rightmost index allowing iteration through dimensions in a different
+ * order to how they are stored, but no longer taking a single step in memory on each
+ * iteration (which may be less cache friendly for the CPU).
  *
  * ```
  * use easy_ml::tensors::Tensor;
@@ -668,15 +669,14 @@ where
  * An iterator over references to all values in a tensor.
  *
  * First the all 0 index is iterated, then each iteration increments the rightmost index.
- * If the tensor access is created with the same dimension order as the data in the tensor,
+ * For [Tensor](Tensor) or [TensorRef](TensorRef)s which do not reorder the underlying Tensor
  * this will take a single step in memory on each iteration, akin to iterating through the
  * flattened data of the tensor.
  *
- * If the tensor access is created with a different dimension order, this iterator will still
- * iterate the rightmost index of the index order defined by the tensor access but the tensor
- * access will map those dimensions to the order the data in the tensor is stored, allowing
- * iteration through dimensions in a different order to how they are stored, but no longer
- * taking a single step in memory on each iteration.
+ * If the TensorRef reorders the tensor data (e.g. [TensorAccess](TensorAccess)) this iterator
+ * will still iterate the rightmost index allowing iteration through dimensions in a different
+ * order to how they are stored, but no longer taking a single step in memory on each
+ * iteration (which may be less cache friendly for the CPU).
  *
  * ```
  * use easy_ml::tensors::Tensor;
@@ -800,15 +800,14 @@ where
  * An iterator over mutable references to all values in a tensor.
  *
  * First the all 0 index is iterated, then each iteration increments the rightmost index.
- * If the tensor access is created with the same dimension order as the data in the tensor,
+ * For [Tensor](Tensor) or [TensorRef](TensorRef)s which do not reorder the underlying Tensor
  * this will take a single step in memory on each iteration, akin to iterating through the
  * flattened data of the tensor.
  *
- * If the tensor access is created with a different dimension order, this iterator will still
- * iterate the rightmost index of the index order defined by the tensor access but the tensor
- * access will map those dimensions to the order the data in the tensor is stored, allowing
- * iteration through dimensions in a different order to how they are stored, but no longer
- * taking a single step in memory on each iteration.
+ * If the TensorRef reorders the tensor data (e.g. [TensorAccess](TensorAccess)) this iterator
+ * will still iterate the rightmost index allowing iteration through dimensions in a different
+ * order to how they are stored, but no longer taking a single step in memory on each
+ * iteration (which may be less cache friendly for the CPU).
  *
  * ```
  * use easy_ml::tensors::Tensor;
