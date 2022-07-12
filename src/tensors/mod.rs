@@ -683,8 +683,33 @@ impl<T, const D: usize> Tensor<T, D> {
      * range from view. Error cases are documented on [TensorMask](TensorMask).
      *
      * This is a shorthand for constructing the TensorView from this Tensor.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * use easy_ml::tensors::views::{TensorView, TensorMask, IndexRange};
+     * # use easy_ml::tensors::views::IndexRangeValidationError;
+     * # fn main() -> Result<(), IndexRangeValidationError<3, 2>> {
+     * let samples = Tensor::from([("batch", 5), ("x", 7), ("y", 7)], (0..(5 * 7 * 7)).collect());
+     * let corners = samples.mask([("x", IndexRange::new(3, 2)), ("y", IndexRange::new(3, 2))])?;
+     * let also_corners = TensorView::from(
+     *     TensorMask::from(&samples, [("x", 3..5), ("y", 3..5)])?
+     * );
+     * assert_eq!(corners, also_corners);
+     * assert_eq!(
+     *     corners.select([("batch", 0)]),
+     *     Tensor::from([("x", 5), ("y", 5)], vec![
+     *          0,  1,  2,    5, 6,
+     *          7,  8,  9,   12, 13,
+     *         14, 15, 16,   19, 20,
+     *
+     *         35, 36, 37,   40, 41,
+     *         42, 43, 44,   47, 48
+     *     ])
+     * );
+     * # Ok(())
+     * # }
+     * ```
      */
-    // TODO: Doc example
     pub fn mask<R, const P: usize>(
         &self,
         masks: [(Dimension, R); P],

@@ -5,8 +5,6 @@
  * the matrix can be used in a mathematical way.
  */
 
-use std::ops::{Add, Div, Mul, Sub};
-
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
