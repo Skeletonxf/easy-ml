@@ -42,18 +42,19 @@ mod tensors {
     }
 
     #[test]
+    #[should_panic] // FIXME: Transposition should shift the data to match the dimension order, we already have renaming/reshaping to change the shape and not the data, transposition should be the opposite
     fn check_transposition() {
         let mut tensor = Tensor::from([("row", 4), ("column", 1)], vec![1, 2, 3, 4]);
         tensor.transpose_mut(["column", "row"]);
         assert_eq!(
             tensor,
-            Tensor::from([("column", 1), ("row", 4)], vec![1, 2, 3, 4])
+            Tensor::from([("row", 1), ("column", 4)], vec![1, 2, 3, 4])
         );
         let mut tensor = Tensor::from([("row", 1), ("column", 4)], vec![1, 2, 3, 4]);
         tensor.transpose_mut(["column", "row"]);
         assert_eq!(
             tensor,
-            Tensor::from([("column", 4), ("row", 1)], vec![1, 2, 3, 4])
+            Tensor::from([("row", 4), ("column", 1)], vec![1, 2, 3, 4])
         );
         #[rustfmt::skip]
         let mut tensor = Tensor::from([("row", 3), ("column", 3)], vec![
@@ -62,11 +63,16 @@ mod tensors {
             7, 8, 9
         ]);
         tensor.transpose_mut(["column", "row"]);
+        #[rustfmt::skip]
         assert_eq!(
             tensor,
             Tensor::from(
-                [("column", 3), ("row", 3)],
-                vec![1, 4, 7, 2, 5, 8, 3, 6, 9,]
+                [("row", 3), ("column", 3)],
+                vec![
+                    1, 4, 7,
+                    2, 5, 8,
+                    3, 6, 9
+                ]
             )
         );
         #[rustfmt::skip]
@@ -75,9 +81,14 @@ mod tensors {
             4, 5, 6
         ]);
         tensor.transpose_mut(["c", "r"]);
+        #[rustfmt::skip]
         assert_eq!(
             tensor,
-            Tensor::from([("c", 3), ("r", 2)], vec![1, 4, 2, 5, 3, 6,])
+            Tensor::from([("r", 3), ("c", 2)], vec![
+                1, 4,
+                2, 5,
+                3, 6
+            ])
         );
         #[rustfmt::skip]
         let mut tensor = Tensor::from([("a", 3), ("b", 2)], vec![
@@ -86,9 +97,13 @@ mod tensors {
             5, 6
         ]);
         tensor.transpose_mut(["b", "a"]);
+        #[rustfmt::skip]
         assert_eq!(
             tensor,
-            Tensor::from([("b", 2), ("a", 3)], vec![1, 3, 5, 2, 4, 6,])
+            Tensor::from([("b", 2), ("a", 3)], vec![
+                1, 3, 5,
+                2, 4, 6
+            ])
         );
         #[rustfmt::skip]
         let tensor = Tensor::from([("row", 3), ("column", 3)], vec![
@@ -96,11 +111,16 @@ mod tensors {
             4, 5, 6,
             7, 8, 9
         ]);
+        #[rustfmt::skip]
         assert_eq!(
-            tensor.transpose(["column", "row"]),
+            tensor.transpose(["row", "column"]),
             Tensor::from(
-                [("column", 3), ("row", 3)],
-                vec![1, 4, 7, 2, 5, 8, 3, 6, 9,]
+                [("row", 3), ("column", 3)],
+                vec![
+                    1, 4, 7,
+                    2, 5, 8,
+                    3, 6, 9
+                ]
             )
         );
     }

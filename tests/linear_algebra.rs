@@ -84,7 +84,15 @@ mod linear_algebra {
     fn inverse_1_by_1() {
         let matrix = Matrix::from_scalar(3.0);
         let inverse = linear_algebra::inverse::<f32>(&matrix).unwrap();
-        let absolute_difference = inverse.scalar() - (1.0 / 3.0);
+        let absolute_difference = (inverse.scalar() - (1.0 / 3.0)).abs();
+        assert!(absolute_difference <= std::f32::EPSILON);
+    }
+
+    #[test]
+    fn inverse_1_by_1_tensor() {
+        let matrix = Tensor::from([("r", 1), ("c", 1)], vec![3.0]);
+        let inverse = linear_algebra::inverse_tensor::<f32, _, _>(&matrix).unwrap();
+        let absolute_difference = (inverse.index_order_iter().next().unwrap() - (1.0 / 3.0)).abs();
         assert!(absolute_difference <= std::f32::EPSILON);
     }
 
@@ -96,8 +104,8 @@ mod linear_algebra {
         let answer = Matrix::from(vec![vec![0.6, -0.7], vec![-0.2, 0.4]]);
         for row in 0..answer.rows() {
             for column in 0..answer.columns() {
-                let absolute_difference = inverse.get(row, column) - answer.get(row, column);
-                assert!(absolute_difference <= std::f32::EPSILON);
+                let absolute_difference: f32 = inverse.get(row, column) - answer.get(row, column);
+                assert!(absolute_difference.abs() <= std::f32::EPSILON);
             }
         }
         // multiplying the inverse and original should yeild the identity matrix
@@ -105,15 +113,46 @@ mod linear_algebra {
         let answer = Matrix::diagonal(1.0, matrix.size());
         for row in 0..answer.rows() {
             for column in 0..answer.columns() {
-                let absolute_difference = identity.get(row, column) - answer.get(row, column);
-                assert!(absolute_difference <= std::f32::EPSILON);
+                let absolute_difference: f32 = identity.get(row, column) - answer.get(row, column);
+                assert!(absolute_difference.abs() <= std::f32::EPSILON);
             }
         }
     }
 
     #[test]
+    fn inverse_2_by_2_tensor() {
+        let matrix = Tensor::from([("row", 2), ("column", 2)], vec![4.0, 7.0, 2.0, 6.0]);
+        let inverse = matrix.inverse().unwrap();
+        // we use the example from https://www.mathsisfun.com/algebra/matrix-inverse.html
+        let answer = Tensor::from([("row", 2), ("column", 2)], vec![0.6, -0.7, -0.2, 0.4]);
+        for (expected, actual) in answer.index_order_iter().zip(inverse.index_order_iter()) {
+            let absolute_difference: f32 = actual - expected;
+            assert!(absolute_difference.abs() <= std::f32::EPSILON);
+        }
+        // multiplying the inverse and original should yeild the identity matrix
+        println!("Matrix: {}, Inverse: {}", matrix, inverse);
+        // FIXME: Should * really be taking half of each shape? RxC * RxC is the most likely way we'll be multiplying tensors
+        // FIXME: Should matrix transposition and inverse() by extension be returning an inverse flipped to CxR?
+        // FIXME: Shouldn't transposition either swap the dimension order or transpose the data and leave the dimension order the same?
+        // let identity = &matrix * &inverse;
+        // println!("Identity: {}", identity);
+        // let answer = Tensor::from([("row", 2), ("column", 2)], vec![1.0, 0.0, 0.0, 1.0]);
+        // for (expected, actual) in answer.index_order_iter().zip(identity.index_order_iter()) {
+        //     let absolute_difference: f32 = actual - expected;
+        //     assert!(absolute_difference.abs() <= std::f32::EPSILON);
+        // }
+    }
+
+    #[test]
     fn inverse_2_by_2_not_inversible() {
         let matrix = Matrix::from(vec![vec![3.0, 4.0], vec![6.0, 8.0]]);
+        let inverse = matrix.inverse();
+        assert!(inverse.is_none());
+    }
+
+    #[test]
+    fn inverse_2_by_2_not_inversible_tensor() {
+        let matrix = Tensor::from([("rows", 2), ("columns", 2)], vec![3.0, 4.0, 6.0, 8.0]);
         let inverse = matrix.inverse();
         assert!(inverse.is_none());
     }

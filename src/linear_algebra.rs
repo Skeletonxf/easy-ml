@@ -117,6 +117,113 @@ where
     }
 }
 
+/**
+ * Computes the inverse of a matrix provided that it exists. To have an inverse
+ * a matrix must be square (same number of rows and columns) and it must also
+ * have a non zero determinant.
+ *
+ * The first dimension in the Tensor's shape will be taken as the rows of the matrix, and the
+ * second dimension as the columns. If you instead have columns and then rows for the Tensor's
+ * shape, you should transpose the Tensor before calling this function to get the appropriate
+ * matrix.
+ *
+ * The inverse of a matrix `A` is the matrix `A^-1` which when multiplied by `A`
+ * in either order yields the identity matrix `I`.
+ *
+ * `A(A^-1) == (A^-1)A == I`.
+ *
+ *The inverse is like the reciprocal of a number, except for matrices instead of scalars.
+ * With scalars, there is no inverse for `0` because `1 / 0` is not defined. Similarly
+ * to compute the inverse of a matrix we divide by the determinant, so matrices
+ * with a determinant of 0 have no inverse, even if they are square.
+ *
+ * This algorithm performs the analytic solution described by
+ * [wikipedia](https://en.wikipedia.org/wiki/Invertible_matrix#Analytic_solution)
+ * and should compute the inverse for any size of square matrix if it exists, but
+ * is inefficient for large matrices.
+ *
+ * # Warning
+ *
+ * With some uses of this function the Rust compiler gets confused about what type `T`
+ * should be and you will get the error:
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ *
+ * In this case you need to manually specify the type of T by using the
+ * turbofish syntax like:
+ * `linear_algebra::inverse:_tensor:<f32>(&tensor)`
+ *
+ * Alternatively, the compiler doesn't seem to run into this problem if you
+ * use the equivalent methods on the tensor type like so:
+ * `tensor.inverse()`
+ */
+pub fn inverse_tensor<T, S, I>(tensor: I) -> Option<Tensor<T, 2>>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+    I: Into<TensorView<T, S, 2>>,
+    S: TensorRef<T, 2>,
+{
+    inverse_less_generic::<T, S>(tensor.into())
+}
+
+fn inverse_less_generic<T, S>(tensor: TensorView<T, S, 2>) -> Option<Tensor<T, 2>>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+    S: TensorRef<T, 2>,
+{
+    let shape = tensor.shape();
+    if !crate::tensors::dimensions::is_square(&shape) {
+        return None;
+    }
+
+    // inverse of a 1 x 1 matrix is a special case
+    if shape[0].1 == 1 {
+        // determinant of a 1 x 1 matrix is the single element
+        let element = tensor.index_order_iter().next().expect("1x1 tensor must have a single element");
+        if element == T::zero() {
+            return None;
+        }
+        return Some(Tensor::from(shape, vec![T::one() / element]));
+    }
+
+    // compute the general case for a N x N matrix where N >= 2
+    match determinant_less_generic::<T, _>(&tensor) {
+        Some(det) => {
+            if det == T::zero() {
+                return None;
+            }
+            let determinant_reciprocal = T::one() / det;
+            let mut cofactor_matrix = Tensor::empty(shape, T::zero());
+            for ([i, j], x) in cofactor_matrix.index_order_reference_mut_iter().with_index() {
+                // this should always return Some due to the earlier checks
+                let ij_minor = minor_tensor::<T, _>(&tensor, i, j)?;
+                // i and j may each be up to the maximum value for usize but
+                // we only need to know if they are even or odd as
+                // -1 ^ (i + j) == -1 ^ ((i % 2) + (j % 2))
+                // by taking modulo of both before adding we ensure there
+                // is no overflow
+                let sign = i8::pow(-1, (i.rem_euclid(2) + j.rem_euclid(2)) as u32);
+                // convert sign into type T
+                let sign = if sign == 1 {
+                    T::one()
+                } else {
+                    T::zero() - T::one()
+                };
+                // each element of the cofactor matrix is -1^(i+j) * M_ij
+                // for M_ij equal to the ij minor of the matrix
+                *x = sign * ij_minor;
+            }
+            // tranposing the cofactor matrix yields the adjugate matrix
+            cofactor_matrix.transpose_mut([shape[1].0, shape[0].0]);
+            // finally to compute the inverse we need to multiply each element by 1 / |A|
+            cofactor_matrix.map_mut(|element| element * determinant_reciprocal.clone());
+            Some(cofactor_matrix)
+        }
+        None => None,
+    }
+}
+
 // TODO: expose these minor methods and test them directly
 // https://www.teachoo.com/9780/1204/Minor-and-Cofactor-of-a-determinant/category/Finding-Minors-and-cofactors/
 
@@ -158,6 +265,32 @@ where
     matrix.remove_row(i);
     matrix.remove_column(j);
     determinant::<T>(matrix)
+}
+
+fn minor_tensor<T, S>(tensor: &TensorView<T, S, 2>, i: usize, j: usize) -> Option<T>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+    S: TensorRef<T, 2>,
+{
+    use crate::tensors::views::{TensorMask, IndexRange};
+    let shape = tensor.shape();
+    if shape[0].1 == 1 || shape[1].1 == 1 {
+        // nothing to delete
+        return None;
+    }
+    if !crate::tensors::dimensions::is_square(&shape) {
+        // no determinant
+        return None;
+    }
+    let minored = TensorView::from(
+        TensorMask::from_all(
+            tensor.source_ref(),
+            [Some(IndexRange::new(i, 1)), Some(IndexRange::new(j, 1))]
+        )
+            .expect("Having just checked tensor is at least 2x2 we should be able to take a mask")
+    );
+    determinant_less_generic::<T, _>(&minored)
 }
 
 /**
@@ -211,7 +344,7 @@ where
         _ => (),
     };
 
-    determinant_less_generic::<T, _>(TensorView::from(
+    determinant_less_generic::<T, _>(&TensorView::from(
         crate::interop::TensorRefMatrix::from(matrix).ok()?,
     ))
 }
@@ -264,10 +397,10 @@ where
     I: Into<TensorView<T, S, 2>>,
     S: TensorRef<T, 2>,
 {
-    determinant_less_generic::<T, S>(tensor.into())
+    determinant_less_generic::<T, S>(&tensor.into())
 }
 
-fn determinant_less_generic<T, S>(tensor: TensorView<T, S, 2>) -> Option<T>
+fn determinant_less_generic<T, S>(tensor: &TensorView<T, S, 2>) -> Option<T>
 where
     T: Numeric,
     for<'a> &'a T: NumericRef<T>,

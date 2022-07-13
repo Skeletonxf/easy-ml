@@ -1146,6 +1146,15 @@ where
     }
 
     /**
+     * Computes the inverse of a matrix provided that it exists. To have an inverse a
+     * matrix must be square (same number of rows and columns) and it must also have a
+     * non zero determinant. See [`linear_algebra`](super::linear_algebra::inverse_tensor())
+     */
+    pub fn inverse(&self) -> Option<Tensor<T, 2>> {
+        linear_algebra::inverse_tensor::<T, _, _>(self)
+    }
+
+    /**
      * Computes the covariance matrix for this feature matrix along the specified feature
      * dimension in this matrix. See [`linear_algebra`](crate::linear_algebra::covariance()).
      */
