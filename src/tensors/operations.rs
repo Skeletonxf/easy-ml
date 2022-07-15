@@ -1,5 +1,20 @@
 /*!
  * Tensor operations
+ *
+ * TODO: Document all the ops here
+ *
+ * Matrix multiplication follows the standard definition based on matching dimension lengths.
+ * A Tensor of shape MxN can be multiplied with a tensor of shape NxL to yield a tensor of
+ * shape MxL. Only the length of the N dimensions needs to match, the dimension names along N
+ * in both tensors are discarded.
+ *
+ * # Examples
+ *
+ * | Left Tensor shape | Right Tensor shape | Product Tensor shape |
+ * |------|-------|---------|
+ * | `[("rows", 2), ("columns", 3)]` | `[("rows", 3), ("columns", 2)]` | `[(rows", 2), ("columns", 2)]` |
+ * | `[("a", 3), ("b", 1)]` | `[("c", 1), ("d", 2)]` | `[("a", 3), ("d", 2)]` |
+ * | `[("rows", 2), ("columns", 3)]` | `[("columns", 3), ("rows", 2)]` | not allowed - would attempt to be `[(rows", 2), ("rows", 2)]`
  */
 
 use crate::numeric::{Numeric, NumericRef};
@@ -380,11 +395,21 @@ where
     S1: TensorRef<T, 2>,
     S2: TensorRef<T, 2>,
 {
-    if left.view_shape()[1].1 != right.view_shape()[0].1 {
+    let left_shape = left.view_shape();
+    let right_shape = right.view_shape();
+    if left_shape[1].1 != right_shape[0].1 {
         panic!(
             "Mismatched tensors, left is {:?}, right is {:?}, * is only defined for MxN * NxL dimension lengths",
             left.view_shape(), right.view_shape()
         );
+    }
+    if left_shape[0].0 == right_shape[1].0 {
+        panic!(
+            "Matrix multiplication of tensors with shapes left {:?} and right {:?} would \
+             create duplicate dimension names as the shape {:?}. Rename one or both of the \
+             dimension names in the input to prevent this. * is defined as MxN * NxL = MxL",
+            left_shape, right_shape, [left_shape[0], right_shape[1]]
+        )
     }
     // LxM * MxN -> LxN
     // [a,b,c; d,e,f] * [g,h; i,j; k,l] -> [a*g+b*i+c*k, a*h+b*j+c*l; d*g+e*i+f*k, d*h+e*j+f*l]

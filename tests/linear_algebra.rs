@@ -130,10 +130,10 @@ mod linear_algebra {
             assert!(absolute_difference.abs() <= std::f32::EPSILON);
         }
         // multiplying the inverse and original should yeild the identity matrix
-        println!("Matrix: {}, Inverse: {}", matrix, inverse);
-        // FIXME: Should * really be taking half of each shape? RxC * RxC is the most likely way we'll be multiplying tensors
-        // FIXME: Should matrix transposition and inverse() by extension be returning an inverse flipped to CxR?
+        //println!("Matrix: {}, Inverse: {}", matrix, inverse);
+        // FIXME: Should matrix transposition and inverse() by extension be returning an inverse flipped to CxR? - No, just with Matrix we want to be able to * the two back together and still end up with RxC
         // FIXME: Shouldn't transposition either swap the dimension order or transpose the data and leave the dimension order the same?
+        // - delete transpose methods in favor of explicit swap names, swap data, swap both methods?
         // let identity = &matrix * &inverse;
         // println!("Identity: {}", identity);
         // let answer = Tensor::from([("row", 2), ("column", 2)], vec![1.0, 0.0, 0.0, 1.0]);
