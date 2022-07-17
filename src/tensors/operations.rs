@@ -39,7 +39,7 @@ where
 }
 
 // Common tensor similarity definition (sets of dimensions must match, and elements using a
-// common dimension order must match - one tensor could be transposed to make them equal if
+// common dimension order must match - one tensor could be reordered to make them equal if
 // they are similar but not equal).
 #[inline]
 pub(crate) fn tensor_similarity<T, S1, S2, const D: usize>(left: &S1, right: &S2) -> bool
@@ -88,7 +88,7 @@ where
  * assert_eq!(two, two);
  * assert_eq!(three, three);
  * assert_ne!(one, two); // similar, but dimension order is not the same
- * assert_eq!(one, two.transpose(["a", "b"])); // transposing b to the order of a makes it equal
+ * assert_eq!(one, two.reorder(["a", "b"])); // reordering b to the order of a makes it equal
  * assert_ne!(one, three); // elementwise data is same, but dimensions are not equal
  * assert_ne!(two, three); // dimensions are not equal, and elementwise data is not the same
  * ```
@@ -197,7 +197,7 @@ mod private {
  * order, this corresponds to the right most index of the right tensor as well, and will
  * be an elementwise comparison.
  *
- * If two Tensors are similar, you can transpose one of them to the dimension order of the
+ * If two Tensors are similar, you can reorder one of them to the dimension order of the
  * other and they will be equal.
  *
  * ```

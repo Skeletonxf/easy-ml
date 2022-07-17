@@ -22,7 +22,7 @@
  * means what is reduced, tensors carry around their pairs of dimension name and length
  * so adding a `[("batch", 2000), ("width", 100), ("height", 100), ("rgb", 3)]` shaped tensor
  * to a `[("batch", 2000), ("height", 100), ("width", 100), ("rgb", 3)]` will fail unless you
- * transpose one first, and you could access an element as
+ * reorder one first, and you could access an element as
  * `tensor.get(["batch", "width", "height", "rgb"]).get([1999, 0, 99, 3])` or
  * `tensor.get(["batch", "height", "width", "rgb"]).get([1999, 99, 0, 3])` and read the same data,
  * because you index into dimensions based on their name, not just the order they are stored in

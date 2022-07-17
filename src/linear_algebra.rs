@@ -124,7 +124,7 @@ where
  *
  * The first dimension in the Tensor's shape will be taken as the rows of the matrix, and the
  * second dimension as the columns. If you instead have columns and then rows for the Tensor's
- * shape, you should transpose the Tensor before calling this function to get the appropriate
+ * shape, you should reorder the Tensor before calling this function to get the appropriate
  * matrix.
  *
  * The inverse of a matrix `A` is the matrix `A^-1` which when multiplied by `A`
@@ -365,7 +365,7 @@ where
  *
  * The first dimension in the Tensor's shape will be taken as the rows of the matrix, and the
  * second dimension as the columns. If you instead have columns and then rows for the Tensor's
- * shape, you should transpose the Tensor before calling this function to get the appropriate
+ * shape, you should reorder the Tensor before calling this function to get the appropriate
  * matrix.
  *
  * Note that the determinant of a 1 x 1 matrix is just the element in the matrix.

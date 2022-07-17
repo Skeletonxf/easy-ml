@@ -5,6 +5,96 @@ mod tensors {
     use easy_ml::tensors::Tensor;
 
     #[test]
+    fn indexing_test() {
+        let tensor = Tensor::from([("x", 2), ("y", 2)], vec![1, 2, 3, 4]);
+        let xy = tensor.get(["x", "y"]);
+        let yx = tensor.get(["y", "x"]);
+        assert_eq!(xy.get([0, 0]), 1);
+        assert_eq!(xy.get([0, 1]), 2);
+        assert_eq!(xy.get([1, 0]), 3);
+        assert_eq!(xy.get([1, 1]), 4);
+        assert_eq!(yx.get([0, 0]), 1);
+        assert_eq!(yx.get([0, 1]), 3);
+        assert_eq!(yx.get([1, 0]), 2);
+        assert_eq!(yx.get([1, 1]), 4);
+    }
+
+    #[test]
+    #[should_panic]
+    fn repeated_name() {
+        Tensor::from([("x", 2), ("x", 2)], vec![1, 2, 3, 4]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn wrong_size() {
+        Tensor::from([("x", 2), ("y", 3)], vec![1, 2, 3, 4]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn bad_indexing() {
+        let tensor = Tensor::from([("x", 2), ("y", 2)], vec![1, 2, 3, 4]);
+        tensor.get(["x", "x"]);
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn transpose_more_dimensions() {
+        let tensor = Tensor::from(
+            [("batch", 2), ("y", 10), ("x", 10), ("color", 1)], vec![
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
+            0, 0, 0, 1, 0, 0, 1, 0, 0, 0,
+            0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+            0, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+            0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 1, 0, 0, 0, 1, 0,
+            0, 0, 0, 0, 0, 1, 1, 1, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
+            0, 0, 0, 1, 0, 0, 1, 0, 0, 0,
+            0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+            0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+            0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+            0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+            0, 0, 0, 1, 0, 0, 1, 0, 0, 0,
+            0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ]);
+        let transposed = tensor.transpose(["batch", "x", "y", "color"]);
+        assert_eq!(
+            transposed,
+            Tensor::from([("batch", 2), ("y", 10), ("x", 10), ("color", 1)], vec![
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+                0, 0, 0, 1, 1, 1, 0, 0, 0, 0,
+                0, 0, 1, 0, 1, 0, 1, 0, 0, 0,
+                0, 1, 0, 0, 1, 0, 0, 1, 0, 0,
+                0, 1, 0, 0, 1, 0, 0, 0, 1, 0,
+                0, 0, 1, 0, 1, 0, 0, 0, 1, 0,
+                0, 0, 0, 1, 1, 0, 0, 0, 1, 0,
+                0, 0, 0, 0, 1, 0, 0, 1, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 1, 1, 1, 1, 0, 0, 0,
+                0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+                0, 1, 0, 0, 0, 0, 0, 0, 1, 0,
+                0, 1, 0, 0, 0, 0, 0, 0, 1, 0,
+                0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+                0, 0, 0, 1, 1, 1, 1, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ])
+        );
+    }
+
+    #[test]
     fn check_iterators() {
         #[rustfmt::skip]
         let tensor = Tensor::from([("row", 3), ("column", 2)], vec![
@@ -42,7 +132,6 @@ mod tensors {
     }
 
     #[test]
-    #[should_panic] // FIXME: Transposition should shift the data to match the dimension order, we already have renaming/reshaping to change the shape and not the data, transposition should be the opposite
     fn check_transposition() {
         let mut tensor = Tensor::from([("row", 4), ("column", 1)], vec![1, 2, 3, 4]);
         tensor.transpose_mut(["column", "row"]);
@@ -100,7 +189,7 @@ mod tensors {
         #[rustfmt::skip]
         assert_eq!(
             tensor,
-            Tensor::from([("b", 2), ("a", 3)], vec![
+            Tensor::from([("a", 2), ("b", 3)], vec![
                 1, 3, 5,
                 2, 4, 6
             ])
@@ -113,7 +202,7 @@ mod tensors {
         ]);
         #[rustfmt::skip]
         assert_eq!(
-            tensor.transpose(["row", "column"]),
+            tensor.transpose(["column", "row"]),
             Tensor::from(
                 [("row", 3), ("column", 3)],
                 vec![
@@ -121,6 +210,70 @@ mod tensors {
                     2, 5, 8,
                     3, 6, 9
                 ]
+            )
+        );
+    }
+
+    #[test]
+    fn check_reorder() {
+        let mut tensor = Tensor::from([("row", 4), ("column", 1)], vec![1, 2, 3, 4]);
+        tensor.reorder_mut(["column", "row"]);
+        assert_eq!(
+            tensor,
+            Tensor::from([("column", 1), ("row", 4)], vec![1, 2, 3, 4])
+        );
+        let mut tensor = Tensor::from([("row", 1), ("column", 4)], vec![1, 2, 3, 4]);
+        tensor.reorder_mut(["column", "row"]);
+        assert_eq!(
+            tensor,
+            Tensor::from([("column", 4), ("row", 1)], vec![1, 2, 3, 4])
+        );
+        #[rustfmt::skip]
+        let mut tensor = Tensor::from([("row", 3), ("column", 3)], vec![
+            1, 2, 3,
+            4, 5, 6,
+            7, 8, 9
+        ]);
+        tensor.reorder_mut(["column", "row"]);
+        assert_eq!(
+            tensor,
+            Tensor::from(
+                [("column", 3), ("row", 3)],
+                vec![1, 4, 7, 2, 5, 8, 3, 6, 9,]
+            )
+        );
+        #[rustfmt::skip]
+        let mut tensor = Tensor::from([("r", 2), ("c", 3)], vec![
+            1, 2, 3,
+            4, 5, 6
+        ]);
+        tensor.reorder_mut(["c", "r"]);
+        assert_eq!(
+            tensor,
+            Tensor::from([("c", 3), ("r", 2)], vec![1, 4, 2, 5, 3, 6,])
+        );
+        #[rustfmt::skip]
+        let mut tensor = Tensor::from([("a", 3), ("b", 2)], vec![
+            1, 2,
+            3, 4,
+            5, 6
+        ]);
+        tensor.reorder_mut(["b", "a"]);
+        assert_eq!(
+            tensor,
+            Tensor::from([("b", 2), ("a", 3)], vec![1, 3, 5, 2, 4, 6,])
+        );
+        #[rustfmt::skip]
+        let tensor = Tensor::from([("row", 3), ("column", 3)], vec![
+            1, 2, 3,
+            4, 5, 6,
+            7, 8, 9
+        ]);
+        assert_eq!(
+            tensor.reorder(["column", "row"]),
+            Tensor::from(
+                [("column", 3), ("row", 3)],
+                vec![1, 4, 7, 2, 5, 8, 3, 6, 9,]
             )
         );
     }

@@ -209,7 +209,7 @@ where
      *
      * The first dimension in the TensorRef type becomes the rows, and the second dimension the
      * columns. If your tensor is the other way around,
-     * [transpose it first](crate::tensors::indexing::TensorAccess).
+     * [reorder it first](crate::tensors::indexing::TensorAccess).
      */
     pub fn from(source: S) -> MatrixRefTensor<T, S> {
         MatrixRefTensor {

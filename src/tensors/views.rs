@@ -536,18 +536,19 @@ where
     S: TensorRef<T, D>,
 {
     /**
-     * Returns a new Tensor which has the same data as this tensor, but with the order of the
-     * dimensions and corresponding order of data changed.
+     * Returns a new Tensor which has the same data as this tensor, but with the order of data
+     * changed. The order of the dimension names is unchanged, although their lengths may swap.
      *
      * For example, with a `[("x", x), ("y", y)]` tensor you could call
-     * `transpose(["y", "x"])` which would return a new tensor where every (y,x) of its data
-     * corresponds to (x,y) in the original.
+     * `transpose(["y", "x"])` which would return a new tensor with a shape of
+     * `[("x", y), ("y", x)]` where every (x,y) of its data corresponds to (y,x) in the original.
      *
      * This method need not shift *all* the dimensions though, you could also swap the width
      * and height of images in a tensor with a shape of
      * `[("batch", b), ("h", h), ("w", w), ("c", c)]` via `transpose(["batch", "w", "h", "c"])`
-     * which would return a new tensor where every (b,w,h,c) of its data corresponds to (b,h,w,c)
-     * in the original.
+     * which would return a new tensor where all the images have been swapped over the diagonal.
+     *
+     * See also: [TensorAccess](TensorAccess), [reorder](TensorView::reorder)
      *
      * # Panics
      *
@@ -557,12 +558,53 @@ where
      */
     #[track_caller]
     pub fn transpose(&self, dimensions: [Dimension; D]) -> Tensor<T, D> {
-        // TODO: Handle error case, propagate as Dimension names to transpose to must be the same set of dimension names in the tensor
-        let transposed_order = TensorAccess::from(&self.source, dimensions);
-        let transposed_shape = transposed_order.shape();
+        let shape = self.shape();
+        let mut reordered = self.reorder(dimensions);
+        // Transposition is essentially reordering, but we retain the dimension name ordering
+        // of the original order, this means we may swap dimension lengths, but the dimensions
+        // will not change order.
+        for d in 0..D {
+            reordered.dimensions[d].0 = shape[d].0;
+        }
+        reordered
+    }
+
+    /**
+     * Returns a new Tensor which has the same data as this tensor, but with the order of the
+     * dimensions and corresponding order of data changed.
+     *
+     * For example, with a `[("x", x), ("y", y)]` tensor you could call
+     * `reorder(["y", "x"])` which would return a new tensor with a shape of
+     * `[("y", y), ("x", x)]` where every (y,x) of its data corresponds to (x,y) in the original.
+     *
+     * This method need not shift *all* the dimensions though, you could also swap the width
+     * and height of images in a tensor with a shape of
+     * `[("batch", b), ("h", h), ("w", w), ("c", c)]` via `reorder(["batch", "w", "h", "c"])`
+     * which would return a new tensor where every (b,w,h,c) of its data corresponds to (b,h,w,c)
+     * in the original.
+     *
+     * See also: [TensorAccess](TensorAccess), [transpose](TensorView::transpose)
+     *
+     * # Panics
+     *
+     * If the set of dimensions in the tensor does not match the set of dimensions provided. The
+     * order need not match (and if the order does match, this function is just an expensive
+     * clone).
+     */
+    #[track_caller]
+    pub fn reorder(&self, dimensions: [Dimension; D]) -> Tensor<T, D> {
+        let reorderd = match TensorAccess::try_from(&self.source, dimensions) {
+            Ok(reordered) => reordered,
+            Err(_error) => panic!(
+                "Dimension names provided {:?} must be the same set of dimension names in the tensor: {:?}",
+                dimensions,
+                self.shape(),
+            ),
+        };
+        let reorderd_shape = reorderd.shape();
         Tensor::from(
-            transposed_shape,
-            transposed_order.index_order_iter().collect(),
+            reorderd_shape,
+            reorderd.index_order_iter().collect(),
         )
     }
 

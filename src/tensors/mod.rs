@@ -881,20 +881,21 @@ where
         Tensor::from(dimensions, vec![value; elements])
     }
 
-    // TODO: View version
+    // TODO: View version (just a wrapper for TensorRename<TensorAccess>)
     /**
-     * Returns a new Tensor which has the same data as this tensor, but with the order of the
-     * dimensions and corresponding order of data changed.
+     * Returns a new Tensor which has the same data as this tensor, but with the order of data
+     * changed. The order of the dimension names is unchanged, although their lengths may swap.
      *
      * For example, with a `[("x", x), ("y", y)]` tensor you could call
-     * `transpose(["y", "x"])` which would return a new tensor where every (y,x) of its data
-     * corresponds to (x,y) in the original.
+     * `transpose(["y", "x"])` which would return a new tensor with a shape of
+     * `[("x", y), ("y", x)]` where every (x,y) of its data corresponds to (y,x) in the original.
      *
      * This method need not shift *all* the dimensions though, you could also swap the width
      * and height of images in a tensor with a shape of
      * `[("batch", b), ("h", h), ("w", w), ("c", c)]` via `transpose(["batch", "w", "h", "c"])`
-     * which would return a new tensor where every (b,w,h,c) of its data corresponds to (b,h,w,c)
-     * in the original.
+     * which would return a new tensor where all the images have been swapped over the diagonal.
+     *
+     * See also: [TensorAccess](TensorAccess), [reorder](Tensor::reorder)
      *
      * # Panics
      *
@@ -904,24 +905,27 @@ where
      */
     #[track_caller]
     pub fn transpose(&self, dimensions: [Dimension; D]) -> Tensor<T, D> {
-        // TODO: Handle error case, propagate as Dimension names to transpose to must be the same set of dimension names in the tensor
-        let transposed_order = TensorAccess::from(&self, dimensions);
-        let transposed_shape = transposed_order.shape();
-        Tensor::from(
-            transposed_shape,
-            transposed_order.index_order_iter().collect(),
-        )
+        let shape = self.dimensions;
+        let mut reordered = self.reorder(dimensions);
+        // Transposition is essentially reordering, but we retain the dimension name ordering
+        // of the original order, this means we may swap dimension lengths, but the dimensions
+        // will not change order.
+        for d in 0..D {
+            reordered.dimensions[d].0 = shape[d].0;
+        }
+        reordered
     }
 
     /**
-     * Modifies this tensor to have the same data as before, but with the order of the
-     * dimensions and corresponding order of data changed.
+     * Modifies this tensor to have the same data as before, but with the order of data changed.
+     * The order of the dimension names is unchanged, although their lengths may swap.
      *
      * For example, with a `[("x", x), ("y", y)]` tensor you could call
-     * `transpose_mut(["y", "x"])` which would edit the tensor so every (y,x) of its data
-     * corresponds to (x,y) before the transposition.
+     * `transpose_mut(["y", "x"])` which would edit the tensor, updating its shape to
+     * `[("x", y), ("y", x)]`, so every (x,y) of its data corresponds to (y,x) before the
+     * transposition.
      *
-     * The transposition will try to be in place, but this is currently only supported for
+     * The order swapping will try to be in place, but this is currently only supported for
      * square tensors with 2 dimensions. Other types of tensors will not be transposed in place.
      *
      * # Panics
@@ -932,15 +936,87 @@ where
      */
     #[track_caller]
     pub fn transpose_mut(&mut self, dimensions: [Dimension; D]) {
-        if crate::tensors::dimensions::has_duplicates_names(&dimensions) {
-            panic!("Dimension names must all be unique: {:?}", &dimensions);
+        let shape = self.dimensions;
+        self.reorder_mut(dimensions);
+        // Transposition is essentially reordering, but we retain the dimension name ordering
+        // we had before, this means we may swap dimension lengths, but the dimensions
+        // will not change order.
+        for d in 0..D {
+            self.dimensions[d].0 = shape[d].0;
         }
+    }
+
+    /**
+     * Returns a new Tensor which has the same data as this tensor, but with the order of the
+     * dimensions and corresponding order of data changed.
+     *
+     * For example, with a `[("x", x), ("y", y)]` tensor you could call
+     * `reorder(["y", "x"])` which would return a new tensor with a shape of
+     * `[("y", y), ("x", x)]` where every (y,x) of its data corresponds to (x,y) in the original.
+     *
+     * This method need not shift *all* the dimensions though, you could also swap the width
+     * and height of images in a tensor with a shape of
+     * `[("batch", b), ("h", h), ("w", w), ("c", c)]` via `reorder(["batch", "w", "h", "c"])`
+     * which would return a new tensor where every (b,w,h,c) of its data corresponds to (b,h,w,c)
+     * in the original.
+     *
+     * See also: [TensorAccess](TensorAccess), [transpose](Tensor::transpose)
+     *
+     * # Panics
+     *
+     * If the set of dimensions in the tensor does not match the set of dimensions provided. The
+     * order need not match (and if the order does match, this function is just an expensive
+     * clone).
+     */
+    #[track_caller]
+    pub fn reorder(&self, dimensions: [Dimension; D]) -> Tensor<T, D> {
+        let reorderd = match TensorAccess::try_from(&self, dimensions) {
+            Ok(reordered) => reordered,
+            Err(_error) => panic!(
+                "Dimension names provided {:?} must be the same set of dimension names in the tensor: {:?}",
+                dimensions,
+                &self.dimensions,
+            ),
+        };
+        let reorderd_shape = reorderd.shape();
+        Tensor::from(
+            reorderd_shape,
+            reorderd.index_order_iter().collect(),
+        )
+    }
+
+    /**
+     * Modifies this tensor to have the same data as before, but with the order of the
+     * dimensions and corresponding order of data changed.
+     *
+     * For example, with a `[("x", x), ("y", y)]` tensor you could call
+     * `reorder_mut(["y", "x"])` which would edit the tensor, updating its shape to
+     * `[("y", y), ("x", x)]`, so every (y,x) of its data corresponds to (x,y) before the
+     * transposition.
+     *
+     * The order swapping will try to be in place, but this is currently only supported for
+     * square tensors with 2 dimensions. Other types of tensors will not be reordered in place.
+     *
+     * # Panics
+     *
+     * If the set of dimensions in the tensor does not match the set of dimensions provided. The
+     * order need not match (and if the order does match, this function is just an expensive
+     * clone).
+     */
+    #[track_caller]
+    pub fn reorder_mut(&mut self, dimensions: [Dimension; D]) {
         use crate::tensors::dimensions::{
             dimension_mapping, dimension_mapping_shape, map_dimensions,
         };
         if D == 2 && crate::tensors::dimensions::is_square(&self.dimensions) {
-            // TODO: Handle error case, propagate as Dimension names to transpose to must be the same set of dimension names in the tensor
-            let dimension_mapping = dimension_mapping(&self.dimensions, &dimensions).unwrap();
+            let dimension_mapping = match dimension_mapping(&self.dimensions, &dimensions) {
+                Some(dimension_mapping) => dimension_mapping,
+                None => panic!(
+                    "Dimension names provided {:?} must be the same set of dimension names in the tensor: {:?}",
+                    dimensions,
+                    &self.dimensions,
+                ),
+            };
 
             let shape = dimension_mapping_shape(&self.dimensions, &dimension_mapping);
             let shape_iterator = ShapeIterator::from(shape);
@@ -967,11 +1043,11 @@ where
             self.dimensions = shape;
             self.strides = compute_strides(&shape);
         } else {
-            // fallback to allocating a new transposed tensor
-            let transposed = self.transpose(dimensions);
-            self.data = transposed.data;
-            self.dimensions = transposed.dimensions;
-            self.strides = transposed.strides;
+            // fallback to allocating a new reordered tensor
+            let reordered = self.reorder(dimensions);
+            self.data = reordered.data;
+            self.dimensions = reordered.dimensions;
+            self.strides = reordered.strides;
         }
     }
 
@@ -1294,103 +1370,3 @@ tensor_expand_impl!(impl Tensor 2 1);
 tensor_expand_impl!(impl Tensor 3 1);
 tensor_expand_impl!(impl Tensor 4 1);
 tensor_expand_impl!(impl Tensor 5 1);
-
-#[test]
-fn indexing_test() {
-    let tensor = Tensor::from([("x", 2), ("y", 2)], vec![1, 2, 3, 4]);
-    let xy = tensor.get(["x", "y"]);
-    let yx = tensor.get(["y", "x"]);
-    assert_eq!(xy.get([0, 0]), 1);
-    assert_eq!(xy.get([0, 1]), 2);
-    assert_eq!(xy.get([1, 0]), 3);
-    assert_eq!(xy.get([1, 1]), 4);
-    assert_eq!(yx.get([0, 0]), 1);
-    assert_eq!(yx.get([0, 1]), 3);
-    assert_eq!(yx.get([1, 0]), 2);
-    assert_eq!(yx.get([1, 1]), 4);
-}
-
-#[test]
-#[should_panic]
-fn repeated_name() {
-    Tensor::from([("x", 2), ("x", 2)], vec![1, 2, 3, 4]);
-}
-
-#[test]
-#[should_panic]
-fn wrong_size() {
-    Tensor::from([("x", 2), ("y", 3)], vec![1, 2, 3, 4]);
-}
-
-#[test]
-#[should_panic]
-fn bad_indexing() {
-    let tensor = Tensor::from([("x", 2), ("y", 2)], vec![1, 2, 3, 4]);
-    tensor.get(["x", "x"]);
-}
-
-#[test]
-fn transpose() {
-    #[rustfmt::skip]
-    let tensor = Tensor::from(
-        [("x", 3), ("y", 2)], vec![
-        0, 1,
-        2, 3,
-        4, 5
-    ]);
-    let transposed = tensor.transpose(["y", "x"]);
-    assert_eq!(transposed.data, vec![0, 2, 4, 1, 3, 5]);
-}
-
-#[test]
-#[rustfmt::skip]
-fn transpose_more_dimensions() {
-    let tensor = Tensor::from(
-        [("batch", 2), ("y", 10), ("x", 10), ("color", 1)], vec![
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
-        0, 0, 0, 1, 0, 0, 1, 0, 0, 0,
-        0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
-        0, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-        0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 1, 0, 0, 0, 1, 0,
-        0, 0, 0, 0, 0, 1, 1, 1, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
-        0, 0, 0, 1, 0, 0, 1, 0, 0, 0,
-        0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
-        0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
-        0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
-        0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
-        0, 0, 0, 1, 0, 0, 1, 0, 0, 0,
-        0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ]);
-    let transposed = tensor.transpose(["batch", "x", "y", "color"]);
-    assert_eq!(transposed.data, vec![
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
-        0, 0, 0, 1, 1, 1, 0, 0, 0, 0,
-        0, 0, 1, 0, 1, 0, 1, 0, 0, 0,
-        0, 1, 0, 0, 1, 0, 0, 1, 0, 0,
-        0, 1, 0, 0, 1, 0, 0, 0, 1, 0,
-        0, 0, 1, 0, 1, 0, 0, 0, 1, 0,
-        0, 0, 0, 1, 1, 0, 0, 0, 1, 0,
-        0, 0, 0, 0, 1, 0, 0, 1, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 1, 1, 1, 1, 0, 0, 0,
-        0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
-        0, 1, 0, 0, 0, 0, 0, 0, 1, 0,
-        0, 1, 0, 0, 0, 0, 0, 0, 1, 0,
-        0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
-        0, 0, 0, 1, 1, 1, 1, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ]);
-}
