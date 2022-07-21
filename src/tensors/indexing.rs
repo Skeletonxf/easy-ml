@@ -48,7 +48,9 @@ pub use crate::matrices::iterators::WithIndex;
 // to avoid needing no op dimension mappings when mapping a Tensor/TensorView
 
 /**
- * Access to the data in a Tensor with a particular order of dimension indexing.
+ * Access to the data in a Tensor with a particular order of dimension indexing. The order
+ * affects the shape of the TensorAccess as well as the order of indexes you supply to read
+ * or write values to the tensor.
  *
  * See the [module level documentation](crate::tensors::indexing) for more information.
  */
@@ -63,7 +65,14 @@ impl<T, S, const D: usize> TensorAccess<T, S, D>
 where
     S: TensorRef<T, D>,
 {
-    // TODO: Docs
+    /**
+     * Creates a TensorAccess which can be indexed in the order of the supplied dimensions
+     * to read or write values from this tensor.
+     *
+     * # Panics
+     *
+     * If the set of dimensions supplied do not match the set of dimensions in this tensor's shape.
+     */
     #[track_caller]
     pub fn from(source: S, dimensions: [Dimension; D]) -> TensorAccess<T, S, D> {
         match TensorAccess::try_from(source, dimensions) {
@@ -72,7 +81,13 @@ where
         }
     }
 
-    // TODO: Docs
+    /**
+     * Creates a TensorAccess which can be indexed in the order of the supplied dimensions
+     * to read or write values from this tensor.
+     *
+     * Returns Err if the set of dimensions supplied do not match the set of dimensions in this
+     * tensor's shape.
+     */
     pub fn try_from(
         source: S,
         dimensions: [Dimension; D],
@@ -92,10 +107,10 @@ where
     }
 
     /**
-     * Creates a TensorAccess which maps each dimension name to an index in the order
-     * of the dimensions reported by [`view_shape()`](TensorRef::view_shape).
+     * Creates a TensorAccess which is indexed in the same order as the dimensions of
+     * the tensor it is created from.
      *
-     * Hence if you create a TensorAccess directly from a Tensor, then use `from_source_order`,
+     * Hence if you create a TensorAccess directly from a Tensor by `from_source_order`
      * this uses the order the dimensions were laid out in memory with.
      *
      * ```
@@ -125,6 +140,10 @@ where
         }
     }
 
+    /**
+     * The shape this TensorAccess has with the dimensions in the order the TensorAccess
+     * was created with, not necessarily the same order as in the underlying tensor.
+     */
     pub fn shape(&self) -> [(Dimension, usize); D] {
         crate::tensors::dimensions::dimension_mapping_shape(
             &self.source.view_shape(),
@@ -273,6 +292,10 @@ where
     /**
      * Creates and returns a new tensor with all values from the original with the
      * function applied to each.
+     *
+     * Note: mapping methods are defind on [Tensor](Tensor) and [TensorView](TensorView) directly
+     * so you don't need to create a TensorAccess unless you want to do the mapping with a
+     * different dimension order.
      */
     pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Tensor<U, D> {
         let mapped = self.index_order_iter().map(mapping_function).collect();
@@ -285,6 +308,10 @@ where
      * function always increment the rightmost index, starting at all 0s, using the dimension
      * order that the TensorAccess is indexed by, not neccessarily the index order the
      * original source uses.
+     *
+     * Note: mapping methods are defind on [Tensor](Tensor) and [TensorView](TensorView) directly
+     * so you don't need to create a TensorAccess unless you want to do the mapping with a
+     * different dimension order.
      */
     pub fn map_with_index<U>(&self, mapping_function: impl Fn([usize; D], T) -> U) -> Tensor<U, D> {
         let mapped = self

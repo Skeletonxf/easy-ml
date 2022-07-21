@@ -1091,7 +1091,13 @@ where
      * the index of each value mapped by a function.
      */
     pub fn map_with_index<U>(&self, mapping_function: impl Fn([usize; D], T) -> U) -> Tensor<U, D> {
-        self.source_order().map_with_index(mapping_function)
+        let mapped = self
+            .index_order_iter()
+            .with_index()
+            .map(|(i, x)| mapping_function(i, x))
+            .collect();
+        // We're not changing the shape of the Tensor, so don't need to revalidate
+        Tensor::direct_from(mapped, self.dimensions, self.strides)
     }
 
     /**
@@ -1109,7 +1115,10 @@ where
      * the tensor in place.
      */
     pub fn map_mut_with_index(&mut self, mapping_function: impl Fn([usize; D], T) -> T) {
-        self.source_order_mut().map_mut_with_index(mapping_function);
+        self
+            .index_order_reference_mut_iter()
+            .with_index()
+            .for_each(|(i, x)| *x = mapping_function(i, x.clone()));
     }
 
     /**
