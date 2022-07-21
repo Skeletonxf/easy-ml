@@ -401,7 +401,7 @@ impl<'a, T: Clone, S: MatrixRef<T>> ColumnMajorIterator<'a, T, S> {
     }
 
     /**
-     * Constructors an iterator which also yields the row and column index of each element in
+     * Constructs an iterator which also yields the row and column index of each element in
      * this iterator.
      */
     pub fn with_index(self) -> WithIndex<Self> {
@@ -561,7 +561,7 @@ impl<'a, T: Clone, S: MatrixRef<T>> RowMajorIterator<'a, T, S> {
     }
 
     /**
-     * Constructors an iterator which also yields the row and column index of each element in
+     * Constructs an iterator which also yields the row and column index of each element in
      * this iterator.
      */
     pub fn with_index(self) -> WithIndex<Self> {
@@ -830,7 +830,7 @@ impl<'a, T, S: MatrixRef<T>> ColumnMajorReferenceIterator<'a, T, S> {
     }
 
     /**
-     * Constructors an iterator which also yields the row and column index of each element in
+     * Constructs an iterator which also yields the row and column index of each element in
      * this iterator.
      */
     pub fn with_index(self) -> WithIndex<Self> {
@@ -933,7 +933,7 @@ impl<'a, T, S: MatrixRef<T>> RowMajorReferenceIterator<'a, T, S> {
     }
 
     /**
-     * Constructors an iterator which also yields the row and column index of each element in
+     * Constructs an iterator which also yields the row and column index of each element in
      * this iterator.
      */
     pub fn with_index(self) -> WithIndex<Self> {
@@ -1167,7 +1167,7 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ColumnMajorReferenceMutItera
     }
 
     /**
-     * Constructors an iterator which also yields the row and column index of each element in
+     * Constructs an iterator which also yields the row and column index of each element in
      * this iterator.
      */
     pub fn with_index(self) -> WithIndex<Self> {
@@ -1284,7 +1284,7 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> RowMajorReferenceMutIterator
     }
 
     /**
-     * Constructors an iterator which also yields the row and column index of each element in
+     * Constructs an iterator which also yields the row and column index of each element in
      * this iterator.
      */
     pub fn with_index(self) -> WithIndex<Self> {

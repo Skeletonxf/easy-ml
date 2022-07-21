@@ -46,7 +46,7 @@ mod linear_algebra {
     #[test]
     fn check_determinant_2_by_2_tensor() {
         let tensor = Tensor::from([("x", 2), ("y", 2)], vec![1.0, 2.0, 3.0, 4.0]);
-        let x_y = tensor.source_order();
+        let x_y = tensor.index();
         let a = x_y.get([0, 0]);
         let b = x_y.get([0, 1]);
         let c = x_y.get([1, 0]);
@@ -68,7 +68,7 @@ mod linear_algebra {
             3.0,  4.0, -5.0,
             5.0, -2.0,  3.0
         ]);
-        let x_y = tensor.source_order();
+        let x_y = tensor.index();
 
         let determinant = 0.0 + (x_y.get([0, 0]) * x_y.get([1, 1]) * x_y.get([2, 2]))
             - (x_y.get([0, 0]) * x_y.get([1, 2]) * x_y.get([2, 1]))
@@ -92,7 +92,7 @@ mod linear_algebra {
     fn inverse_1_by_1_tensor() {
         let matrix = Tensor::from([("r", 1), ("c", 1)], vec![3.0]);
         let inverse = linear_algebra::inverse_tensor::<f32, _, _>(&matrix).unwrap();
-        let absolute_difference = (inverse.index_order_iter().next().unwrap() - (1.0 / 3.0)).abs();
+        let absolute_difference = (inverse.iter().next().unwrap() - (1.0 / 3.0)).abs();
         assert!(absolute_difference <= std::f32::EPSILON);
     }
 
@@ -125,7 +125,7 @@ mod linear_algebra {
         let inverse = matrix.inverse().unwrap();
         // we use the example from https://www.mathsisfun.com/algebra/matrix-inverse.html
         let answer = Tensor::from([("row", 2), ("column", 2)], vec![0.6, -0.7, -0.2, 0.4]);
-        for (expected, actual) in answer.index_order_iter().zip(inverse.index_order_iter()) {
+        for (expected, actual) in answer.iter().zip(inverse.iter()) {
             let absolute_difference: f32 = actual - expected;
             assert!(absolute_difference.abs() <= std::f32::EPSILON);
         }
@@ -133,7 +133,7 @@ mod linear_algebra {
         let identity = &matrix * &inverse;
         let also_identity = Tensor::from([("row", 2), ("column", 2)], vec![1.0, 0.0, 0.0, 1.0]);
         assert_eq!(identity.shape(), also_identity.shape());
-        for (x, y) in identity.index_order_iter().zip(also_identity.index_order_iter()) {
+        for (x, y) in identity.iter().zip(also_identity.iter()) {
             assert!((x - y).abs() <= std::f32::EPSILON);
         }
     }

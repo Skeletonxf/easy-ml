@@ -10,7 +10,7 @@
 use crate::linear_algebra;
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::{
-    IndexOrderIterator, IndexOrderReferenceIterator, IndexOrderReferenceMutIterator, ShapeIterator,
+    TensorIterator, TensorReferenceIterator, TensorReferenceMutIterator, ShapeIterator,
     TensorAccess,
 };
 use crate::tensors::views::{
@@ -413,7 +413,7 @@ impl<T, const D: usize> Tensor<T, D> {
      * If the set of dimensions supplied do not match the set of dimensions in this tensor's shape.
      */
     #[track_caller]
-    pub fn get(&self, dimensions: [Dimension; D]) -> TensorAccess<T, &Tensor<T, D>, D> {
+    pub fn index_by(&self, dimensions: [Dimension; D]) -> TensorAccess<T, &Tensor<T, D>, D> {
         TensorAccess::from(self, dimensions)
     }
 
@@ -426,7 +426,7 @@ impl<T, const D: usize> Tensor<T, D> {
      * If the set of dimensions supplied do not match the set of dimensions in this tensor's shape.
      */
     #[track_caller]
-    pub fn get_mut(&mut self, dimensions: [Dimension; D]) -> TensorAccess<T, &mut Tensor<T, D>, D> {
+    pub fn index_by_mut(&mut self, dimensions: [Dimension; D]) -> TensorAccess<T, &mut Tensor<T, D>, D> {
         TensorAccess::from(self, dimensions)
     }
 
@@ -439,7 +439,7 @@ impl<T, const D: usize> Tensor<T, D> {
      * If the set of dimensions supplied do not match the set of dimensions in this tensor's shape.
      */
     #[track_caller]
-    pub fn get_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, Tensor<T, D>, D> {
+    pub fn index_by_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, Tensor<T, D>, D> {
         TensorAccess::from(self, dimensions)
     }
 
@@ -447,7 +447,7 @@ impl<T, const D: usize> Tensor<T, D> {
      * Creates a TensorAccess which will index into the dimensions this Tensor was created with
      * in the same order as they were provided. See [TensorAccess::from_source_order].
      */
-    pub fn source_order(&self) -> TensorAccess<T, &Tensor<T, D>, D> {
+    pub fn index(&self) -> TensorAccess<T, &Tensor<T, D>, D> {
         TensorAccess::from_source_order(self)
     }
 
@@ -456,7 +456,7 @@ impl<T, const D: usize> Tensor<T, D> {
      * created with in the same order as they were provided. The TensorAccess mutably borrows
      * the Tensor, and can therefore mutate it. See [TensorAccess::from_source_order].
      */
-    pub fn source_order_mut(&mut self) -> TensorAccess<T, &mut Tensor<T, D>, D> {
+    pub fn index_mut(&mut self) -> TensorAccess<T, &mut Tensor<T, D>, D> {
         TensorAccess::from_source_order(self)
     }
 
@@ -465,29 +465,29 @@ impl<T, const D: usize> Tensor<T, D> {
      * created with in the same order as they were provided. The TensorAccess takes ownership
      * of the Tensor, and can therefore mutate it. See [TensorAccess::from_source_order].
      */
-    pub fn source_order_owned(self) -> TensorAccess<T, Tensor<T, D>, D> {
+    pub fn index_owned(self) -> TensorAccess<T, Tensor<T, D>, D> {
         TensorAccess::from_source_order(self)
     }
 
     /**
      * Returns an iterator over references to the data in this Tensor.
      */
-    pub fn index_order_reference_iter(&self) -> IndexOrderReferenceIterator<T, Tensor<T, D>, D> {
-        IndexOrderReferenceIterator::from(self)
+    pub fn iter_reference(&self) -> TensorReferenceIterator<T, Tensor<T, D>, D> {
+        TensorReferenceIterator::from(self)
     }
 
     /**
      * Returns an iterator over mutable references to the data in this Tensor.
      */
-    pub fn index_order_reference_mut_iter(
+    pub fn iter_reference_mut(
         &mut self,
-    ) -> IndexOrderReferenceMutIterator<T, Tensor<T, D>, D> {
-        IndexOrderReferenceMutIterator::from(self)
+    ) -> TensorReferenceMutIterator<T, Tensor<T, D>, D> {
+        TensorReferenceMutIterator::from(self)
     }
 
     // Non public index order reference iterator since we don't want to expose our implementation
     // details to public API since then we could never change them.
-    pub(crate) fn direct_index_order_reference_iter(&self) -> std::slice::Iter<T> {
+    pub(crate) fn direct_iter_reference(&self) -> std::slice::Iter<T> {
         self.data.iter()
     }
 
@@ -825,8 +825,8 @@ impl<T, const D: usize> Tensor<T, D> {
             );
         }
         let mapped = self
-            .direct_index_order_reference_iter()
-            .zip(rhs.index_order_reference_iter())
+            .direct_iter_reference()
+            .zip(rhs.iter_reference())
             .map(|(x, y)| mapping_function(x, y))
             .collect();
         // We're not changing the shape of the Tensor, so don't need to revalidate
@@ -853,8 +853,8 @@ impl<T, const D: usize> Tensor<T, D> {
         // we just checked both shapes were the same, so we don't need to propagate indexes
         // for both tensors because they'll be identical
         let mapped = self
-            .direct_index_order_reference_iter()
-            .zip(rhs.index_order_reference_iter().with_index())
+            .direct_iter_reference()
+            .zip(rhs.iter_reference().with_index())
             .map(|(x, (i, y))| mapping_function(i, x, y))
             .collect();
         // We're not changing the shape of the Tensor, so don't need to revalidate
@@ -981,7 +981,7 @@ where
         let reorderd_shape = reorderd.shape();
         Tensor::from(
             reorderd_shape,
-            reorderd.index_order_iter().collect(),
+            reorderd.iter().collect(),
         )
     }
 
@@ -1054,8 +1054,8 @@ where
     /**
      * Returns an iterator over copes of the data in this Tensor.
      */
-    pub fn index_order_iter(&self) -> IndexOrderIterator<T, Tensor<T, D>, D> {
-        IndexOrderIterator::from(self)
+    pub fn iter(&self) -> TensorIterator<T, Tensor<T, D>, D> {
+        TensorIterator::from(self)
     }
 
     /**
@@ -1092,7 +1092,7 @@ where
      */
     pub fn map_with_index<U>(&self, mapping_function: impl Fn([usize; D], T) -> U) -> Tensor<U, D> {
         let mapped = self
-            .index_order_iter()
+            .iter()
             .with_index()
             .map(|(i, x)| mapping_function(i, x))
             .collect();
@@ -1116,7 +1116,7 @@ where
      */
     pub fn map_mut_with_index(&mut self, mapping_function: impl Fn([usize; D], T) -> T) {
         self
-            .index_order_reference_mut_iter()
+            .iter_reference_mut()
             .with_index()
             .for_each(|(i, x)| *x = mapping_function(i, x.clone()));
     }

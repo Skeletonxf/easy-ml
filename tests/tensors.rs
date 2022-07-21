@@ -7,8 +7,8 @@ mod tensors {
     #[test]
     fn indexing_test() {
         let tensor = Tensor::from([("x", 2), ("y", 2)], vec![1, 2, 3, 4]);
-        let xy = tensor.get(["x", "y"]);
-        let yx = tensor.get(["y", "x"]);
+        let xy = tensor.index_by(["x", "y"]);
+        let yx = tensor.index_by(["y", "x"]);
         assert_eq!(xy.get([0, 0]), 1);
         assert_eq!(xy.get([0, 1]), 2);
         assert_eq!(xy.get([1, 0]), 3);
@@ -35,7 +35,7 @@ mod tensors {
     #[should_panic]
     fn bad_indexing() {
         let tensor = Tensor::from([("x", 2), ("y", 2)], vec![1, 2, 3, 4]);
-        tensor.get(["x", "x"]);
+        tensor.index_by(["x", "x"]);
     }
 
     #[test]
@@ -102,7 +102,7 @@ mod tensors {
             3, 4,
             5, 6
         ]);
-        let mut row_column_iterator = tensor.index_order_reference_iter();
+        let mut row_column_iterator = tensor.iter_reference();
         assert_eq!(row_column_iterator.next(), Some(&1));
         assert_eq!(row_column_iterator.next(), Some(&2));
         assert_eq!(row_column_iterator.next(), Some(&3));
@@ -120,8 +120,8 @@ mod tensors {
             3, 4,
             5, 6
         ]);
-        let row_column = tensor.source_order();
-        let mut iterator = row_column.index_order_reference_iter().with_index();
+        let row_column = tensor.index();
+        let mut iterator = row_column.iter_reference().with_index();
         assert_eq!(iterator.next(), Some(([0, 0], &1)));
         assert_eq!(iterator.next(), Some(([0, 1], &2)));
         assert_eq!(iterator.next(), Some(([1, 0], &3)));

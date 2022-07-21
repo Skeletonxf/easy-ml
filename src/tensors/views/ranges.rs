@@ -752,7 +752,7 @@ where
 
 #[test]
 #[rustfmt::skip]
-fn test_constructors() {
+fn test_Constructs() {
     use crate::tensors::Tensor;
     use crate::tensors::views::TensorView;
     let tensor = Tensor::from([("rows", 3), ("columns", 3)], (0..9).collect());

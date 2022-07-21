@@ -26,7 +26,7 @@ use std::marker::PhantomData;
  * // We can always unwrap here because we know a 2x4 matrix is a valid input
  * let tensor_view = TensorView::from(TensorRefMatrix::from(&matrix).unwrap());
  * assert_eq!(
- *     matrix.row_iter(1).eq(tensor_view.select([("row", 1)]).index_order_iter()),
+ *     matrix.row_iter(1).eq(tensor_view.select([("row", 1)]).iter()),
  *     true
  * );
  * ```
@@ -190,7 +190,7 @@ where
  * ]);
  * let matrix_view = MatrixView::from(MatrixRefTensor::from(&tensor));
  * assert_eq!(
- *     matrix_view.row_iter(1).eq(tensor.select([("row", 1)]).index_order_iter()),
+ *     matrix_view.row_iter(1).eq(tensor.select([("row", 1)]).iter()),
  *     true
  * );
  * ```

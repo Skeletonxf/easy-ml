@@ -180,7 +180,7 @@ where
     // inverse of a 1 x 1 matrix is a special case
     if shape[0].1 == 1 {
         // determinant of a 1 x 1 matrix is the single element
-        let element = tensor.index_order_iter().next().expect("1x1 tensor must have a single element");
+        let element = tensor.iter().next().expect("1x1 tensor must have a single element");
         if element == T::zero() {
             return None;
         }
@@ -195,7 +195,7 @@ where
             }
             let determinant_reciprocal = T::one() / det;
             let mut cofactor_matrix = Tensor::empty(shape, T::zero());
-            for ([i, j], x) in cofactor_matrix.index_order_reference_mut_iter().with_index() {
+            for ([i, j], x) in cofactor_matrix.iter_reference_mut().with_index() {
                 // this should always return Some due to the earlier checks
                 let ij_minor = minor_tensor::<T, _>(&tensor, i, j)?;
                 // i and j may each be up to the maximum value for usize but
@@ -416,7 +416,7 @@ where
         return None;
     }
 
-    let matrix = tensor.source_order();
+    let matrix = tensor.index();
 
     if length == 1 {
         return Some(matrix.get([0, 0]));
@@ -730,7 +730,7 @@ where
  * ]);
  * let covariance_matrix = matrix.covariance("features");
  * let (x, y, z) = (0, 1, 2);
- * let x_y_z = covariance_matrix.source_order();
+ * let x_y_z = covariance_matrix.index();
  * // the variance of each feature with itself is positive
  * assert!(x_y_z.get([x, x]) > 0.0);
  * assert!(x_y_z.get([y, y]) > 0.0);
@@ -788,22 +788,22 @@ where
         // set each element of the covariance matrix to the variance of features i and j
         let feature_i_mean: T = tensor
             .select([(feature_dimension, i)])
-            .index_order_iter()
+            .iter()
             .sum::<T>()
             / &samples;
         let feature_j_mean: T = tensor
             .select([(feature_dimension, j)])
-            .index_order_iter()
+            .iter()
             .sum::<T>()
             / &samples;
         tensor
             .select([(feature_dimension, i)])
-            .index_order_reference_iter()
+            .iter_reference()
             .map(|x| x - &feature_i_mean)
             .zip(
                 tensor
                     .select([(feature_dimension, j)])
-                    .index_order_reference_iter()
+                    .iter_reference()
                     .map(|y| y - &feature_j_mean),
             )
             .map(|(x, y)| x * y)

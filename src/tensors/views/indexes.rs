@@ -13,8 +13,8 @@ use std::marker::PhantomData;
 * let vector = Tensor::from([("a", 2)], vec![ 16, 8 ]);
 * let scalar = vector.select([("a", 0)]);
 * let also_scalar = TensorView::from(TensorIndex::from(&vector, [("a", 0)]));
-* assert_eq!(scalar.get([]).get([]), also_scalar.get([]).get([]));
-* assert_eq!(scalar.get([]).get([]), 16);
+* assert_eq!(scalar.index_by([]).get([]), also_scalar.index_by([]).get([]));
+* assert_eq!(scalar.index_by([]).get([]), 16);
 * ```
 *
 * Note: due to limitations in Rust's const generics support, TensorIndex only implements TensorRef
@@ -515,5 +515,5 @@ fn dimensionality_reduction_invalid_extra_index() {
     let tensor = Tensor::from([("a", 2), ("b", 2), ("d", 2)], (0..8).collect());
     let tensor = TensorView::from(TensorExpansion::from(&tensor, [(2, "c")]));
     assert_eq!(tensor.shape(), [("a", 2), ("b", 2), ("c", 1), ("d", 2)]);
-    tensor.source_order().get_reference([2, 2, 2, 2]);
+    tensor.index().get_reference([2, 2, 2, 2]);
 }

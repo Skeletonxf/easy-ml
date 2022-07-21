@@ -122,7 +122,7 @@ where
             let columns = shape[n - 1].1;
             let last_index = shape.map(|(_, l)| l - 1);
             for (index, value) in TensorAccess::from_source_order(view)
-                .index_order_reference_iter()
+                .iter_reference()
                 .with_index()
             {
                 let row = index[n - 2];

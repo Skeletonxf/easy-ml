@@ -23,8 +23,8 @@
  * so adding a `[("batch", 2000), ("width", 100), ("height", 100), ("rgb", 3)]` shaped tensor
  * to a `[("batch", 2000), ("height", 100), ("width", 100), ("rgb", 3)]` will fail unless you
  * reorder one first, and you could access an element as
- * `tensor.get(["batch", "width", "height", "rgb"]).get([1999, 0, 99, 3])` or
- * `tensor.get(["batch", "height", "width", "rgb"]).get([1999, 99, 0, 3])` and read the same data,
+ * `tensor.index_by(["batch", "width", "height", "rgb"]).get([1999, 0, 99, 3])` or
+ * `tensor.index_by(["batch", "height", "width", "rgb"]).get([1999, 99, 0, 3])` and read the same data,
  * because you index into dimensions based on their name, not just the order they are stored in
  * memory.
  *
@@ -123,9 +123,9 @@ where
      *     5, 6,
      *     7, 8
      * ]);
-     * let xyz = tensor.get(["x", "y", "z"]);
+     * let xyz = tensor.index_by(["x", "y", "z"]);
      * let also_xyz = TensorAccess::from_source_order(&tensor);
-     * let also_xyz = tensor.source_order();
+     * let also_xyz = tensor.index();
      * ```
      */
     pub fn from_source_order(source: S) -> TensorAccess<T, S, D> {
@@ -259,10 +259,10 @@ where
      * Returns an iterator over references to the data in this TensorAccess, in the order of
      * the TensorAccess shape.
      */
-    pub fn index_order_reference_iter(
+    pub fn iter_reference(
         &self,
-    ) -> IndexOrderReferenceIterator<T, TensorAccess<T, S, D>, D> {
-        IndexOrderReferenceIterator::from(self)
+    ) -> TensorReferenceIterator<T, TensorAccess<T, S, D>, D> {
+        TensorReferenceIterator::from(self)
     }
 }
 
@@ -293,12 +293,12 @@ where
      * Creates and returns a new tensor with all values from the original with the
      * function applied to each.
      *
-     * Note: mapping methods are defind on [Tensor](Tensor) and [TensorView](TensorView) directly
-     * so you don't need to create a TensorAccess unless you want to do the mapping with a
-     * different dimension order.
+     * Note: mapping methods are defind on [Tensor](Tensor) and
+     * [TensorView](crate::tensors::views::TensorView) directly so you don't need to create a
+     * TensorAccess unless you want to do the mapping with a different dimension order.
      */
     pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Tensor<U, D> {
-        let mapped = self.index_order_iter().map(mapping_function).collect();
+        let mapped = self.iter().map(mapping_function).collect();
         Tensor::from(self.shape(), mapped)
     }
 
@@ -309,13 +309,13 @@ where
      * order that the TensorAccess is indexed by, not neccessarily the index order the
      * original source uses.
      *
-     * Note: mapping methods are defind on [Tensor](Tensor) and [TensorView](TensorView) directly
-     * so you don't need to create a TensorAccess unless you want to do the mapping with a
-     * different dimension order.
+     * Note: mapping methods are defind on [Tensor](Tensor) and
+     * [TensorView](crate::tensors::views::TensorView) directly so you don't need to create a
+     * TensorAccess unless you want to do the mapping with a different dimension order.
      */
     pub fn map_with_index<U>(&self, mapping_function: impl Fn([usize; D], T) -> U) -> Tensor<U, D> {
         let mapped = self
-            .index_order_iter()
+            .iter()
             .with_index()
             .map(|(i, x)| mapping_function(i, x))
             .collect();
@@ -326,8 +326,8 @@ where
      * Returns an iterator over copies of the data in this TensorAccess, in the order of
      * the TensorAccess shape.
      */
-    pub fn index_order_iter(&self) -> IndexOrderIterator<T, TensorAccess<T, S, D>, D> {
-        IndexOrderIterator::from(self)
+    pub fn iter(&self) -> TensorIterator<T, TensorAccess<T, S, D>, D> {
+        TensorIterator::from(self)
     }
 }
 
@@ -389,10 +389,10 @@ where
      * Returns an iterator over mutable references to the data in this TensorAccess, in the order
      * of the TensorAccess shape.
      */
-    pub fn index_order_reference_mut_iter(
+    pub fn iter_reference_mut(
         &mut self,
-    ) -> IndexOrderReferenceMutIterator<T, TensorAccess<T, S, D>, D> {
-        IndexOrderReferenceMutIterator::from(self)
+    ) -> TensorReferenceMutIterator<T, TensorAccess<T, S, D>, D> {
+        TensorReferenceMutIterator::from(self)
     }
 }
 
@@ -406,7 +406,7 @@ where
      * the tensor in place.
      */
     pub fn map_mut(&mut self, mapping_function: impl Fn(T) -> T) {
-        self.index_order_reference_mut_iter()
+        self.iter_reference_mut()
             .for_each(|x| *x = mapping_function(x.clone()));
     }
 
@@ -417,7 +417,7 @@ where
      * TensorAccess is indexed by, not neccessarily the index order the original source uses.
      */
     pub fn map_mut_with_index(&mut self, mapping_function: impl Fn([usize; D], T) -> T) {
-        self.index_order_reference_mut_iter()
+        self.iter_reference_mut()
             .with_index()
             .for_each(|(i, x)| *x = mapping_function(i, x.clone()));
     }
@@ -518,12 +518,12 @@ impl<const D: usize> Iterator for ShapeIterator<D> {
     type Item = [usize; D];
 
     fn next(&mut self) -> Option<Self::Item> {
-        index_order_iter(&mut self.finished, &mut self.indexes, &self.shape)
+        iter(&mut self.finished, &mut self.indexes, &self.shape)
     }
 }
 
 // Common index order iterator logic
-fn index_order_iter<const D: usize>(
+fn iter<const D: usize>(
     finished: &mut bool,
     indexes: &mut [usize; D],
     shape: &[(Dimension, usize); D],
@@ -588,68 +588,68 @@ fn index_order_iter<const D: usize>(
  *     3,
  *     4
  * ]);
- * let tensor_access_0 = tensor_0.get([]);
- * let tensor_access_1 = tensor_1.get(["a"]);
- * let tensor_access_2 = tensor_2.get(["a", "b"]);
- * let tensor_access_2_rev = tensor_2.get(["b", "a"]);
- * let tensor_access_3 = tensor_3.get(["a", "b", "c"]);
- * let tensor_access_3_rev = tensor_3.get(["c", "b", "a"]);
+ * let tensor_access_0 = tensor_0.index_by([]);
+ * let tensor_access_1 = tensor_1.index_by(["a"]);
+ * let tensor_access_2 = tensor_2.index_by(["a", "b"]);
+ * let tensor_access_2_rev = tensor_2.index_by(["b", "a"]);
+ * let tensor_access_3 = tensor_3.index_by(["a", "b", "c"]);
+ * let tensor_access_3_rev = tensor_3.index_by(["c", "b", "a"]);
  * assert_eq!(
- *     tensor_0.index_order_iter().collect::<Vec<i32>>(),
+ *     tensor_0.iter().collect::<Vec<i32>>(),
  *     vec![1]
  * );
  * assert_eq!(
- *     tensor_access_0.index_order_iter().collect::<Vec<i32>>(),
+ *     tensor_access_0.iter().collect::<Vec<i32>>(),
  *     vec![1]
  * );
  * assert_eq!(
- *     tensor_1.index_order_iter().collect::<Vec<i32>>(),
+ *     tensor_1.iter().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4, 5, 6, 7]
  * );
  * assert_eq!(
- *     tensor_access_1.index_order_iter().collect::<Vec<i32>>(),
+ *     tensor_access_1.iter().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4, 5, 6, 7]
  * );
  * assert_eq!(
- *     tensor_2.index_order_iter().collect::<Vec<i32>>(),
+ *     tensor_2.iter().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4, 5, 6]
  * );
  * assert_eq!(
- *     tensor_access_2.index_order_iter().collect::<Vec<i32>>(),
+ *     tensor_access_2.iter().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4, 5, 6]
  * );
  * assert_eq!(
- *     tensor_access_2_rev.index_order_iter().collect::<Vec<i32>>(),
+ *     tensor_access_2_rev.iter().collect::<Vec<i32>>(),
  *     vec![1, 4, 2, 5, 3, 6]
  * );
  * assert_eq!(
- *     tensor_3.index_order_iter().collect::<Vec<i32>>(),
+ *     tensor_3.iter().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4]
  * );
  * assert_eq!(
- *     tensor_access_3.index_order_iter().collect::<Vec<i32>>(),
+ *     tensor_access_3.iter().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4]
  * );
  * assert_eq!(
- *     tensor_access_3_rev.index_order_iter().collect::<Vec<i32>>(),
+ *     tensor_access_3_rev.iter().collect::<Vec<i32>>(),
  *     vec![1, 3, 2, 4]
  * );
  * ```
  */
 #[derive(Debug)]
-pub struct IndexOrderIterator<'a, T, S, const D: usize> {
+pub struct TensorIterator<'a, T, S, const D: usize> {
     shape_iterator: ShapeIterator<D>,
     source: &'a S,
     _type: PhantomData<T>,
 }
 
-impl<'a, T, S, const D: usize> IndexOrderIterator<'a, T, S, D>
+impl<'a, T, S, const D: usize> TensorIterator<'a, T, S, D>
 where
     T: Clone,
     S: TensorRef<T, D>,
 {
-    pub fn from(source: &S) -> IndexOrderIterator<T, S, D> {
-        IndexOrderIterator {
+    pub fn from(source: &S) -> TensorIterator<T, S, D> {
+        TensorIterator {
             shape_iterator: ShapeIterator::from(source.view_shape()),
             source,
             _type: PhantomData,
@@ -657,7 +657,7 @@ where
     }
 
     /**
-     * Constructors an iterator which also yields the indexes of each element in
+     * Constructs an iterator which also yields the indexes of each element in
      * this iterator.
      */
     pub fn with_index(self) -> WithIndex<Self> {
@@ -665,7 +665,7 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> Iterator for IndexOrderIterator<'a, T, S, D>
+impl<'a, T, S, const D: usize> Iterator for TensorIterator<'a, T, S, D>
 where
     T: Clone,
     S: TensorRef<T, D>,
@@ -679,7 +679,7 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> Iterator for WithIndex<IndexOrderIterator<'a, T, S, D>>
+impl<'a, T, S, const D: usize> Iterator for WithIndex<TensorIterator<'a, T, S, D>>
 where
     T: Clone,
     S: TensorRef<T, D>,
@@ -722,67 +722,67 @@ where
  *     3,
  *     4
  * ]);
- * let tensor_access_0 = tensor_0.get([]);
- * let tensor_access_1 = tensor_1.get(["a"]);
- * let tensor_access_2 = tensor_2.get(["a", "b"]);
- * let tensor_access_2_rev = tensor_2.get(["b", "a"]);
- * let tensor_access_3 = tensor_3.get(["a", "b", "c"]);
- * let tensor_access_3_rev = tensor_3.get(["c", "b", "a"]);
+ * let tensor_access_0 = tensor_0.index_by([]);
+ * let tensor_access_1 = tensor_1.index_by(["a"]);
+ * let tensor_access_2 = tensor_2.index_by(["a", "b"]);
+ * let tensor_access_2_rev = tensor_2.index_by(["b", "a"]);
+ * let tensor_access_3 = tensor_3.index_by(["a", "b", "c"]);
+ * let tensor_access_3_rev = tensor_3.index_by(["c", "b", "a"]);
  * assert_eq!(
- *     tensor_0.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     tensor_0.iter_reference().cloned().collect::<Vec<i32>>(),
  *     vec![1]
  * );
  * assert_eq!(
- *     tensor_access_0.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     tensor_access_0.iter_reference().cloned().collect::<Vec<i32>>(),
  *     vec![1]
  * );
  * assert_eq!(
- *     tensor_1.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     tensor_1.iter_reference().cloned().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4, 5, 6, 7]
  * );
  * assert_eq!(
- *     tensor_access_1.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     tensor_access_1.iter_reference().cloned().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4, 5, 6, 7]
  * );
  * assert_eq!(
- *     tensor_2.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     tensor_2.iter_reference().cloned().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4, 5, 6]
  * );
  * assert_eq!(
- *     tensor_access_2.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     tensor_access_2.iter_reference().cloned().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4, 5, 6]
  * );
  * assert_eq!(
- *     tensor_access_2_rev.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     tensor_access_2_rev.iter_reference().cloned().collect::<Vec<i32>>(),
  *     vec![1, 4, 2, 5, 3, 6]
  * );
  * assert_eq!(
- *     tensor_3.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     tensor_3.iter_reference().cloned().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4]
  * );
  * assert_eq!(
- *     tensor_access_3.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     tensor_access_3.iter_reference().cloned().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4]
  * );
  * assert_eq!(
- *     tensor_access_3_rev.index_order_reference_iter().cloned().collect::<Vec<i32>>(),
+ *     tensor_access_3_rev.iter_reference().cloned().collect::<Vec<i32>>(),
  *     vec![1, 3, 2, 4]
  * );
  * ```
  */
 #[derive(Debug)]
-pub struct IndexOrderReferenceIterator<'a, T, S, const D: usize> {
+pub struct TensorReferenceIterator<'a, T, S, const D: usize> {
     shape_iterator: ShapeIterator<D>,
     source: &'a S,
     _type: PhantomData<&'a T>,
 }
 
-impl<'a, T, S, const D: usize> IndexOrderReferenceIterator<'a, T, S, D>
+impl<'a, T, S, const D: usize> TensorReferenceIterator<'a, T, S, D>
 where
     S: TensorRef<T, D>,
 {
-    pub fn from(source: &S) -> IndexOrderReferenceIterator<T, S, D> {
-        IndexOrderReferenceIterator {
+    pub fn from(source: &S) -> TensorReferenceIterator<T, S, D> {
+        TensorReferenceIterator {
             shape_iterator: ShapeIterator::from(source.view_shape()),
             source,
             _type: PhantomData,
@@ -790,7 +790,7 @@ where
     }
 
     /**
-     * Constructors an iterator which also yields the indexes of each element in
+     * Constructs an iterator which also yields the indexes of each element in
      * this iterator.
      */
     pub fn with_index(self) -> WithIndex<Self> {
@@ -798,7 +798,7 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> Iterator for IndexOrderReferenceIterator<'a, T, S, D>
+impl<'a, T, S, const D: usize> Iterator for TensorReferenceIterator<'a, T, S, D>
 where
     S: TensorRef<T, D>,
 {
@@ -811,7 +811,7 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> Iterator for WithIndex<IndexOrderReferenceIterator<'a, T, S, D>>
+impl<'a, T, S, const D: usize> Iterator for WithIndex<TensorReferenceIterator<'a, T, S, D>>
 where
     S: TensorRef<T, D>,
 {
@@ -842,7 +842,7 @@ where
  * let doubled = tensor.map(|x| 2 * x);
  * // mutating a tensor in place can also be done with Tensor::map_mut and
  * // Tensor::map_mut_with_index
- * for elem in tensor.index_order_reference_mut_iter() {
+ * for elem in tensor.iter_reference_mut() {
  *    *elem = 2 * *elem;
  * }
  * assert_eq!(
@@ -852,18 +852,18 @@ where
  * ```
  */
 #[derive(Debug)]
-pub struct IndexOrderReferenceMutIterator<'a, T, S, const D: usize> {
+pub struct TensorReferenceMutIterator<'a, T, S, const D: usize> {
     shape_iterator: ShapeIterator<D>,
     source: &'a mut S,
     _type: PhantomData<&'a mut T>,
 }
 
-impl<'a, T, S, const D: usize> IndexOrderReferenceMutIterator<'a, T, S, D>
+impl<'a, T, S, const D: usize> TensorReferenceMutIterator<'a, T, S, D>
 where
     S: TensorMut<T, D>,
 {
-    pub fn from(source: &mut S) -> IndexOrderReferenceMutIterator<T, S, D> {
-        IndexOrderReferenceMutIterator {
+    pub fn from(source: &mut S) -> TensorReferenceMutIterator<T, S, D> {
+        TensorReferenceMutIterator {
             shape_iterator: ShapeIterator::from(source.view_shape()),
             source,
             _type: PhantomData,
@@ -871,7 +871,7 @@ where
     }
 
     /**
-     * Constructors an iterator which also yields the indexes of each element in
+     * Constructs an iterator which also yields the indexes of each element in
      * this iterator.
      */
     pub fn with_index(self) -> WithIndex<Self> {
@@ -879,7 +879,7 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> Iterator for IndexOrderReferenceMutIterator<'a, T, S, D>
+impl<'a, T, S, const D: usize> Iterator for TensorReferenceMutIterator<'a, T, S, D>
 where
     S: TensorMut<T, D>,
 {
@@ -899,7 +899,7 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> Iterator for WithIndex<IndexOrderReferenceMutIterator<'a, T, S, D>>
+impl<'a, T, S, const D: usize> Iterator for WithIndex<TensorReferenceMutIterator<'a, T, S, D>>
 where
     S: TensorMut<T, D>,
 {

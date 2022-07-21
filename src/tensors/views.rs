@@ -16,7 +16,7 @@ use std::marker::PhantomData;
 use crate::linear_algebra;
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::{
-    IndexOrderIterator, IndexOrderReferenceIterator, IndexOrderReferenceMutIterator, TensorAccess,
+    TensorIterator, TensorReferenceIterator, TensorReferenceMutIterator, TensorAccess,
 };
 use crate::tensors::{Dimension, Tensor};
 
@@ -215,7 +215,7 @@ where
      * If the set of dimensions supplied do not match the set of dimensions in this tensor's shape.
      */
     #[track_caller]
-    pub fn get(&self, dimensions: [Dimension; D]) -> TensorAccess<T, &S, D> {
+    pub fn index_by(&self, dimensions: [Dimension; D]) -> TensorAccess<T, &S, D> {
         TensorAccess::from(&self.source, dimensions)
     }
 
@@ -228,7 +228,7 @@ where
      * If the set of dimensions supplied do not match the set of dimensions in this tensor's shape.
      */
     #[track_caller]
-    pub fn get_mut(&mut self, dimensions: [Dimension; D]) -> TensorAccess<T, &mut S, D> {
+    pub fn index_by_mut(&mut self, dimensions: [Dimension; D]) -> TensorAccess<T, &mut S, D> {
         TensorAccess::from(&mut self.source, dimensions)
     }
 
@@ -241,7 +241,7 @@ where
      * If the set of dimensions supplied do not match the set of dimensions in this tensor's shape.
      */
     #[track_caller]
-    pub fn get_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, S, D> {
+    pub fn index_by_owned(self, dimensions: [Dimension; D]) -> TensorAccess<T, S, D> {
         TensorAccess::from(self.source, dimensions)
     }
 
@@ -250,7 +250,7 @@ where
      * was created with in the same order as they were declared.
      * See [TensorAccess::from_source_order].
      */
-    pub fn source_order(&self) -> TensorAccess<T, &S, D> {
+    pub fn index(&self) -> TensorAccess<T, &S, D> {
         TensorAccess::from_source_order(&self.source)
     }
 
@@ -260,7 +260,7 @@ where
      * the source, and can therefore mutate it if it implements TensorMut.
      * See [TensorAccess::from_source_order].
      */
-    pub fn source_order_mut(&mut self) -> TensorAccess<T, &mut S, D> {
+    pub fn index_mut(&mut self) -> TensorAccess<T, &mut S, D> {
         TensorAccess::from_source_order(&mut self.source)
     }
 
@@ -271,15 +271,15 @@ where
      * the source, and can therefore mutate it if it implements TensorMut.
      * See [TensorAccess::from_source_order].
      */
-    pub fn source_order_owned(self) -> TensorAccess<T, S, D> {
+    pub fn index_owned(self) -> TensorAccess<T, S, D> {
         TensorAccess::from_source_order(self.source)
     }
 
     /**
      * Returns an iterator over references to the data in this TensorView.
      */
-    pub fn index_order_reference_iter(&self) -> IndexOrderReferenceIterator<T, S, D> {
-        IndexOrderReferenceIterator::from(&self.source)
+    pub fn iter_reference(&self) -> TensorReferenceIterator<T, S, D> {
+        TensorReferenceIterator::from(&self.source)
     }
 
     /**
@@ -478,8 +478,8 @@ where
             );
         }
         let mapped = self
-            .index_order_reference_iter()
-            .zip(rhs.index_order_reference_iter())
+            .iter_reference()
+            .zip(rhs.iter_reference())
             .map(|(x, y)| mapping_function(x, y))
             .collect();
         Tensor::from(left_shape, mapped)
@@ -505,9 +505,9 @@ where
         // we just checked both shapes were the same, so we don't need to propagate indexes
         // for both tensors because they'll be identical
         let mapped = self
-            .index_order_reference_iter()
+            .iter_reference()
             .with_index()
-            .zip(rhs.index_order_reference_iter())
+            .zip(rhs.iter_reference())
             .map(|((i, x), y)| mapping_function(i, x, y))
             .collect();
         Tensor::from(left_shape, mapped)
@@ -521,8 +521,8 @@ where
     /**
      * Returns an iterator over mutable references to the data in this TensorView.
      */
-    pub fn index_order_reference_mut_iter(&mut self) -> IndexOrderReferenceMutIterator<T, S, D> {
-        IndexOrderReferenceMutIterator::from(&mut self.source)
+    pub fn iter_reference_mut(&mut self) -> TensorReferenceMutIterator<T, S, D> {
+        TensorReferenceMutIterator::from(&mut self.source)
     }
 }
 
@@ -604,7 +604,7 @@ where
         let reorderd_shape = reorderd.shape();
         Tensor::from(
             reorderd_shape,
-            reorderd.index_order_iter().collect(),
+            reorderd.iter().collect(),
         )
     }
 
@@ -628,7 +628,7 @@ where
      * ```
      */
     pub fn map<U>(&self, mapping_function: impl Fn(T) -> U) -> Tensor<U, D> {
-        let mapped = self.index_order_iter().map(mapping_function).collect();
+        let mapped = self.iter().map(mapping_function).collect();
         Tensor::from(self.shape(), mapped)
     }
 
@@ -638,7 +638,7 @@ where
      */
     pub fn map_with_index<U>(&self, mapping_function: impl Fn([usize; D], T) -> U) -> Tensor<U, D> {
         let mapped = self
-            .index_order_iter()
+            .iter()
             .with_index()
             .map(|(i, x)| mapping_function(i, x))
             .collect();
@@ -648,8 +648,8 @@ where
     /**
      * Returns an iterator over copies of the data in this TensorView.
      */
-    pub fn index_order_iter(&self) -> IndexOrderIterator<T, S, D> {
-        IndexOrderIterator::from(&self.source)
+    pub fn iter(&self) -> TensorIterator<T, S, D> {
+        TensorIterator::from(&self.source)
     }
 
     /**
@@ -744,7 +744,7 @@ where
      * the tensor in place.
      */
     pub fn map_mut(&mut self, mapping_function: impl Fn(T) -> T) {
-        self.index_order_reference_mut_iter()
+        self.iter_reference_mut()
             .for_each(|x| *x = mapping_function(x.clone()));
     }
 
@@ -753,7 +753,7 @@ where
      * the tensor view in place.
      */
     pub fn map_mut_with_index(&mut self, mapping_function: impl Fn([usize; D], T) -> T) {
-        self.index_order_reference_mut_iter()
+        self.iter_reference_mut()
             .with_index()
             .for_each(|(i, x)| *x = mapping_function(i, x.clone()));
     }
@@ -1012,7 +1012,7 @@ where
     S: std::fmt::Debug + TensorRef<T, D>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_list().entries(IndexOrderReferenceIterator::from(&self.source)).finish()
+        f.debug_list().entries(TensorReferenceIterator::from(&self.source)).finish()
     }
 }
 
