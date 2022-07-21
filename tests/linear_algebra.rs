@@ -92,7 +92,7 @@ mod linear_algebra {
     fn inverse_1_by_1_tensor() {
         let matrix = Tensor::from([("r", 1), ("c", 1)], vec![3.0]);
         let inverse = linear_algebra::inverse_tensor::<f32, _, _>(&matrix).unwrap();
-        let absolute_difference = (inverse.iter().next().unwrap() - (1.0 / 3.0)).abs();
+        let absolute_difference = (inverse.first() - (1.0 / 3.0)).abs();
         assert!(absolute_difference <= std::f32::EPSILON);
     }
 

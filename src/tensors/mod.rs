@@ -285,7 +285,7 @@ impl<T> Tensor<T, 0> {
      * Returns the sole element of the 0 dimensional tensor.
      */
     pub fn into_scalar(self) -> T {
-        self.data.into_iter().next().unwrap()
+        self.data.into_iter().next().expect("Tensors always have at least 1 element")
     }
 }
 
@@ -879,6 +879,15 @@ where
     pub fn empty(dimensions: [(Dimension, usize); D], value: T) -> Self {
         let elements = crate::tensors::dimensions::elements(&dimensions);
         Tensor::from(dimensions, vec![value; elements])
+    }
+
+    /**
+     * Gets a copy of the first value in this tensor.
+     * For 0 dimensional tensors this is the only index `[]`, for 1 dimensional tensors this
+     * is `[0]`, for 2 dimensional tensors `[0,0]`, etcetera.
+     */
+    pub fn first(&self) -> T {
+        self.data.iter().next().expect("Tensors always have at least 1 element").clone()
     }
 
     // TODO: View version (just a wrapper for TensorRename<TensorAccess>)

@@ -536,6 +536,15 @@ where
     S: TensorRef<T, D>,
 {
     /**
+     * Gets a copy of the first value in this tensor.
+     * For 0 dimensional tensors this is the only index `[]`, for 1 dimensional tensors this
+     * is `[0]`, for 2 dimensional tensors `[0,0]`, etcetera.
+     */
+    pub fn first(&self) -> T {
+        self.iter().next().expect("Tensors always have at least 1 element")
+    }
+
+    /**
      * Returns a new Tensor which has the same data as this tensor, but with the order of data
      * changed. The order of the dimension names is unchanged, although their lengths may swap.
      *

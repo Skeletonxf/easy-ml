@@ -290,6 +290,15 @@ where
     }
 
     /**
+     * Gets a copy of the first value in this tensor.
+     * For 0 dimensional tensors this is the only index `[]`, for 1 dimensional tensors this
+     * is `[0]`, for 2 dimensional tensors `[0,0]`, etcetera.
+     */
+    pub fn first(&self) -> T {
+        self.iter().next().expect("Tensors always have at least 1 element")
+    }
+
+    /**
      * Creates and returns a new tensor with all values from the original with the
      * function applied to each.
      *
