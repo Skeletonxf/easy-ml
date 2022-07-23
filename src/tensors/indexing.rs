@@ -259,9 +259,7 @@ where
      * Returns an iterator over references to the data in this TensorAccess, in the order of
      * the TensorAccess shape.
      */
-    pub fn iter_reference(
-        &self,
-    ) -> TensorReferenceIterator<T, TensorAccess<T, S, D>, D> {
+    pub fn iter_reference(&self) -> TensorReferenceIterator<T, TensorAccess<T, S, D>, D> {
         TensorReferenceIterator::from(self)
     }
 }
@@ -295,7 +293,9 @@ where
      * is `[0]`, for 2 dimensional tensors `[0,0]`, etcetera.
      */
     pub fn first(&self) -> T {
-        self.iter().next().expect("Tensors always have at least 1 element")
+        self.iter()
+            .next()
+            .expect("Tensors always have at least 1 element")
     }
 
     /**
@@ -987,7 +987,7 @@ where
             access: match TensorAccess::try_from(source, dimensions) {
                 Err(error) => panic!("{}", error),
                 Ok(success) => success,
-            }
+            },
         }
     }
 
@@ -1003,7 +1003,7 @@ where
         source: S,
         dimensions: [Dimension; D],
     ) -> Result<TensorTranspose<T, S, D>, InvalidDimensionsError<D>> {
-        TensorAccess::try_from(source, dimensions).map(|access| TensorTranspose { access, })
+        TensorAccess::try_from(source, dimensions).map(|access| TensorTranspose { access })
     }
 
     /**

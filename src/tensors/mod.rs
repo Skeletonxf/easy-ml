@@ -10,8 +10,8 @@
 use crate::linear_algebra;
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::{
-    TensorIterator, TensorReferenceIterator, TensorReferenceMutIterator, ShapeIterator,
-    TensorAccess, TensorTranspose,
+    ShapeIterator, TensorAccess, TensorIterator, TensorReferenceIterator,
+    TensorReferenceMutIterator, TensorTranspose,
 };
 use crate::tensors::views::{
     IndexRange, IndexRangeValidationError, TensorExpansion, TensorIndex, TensorMask, TensorMut,
@@ -285,7 +285,10 @@ impl<T> Tensor<T, 0> {
      * Returns the sole element of the 0 dimensional tensor.
      */
     pub fn into_scalar(self) -> T {
-        self.data.into_iter().next().expect("Tensors always have at least 1 element")
+        self.data
+            .into_iter()
+            .next()
+            .expect("Tensors always have at least 1 element")
     }
 }
 
@@ -426,7 +429,10 @@ impl<T, const D: usize> Tensor<T, D> {
      * If the set of dimensions supplied do not match the set of dimensions in this tensor's shape.
      */
     #[track_caller]
-    pub fn index_by_mut(&mut self, dimensions: [Dimension; D]) -> TensorAccess<T, &mut Tensor<T, D>, D> {
+    pub fn index_by_mut(
+        &mut self,
+        dimensions: [Dimension; D],
+    ) -> TensorAccess<T, &mut Tensor<T, D>, D> {
         TensorAccess::from(self, dimensions)
     }
 
@@ -479,9 +485,7 @@ impl<T, const D: usize> Tensor<T, D> {
     /**
      * Returns an iterator over mutable references to the data in this Tensor.
      */
-    pub fn iter_reference_mut(
-        &mut self,
-    ) -> TensorReferenceMutIterator<T, Tensor<T, D>, D> {
+    pub fn iter_reference_mut(&mut self) -> TensorReferenceMutIterator<T, Tensor<T, D>, D> {
         TensorReferenceMutIterator::from(self)
     }
 
@@ -654,7 +658,10 @@ impl<T, const D: usize> Tensor<T, D> {
     pub fn range_mut<R, const P: usize>(
         &mut self,
         ranges: [(Dimension, R); P],
-    ) -> Result<TensorView<T, TensorRange<T, &mut Tensor<T, D>, D>, D>, IndexRangeValidationError<D, P>>
+    ) -> Result<
+        TensorView<T, TensorRange<T, &mut Tensor<T, D>, D>, D>,
+        IndexRangeValidationError<D, P>,
+    >
     where
         R: Into<IndexRange>,
     {
@@ -730,7 +737,10 @@ impl<T, const D: usize> Tensor<T, D> {
     pub fn mask_mut<R, const P: usize>(
         &mut self,
         masks: [(Dimension, R); P],
-    ) -> Result<TensorView<T, TensorMask<T, &mut Tensor<T, D>, D>, D>, IndexRangeValidationError<D, P>>
+    ) -> Result<
+        TensorView<T, TensorMask<T, &mut Tensor<T, D>, D>, D>,
+        IndexRangeValidationError<D, P>,
+    >
     where
         R: Into<IndexRange>,
     {
@@ -877,7 +887,7 @@ impl<T, const D: usize> Tensor<T, D> {
      */
     pub fn transpose_view(
         &self,
-        dimensions: [Dimension; D]
+        dimensions: [Dimension; D],
     ) -> TensorView<T, TensorTranspose<T, &Tensor<T, D>, D>, D> {
         TensorView::from(TensorTranspose::from(self, dimensions))
     }
@@ -908,7 +918,11 @@ where
      * is `[0]`, for 2 dimensional tensors `[0,0]`, etcetera.
      */
     pub fn first(&self) -> T {
-        self.data.iter().next().expect("Tensors always have at least 1 element").clone()
+        self.data
+            .iter()
+            .next()
+            .expect("Tensors always have at least 1 element")
+            .clone()
     }
 
     /**
@@ -1008,10 +1022,7 @@ where
             ),
         };
         let reorderd_shape = reorderd.shape();
-        Tensor::from(
-            reorderd_shape,
-            reorderd.iter().collect(),
-        )
+        Tensor::from(reorderd_shape, reorderd.iter().collect())
     }
 
     /**
@@ -1144,8 +1155,7 @@ where
      * the tensor in place.
      */
     pub fn map_mut_with_index(&mut self, mapping_function: impl Fn([usize; D], T) -> T) {
-        self
-            .iter_reference_mut()
+        self.iter_reference_mut()
             .with_index()
             .for_each(|(i, x)| *x = mapping_function(i, x.clone()));
     }

@@ -1377,8 +1377,7 @@ where
      * matrix must be square (same number of rows and columns) and it must also have a
      * non zero determinant. See [`linear_algebra`](super::linear_algebra::inverse())
      */
-    pub fn inverse(&self) -> Option<Matrix<T>>
-    {
+    pub fn inverse(&self) -> Option<Matrix<T>> {
         linear_algebra::inverse::<T>(self)
     }
 

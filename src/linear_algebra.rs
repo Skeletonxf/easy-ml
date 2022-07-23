@@ -180,7 +180,10 @@ where
     // inverse of a 1 x 1 matrix is a special case
     if shape[0].1 == 1 {
         // determinant of a 1 x 1 matrix is the single element
-        let element = tensor.iter().next().expect("1x1 tensor must have a single element");
+        let element = tensor
+            .iter()
+            .next()
+            .expect("1x1 tensor must have a single element");
         if element == T::zero() {
             return None;
         }
@@ -273,7 +276,7 @@ where
     for<'a> &'a T: NumericRef<T>,
     S: TensorRef<T, 2>,
 {
-    use crate::tensors::views::{TensorMask, IndexRange};
+    use crate::tensors::views::{IndexRange, TensorMask};
     let shape = tensor.shape();
     if shape[0].1 == 1 || shape[1].1 == 1 {
         // nothing to delete
@@ -286,9 +289,9 @@ where
     let minored = TensorView::from(
         TensorMask::from_all(
             tensor.source_ref(),
-            [Some(IndexRange::new(i, 1)), Some(IndexRange::new(j, 1))]
+            [Some(IndexRange::new(i, 1)), Some(IndexRange::new(j, 1))],
         )
-            .expect("Having just checked tensor is at least 2x2 we should be able to take a mask")
+        .expect("Having just checked tensor is at least 2x2 we should be able to take a mask"),
     );
     determinant_less_generic::<T, _>(&minored)
 }
@@ -786,16 +789,16 @@ where
     let mut covariance_matrix = Tensor::empty([("i", features), ("j", features)], T::zero());
     covariance_matrix.map_mut_with_index(|[i, j], _| {
         // set each element of the covariance matrix to the variance of features i and j
+        #[rustfmt::skip]
         let feature_i_mean: T = tensor
             .select([(feature_dimension, i)])
             .iter()
-            .sum::<T>()
-            / &samples;
+            .sum::<T>() / &samples;
+        #[rustfmt::skip]
         let feature_j_mean: T = tensor
             .select([(feature_dimension, j)])
             .iter()
-            .sum::<T>()
-            / &samples;
+            .sum::<T>() / &samples;
         tensor
             .select([(feature_dimension, i)])
             .iter_reference()

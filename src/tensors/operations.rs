@@ -18,7 +18,7 @@
  */
 
 use crate::numeric::{Numeric, NumericRef};
-use crate::tensors::indexing::{TensorReferenceIterator, TensorAccess};
+use crate::tensors::indexing::{TensorAccess, TensorReferenceIterator};
 use crate::tensors::views::{TensorIndex, TensorRef, TensorView};
 use crate::tensors::{Dimension, Tensor};
 
@@ -408,7 +408,9 @@ where
             "Matrix multiplication of tensors with shapes left {:?} and right {:?} would \
              create duplicate dimension names as the shape {:?}. Rename one or both of the \
              dimension names in the input to prevent this. * is defined as MxN * NxL = MxL",
-            left_shape, right_shape, [left_shape[0], right_shape[1]]
+            left_shape,
+            right_shape,
+            [left_shape[0], right_shape[1]]
         )
     }
     // LxM * MxN -> LxN

@@ -16,7 +16,8 @@ use std::marker::PhantomData;
 use crate::linear_algebra;
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::{
-    TensorIterator, TensorReferenceIterator, TensorReferenceMutIterator, TensorAccess, TensorTranspose,
+    TensorAccess, TensorIterator, TensorReferenceIterator, TensorReferenceMutIterator,
+    TensorTranspose,
 };
 use crate::tensors::{Dimension, Tensor};
 
@@ -529,7 +530,7 @@ where
      */
     pub fn transpose_view(
         &self,
-        dimensions: [Dimension; D]
+        dimensions: [Dimension; D],
     ) -> TensorView<T, TensorTranspose<T, &S, D>, D> {
         TensorView::from(TensorTranspose::from(&self.source, dimensions))
     }
@@ -562,7 +563,9 @@ where
      * is `[0]`, for 2 dimensional tensors `[0,0]`, etcetera.
      */
     pub fn first(&self) -> T {
-        self.iter().next().expect("Tensors always have at least 1 element")
+        self.iter()
+            .next()
+            .expect("Tensors always have at least 1 element")
     }
 
     /**
@@ -632,10 +635,7 @@ where
             ),
         };
         let reorderd_shape = reorderd.shape();
-        Tensor::from(
-            reorderd_shape,
-            reorderd.iter().collect(),
-        )
+        Tensor::from(reorderd_shape, reorderd.iter().collect())
     }
 
     /**
@@ -1042,7 +1042,9 @@ where
     S: std::fmt::Debug + TensorRef<T, D>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_list().entries(TensorReferenceIterator::from(&self.source)).finish()
+        f.debug_list()
+            .entries(TensorReferenceIterator::from(&self.source))
+            .finish()
     }
 }
 
@@ -1061,7 +1063,9 @@ TensorView { visible: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], dimensions: [("row
 #[test]
 fn test_debug_clipped() {
     let x = Tensor::from([("rows", 2), ("columns", 3)], (0..6).collect());
-    let view = TensorView::from(&x).range_owned([("columns", IndexRange::new(1, 2))]).unwrap();
+    let view = TensorView::from(&x)
+        .range_owned([("columns", IndexRange::new(1, 2))])
+        .unwrap();
     let debugged = format!("{:#?}\n{:#?}", x, view);
     println!("{:#?}\n{:#?}", x, view);
     assert_eq!(
