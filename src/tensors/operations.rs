@@ -416,25 +416,21 @@ where
     // Matrix multiplication gives us another Matrix where each element [i,j] is the dot product
     // of the i'th row in the left matrix and the j'th column in the right matrix.
     let mut tensor = Tensor::empty([left.view_shape()[0], right.view_shape()[1]], T::zero());
-    for ([i, j], x) in tensor
-        .index_mut()
-        .iter_reference_mut()
-        .with_index()
-    {
+    for ([i, j], x) in tensor.iter_reference_mut().with_index() {
         // Select the i'th row in the left tensor to give us a vector
-        let left = TensorAccess::from_source_order(TensorIndex::from(
+        let left = TensorIndex::from(
             &left,
             [(left.view_shape()[0].0, i)],
-        ));
+        );
         // Select the j'th column in the right tensor to give us a vector
-        let right = TensorAccess::from_source_order(TensorIndex::from(
+        let right = TensorIndex::from(
             &right,
             [(right.view_shape()[1].0, j)],
-        ));
+        );
         // Since we checked earlier that we have MxN * NxL these two vectors have the same length.
         *x = scalar_product::<T, _, _>(
-            left.iter_reference(),
-            right.iter_reference(),
+            TensorReferenceIterator::from(&left),
+            TensorReferenceIterator::from(&right)
         )
     }
     tensor
