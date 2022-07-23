@@ -919,3 +919,168 @@ where
         self.iterator.next().map(|x| (index, x))
     }
 }
+
+/**
+ * A TensorTranspose makes the data in the tensor it is created from appear to be in a different
+ * order, swapping the lengths of each named dimension to match the new order but leaving the
+ * dimension name order unchanged.
+ *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ * use easy_ml::tensors::indexing::TensorTranspose;
+ * use easy_ml::tensors::views::TensorView;
+ * let tensor = Tensor::from([("batch", 2), ("rows", 3), ("columns", 2)], vec![
+ *     1, 2,
+ *     3, 4,
+ *     5, 6,
+ *
+ *     7, 8,
+ *     9, 0,
+ *     1, 2
+ * ]);
+ * let transposed = TensorView::from(TensorTranspose::from(&tensor, ["batch", "columns", "rows"]));
+ * assert_eq!(
+ *     transposed,
+ *     Tensor::from([("batch", 2), ("rows", 2), ("columns", 3)], vec![
+ *         1, 3, 5,
+ *         2, 4, 6,
+ *
+ *         7, 9, 1,
+ *         8, 0, 2
+ *     ])
+ * );
+ * let also_transposed = tensor.transpose_view(["batch", "columns", "rows"]);
+ * ```
+ */
+#[derive(Clone)]
+pub struct TensorTranspose<T, S, const D: usize> {
+    access: TensorAccess<T, S, D>,
+}
+
+impl<T: fmt::Debug, S: fmt::Debug, const D: usize> fmt::Debug for TensorTranspose<T, S, D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TensorTranspose")
+            .field("source", &self.access.source)
+            .field("dimension_mapping", &self.access.dimension_mapping)
+            .field("_type", &self.access._type)
+            .finish()
+    }
+}
+
+impl<T, S, const D: usize> TensorTranspose<T, S, D>
+where
+    S: TensorRef<T, D>,
+{
+    /**
+     * Creates a TensorTranspose which makes the data to appear in the order of the
+     * supplied dimensions. The order of the dimension names is unchanged, although their lengths
+     * may swap.
+     *
+     * # Panics
+     *
+     * If the set of dimensions in the tensor does not match the set of dimensions provided. The
+     * order need not match.
+     */
+    #[track_caller]
+    pub fn from(source: S, dimensions: [Dimension; D]) -> TensorTranspose<T, S, D> {
+        TensorTranspose {
+            access: match TensorAccess::try_from(source, dimensions) {
+                Err(error) => panic!("{}", error),
+                Ok(success) => success,
+            }
+        }
+    }
+
+    /**
+     * Creates a TensorTranspose which makes the data to appear in the order of the
+     * supplied dimensions. The order of the dimension names is unchanged, although their lengths
+     * may swap.
+     *
+     * Returns Err if the set of dimensions supplied do not match the set of dimensions in this
+     * tensor's shape.
+     */
+    pub fn try_from(
+        source: S,
+        dimensions: [Dimension; D],
+    ) -> Result<TensorTranspose<T, S, D>, InvalidDimensionsError<D>> {
+        TensorAccess::try_from(source, dimensions).map(|access| TensorTranspose { access, })
+    }
+
+    /**
+     * The shape of this TensorTranspose rearranges the data to appear in the order of supplied
+     * dimensions. The order of the dimension names in the underlying tensor remains is unchanged,
+     * although their lengths may swap.
+     */
+    pub fn shape(&self) -> [(Dimension, usize); D] {
+        let names = self.access.source.view_shape();
+        let mut order = self.access.shape();
+        for d in 0..D {
+            order[d].0 = names[d].0;
+        }
+        order
+    }
+
+    pub fn source(self) -> S {
+        self.access.source
+    }
+
+    // # Safety
+    //
+    // Giving out a mutable reference to our source could allow it to be changed out from under us
+    // and make our dimmension mapping invalid. However, since the source implements TensorRef
+    // interior mutability is not allowed, so we can give out shared references without breaking
+    // our own integrity.
+    pub fn source_ref(&self) -> &S {
+        &self.access.source
+    }
+}
+
+// # Safety
+//
+// The TensorAccess must implement TensorRef correctly, so by delegating to it without changing
+// anything other than the order of the dimension names we expose, we implement
+// TensoTensorRefrMut correctly as well.
+/**
+ * A TensorTranspose implements TensorRef, with the dimension order and indexing matching that
+ * of the TensorTranspose shape.
+ */
+unsafe impl<T, S, const D: usize> TensorRef<T, D> for TensorTranspose<T, S, D>
+where
+    S: TensorRef<T, D>,
+{
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        // we didn't change the lengths of any dimension in our shape from the TensorAccess so we
+        // can delegate to the tensor access for non named indexing here
+        self.access.try_get_reference(indexes)
+    }
+
+    fn view_shape(&self) -> [(Dimension, usize); D] {
+        self.shape()
+    }
+
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        self.access.get_reference_unchecked(indexes)
+    }
+}
+
+// # Safety
+//
+// The TensorAccess must implement TensorMut correctly, so so by delegating to it without changing
+// anything other than the order of the dimension names we expose, we implement, we implement
+// TensorMut correctly as well.
+/**
+ * A TensorTranspose implements TensorMut, with the dimension order and indexing matching that of
+ * the TensorTranspose shape.
+ */
+unsafe impl<T, S, const D: usize> TensorMut<T, D> for TensorTranspose<T, S, D>
+where
+    S: TensorMut<T, D>,
+{
+    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
+        self.access.try_get_reference_mut(indexes)
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        self.access.get_reference_unchecked_mut(indexes)
+    }
+}

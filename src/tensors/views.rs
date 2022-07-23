@@ -16,7 +16,7 @@ use std::marker::PhantomData;
 use crate::linear_algebra;
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::{
-    TensorIterator, TensorReferenceIterator, TensorReferenceMutIterator, TensorAccess,
+    TensorIterator, TensorReferenceIterator, TensorReferenceMutIterator, TensorAccess, TensorTranspose,
 };
 use crate::tensors::{Dimension, Tensor};
 
@@ -511,6 +511,27 @@ where
             .map(|((i, x), y)| mapping_function(i, x, y))
             .collect();
         Tensor::from(left_shape, mapped)
+    }
+
+    /**
+     * Returns a TensorView which makes the order of the data in this tensor appear to be in
+     * a different order. The order of the dimension names is unchanged, although their lengths
+     * may swap.
+     *
+     * This is a shorthand for constructing the TensorView from this TensorView.
+     *
+     * See also: [transpose](TensorView::transpose), [TensorTranspose](TensorTranspose)
+     *
+     * # Panics
+     *
+     * If the set of dimensions in the tensor does not match the set of dimensions provided. The
+     * order need not match.
+     */
+    pub fn transpose_view(
+        &self,
+        dimensions: [Dimension; D]
+    ) -> TensorView<T, TensorTranspose<T, &S, D>, D> {
+        TensorView::from(TensorTranspose::from(&self.source, dimensions))
     }
 }
 

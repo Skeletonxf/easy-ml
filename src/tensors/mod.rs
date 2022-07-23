@@ -11,7 +11,7 @@ use crate::linear_algebra;
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::{
     TensorIterator, TensorReferenceIterator, TensorReferenceMutIterator, ShapeIterator,
-    TensorAccess,
+    TensorAccess, TensorTranspose,
 };
 use crate::tensors::views::{
     IndexRange, IndexRangeValidationError, TensorExpansion, TensorIndex, TensorMask, TensorMut,
@@ -860,6 +860,27 @@ impl<T, const D: usize> Tensor<T, D> {
         // We're not changing the shape of the Tensor, so don't need to revalidate
         Tensor::direct_from(mapped, self.dimensions, self.strides)
     }
+
+    /**
+     * Returns a TensorView which makes the order of the data in this tensor appear to be in
+     * a different order. The order of the dimension names is unchanged, although their lengths
+     * may swap.
+     *
+     * This is a shorthand for constructing the TensorView from this Tensor.
+     *
+     * See also: [transpose](Tensor::transpose), [TensorTranspose](TensorTranspose)
+     *
+     * # Panics
+     *
+     * If the set of dimensions in the tensor does not match the set of dimensions provided. The
+     * order need not match.
+     */
+    pub fn transpose_view(
+        &self,
+        dimensions: [Dimension; D]
+    ) -> TensorView<T, TensorTranspose<T, &Tensor<T, D>, D>, D> {
+        TensorView::from(TensorTranspose::from(self, dimensions))
+    }
 }
 
 impl<T, const D: usize> Tensor<T, D>
@@ -890,7 +911,6 @@ where
         self.data.iter().next().expect("Tensors always have at least 1 element").clone()
     }
 
-    // TODO: View version (just a wrapper for TensorRename<TensorAccess>)
     /**
      * Returns a new Tensor which has the same data as this tensor, but with the order of data
      * changed. The order of the dimension names is unchanged, although their lengths may swap.
