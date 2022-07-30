@@ -435,15 +435,10 @@ fn clip_range_shape<const D: usize>(
 ) -> [(Dimension, usize); D] {
     let mut shape = *source;
     for (d, (_, length)) in shape.iter_mut().enumerate() {
-        let _start = 0;
-        let end = *length;
         let range = &mut range[d];
-        let range_start = range.start;
-        let range_end = range.start + range.length;
-        let range_end = std::cmp::min(range_end, end);
-        let range_length = range_end - range_start;
-        range.length = range_length;
-        *length = range_length;
+        range.clip(*length);
+        // the length that remains is the length of the range
+        *length = range.length;
     }
     shape
 }
@@ -582,17 +577,10 @@ fn clip_masked_shape<const D: usize>(
 ) -> [(Dimension, usize); D] {
     let mut shape = *source;
     for (d, (_, length)) in shape.iter_mut().enumerate() {
-        let _start = 0;
-        let end = *length;
         let mask = &mut mask[d];
-        let mask_start = mask.start;
-        let mask_end = mask.start + mask.length;
-        let mask_end = std::cmp::min(mask_end, end);
-        // recalculate mask length after bounding it by our shape's length (now we know it's
-        // less than or equal to our shape's length)
-        let mask_length = mask_end - mask_start;
-        mask.length = mask_length;
-        *length -= mask_length;
+        mask.clip(*length);
+        // the length that remains is what is not included along the mask
+        *length -= mask.length;
     }
     shape
 }

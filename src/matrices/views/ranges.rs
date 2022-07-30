@@ -127,6 +127,15 @@ impl IndexRange {
             index + self.length
         }
     }
+
+    // Clips the range or mask to not exceed a length. Note, this may yield 0 length ranges
+    // that have non zero starting positions, however map and mask will still calculate correctly.
+    pub(crate) fn clip(&mut self, to_length: usize) {
+        let end = self.start + self.length;
+        let end = std::cmp::min(end, to_length);
+        let length = end.saturating_sub(self.start);
+        self.length = length;
+    }
 }
 
 /** Converts from a range of start..end to an IndexRange of start and length */
@@ -170,6 +179,25 @@ impl From<[usize; 2]> for IndexRange {
         let [start, length] = range;
         IndexRange::new(start, length)
     }
+}
+
+#[test]
+fn test_index_range_clipping() {
+    let mut range: IndexRange = (0..6).into();
+    range.clip(4);
+    assert_eq!(range, (0..4).into());
+    let mut range: IndexRange = (1..4).into();
+    range.clip(5);
+    assert_eq!(range, (1..4).into());
+    range.clip(2);
+    assert_eq!(range, (1..2).into());
+    let mut range: IndexRange = (3..5).into();
+    range.clip(2);
+    assert_eq!(range, (3..2).into());
+    assert_eq!(range.map(0), None);
+    assert_eq!(range.map(1), None);
+    assert_eq!(range.mask(0), 0);
+    assert_eq!(range.mask(1), 1);
 }
 
 // # Safety
