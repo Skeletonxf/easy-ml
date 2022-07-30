@@ -64,12 +64,20 @@ where
     where
         R: Into<IndexRange>,
     {
-        // FIXME: Clamp rows and columns to our source's length! We could report a length we
-        // don't actually have otherwise!
+        let max_rows = source.view_rows();
+        let max_columns = source.view_columns();
         MatrixRange {
             source,
-            rows: rows.into(),
-            columns: columns.into(),
+            rows: {
+                let mut rows = rows.into();
+                rows.clip(max_rows);
+                rows
+            },
+            columns: {
+                let mut columns = columns.into();
+                columns.clip(max_columns);
+                columns
+            },
             _type: PhantomData,
         }
     }
@@ -274,3 +282,14 @@ where
  * A MatrixRange of a NoInteriorMutability type implements NoInteriorMutability.
  */
 unsafe impl<T, S> NoInteriorMutability for MatrixRange<T, S> where S: NoInteriorMutability {}
+
+#[test]
+fn test_matrix_range_shape_clips() {
+    use crate::matrices::Matrix;
+    let matrix = Matrix::from(vec![vec![1, 2, 3], vec![4, 5, 6]]);
+    let range = MatrixRange::from(&matrix, 0..7, 1..4);
+    assert_eq!(2, range.view_rows());
+    assert_eq!(2, range.view_columns());
+    assert_eq!(2, range.rows.length);
+    assert_eq!(2, range.columns.length);
+}
