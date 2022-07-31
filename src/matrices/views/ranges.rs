@@ -59,15 +59,30 @@ where
      * // Note std::ops::Range is start..end not start and length!
      * let range = MatrixRange::from(&matrix, 0..4, 1..4);
      * ```
+     *
+     * NOTE: In previous versions (1.8.1), this erroneously did not clip the IndexRange input to
+     * not exceed the rows and columns of the source, which led to the possibility to create
+     * MatrixRanges that reported a greater number of rows and columns in their shape than their
+     * actual data. This function will now correctly clip any ranges that exceed their sources.
      */
     pub fn from<R>(source: S, rows: R, columns: R) -> MatrixRange<T, S>
     where
         R: Into<IndexRange>,
     {
+        let max_rows = source.view_rows();
+        let max_columns = source.view_columns();
         MatrixRange {
             source,
-            rows: rows.into(),
-            columns: columns.into(),
+            rows: {
+                let mut rows = rows.into();
+                rows.clip(max_rows);
+                rows
+            },
+            columns: {
+                let mut columns = columns.into();
+                columns.clip(max_columns);
+                columns
+            },
             _type: PhantomData,
         }
     }
@@ -110,12 +125,27 @@ impl IndexRange {
             None
         }
     }
+
+    // Clips the range or mask to not exceed a length. Note, this may yield 0 length ranges
+    // that have non zero starting positions, however map and mask will still calculate correctly.
+    pub(crate) fn clip(&mut self, to_length: usize) {
+        let end = self.start + self.length;
+        let end = std::cmp::min(end, to_length);
+        let length = end.saturating_sub(self.start);
+        self.length = length;
+    }
 }
 
-/** Converts from a range of start..end to an IndexRange of start and length */
+/**
+ * Converts from a range of start..end to an IndexRange of start and length
+ *
+ * NOTE: In previous versions (1.8.1) this did not saturate when attempting to subtract the
+ * start of the range from the end to calculate the length. It will now correctly produce an
+ * IndexRange with a length of 0 if the end is before or equal to the start.
+ */
 impl From<Range<usize>> for IndexRange {
     fn from(range: Range<usize>) -> IndexRange {
-        IndexRange::new(range.start, range.end - range.start)
+        IndexRange::new(range.start, range.end.saturating_sub(range.start))
     }
 }
 
@@ -129,19 +159,29 @@ impl From<IndexRange> for Range<usize> {
     }
 }
 
-/** Converts from a tuple of start and length to an IndexRange */
+/**
+ * Converts from a tuple of start and length to an IndexRange
+ *
+ * NOTE: In previous versions (1.8.1), this was erroneously implemented as conversion from a tuple
+ * of start and end, not start and length as documented.
+ */
 impl From<(usize, usize)> for IndexRange {
     fn from(range: (usize, usize)) -> IndexRange {
-        let (start, end) = range;
-        IndexRange::new(start, end - start)
+        let (start, length) = range;
+        IndexRange::new(start, length)
     }
 }
 
-/** Converts from an array of start and length to an IndexRange */
+/**
+ * Converts from an array of start and length to an IndexRange
+ *
+ * NOTE: In previous versions (1.8.1), this was erroneously implemented as conversion from an
+ * array of start and end, not start and length as documented.
+ */
 impl From<[usize; 2]> for IndexRange {
     fn from(range: [usize; 2]) -> IndexRange {
-        let [start, end] = range;
-        IndexRange::new(start, end - start)
+        let [start, length] = range;
+        IndexRange::new(start, length)
     }
 }
 
