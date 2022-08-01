@@ -1,5 +1,18 @@
 # Changelog
 
+## Versions 1.8.2 and 1.7.2
+
+Backported a series of bugfixes for the `MatrixRange` and `IndexRange` APIs.
+Versions of Easy ML prior to 1.7 were not affected as the APIs did not exist
+yet. `MatrixRange` did not properly clip the `IndexRanges` it was constructed
+from to keep its `view_rows` and `view_columns` reporting the correct lengths.
+`IndexRange` conversion methods from `[usize; 2]` and `(usize, usize)` have
+been corrrected to match their documented behaviour. The `Range<usize>`
+conversion method will now correctly saturate to 0 lengths if the `end` of the
+range is equal to or less than the `start`.
+
+Version 1.9 when eventually released will also include this bugfixes.
+
 ## Versions 1.8.1, 1.7.1 and 1.6.2
 
 Backported a bugfix for `Matrix::transpose_mut` that affected all prior versions
