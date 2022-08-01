@@ -11,7 +11,7 @@ been corrrected to match their documented behaviour. The `Range<usize>`
 conversion method will now correctly saturate to 0 lengths if the `end` of the
 range is equal to or less than the `start`.
 
-Version 1.9 when eventually released will also include this bugfixes.
+Version 1.9 when eventually released will also include these bugfixes.
 
 ## Versions 1.8.1, 1.7.1 and 1.6.2
 
