@@ -90,11 +90,7 @@ pub(crate) fn map_dimensions<const D: usize>(
     dimension_mapping: &[usize; D],
     indexes: &[usize; D],
 ) -> [usize; D] {
-    let mut lookup = [0; D];
-    for d in 0..D {
-        lookup[d] = indexes[dimension_mapping[d]];
-    }
-    lookup
+    std::array::from_fn(|d| indexes[dimension_mapping[d]])
 }
 
 pub(crate) fn dimension_mapping_shape<const D: usize>(

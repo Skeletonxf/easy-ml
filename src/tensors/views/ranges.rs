@@ -257,7 +257,7 @@ where
     }
     // Since we now know there's no duplicates, we can lookup the dimension index for each name
     // in the shape and we know we'll get different indexes on each lookup.
-    let mut all_ranges: [Option<IndexRange>; D] = [(); D].map(|_| None);
+    let mut all_ranges: [Option<IndexRange>; D] = std::array::from_fn(|_| None);
     for (name, range) in ranges.into_iter() {
         match crate::tensors::dimensions::position_of(&shape, name) {
             Some(d) => all_ranges[d] = Some(range),

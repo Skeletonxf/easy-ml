@@ -129,10 +129,7 @@ where
      * ```
      */
     pub fn from_source_order(source: S) -> TensorAccess<T, S, D> {
-        let mut no_op_mapping = [0; D];
-        for d in 0..D {
-            no_op_mapping[d] = d;
-        }
+        let no_op_mapping = std::array::from_fn(|d| d);
         TensorAccess {
             dimension_mapping: no_op_mapping,
             source,

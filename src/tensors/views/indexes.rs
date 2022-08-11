@@ -148,7 +148,7 @@ macro_rules! tensor_index_ref_impl {
                     .enumerate()
                     .filter(|(i, _)| self.provided[*i].is_none())
                     .map(|(_, (name, length))| (*name, *length));
-                [("", 0); $d - $i].map(|_| unprovided.next().unwrap())
+                std::array::from_fn(|_| unprovided.next().unwrap())
             }
 
             unsafe fn get_reference_unchecked(&self, indexes: [usize; $d - $i]) -> &T {
