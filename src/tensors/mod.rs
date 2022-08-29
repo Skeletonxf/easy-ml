@@ -1,7 +1,8 @@
 /*!
  * Generic N dimensional [named tensors](http://nlp.seas.harvard.edu/NamedTensor).
  *
- * **These APIs are still in alpha, use at your own risk! Breaking changes still expected.**
+ * **These APIs are still in development, use at your own risk! Minor breaking changes still
+ * expected.**
  *
  * Tensors are generic over some type `T` and some usize `D`. If `T` is [Numeric](super::numeric)
  * then the tensor can be used in a mathematical way. `D` is the number of dimensions in the tensor
@@ -177,9 +178,24 @@ fn test_send() {
 }
 
 /**
- * A [named tensor](http://nlp.seas.harvard.edu/NamedTensor).
+ * A [named tensor](http://nlp.seas.harvard.edu/NamedTensor) of some type `T` and number of
+ * dimensions `D`.
  *
- * TODO: Summary
+ * Tensors are a generalisation of matrices, whereas [Matrix](crate::matrices::Matrix) only
+ * supports 2 dimensions, and vectors are represented in Matrix by making either the rows or
+ * columns have a length of one, [Tensor](Tensor) supports an arbitary number of dimensions,
+ * with 0 through 6 having full API support. A `Tensor<T, 2>` is very similar to a `Matrix<T>`
+ * except that this type associates each dimension with a name, and favor names to refer to
+ * dimensions instead of index order.
+ *
+ * Like Matrix, the type of the data in this Tensor may implement no traits, in which case the
+ * tensor will be rather useless. If the type implements Clone most storage and accessor methods
+ * are defined and if the type implements Numeric then the tensor can be used in a mathematical
+ * way.
+ *
+ * When doing numeric operations with Tensors you should be careful to not consume a tensor by
+ * accidentally using it by value. All the operations are also defined on references to tensors
+ * so you should favor &x + &y style notation for tensors you intend to continue using.
  *
  * See also:
  * - [indexing](indexing)
@@ -315,7 +331,7 @@ impl<T> From<T> for Tensor<T, 0> {
 //
 // We promise to never implement interior mutability for Tensor.
 /**
- * A Tatrix implements TensorRef.
+ * A Tensor implements TensorRef.
  */
 unsafe impl<T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {

@@ -1,20 +1,47 @@
 /*!
  * Tensor operations
  *
- * TODO: Document all the ops here
+ * [Numeric](crate::numeric) type tensors implement elementwise addition and subtraction. Tensors
+ * with 2 dimensions also implement matrix multiplication.
+ *
+ * # Multiplication
  *
  * Matrix multiplication follows the standard definition based on matching dimension lengths.
  * A Tensor of shape MxN can be multiplied with a tensor of shape NxL to yield a tensor of
  * shape MxL. Only the length of the N dimensions needs to match, the dimension names along N
  * in both tensors are discarded.
  *
- * # Examples
- *
  * | Left Tensor shape | Right Tensor shape | Product Tensor shape |
  * |------|-------|---------|
  * | `[("rows", 2), ("columns", 3)]` | `[("rows", 3), ("columns", 2)]` | `[(rows", 2), ("columns", 2)]` |
  * | `[("a", 3), ("b", 1)]` | `[("c", 1), ("d", 2)]` | `[("a", 3), ("d", 2)]` |
- * | `[("rows", 2), ("columns", 3)]` | `[("columns", 3), ("rows", 2)]` | not allowed - would attempt to be `[(rows", 2), ("rows", 2)]`
+ * | `[("rows", 2), ("columns", 3)]` | `[("columns", 3), ("rows", 2)]` | not allowed - would attempt to be `[(rows", 2), ("rows", 2)]` |
+ *
+ * # Addition and subtraction
+ *
+ * Elementwise addition and subtraction requires that both dimension names and lengths match
+ * exactly.
+ *
+ * | Left Tensor shape | Right Tensor shape | Sum Tensor shape |
+ * |------|-------|---------|
+ * | `[("rows", 2), ("columns", 3)]` | `[("rows", 2), ("columns", 3)]` | `[(rows", 2), ("columns", 3)]` |
+ * | `[("a", 3), ("b", 1)]` | `[("b", 1), ("a", 3)]` | not allowed - reshape one first |
+ * | `[("a", 2), ("b", 2)]` | `[("a", 2), ("c", 2)]` | not allowed - rename the shape of one first |
+ *
+ * # Implementations
+ *
+ * When doing numeric operations with tensors you should be careful to not consume a tensor by
+ * accidentally using it by value. All the operations are also defined on references to tensors
+ * so you should favor &x + &y style notation for tensors you intend to continue using.
+ *
+ * These implementations are written here but Rust docs will display them on their implemented
+ * types. All 16 combinations of owned and referenced [Tensor](crate::tensors::Tensor) and
+ * [TensorView](crate::tensors::views::TensorView) operations are implemented.
+ *
+ * Operations on tensors of the wrong sizes or mismatched dimension names will result in a panic.
+ * No broadcasting is performed, ie you cannot multiply a (NxM) 'matrix' tensor by a (Nx1)
+ * 'column vector' tensor, you must manipulate the shapes of at least one of the arguments so
+ * that the operation is valid.
  */
 
 use crate::numeric::{Numeric, NumericRef};

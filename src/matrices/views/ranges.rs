@@ -101,8 +101,16 @@ where
  * assert_eq!(IndexRange::new(1, 5), (1..6).into());
  * assert_eq!(IndexRange::new(0, 4), (0..4).into());
  * ```
+ *
+ * Creating a Range
+ *
+ * ```
+ * use easy_ml::matrices::views::IndexRange;
+ * let range = IndexRange::new(3, 2);
+ * let also_range: IndexRange = (3, 2).into();
+ * let also_also_range: IndexRange = [3, 2].into();
+ * ```
  */
-// TODO: Document all ways of constructing an IndexRange via From/Into impls here
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct IndexRange {
     pub(crate) start: usize,

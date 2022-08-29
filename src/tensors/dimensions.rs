@@ -35,6 +35,8 @@ pub fn elements<const D: usize>(dimensions: &[(Dimension, usize); D]) -> usize {
 
 /**
  * Finds the position of the dimension name in the set of dimensions.
+ *
+ * `None` is returned if the dimension name is not in the set.
  */
 pub fn position_of<const D: usize>(
     dimensions: &[(Dimension, usize); D],
