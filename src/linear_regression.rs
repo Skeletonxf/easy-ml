@@ -16,6 +16,8 @@ may want to use some kind of [regularisation](https://en.wikipedia.org/wiki/Regu
 and or holding back some data for verification to stop updating the the model when it starts
 performing worse on unseen data.
 
+## Matrix APIs
+
 ```
 use easy_ml::matrices::Matrix;
 
@@ -24,7 +26,6 @@ let x: Matrix<f32> = Matrix::column(
     vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0]);
 // we are going to fit a polynomial curve of x^2, but add the sin of x to each value for
 // y to create some deteriministic 'noise'.
-//
 let y = x.map(|x| x.powi(2) + x.sin());
 println!("{:?}", &y);
 
@@ -77,4 +78,24 @@ println!("MSE on unseen values: {}", mean_squared_error);
 assert!(mean_squared_error < 1.0);
 assert!(mean_squared_error > 0.99);
 ```
+
+## Tensor APIs
+
+```
+use easy_ml::tensors::Tensor;
+
+// first create some data to fit a curve to
+let x: Tensor<f32, 1> = Tensor::from(
+    [("row", 13)],
+    vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0]
+);
+// we are going to fit a polynomial curve of x^2, but add the sin of x to each value for
+// y to create some deteriministic 'noise'.
+let y = x.map(|x| x.powi(2) + x.sin());
+println!("{:?}", &y);
+
+// Now we create a quadratic basis where each row is [1, x, x^2]
+//let mut X = unimplemented!(); // TODO: Need an API to increase the dimensionality along a dimension for Tensors/views
+```
+
 */
