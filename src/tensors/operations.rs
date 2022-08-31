@@ -447,19 +447,13 @@ where
     let mut tensor = Tensor::empty([left.view_shape()[0], right.view_shape()[1]], T::zero());
     for ([i, j], x) in tensor.iter_reference_mut().with_index() {
         // Select the i'th row in the left tensor to give us a vector
-        let left = TensorIndex::from(
-            &left,
-            [(left.view_shape()[0].0, i)],
-        );
+        let left = TensorIndex::from(&left, [(left.view_shape()[0].0, i)]);
         // Select the j'th column in the right tensor to give us a vector
-        let right = TensorIndex::from(
-            &right,
-            [(right.view_shape()[1].0, j)],
-        );
+        let right = TensorIndex::from(&right, [(right.view_shape()[1].0, j)]);
         // Since we checked earlier that we have MxN * NxL these two vectors have the same length.
         *x = scalar_product::<T, _, _>(
             TensorReferenceIterator::from(&left),
-            TensorReferenceIterator::from(&right)
+            TensorReferenceIterator::from(&right),
         )
     }
     tensor

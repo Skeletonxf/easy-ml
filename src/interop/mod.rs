@@ -4,11 +4,11 @@
  * [Tensor](crate::tensors::Tensor)/[TensorView](crate::tensors::views::TensorView).
  */
 
-use crate::matrices::views::{MatrixMut, MatrixRef, NoInteriorMutability};
 use crate::matrices::views::DataLayout as MDataLayout;
+use crate::matrices::views::{MatrixMut, MatrixRef, NoInteriorMutability};
 use crate::matrices::{Column, Row};
-use crate::tensors::views::{TensorMut, TensorRef};
 use crate::tensors::views::DataLayout as TDataLayout;
+use crate::tensors::views::{TensorMut, TensorRef};
 use crate::tensors::{Dimension, InvalidShapeError};
 
 use std::marker::PhantomData;

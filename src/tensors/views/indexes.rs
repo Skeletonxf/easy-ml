@@ -1,4 +1,4 @@
-use crate::tensors::views::{TensorMut, TensorRef, DataLayout};
+use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
 use crate::tensors::Dimension;
 use std::marker::PhantomData;
 

@@ -34,7 +34,7 @@
  * the dimensions are stored as.
  */
 
-use crate::tensors::views::{TensorMut, TensorRef, DataLayout};
+use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
 use crate::tensors::{Dimension, Tensor};
 
 use std::error::Error;
@@ -459,10 +459,7 @@ where
         // is
         match self.source.data_layout() {
             DataLayout::Linear(order) => DataLayout::Linear(
-                crate::tensors::dimensions::map_linear_data_layout(
-                    &self.dimension_mapping,
-                    &order,
-                )
+                crate::tensors::dimensions::map_linear_data_layout(&self.dimension_mapping, &order),
             ),
             DataLayout::NonLinear => DataLayout::NonLinear,
             DataLayout::Other => DataLayout::Other,

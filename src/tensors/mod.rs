@@ -15,8 +15,8 @@ use crate::tensors::indexing::{
     TensorReferenceMutIterator, TensorTranspose,
 };
 use crate::tensors::views::{
-    IndexRange, IndexRangeValidationError, TensorExpansion, TensorIndex, TensorMask, TensorMut,
-    TensorRange, TensorRef, TensorRename, TensorView, DataLayout,
+    DataLayout, IndexRange, IndexRangeValidationError, TensorExpansion, TensorIndex, TensorMask,
+    TensorMut, TensorRange, TensorRef, TensorRename, TensorView,
 };
 
 use std::error::Error;
@@ -356,7 +356,6 @@ unsafe impl<T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
         // We always have our memory in most significant to least
         DataLayout::Linear(std::array::from_fn(|i| i))
     }
-
 }
 
 // # Safety

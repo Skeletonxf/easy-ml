@@ -10,7 +10,7 @@
  * Boxed TensorRef and TensorMut values also implement TensorRef and TensorMut respectively.
  */
 
-use crate::tensors::views::{TensorMut, TensorRef, DataLayout};
+use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
 use crate::tensors::Dimension;
 #[allow(unused_imports)] // used in doc links
 use crate::tensors::Tensor;
