@@ -10,7 +10,7 @@
  * Boxed TensorRef and TensorMut values also implement TensorRef and TensorMut respectively.
  */
 
-use crate::tensors::views::{TensorMut, TensorRef};
+use crate::tensors::views::{TensorMut, TensorRef, DataLayout};
 use crate::tensors::Dimension;
 #[allow(unused_imports)] // used in doc links
 use crate::tensors::Tensor;
@@ -38,6 +38,10 @@ where
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         TensorRef::get_reference_unchecked(*self, indexes)
     }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        TensorRef::data_layout(*self)
+    }
 }
 
 // # Safety
@@ -63,6 +67,10 @@ where
 
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         TensorRef::get_reference_unchecked(*self, indexes)
+    }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        TensorRef::data_layout(*self)
     }
 }
 
@@ -111,6 +119,10 @@ where
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         self.as_ref().get_reference_unchecked(indexes)
     }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        self.as_ref().data_layout()
+    }
 }
 
 // # Safety
@@ -154,6 +166,10 @@ unsafe impl<T, const D: usize> TensorRef<T, D> for Box<dyn TensorRef<T, D>> {
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         self.as_ref().get_reference_unchecked(indexes)
     }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        self.as_ref().data_layout()
+    }
 }
 
 // # Safety
@@ -175,6 +191,10 @@ unsafe impl<T, const D: usize> TensorRef<T, D> for Box<dyn TensorMut<T, D>> {
 
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         self.as_ref().get_reference_unchecked(indexes)
+    }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        self.as_ref().data_layout()
     }
 }
 

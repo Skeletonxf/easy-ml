@@ -1,4 +1,4 @@
-use crate::tensors::views::{TensorMut, TensorRef};
+use crate::tensors::views::{TensorMut, TensorRef, DataLayout};
 use crate::tensors::Dimension;
 use std::marker::PhantomData;
 
@@ -129,6 +129,10 @@ where
 
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         self.source.get_reference_unchecked(indexes)
+    }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        self.source.data_layout()
     }
 }
 

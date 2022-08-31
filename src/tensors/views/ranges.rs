@@ -1,4 +1,4 @@
-use crate::tensors::views::{TensorMut, TensorRef};
+use crate::tensors::views::{TensorMut, TensorRef, DataLayout};
 use crate::tensors::{Dimension, InvalidDimensionsError, InvalidShapeError};
 use std::error::Error;
 use std::fmt;
@@ -640,6 +640,13 @@ where
         self.source
             .get_reference_unchecked(map_indexes_by_range(indexes, &self.range).unwrap())
     }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        // Our range means the view shape no longer matches up to a single
+        // line of data in memory in the general case (ranges in 1D could still be linear
+        // but DataLayout is not very meaningful till we get to 2D anyway).
+        DataLayout::NonLinear
+    }
 }
 
 // # Safety
@@ -710,6 +717,12 @@ where
         // therefore out of bounds lookups created by map_indexes_by_mask should never happen.
         self.source
             .get_reference_unchecked(map_indexes_by_mask(indexes, &self.mask))
+    }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        // Our mask means the view shape no longer matches up to a single
+        // line of data in memory.
+        DataLayout::NonLinear
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::tensors::views::{TensorMut, TensorRef};
+use crate::tensors::views::{TensorMut, TensorRef, DataLayout};
 use crate::tensors::Dimension;
 use std::marker::PhantomData;
 
@@ -155,6 +155,12 @@ macro_rules! tensor_index_ref_impl {
                 // TODO: Can we use unwrap_unchecked here?
                 self.source
                     .get_reference_unchecked(self.$helper_name(indexes).unwrap())
+            }
+
+            fn data_layout(&self) -> DataLayout<{ $d - $i }> {
+                // Our pre provided index means the view shape no longer matches up to a single
+                // line of data in memory.
+                DataLayout::NonLinear
             }
         }
 
@@ -435,6 +441,12 @@ macro_rules! tensor_expansion_ref_impl {
                 // TODO: Can we use unwrap_unchecked here?
                 self.source
                     .get_reference_unchecked(self.$helper_name(indexes).unwrap())
+            }
+
+            fn data_layout(&self) -> DataLayout<{ $d + $i }> {
+                // Our extra dimensions means the view shape no longer matches up to a single
+                // line of data in memory.
+                DataLayout::NonLinear
             }
         }
 

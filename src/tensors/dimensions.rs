@@ -95,6 +95,18 @@ pub(crate) fn map_dimensions<const D: usize>(
     std::array::from_fn(|d| indexes[dimension_mapping[d]])
 }
 
+// Reorders some source linear data layout order according to the dimension_mapping to return
+// the new linear data layout order for what the mapped shape will be.
+#[inline]
+pub(crate) fn map_linear_data_layout<const D: usize>(
+    dimension_mapping: &[usize; D],
+    source: &[usize; D],
+) -> [usize; D] {
+    // This is identical to mapping dimensions because the swap of dimensions and corresponding
+    // swap on the view shape means the data layout order swaps the same way.
+    std::array::from_fn(|d| source[dimension_mapping[d]])
+}
+
 pub(crate) fn dimension_mapping_shape<const D: usize>(
     source: &[(Dimension, usize); D],
     dimension_mapping: &[usize; D],

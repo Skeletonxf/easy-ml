@@ -4,9 +4,11 @@
  * [Tensor](crate::tensors::Tensor)/[TensorView](crate::tensors::views::TensorView).
  */
 
-use crate::matrices::views::{DataLayout, MatrixMut, MatrixRef, NoInteriorMutability};
+use crate::matrices::views::{MatrixMut, MatrixRef, NoInteriorMutability};
+use crate::matrices::views::DataLayout as MDataLayout;
 use crate::matrices::{Column, Row};
 use crate::tensors::views::{TensorMut, TensorRef};
+use crate::tensors::views::DataLayout as TDataLayout;
 use crate::tensors::{Dimension, InvalidShapeError};
 
 use std::marker::PhantomData;
@@ -153,6 +155,19 @@ where
     unsafe fn get_reference_unchecked(&self, indexes: [usize; 2]) -> &T {
         self.source.get_reference_unchecked(indexes[0], indexes[1])
     }
+
+    fn data_layout(&self) -> TDataLayout<2> {
+        // Row major and column major are the less generalised versions of
+        // a linear data layout. Since our view shape is hardcoded here to rows
+        // then columns, a row major matrix means the most significant dimension
+        // is the first, and the least significant dimension is the second. Similarly
+        // a column major matrix means the opposite.
+        match self.source.data_layout() {
+            MDataLayout::RowMajor => TDataLayout::Linear([0, 1]),
+            MDataLayout::ColumnMajor => TDataLayout::Linear([1, 0]),
+            MDataLayout::Other => TDataLayout::Other,
+        }
+    }
 }
 
 // # Safety
@@ -243,9 +258,22 @@ where
         self.source.get_reference_unchecked([row, column])
     }
 
-    // TODO: We need some equivalent on TensorRef to provide a sane value here
-    fn data_layout(&self) -> DataLayout {
-        DataLayout::RowMajor
+    fn data_layout(&self) -> MDataLayout {
+        // Row major and column major are the less generalised versions of
+        // a linear data layout. Since our view shape is always interpreted here as rows
+        // then columns, a row major matrix means the most significant dimension
+        // is the first, and the least significant dimension is the second. Similarly
+        // a column major matrix means the opposite.
+        match self.source.data_layout() {
+            TDataLayout::Linear([0, 1]) => MDataLayout::RowMajor,
+            TDataLayout::Linear([1, 0]) => MDataLayout::ColumnMajor,
+            TDataLayout::NonLinear => MDataLayout::Other,
+            TDataLayout::Other => MDataLayout::Other,
+            // This branch should never happen as no other Linear layouts are valid according
+            // to the docs the source implementation must follow but we need to keep the Rust
+            // compiler happy
+            TDataLayout::Linear([_, _]) => MDataLayout::Other,
+        }
     }
 }
 

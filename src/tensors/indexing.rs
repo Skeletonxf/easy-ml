@@ -34,7 +34,7 @@
  * the dimensions are stored as.
  */
 
-use crate::tensors::views::{TensorMut, TensorRef};
+use crate::tensors::views::{TensorMut, TensorRef, DataLayout};
 use crate::tensors::{Dimension, Tensor};
 
 use std::error::Error;
@@ -452,6 +452,21 @@ where
 
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         self.get_reference_unchecked(indexes)
+    }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        // TODO: This needs a lot of unit tests to be sure what I think is correct here actually
+        // is
+        match self.source.data_layout() {
+            DataLayout::Linear(order) => DataLayout::Linear(
+                crate::tensors::dimensions::map_linear_data_layout(
+                    &self.dimension_mapping,
+                    &order,
+                )
+            ),
+            DataLayout::NonLinear => DataLayout::NonLinear,
+            DataLayout::Other => DataLayout::Other,
+        }
     }
 }
 
@@ -1057,6 +1072,12 @@ where
 
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         self.access.get_reference_unchecked(indexes)
+    }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        // The tensor access already handles returning the correct data layout for the dimension
+        // order
+        self.access.data_layout()
     }
 }
 
