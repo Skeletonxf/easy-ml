@@ -312,4 +312,105 @@ mod tensors {
         let mut square = Tensor::from([("r", 2), ("c", 2)], (0..4).collect());
         square.reshape_mut([("not", 3), ("square", 1)]);
     }
+
+    #[test]
+    fn check_data_layout_tensor() {
+        use easy_ml::tensors::views::{DataLayout, TensorRef};
+        let tensor = Tensor::from([("b", 3), ("r", 3), ("c", 3)], (0..27).collect());
+        assert_eq!(tensor.data_layout(), DataLayout::Linear([0, 1, 2]));
+        let tensor = Tensor::from([("r", 2), ("c", 2)], (0..4).collect());
+        assert_eq!(tensor.data_layout(), DataLayout::Linear([0, 1]));
+        let tensor = Tensor::from([("a", 3)], (0..3).collect());
+        assert_eq!(tensor.data_layout(), DataLayout::Linear([0]));
+    }
+
+    #[test]
+    fn check_data_layout_non_linear_tensor_views() {
+        use easy_ml::tensors::views::{DataLayout, TensorRef};
+        let tensor = Tensor::from([("b", 3), ("r", 3), ("c", 3)], (0..27).collect());
+        assert_eq!(tensor.data_layout(), DataLayout::Linear([0, 1, 2]));
+        assert_eq!(
+            tensor.range([("b", 0..2)]).unwrap().source_ref().data_layout(),
+            DataLayout::NonLinear
+        );
+        assert_eq!(
+            tensor.mask([("c", 0..2)]).unwrap().source_ref().data_layout(),
+            DataLayout::NonLinear
+        );
+        assert_eq!(
+            tensor.select([("b", 1)]).source_ref().data_layout(),
+            DataLayout::NonLinear
+        );
+        assert_eq!(
+            tensor.expand([(2, "x")]).source_ref().data_layout(),
+            DataLayout::NonLinear
+        );
+    }
+
+    #[test]
+    #[should_panic] // FIXME: TensorAccess is implemented wrong here
+    fn check_data_layout_tensor_access() {
+        use easy_ml::tensors::views::{DataLayout, TensorRef};
+        let tensor = Tensor::from([("b", 3), ("r", 3), ("c", 3)], (0..27).collect());
+        assert_eq!(tensor.data_layout(), DataLayout::Linear([0, 1, 2]));
+        assert_eq!(
+            tensor.index_by(["b", "r", "c"]).data_layout(),
+            DataLayout::Linear([0, 1, 2])
+        );
+        assert_eq!(
+            tensor.index_by(["c", "r", "b"]).data_layout(),
+            DataLayout::Linear([2, 1, 0])
+        );
+        assert_eq!( // b = 0, r == 1, c == 2, => 1, 2, 0
+            tensor.index_by(["r", "c", "b"]).data_layout(),
+            DataLayout::Linear([1, 2, 0])
+        );
+        assert_eq!(
+            tensor.index_by(["c", "r", "b"]).data_layout(),
+            DataLayout::Linear([2, 1, 0])
+        );
+        assert_eq!(
+            tensor.index_by(["r", "b", "c"]).data_layout(),
+            DataLayout::Linear([1, 0, 2])
+        );
+        assert_eq!(
+            tensor.index_by(["c", "b", "r"]).data_layout(),
+            DataLayout::Linear([2, 0, 1])
+        );
+        assert_eq!(
+            tensor.transpose_view(["b", "r", "c"]).source_ref().data_layout(),
+            DataLayout::Linear([0, 1, 2])
+        );
+        assert_eq!(
+            tensor.transpose_view(["c", "r", "b"]).source_ref().data_layout(),
+            DataLayout::Linear([2, 1, 0])
+        );
+        assert_eq!(
+            tensor.transpose_view(["r", "c", "b"]).source_ref().data_layout(),
+            DataLayout::Linear([1, 2, 0])
+        );
+        assert_eq!(
+            tensor.transpose_view(["c", "r", "b"]).source_ref().data_layout(),
+            DataLayout::Linear([2, 1, 0])
+        );
+        assert_eq!(
+            tensor.transpose_view(["r", "b", "c"]).source_ref().data_layout(),
+            DataLayout::Linear([1, 0, 2])
+        );
+        assert_eq!(
+            tensor.transpose_view(["c", "b", "r"]).source_ref().data_layout(),
+            DataLayout::Linear([2, 0, 1])
+        );
+    }
+
+    #[test]
+    fn check_data_layout_linear_tensor_views() {
+        use easy_ml::tensors::views::{DataLayout, TensorRef};
+        let tensor = Tensor::from([("b", 3), ("r", 3), ("c", 3)], (0..27).collect());
+        assert_eq!(tensor.data_layout(), DataLayout::Linear([0, 1, 2]));
+        assert_eq!(
+            tensor.rename_view(["a", "q", "b"]).source_ref().data_layout(),
+            DataLayout::Linear([0, 1, 2])
+        );
+    }
 }

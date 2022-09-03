@@ -455,8 +455,7 @@ where
     }
 
     fn data_layout(&self) -> DataLayout<D> {
-        // TODO: This needs a lot of unit tests to be sure what I think is correct here actually
-        // is
+        // FIXME: Implementation isn't quite right compared to unit tests
         match self.source.data_layout() {
             DataLayout::Linear(order) => DataLayout::Linear(
                 crate::tensors::dimensions::map_linear_data_layout(&self.dimension_mapping, &order),
