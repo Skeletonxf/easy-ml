@@ -20,6 +20,102 @@ mod tensors {
     }
 
     #[test]
+    fn higher_dimensional_indexing_test() {
+        let tensor = Tensor::from([("a", 3), ("b", 3), ("c", 3)], (0..27).collect());
+        let tensor = tensor.map_with_index(|index, _| index);
+
+        let abc = tensor.index_by(["a", "b", "c"]);
+        assert_eq!(abc.shape(), [("a", 3), ("b", 3), ("c", 3)]);
+        assert_eq!(abc.get([0, 0, 0]), [0, 0, 0]);
+        assert_eq!(abc.get([0, 0, 1]), [0, 0, 1]);
+        assert_eq!(abc.get([0, 0, 2]), [0, 0, 2]);
+        assert_eq!(abc.get([0, 1, 0]), [0, 1, 0]);
+        assert_eq!(abc.get([0, 1, 1]), [0, 1, 1]);
+        assert_eq!(abc.get([0, 1, 2]), [0, 1, 2]);
+        assert_eq!(abc.get([0, 2, 0]), [0, 2, 0]);
+        assert_eq!(abc.get([0, 2, 1]), [0, 2, 1]);
+        assert_eq!(abc.get([0, 2, 2]), [0, 2, 2]);
+        assert_eq!(abc.get([1, 0, 0]), [1, 0, 0]);
+        assert_eq!(abc.get([1, 0, 1]), [1, 0, 1]);
+        assert_eq!(abc.get([1, 0, 2]), [1, 0, 2]);
+        assert_eq!(abc.get([1, 1, 0]), [1, 1, 0]);
+        assert_eq!(abc.get([1, 1, 1]), [1, 1, 1]);
+        assert_eq!(abc.get([1, 1, 2]), [1, 1, 2]);
+        assert_eq!(abc.get([1, 2, 0]), [1, 2, 0]);
+        assert_eq!(abc.get([1, 2, 1]), [1, 2, 1]);
+        assert_eq!(abc.get([1, 2, 2]), [1, 2, 2]);
+        assert_eq!(abc.get([2, 0, 0]), [2, 0, 0]);
+        assert_eq!(abc.get([2, 0, 1]), [2, 0, 1]);
+        assert_eq!(abc.get([2, 0, 2]), [2, 0, 2]);
+        assert_eq!(abc.get([2, 1, 0]), [2, 1, 0]);
+        assert_eq!(abc.get([2, 1, 1]), [2, 1, 1]);
+        assert_eq!(abc.get([2, 1, 2]), [2, 1, 2]);
+        assert_eq!(abc.get([2, 2, 0]), [2, 2, 0]);
+        assert_eq!(abc.get([2, 2, 1]), [2, 2, 1]);
+        assert_eq!(abc.get([2, 2, 2]), [2, 2, 2]);
+
+        let cba = tensor.index_by(["c", "b", "a"]);
+        assert_eq!(cba.shape(), [("c", 3), ("b", 3), ("a", 3)]);
+        assert_eq!(cba.get([0, 0, 0]), [0, 0, 0]);
+        assert_eq!(cba.get([1, 0, 0]), [0, 0, 1]);
+        assert_eq!(cba.get([2, 0, 0]), [0, 0, 2]);
+        assert_eq!(cba.get([0, 1, 0]), [0, 1, 0]);
+        assert_eq!(cba.get([1, 1, 0]), [0, 1, 1]);
+        assert_eq!(cba.get([2, 1, 0]), [0, 1, 2]);
+        assert_eq!(cba.get([0, 2, 0]), [0, 2, 0]);
+        assert_eq!(cba.get([1, 2, 0]), [0, 2, 1]);
+        assert_eq!(cba.get([2, 2, 0]), [0, 2, 2]);
+        assert_eq!(cba.get([0, 0, 1]), [1, 0, 0]);
+        assert_eq!(cba.get([1, 0, 1]), [1, 0, 1]);
+        assert_eq!(cba.get([2, 0, 1]), [1, 0, 2]);
+        assert_eq!(cba.get([0, 1, 1]), [1, 1, 0]);
+        assert_eq!(cba.get([1, 1, 1]), [1, 1, 1]);
+        assert_eq!(cba.get([2, 1, 1]), [1, 1, 2]);
+        assert_eq!(cba.get([0, 2, 1]), [1, 2, 0]);
+        assert_eq!(cba.get([1, 2, 1]), [1, 2, 1]);
+        assert_eq!(cba.get([2, 2, 1]), [1, 2, 2]);
+        assert_eq!(cba.get([0, 0, 2]), [2, 0, 0]);
+        assert_eq!(cba.get([1, 0, 2]), [2, 0, 1]);
+        assert_eq!(cba.get([2, 0, 2]), [2, 0, 2]);
+        assert_eq!(cba.get([0, 1, 2]), [2, 1, 0]);
+        assert_eq!(cba.get([1, 1, 2]), [2, 1, 1]);
+        assert_eq!(cba.get([2, 1, 2]), [2, 1, 2]);
+        assert_eq!(cba.get([0, 2, 2]), [2, 2, 0]);
+        assert_eq!(cba.get([1, 2, 2]), [2, 2, 1]);
+        assert_eq!(cba.get([2, 2, 2]), [2, 2, 2]);
+
+        let cab = tensor.index_by(["c", "a", "b"]);
+        assert_eq!(cab.shape(), [("c", 3), ("a", 3), ("b", 3)]);
+        assert_eq!(cab.get([0, 0, 0]), [0, 0, 0]);
+        assert_eq!(cab.get([1, 0, 0]), [0, 0, 1]);
+        assert_eq!(cab.get([2, 0, 0]), [0, 0, 2]);
+        assert_eq!(cab.get([0, 0, 1]), [0, 1, 0]);
+        assert_eq!(cab.get([1, 0, 1]), [0, 1, 1]);
+        assert_eq!(cab.get([2, 0, 1]), [0, 1, 2]);
+        assert_eq!(cab.get([0, 0, 2]), [0, 2, 0]);
+        assert_eq!(cab.get([1, 0, 2]), [0, 2, 1]);
+        assert_eq!(cab.get([2, 0, 2]), [0, 2, 2]);
+        assert_eq!(cab.get([0, 1, 0]), [1, 0, 0]);
+        assert_eq!(cab.get([1, 1, 0]), [1, 0, 1]);
+        assert_eq!(cab.get([2, 1, 0]), [1, 0, 2]);
+        assert_eq!(cab.get([0, 1, 1]), [1, 1, 0]);
+        assert_eq!(cab.get([1, 1, 1]), [1, 1, 1]);
+        assert_eq!(cab.get([2, 1, 1]), [1, 1, 2]);
+        assert_eq!(cab.get([0, 1, 2]), [1, 2, 0]);
+        assert_eq!(cab.get([1, 1, 2]), [1, 2, 1]);
+        assert_eq!(cab.get([2, 1, 2]), [1, 2, 2]);
+        assert_eq!(cab.get([0, 2, 0]), [2, 0, 0]);
+        assert_eq!(cab.get([1, 2, 0]), [2, 0, 1]);
+        assert_eq!(cab.get([2, 2, 0]), [2, 0, 2]);
+        assert_eq!(cab.get([0, 2, 1]), [2, 1, 0]);
+        assert_eq!(cab.get([1, 2, 1]), [2, 1, 1]);
+        assert_eq!(cab.get([2, 2, 1]), [2, 1, 2]);
+        assert_eq!(cab.get([0, 2, 2]), [2, 2, 0]);
+        assert_eq!(cab.get([1, 2, 2]), [2, 2, 1]);
+        assert_eq!(cab.get([2, 2, 2]), [2, 2, 2]);
+    }
+
+    #[test]
     #[should_panic]
     fn repeated_name() {
         Tensor::from([("x", 2), ("x", 2)], vec![1, 2, 3, 4]);
