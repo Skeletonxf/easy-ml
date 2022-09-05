@@ -78,6 +78,56 @@ pub(crate) fn dimension_mapping<const D: usize>(
     Some(mapping)
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) struct DimensionMappings<const D: usize> {
+    source_to_requested: [usize; D],
+    requested_to_source: [usize; D],
+}
+
+// Computes both mappings from from a set of dimensions in source order and a matching set of
+// dimensions in an arbitary order.
+// If the source order is x,y,z but the requested order is z,x,y then the mapping
+// from source to requested is [1,2,0] (x becomes second, y becomes last, z becomes first) and
+// from requested to source is [2,0,1] (z becones kast, x becomes first, y becomes second).
+pub(crate) fn dimension_mappings<const D: usize>(
+    source: &[(Dimension, usize); D],
+    requested: &[Dimension; D],
+) -> Option<DimensionMappings<D>> {
+    let mut source_to_requested = [0; D];
+    let mut requested_to_source = [0; D];
+    for d in 0..D {
+        let dimension = source[d].0;
+        // happy path, requested dimension is in the same order as in source order
+        if requested[d] == dimension {
+            source_to_requested[d] = d;
+            requested_to_source[d] = d;
+        } else {
+            // If dimensions are in a different order, find the dimension with the
+            // matching dimension name for both mappings at this position in the order.
+            // Since both lists are the same length and we know our source order won't contain
+            // duplicates this also ensures the two lists have exactly the same set of names
+            // as otherwise one of these `find`s will fail.
+            let (n_in_requested, _) = requested
+                .iter()
+                .enumerate()
+                .find(|(_, d)| **d == dimension)?;
+            source_to_requested[d] = n_in_requested;
+            let dimension = requested[d];
+            let (n_in_source, _) = source
+                .iter()
+                .enumerate()
+                .find(|(_, (d, _))| *d == dimension)?;
+            requested_to_source[d] = n_in_source;
+        };
+    }
+    Some(
+        DimensionMappings {
+            source_to_requested,
+            requested_to_source,
+        }
+    )
+}
+
 // pub(crate) fn same_dimensions<const D: usize>(
 //     source: &[(Dimension, usize); D],
 //     requested: &[Dimension; D],
@@ -184,6 +234,50 @@ fn test_dimension_mapping() {
     assert_eq!([0, 1, 2], mapping.unwrap());
     let mapping = dimension_mapping(&[("x", 0), ("y", 0), ("z", 0)], &["z", "y", "x"]);
     assert_eq!([2, 1, 0], mapping.unwrap());
+}
+
+#[test]
+fn test_dimension_mappings() {
+    let mapping = dimension_mappings(&[("x", 0), ("y", 0), ("z", 0)], &["x", "y", "z"]);
+    assert_eq!(
+        DimensionMappings {
+            source_to_requested: [0, 1, 2],
+            requested_to_source: [0, 1, 2],
+        },
+        mapping.unwrap()
+    );
+    let mapping = dimension_mappings(&[("x", 0), ("y", 0), ("z", 0)], &["z", "y", "x"]);
+    assert_eq!(
+        DimensionMappings {
+            source_to_requested: [2, 1, 0],
+            requested_to_source: [2, 1, 0],
+        },
+        mapping.unwrap()
+    );
+    let mapping = dimension_mappings(&[("x", 0), ("y", 0), ("z", 0)], &["z", "x", "y"]);
+    assert_eq!(
+        DimensionMappings {
+            source_to_requested: [1, 2, 0],
+            requested_to_source: [2, 0, 1],
+        },
+        mapping.unwrap()
+    );
+    let mapping = dimension_mappings(&[("x", 0), ("y", 0), ("z", 0)], &["x", "z", "y"]);
+    assert_eq!(
+        DimensionMappings {
+            source_to_requested: [0, 2, 1],
+            requested_to_source: [0, 2, 1],
+        },
+        mapping.unwrap()
+    );
+    let mapping = dimension_mappings(&[("x", 0), ("y", 0), ("z", 0)], &["y", "z", "x"]);
+    assert_eq!(
+        DimensionMappings {
+            source_to_requested: [2, 0, 1],
+            requested_to_source: [1, 2, 0],
+        },
+        mapping.unwrap()
+    );
 }
 
 #[test]
