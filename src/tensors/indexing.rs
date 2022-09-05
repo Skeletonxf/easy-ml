@@ -34,6 +34,7 @@
  * the dimensions are stored as.
  */
 
+use crate::tensors::dimensions::DimensionMappings;
 use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
 use crate::tensors::{Dimension, Tensor};
 
@@ -57,7 +58,7 @@ pub use crate::matrices::iterators::WithIndex;
 #[derive(Clone, Debug)]
 pub struct TensorAccess<T, S, const D: usize> {
     source: S,
-    dimension_mapping: [usize; D],
+    dimension_mapping: DimensionMappings<D>,
     _type: PhantomData<T>,
 }
 
@@ -93,7 +94,7 @@ where
         dimensions: [Dimension; D],
     ) -> Result<TensorAccess<T, S, D>, InvalidDimensionsError<D>> {
         Ok(TensorAccess {
-            dimension_mapping: crate::tensors::dimensions::dimension_mapping(
+            dimension_mapping: DimensionMappings::new(
                 &source.view_shape(),
                 &dimensions,
             )
@@ -129,9 +130,8 @@ where
      * ```
      */
     pub fn from_source_order(source: S) -> TensorAccess<T, S, D> {
-        let no_op_mapping = std::array::from_fn(|d| d);
         TensorAccess {
-            dimension_mapping: no_op_mapping,
+            dimension_mapping: DimensionMappings::no_op_mapping(),
             source,
             _type: PhantomData,
         }
@@ -142,10 +142,7 @@ where
      * was created with, not necessarily the same order as in the underlying tensor.
      */
     pub fn shape(&self) -> [(Dimension, usize); D] {
-        crate::tensors::dimensions::map_shape_to_requested(
-            &self.source.view_shape(),
-            &self.dimension_mapping,
-        )
+        self.dimension_mapping.map_shape_to_requested(&self.source.view_shape())
     }
 
     pub fn source(self) -> S {
@@ -206,11 +203,7 @@ where
      * index if the index is in range. Otherwise returns None.
      */
     pub fn try_get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        self.source
-            .get_reference(crate::tensors::dimensions::map_dimensions_to_source(
-                &self.dimension_mapping,
-                &indexes,
-            ))
+        self.source.get_reference(self.dimension_mapping.map_dimensions_to_source(&indexes))
     }
 
     /**
@@ -246,10 +239,7 @@ where
      */
     pub unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         self.source
-            .get_reference_unchecked(crate::tensors::dimensions::map_dimensions_to_source(
-                &self.dimension_mapping,
-                &indexes,
-            ))
+            .get_reference_unchecked(self.dimension_mapping.map_dimensions_to_source(&indexes))
     }
 
     /**
@@ -347,10 +337,7 @@ where
      */
     pub fn try_get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
         self.source
-            .get_reference_mut(crate::tensors::dimensions::map_dimensions_to_source(
-                &self.dimension_mapping,
-                &indexes,
-            ))
+            .get_reference_mut(self.dimension_mapping.map_dimensions_to_source(&indexes))
     }
 
     /**
@@ -385,10 +372,7 @@ where
      */
     pub unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
         self.source
-            .get_reference_unchecked_mut(crate::tensors::dimensions::map_dimensions_to_source(
-                &self.dimension_mapping,
-                &indexes,
-            ))
+            .get_reference_unchecked_mut(self.dimension_mapping.map_dimensions_to_source(&indexes))
     }
 
     /**
@@ -458,9 +442,7 @@ where
         // FIXME: Implementation isn't quite right compared to unit tests
         match self.source.data_layout() {
             DataLayout::Linear(order) => DataLayout::Linear(
-                crate::tensors::dimensions::map_linear_data_layout_to_requested(
-                    &self.dimension_mapping, &order
-                ),
+                self.dimension_mapping.map_linear_data_layout_to_requested(&order)
             ),
             DataLayout::NonLinear => DataLayout::NonLinear,
             DataLayout::Other => DataLayout::Other,

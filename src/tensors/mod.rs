@@ -1066,11 +1066,9 @@ where
      */
     #[track_caller]
     pub fn reorder_mut(&mut self, dimensions: [Dimension; D]) {
-        use crate::tensors::dimensions::{
-            dimension_mapping, map_shape_to_requested, map_dimensions_to_source,
-        };
+        use crate::tensors::dimensions::DimensionMappings;
         if D == 2 && crate::tensors::dimensions::is_square(&self.dimensions) {
-            let dimension_mapping = match dimension_mapping(&self.dimensions, &dimensions) {
+            let dimension_mapping = match DimensionMappings::new(&self.dimensions, &dimensions) {
                 Some(dimension_mapping) => dimension_mapping,
                 None => panic!(
                     "Dimension names provided {:?} must be the same set of dimension names in the tensor: {:?}",
@@ -1079,14 +1077,14 @@ where
                 ),
             };
 
-            let shape = map_shape_to_requested(&self.dimensions, &dimension_mapping);
+            let shape = dimension_mapping.map_shape_to_requested(&self.dimensions);
             let shape_iterator = ShapeIterator::from(shape);
 
             for index in shape_iterator {
                 let i = index[0];
                 let j = index[1];
                 if j >= i {
-                    let mapped_index = map_dimensions_to_source(&dimension_mapping, &index);
+                    let mapped_index = dimension_mapping.map_dimensions_to_source(&index);
                     // Swap elements from the upper triangle (using index order of the actual tensor's
                     // shape)
                     let temp = self.get_reference(index).unwrap().clone();

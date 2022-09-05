@@ -45,119 +45,101 @@ pub fn position_of<const D: usize>(
     dimensions.iter().position(|(d, _)| d == &dimension)
 }
 
-// Computes a mapping from a set of dimensions in source order to a matching set of
-// dimensions in an arbitary order.
-// Returns a list where each dimension in the source order is mapped to the requested order,
-// such that if the source order is x,y,z but the requested order is z,y,x then the mapping
-// is [2,1,0] as this maps the first dimension x to the third dimension x, the second dimension y
-// to the second dimension y, and the third dimension z to to the first dimension z.
-pub(crate) fn dimension_mapping<const D: usize>(
-    source: &[(Dimension, usize); D],
-    requested: &[Dimension; D],
-) -> Option<[usize; D]> {
-    let mut mapping = [0; D];
-    for d in 0..D {
-        let dimension = source[d].0;
-        // happy path, requested dimension is in the same order as in source order
-        let order = if requested[d] == dimension {
-            d
-        } else {
-            // If dimensions are in a different order, find the requested dimension with the
-            // matching dimension name.
-            // Since both lists are the same length and we know our source order won't contain
-            // duplicates this also ensures the two lists have exactly the same set of names
-            // as otherwise one of these `find`s will fail.
-            let (n, _) = requested
-                .iter()
-                .enumerate()
-                .find(|(_, d)| **d == dimension)?;
-            n
-        };
-        mapping[d] = order;
-    }
-    Some(mapping)
-}
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct DimensionMappings<const D: usize> {
     source_to_requested: [usize; D],
     requested_to_source: [usize; D],
 }
 
-// Computes both mappings from from a set of dimensions in source order and a matching set of
-// dimensions in an arbitary order.
-// If the source order is x,y,z but the requested order is z,x,y then the mapping
-// from source to requested is [1,2,0] (x becomes second, y becomes last, z becomes first) and
-// from requested to source is [2,0,1] (z becones kast, x becomes first, y becomes second).
-pub(crate) fn dimension_mappings<const D: usize>(
-    source: &[(Dimension, usize); D],
-    requested: &[Dimension; D],
-) -> Option<DimensionMappings<D>> {
-    let mut source_to_requested = [0; D];
-    let mut requested_to_source = [0; D];
-    for d in 0..D {
-        let dimension = source[d].0;
-        // happy path, requested dimension is in the same order as in source order
-        if requested[d] == dimension {
-            source_to_requested[d] = d;
-            requested_to_source[d] = d;
-        } else {
-            // If dimensions are in a different order, find the dimension with the
-            // matching dimension name for both mappings at this position in the order.
-            // Since both lists are the same length and we know our source order won't contain
-            // duplicates this also ensures the two lists have exactly the same set of names
-            // as otherwise one of these `find`s will fail.
-            let (n_in_requested, _) = requested
-                .iter()
-                .enumerate()
-                .find(|(_, d)| **d == dimension)?;
-            source_to_requested[d] = n_in_requested;
-            let dimension = requested[d];
-            let (n_in_source, _) = source
-                .iter()
-                .enumerate()
-                .find(|(_, (d, _))| *d == dimension)?;
-            requested_to_source[d] = n_in_source;
-        };
-    }
-    Some(
+impl<const D: usize> DimensionMappings<D> {
+    pub(crate) fn no_op_mapping() -> DimensionMappings<D> {
         DimensionMappings {
-            source_to_requested,
-            requested_to_source,
+            source_to_requested: std::array::from_fn(|d| d),
+            requested_to_source: std::array::from_fn(|d| d),
         }
-    )
-}
+    }
 
-// Reorders some indexes according to the dimension_mapping (requested to source) to return the
-// indexes in the source order
-#[inline]
-pub(crate) fn map_dimensions_to_source<const D: usize>(
-    dimension_mapping: &[usize; D],
-    indexes: &[usize; D],
-) -> [usize; D] {
-    std::array::from_fn(|d| indexes[dimension_mapping[d]])
-}
+    // Computes both mappings from from a set of dimensions in source order and a matching set of
+    // dimensions in an arbitary order.
+    // If the source order is x,y,z but the requested order is z,x,y then the mapping
+    // from source to requested is [1,2,0] (x becomes second, y becomes last, z becomes first) and
+    // from requested to source is [2,0,1] (z becones kast, x becomes first, y becomes second).
+    pub(crate) fn new(
+        source: &[(Dimension, usize); D],
+        requested: &[Dimension; D],
+    ) -> Option<DimensionMappings<D>> {
+        let mut source_to_requested = [0; D];
+        let mut requested_to_source = [0; D];
+        for d in 0..D {
+            let dimension = source[d].0;
+            // happy path, requested dimension is in the same order as in source order
+            if requested[d] == dimension {
+                source_to_requested[d] = d;
+                requested_to_source[d] = d;
+            } else {
+                // If dimensions are in a different order, find the dimension with the
+                // matching dimension name for both mappings at this position in the order.
+                // Since both lists are the same length and we know our source order won't contain
+                // duplicates this also ensures the two lists have exactly the same set of names
+                // as otherwise one of these `find`s will fail.
+                let (n_in_requested, _) = requested
+                    .iter()
+                    .enumerate()
+                    .find(|(_, d)| **d == dimension)?;
+                source_to_requested[d] = n_in_requested;
+                let dimension = requested[d];
+                let (n_in_source, _) = source
+                    .iter()
+                    .enumerate()
+                    .find(|(_, (d, _))| *d == dimension)?;
+                requested_to_source[d] = n_in_source;
+            };
+        }
+        Some(
+            DimensionMappings {
+                source_to_requested,
+                requested_to_source,
+            }
+        )
+    }
 
-// Reorders some shape according to the dimension_mapping (source to requested) to return the
-// shape in the requested order
-#[inline]
-pub(crate) fn map_shape_to_requested<const D: usize>(
-    source: &[(Dimension, usize); D],
-    dimension_mapping: &[usize; D],
-) -> [(Dimension, usize); D] {
-    std::array::from_fn(|d| source[dimension_mapping[d]])
-}
+    // Reorders some indexes according to the dimension mapping to return the
+    // indexes in the source order
+    #[inline]
+    pub(crate) fn map_dimensions_to_source(
+        &self,
+        indexes: &[usize; D],
+    ) -> [usize; D] {
+        // Our input is in requested order, so we need to lookup the order in the source
+        // to return the correct indexes.
+        std::array::from_fn(|d| indexes[self.requested_to_source[d]])
+    }
 
-// Reorders some source linear data layout according to the dimension_mapping (source to requested)
-// to return the new linear data layout order for what the mapped shape will be.
-#[inline]
-pub(crate) fn map_linear_data_layout_to_requested<const D: usize>(
-    dimension_mapping: &[usize; D],
-    source: &[usize; D],
-) -> [usize; D] {
-    // This is identical to map_shape_to_requested because the swap of dimensions and corresponding
-    // swap on the view shape means the data layout order swaps the same way.
-    std::array::from_fn(|d| source[dimension_mapping[d]])
+    // Reorders some shape according to the dimension mapping to return the
+    // shape in the requested order
+    #[inline]
+    pub(crate) fn map_shape_to_requested(
+        &self,
+        source: &[(Dimension, usize); D],
+    ) -> [(Dimension, usize); D] {
+        // For each d we're returning, we're giving what the requested dth dimension is
+        // in the source, so we reorder with requested_to_source even though we're mapping
+        // an input in source order to requested order.
+        std::array::from_fn(|d| source[self.requested_to_source[d]])
+    }
+
+    // Reorders some source linear data layout according to the dimension mapping
+    // to return the new linear data layout order for what
+    // the mapped shape will be.
+    #[inline]
+    pub(crate) fn map_linear_data_layout_to_requested(
+        &self,
+        source: &[usize; D],
+    ) -> [usize; D] {
+        // This is identical to map_shape_to_requested because the swap of dimensions and
+        // corresponding swap on the view shape means the data layout order swaps the same way.
+        std::array::from_fn(|d| source[self.requested_to_source[d]])
+    }
 }
 
 /**
@@ -217,54 +199,72 @@ pub(crate) fn has_duplicates_extra_names(dimensions: &[(usize, Dimension)]) -> b
 }
 
 #[test]
-fn test_dimension_mapping() {
-    let mapping = dimension_mapping(&[("x", 0), ("y", 0), ("z", 0)], &["x", "y", "z"]);
-    assert_eq!([0, 1, 2], mapping.unwrap());
-    let mapping = dimension_mapping(&[("x", 0), ("y", 0), ("z", 0)], &["z", "y", "x"]);
-    assert_eq!([2, 1, 0], mapping.unwrap());
-}
-
-#[test]
 fn test_dimension_mappings() {
-    let mapping = dimension_mappings(&[("x", 0), ("y", 0), ("z", 0)], &["x", "y", "z"]);
+    let shape = [("x", 0), ("y", 0), ("z", 0)];
+
+    let mapping = DimensionMappings::new(&shape, &["x", "y", "z"]).unwrap();
     assert_eq!(
         DimensionMappings {
             source_to_requested: [0, 1, 2],
             requested_to_source: [0, 1, 2],
         },
-        mapping.unwrap()
+        mapping
     );
-    let mapping = dimension_mappings(&[("x", 0), ("y", 0), ("z", 0)], &["z", "y", "x"]);
+    assert_eq!(
+        [("x", 0), ("y", 0), ("z", 0)],
+        mapping.map_shape_to_requested(&shape),
+    );
+
+    let mapping = DimensionMappings::new(&shape, &["z", "y", "x"]).unwrap();
     assert_eq!(
         DimensionMappings {
             source_to_requested: [2, 1, 0],
             requested_to_source: [2, 1, 0],
         },
-        mapping.unwrap()
+        mapping
     );
-    let mapping = dimension_mappings(&[("x", 0), ("y", 0), ("z", 0)], &["z", "x", "y"]);
+    assert_eq!(
+        [("z", 0), ("y", 0), ("x", 0)],
+        mapping.map_shape_to_requested(&shape),
+    );
+
+    let mapping = DimensionMappings::new(&shape, &["z", "x", "y"]).unwrap();
     assert_eq!(
         DimensionMappings {
             source_to_requested: [1, 2, 0],
             requested_to_source: [2, 0, 1],
         },
-        mapping.unwrap()
+        mapping
     );
-    let mapping = dimension_mappings(&[("x", 0), ("y", 0), ("z", 0)], &["x", "z", "y"]);
+    assert_eq!(
+        [("z", 0), ("x", 0), ("y", 0)],
+        mapping.map_shape_to_requested(&shape),
+    );
+
+    let mapping = DimensionMappings::new(&shape, &["x", "z", "y"]).unwrap();
     assert_eq!(
         DimensionMappings {
             source_to_requested: [0, 2, 1],
             requested_to_source: [0, 2, 1],
         },
-        mapping.unwrap()
+        mapping
     );
-    let mapping = dimension_mappings(&[("x", 0), ("y", 0), ("z", 0)], &["y", "z", "x"]);
+    assert_eq!(
+        [("x", 0), ("z", 0), ("y", 0)],
+        mapping.map_shape_to_requested(&shape),
+    );
+
+    let mapping = DimensionMappings::new(&shape, &["y", "z", "x"]).unwrap();
     assert_eq!(
         DimensionMappings {
             source_to_requested: [2, 0, 1],
             requested_to_source: [1, 2, 0],
         },
-        mapping.unwrap()
+        mapping
+    );
+    assert_eq!(
+        [("y", 0), ("z", 0), ("x", 0)],
+        mapping.map_shape_to_requested(&shape),
     );
 }
 
