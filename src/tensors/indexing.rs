@@ -142,7 +142,7 @@ where
      * was created with, not necessarily the same order as in the underlying tensor.
      */
     pub fn shape(&self) -> [(Dimension, usize); D] {
-        crate::tensors::dimensions::dimension_mapping_shape(
+        crate::tensors::dimensions::map_shape_to_requested(
             &self.source.view_shape(),
             &self.dimension_mapping,
         )
@@ -207,7 +207,7 @@ where
      */
     pub fn try_get_reference(&self, indexes: [usize; D]) -> Option<&T> {
         self.source
-            .get_reference(crate::tensors::dimensions::map_dimensions(
+            .get_reference(crate::tensors::dimensions::map_dimensions_to_source(
                 &self.dimension_mapping,
                 &indexes,
             ))
@@ -246,7 +246,7 @@ where
      */
     pub unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         self.source
-            .get_reference_unchecked(crate::tensors::dimensions::map_dimensions(
+            .get_reference_unchecked(crate::tensors::dimensions::map_dimensions_to_source(
                 &self.dimension_mapping,
                 &indexes,
             ))
@@ -347,7 +347,7 @@ where
      */
     pub fn try_get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
         self.source
-            .get_reference_mut(crate::tensors::dimensions::map_dimensions(
+            .get_reference_mut(crate::tensors::dimensions::map_dimensions_to_source(
                 &self.dimension_mapping,
                 &indexes,
             ))
@@ -385,7 +385,7 @@ where
      */
     pub unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
         self.source
-            .get_reference_unchecked_mut(crate::tensors::dimensions::map_dimensions(
+            .get_reference_unchecked_mut(crate::tensors::dimensions::map_dimensions_to_source(
                 &self.dimension_mapping,
                 &indexes,
             ))
@@ -458,7 +458,9 @@ where
         // FIXME: Implementation isn't quite right compared to unit tests
         match self.source.data_layout() {
             DataLayout::Linear(order) => DataLayout::Linear(
-                crate::tensors::dimensions::map_linear_data_layout(&self.dimension_mapping, &order),
+                crate::tensors::dimensions::map_linear_data_layout_to_requested(
+                    &self.dimension_mapping, &order
+                ),
             ),
             DataLayout::NonLinear => DataLayout::NonLinear,
             DataLayout::Other => DataLayout::Other,

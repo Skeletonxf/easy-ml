@@ -128,48 +128,36 @@ pub(crate) fn dimension_mappings<const D: usize>(
     )
 }
 
-// pub(crate) fn same_dimensions<const D: usize>(
-//     source: &[(Dimension, usize); D],
-//     requested: &[Dimension; D],
-// ) -> bool {
-//     dimension_mapping(source, requested).is_some()
-// }
-
-// Reorders some indexes according to the dimension_mapping to return indexes in source order from
-// input indexes in the arbitary order
+// Reorders some indexes according to the dimension_mapping (requested to source) to return the
+// indexes in the source order
 #[inline]
-pub(crate) fn map_dimensions<const D: usize>(
+pub(crate) fn map_dimensions_to_source<const D: usize>(
     dimension_mapping: &[usize; D],
     indexes: &[usize; D],
 ) -> [usize; D] {
     std::array::from_fn(|d| indexes[dimension_mapping[d]])
 }
 
-// Reorders some source linear data layout order according to the dimension_mapping to return
-// the new linear data layout order for what the mapped shape will be.
+// Reorders some shape according to the dimension_mapping (source to requested) to return the
+// shape in the requested order
 #[inline]
-pub(crate) fn map_linear_data_layout<const D: usize>(
-    dimension_mapping: &[usize; D],
-    source: &[usize; D],
-) -> [usize; D] {
-    // This is identical to mapping dimensions because the swap of dimensions and corresponding
-    // swap on the view shape means the data layout order swaps the same way.
-    std::array::from_fn(|d| source[dimension_mapping[d]])
-}
-
-pub(crate) fn dimension_mapping_shape<const D: usize>(
+pub(crate) fn map_shape_to_requested<const D: usize>(
     source: &[(Dimension, usize); D],
     dimension_mapping: &[usize; D],
 ) -> [(Dimension, usize); D] {
-    #[allow(clippy::clone_on_copy)]
-    let mut shape = source.clone();
-    for d in 0..D {
-        // The ith dimension of the mapped shape has a length of the jth dimension length where
-        // dimension_mapping maps from the ith dimension (of some arbitary dimension order) to
-        // the jth dimension (of the order in source)
-        shape[d] = source[dimension_mapping[d]];
-    }
-    shape
+    std::array::from_fn(|d| source[dimension_mapping[d]])
+}
+
+// Reorders some source linear data layout according to the dimension_mapping (source to requested)
+// to return the new linear data layout order for what the mapped shape will be.
+#[inline]
+pub(crate) fn map_linear_data_layout_to_requested<const D: usize>(
+    dimension_mapping: &[usize; D],
+    source: &[usize; D],
+) -> [usize; D] {
+    // This is identical to map_shape_to_requested because the swap of dimensions and corresponding
+    // swap on the view shape means the data layout order swaps the same way.
+    std::array::from_fn(|d| source[dimension_mapping[d]])
 }
 
 /**

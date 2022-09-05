@@ -1067,7 +1067,7 @@ where
     #[track_caller]
     pub fn reorder_mut(&mut self, dimensions: [Dimension; D]) {
         use crate::tensors::dimensions::{
-            dimension_mapping, dimension_mapping_shape, map_dimensions,
+            dimension_mapping, map_shape_to_requested, map_dimensions_to_source,
         };
         if D == 2 && crate::tensors::dimensions::is_square(&self.dimensions) {
             let dimension_mapping = match dimension_mapping(&self.dimensions, &dimensions) {
@@ -1079,14 +1079,14 @@ where
                 ),
             };
 
-            let shape = dimension_mapping_shape(&self.dimensions, &dimension_mapping);
+            let shape = map_shape_to_requested(&self.dimensions, &dimension_mapping);
             let shape_iterator = ShapeIterator::from(shape);
 
             for index in shape_iterator {
                 let i = index[0];
                 let j = index[1];
                 if j >= i {
-                    let mapped_index = map_dimensions(&dimension_mapping, &index);
+                    let mapped_index = map_dimensions_to_source(&dimension_mapping, &index);
                     // Swap elements from the upper triangle (using index order of the actual tensor's
                     // shape)
                     let temp = self.get_reference(index).unwrap().clone();
