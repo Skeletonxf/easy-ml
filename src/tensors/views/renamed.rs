@@ -132,7 +132,16 @@ where
     }
 
     fn data_layout(&self) -> DataLayout<D> {
-        self.source.data_layout()
+        let data_layout = self.source.data_layout();
+        match data_layout {
+            DataLayout::Linear(order) => {
+                // Need to construct the mappings here so we can rename the dimensions in
+                // data_layout to match what they are now. We can't just return self.dimensions
+                // because that would only work if the data_layout matched the view_shape order.
+                todo!()
+            }
+            _ => data_layout
+        }
     }
 }
 

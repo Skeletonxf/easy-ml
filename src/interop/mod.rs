@@ -157,14 +157,15 @@ where
     }
 
     fn data_layout(&self) -> TDataLayout<2> {
+        let [rows_dimension, columns_dimension] = self.names.names();
         // Row major and column major are the less generalised versions of
         // a linear data layout. Since our view shape is hardcoded here to rows
         // then columns, a row major matrix means the most significant dimension
         // is the first, and the least significant dimension is the second. Similarly
         // a column major matrix means the opposite.
         match self.source.data_layout() {
-            MDataLayout::RowMajor => TDataLayout::Linear([0, 1]),
-            MDataLayout::ColumnMajor => TDataLayout::Linear([1, 0]),
+            MDataLayout::RowMajor => TDataLayout::Linear([rows_dimension, columns_dimension]),
+            MDataLayout::ColumnMajor => TDataLayout::Linear([columns_dimension, rows_dimension]),
             MDataLayout::Other => TDataLayout::Other,
         }
     }
@@ -259,20 +260,27 @@ where
     }
 
     fn data_layout(&self) -> MDataLayout {
+        let rows_dimension = self.source.view_shape()[0].0;
+        let columns_dimension = self.source.view_shape()[1].0;
         // Row major and column major are the less generalised versions of
         // a linear data layout. Since our view shape is always interpreted here as rows
         // then columns, a row major matrix means the most significant dimension
         // is the first, and the least significant dimension is the second. Similarly
         // a column major matrix means the opposite.
-        match self.source.data_layout() {
-            TDataLayout::Linear([0, 1]) => MDataLayout::RowMajor,
-            TDataLayout::Linear([1, 0]) => MDataLayout::ColumnMajor,
-            TDataLayout::NonLinear => MDataLayout::Other,
-            TDataLayout::Other => MDataLayout::Other,
-            // This branch should never happen as no other Linear layouts are valid according
-            // to the docs the source implementation must follow but we need to keep the Rust
-            // compiler happy
-            TDataLayout::Linear([_, _]) => MDataLayout::Other,
+        let data_layout = self.source.data_layout();
+        if data_layout == TDataLayout::Linear([rows_dimension, columns_dimension]) {
+            MDataLayout::RowMajor
+        } else if data_layout == TDataLayout::Linear([columns_dimension, rows_dimension]) {
+            MDataLayout::ColumnMajor
+        } else {
+            match self.source.data_layout() {
+                TDataLayout::NonLinear => MDataLayout::Other,
+                TDataLayout::Other => MDataLayout::Other,
+                // This branch should never happen as no other Linear layouts are valid according
+                // to the docs the source implementation must follow but we need to keep the Rust
+                // compiler happy
+                TDataLayout::Linear([_, _]) => MDataLayout::Other,
+            }
         }
     }
 }

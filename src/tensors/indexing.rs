@@ -439,11 +439,10 @@ where
     }
 
     fn data_layout(&self) -> DataLayout<D> {
-        // FIXME: Implementation isn't quite right compared to unit tests
         match self.source.data_layout() {
-            DataLayout::Linear(order) => DataLayout::Linear(
-                self.dimension_mapping.map_linear_data_layout_to_requested(&order)
-            ),
+            // We might have reordered the view_shape but we didn't rearrange the memory or change
+            // what each dimension name refers to in memory, so the data layout remains as is.
+            DataLayout::Linear(order) => DataLayout::Linear(order),
             DataLayout::NonLinear => DataLayout::NonLinear,
             DataLayout::Other => DataLayout::Other,
         }
@@ -1055,9 +1054,15 @@ where
     }
 
     fn data_layout(&self) -> DataLayout<D> {
-        // The tensor access already handles returning the correct data layout for the dimension
-        // order
-        self.access.data_layout()
+        let data_layout = self.access.data_layout();
+        match data_layout {
+            DataLayout::Linear(order) => {
+                // Need to construct the mappings here so we can rename the dimensions in
+                // data_layout to match what they are now.
+                todo!()
+            }
+            _ => data_layout
+        }
     }
 }
 

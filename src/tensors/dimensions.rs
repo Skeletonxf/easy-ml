@@ -47,7 +47,7 @@ pub fn position_of<const D: usize>(
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct DimensionMappings<const D: usize> {
-    source_to_requested: [usize; D],
+    source_to_requested: [usize; D], // TODO: Doesn't look like we actually need this
     requested_to_source: [usize; D],
 }
 
@@ -63,7 +63,7 @@ impl<const D: usize> DimensionMappings<D> {
     // dimensions in an arbitary order.
     // If the source order is x,y,z but the requested order is z,x,y then the mapping
     // from source to requested is [1,2,0] (x becomes second, y becomes last, z becomes first) and
-    // from requested to source is [2,0,1] (z becones kast, x becomes first, y becomes second).
+    // from requested to source is [2,0,1] (z becones last, x becomes first, y becomes second).
     pub(crate) fn new(
         source: &[(Dimension, usize); D],
         requested: &[Dimension; D],
@@ -128,18 +128,26 @@ impl<const D: usize> DimensionMappings<D> {
         std::array::from_fn(|d| source[self.requested_to_source[d]])
     }
 
-    // Reorders some source linear data layout according to the dimension mapping
-    // to return the new linear data layout order for what
-    // the mapped shape will be.
-    #[inline]
-    pub(crate) fn map_linear_data_layout_to_requested(
-        &self,
-        source: &[usize; D],
-    ) -> [usize; D] {
-        // This is identical to map_shape_to_requested because the swap of dimensions and
-        // corresponding swap on the view shape means the data layout order swaps the same way.
-        std::array::from_fn(|d| source[self.requested_to_source[d]])
-    }
+    // TODO: Utility method to reorder a data_layout if we're given the view_shape of
+    // the source and the renamed one?
+    // Do we need two different implementations here for TensorTranspose and TensorRename?
+    // // Reorders some source linear data layout according to the dimension mapping
+    // // to return the new linear data layout order for what
+    // // the mapped shape will be.
+    // #[inline]
+    // pub(crate) fn map_linear_data_layout_to_requested(
+    //     &self,
+    //     source: &[usize; D],
+    // ) -> [usize; D] {
+    //     // FIXME: I can't even completely conceptualise the mapping here myself.
+    //     // The source is in most significant dimension to least, with the numbers referring
+    //     // to the dimension order of the source view shape. For each number we're returning,
+    //     // we're giving the most significant to least order
+    //     // For each number we're returning, we're giving what the
+    //     // This is identical to map_shape_to_requested because the swap of dimensions and
+    //     // corresponding swap on the view shape means the data layout order swaps the same way.
+    //     std::array::from_fn(|d| source[self.requested_to_source[d]])
+    // }
 }
 
 /**

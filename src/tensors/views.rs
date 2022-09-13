@@ -110,16 +110,20 @@ pub unsafe trait TensorRef<T, const D: usize> {
      * [`Linear`](DataLayout) has several requirements on what is returned that must be upheld
      * by implementations of this trait.
      *
-     * For a [Tensor] this would return `DataLayout::Linear([0, 1, ... D - 1])`, since the data
-     * is in a single line and the `view_shape` is in most significant dimension to least.
-     * Many views however, create shapes that do not correspond to linear memory, either by
-     * combining non array data with tensors, or hiding dimensions. Similarly, a row major Tensor
-     * might be transposed to a column major TensorView, so the view shape could be reversed
+     * For a [Tensor] this would return `DataLayout::Linear` in the same order as the `view_shape`,
+     * since the data is in a single line and the `view_shape` is in most significant dimension
+     * to least. Many views however, create shapes that do not correspond to linear memory, either
+     * by combining non array data with tensors, or hiding dimensions. Similarly, a row major
+     * Tensor might be transposed to a column major TensorView, so the view shape could be reversed
      * compared to the order of significance of the dimensions in memory.
      *
-     * In general, an array of incrementing numbers like `[0, 1, 2]` is big endian order, and
-     * will be iterated through efficiently by [TensorIterator], and an array of decrementing
-     * numbers like `[2, 1, 0]` is in little endian order.
+     * In general, an array of dimension names matching the view shape order is big endian, and
+     * will be iterated through efficiently by [TensorIterator], and an array of dimension names
+     * in reverse of the view shape is in little endian order.
+     *
+     * The implementation of this trait must ensure that if it returns `DataLayout::Linear`
+     * the set of dimension names are returned in the order of most significant to least and match
+     * the set of the dimension names returned by `view_shape`.
      */
     fn data_layout(&self) -> DataLayout<D>;
 }
@@ -133,13 +137,14 @@ pub enum DataLayout<const D: usize> {
      * The data is laid out in linear storage in memory, such that we could take a slice over the
      * entire data specified by our `view_shape`.
      *
-     * The `D` length array specifies the first dimension in the `view_shape` (`0`)
-     * through to the last dimension in the `view_shape` (`D - 1`) in the order of most significant
-     * dimension (in memory) to least.
+     * The `D` length array specifies the dimensions in the `view_shape` in the order of most
+     * significant dimension (in memory) to least.
      *
-     * In general, an array of incrementing numbers like `[0, 1, 2]` is big endian order, and
-     * will be iterated through efficiently by [TensorIterator], and an array of decrementing
-     * numbers like `[2, 1, 0]` is in little endian order.
+     * In general, an array of dimension names in the same order as the view shape is big endian
+     * order (implying the order of dimensions in the view shape is most significant to least),
+     * and will be iterated through efficiently by [TensorIterator], and an array of
+     * dimension names in reverse of the view shape is in little endian order
+     * (implying the order of dimensions in the view shape is least significant to most).
      *
      * In memory, the data will have some order such that if we want repeatedly take 1 step
      * through memory from the first value to the last there will be a most significant dimension
@@ -148,7 +153,7 @@ pub enum DataLayout<const D: usize> {
      *
      * In most of Easy ML's Tensors, the `view_shape` dimensions would already be in the order of
      * most significant dimension to least (since [Tensor] stores its data in big endian order),
-     * so the list of numbers will just increment from `0` to `D - 1` like `[0, 1, 2]`.
+     * so the list of dimension names will just increment match the order of the view shape.
      *
      * For example, a tensor with a view shape of `[("batch", 2), ("row", 2), ("column", 3)]` that
      * stores its data in most significant to least would be (indexed) like:
@@ -165,8 +170,10 @@ pub enum DataLayout<const D: usize> {
      * counting our way up through to the left most dimension index ("batch"). If we transposed
      * this tensor to `[("column", 3), ("row", 2), ("batch", 2)]` so that the `view_shape` was
      * swapped to least significant dimension to most but the data remained in the same order,
-     * our tensor would now have a DataLayout of `Linear([2, 1, 0])`, since the indexes in the
-     * transposed `view_shape` correspond to an actual memory layout that's completely reversed:
+     * our tensor would still have a DataLayout of `Linear(["batch", "row", "column"])`, since
+     * the indexes in the transposed `view_shape` correspond to an actual memory layout that's
+     * completely reversed. Alternatively, you could say we reversed the view shape but the
+     * memory layout never changed:
      * ```ignore
      * [
      *   (0,0,0), (1,0,0), (2,0,0),
@@ -180,12 +187,12 @@ pub enum DataLayout<const D: usize> {
      * the view shape) ("column"), counting our way in reverse to the right most dimension
      * index ("batch").
      *
-     * That `[2, 1, 0]` is also exactly the order you would need to swap your dimensions on
-     * the `view_shape` to get back to most significant to least. A [TensorAccess] could reorder
-     * the tensor by this array order to get back to most significant to least ordering on the
-     * `view_shape` in order to iterate through the data efficiently.
+     * That `["batch", "row", "column"]` is also exactly the order you would need to swap your
+     * dimensions on the `view_shape` to get back to most significant to least. A [TensorAccess]
+     * could reorder the tensor by this array order to get back to most significant to least
+     * ordering on the `view_shape` in order to iterate through the data efficiently.
      */
-    Linear([usize; D]),
+    Linear([Dimension; D]),
     /**
      * The data is not laid out in linear storage in memory.
      */

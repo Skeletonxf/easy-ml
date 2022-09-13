@@ -354,7 +354,7 @@ unsafe impl<T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
 
     fn data_layout(&self) -> DataLayout<D> {
         // We always have our memory in most significant to least
-        DataLayout::Linear(std::array::from_fn(|i| i))
+        DataLayout::Linear(std::array::from_fn(|i| self.dimensions[i].0))
     }
 }
 
