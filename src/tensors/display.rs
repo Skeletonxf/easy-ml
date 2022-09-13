@@ -10,8 +10,6 @@ where
     T: std::fmt::Display,
     S: TensorRef<T, D>,
 {
-    // default to 3 decimals but allow the caller to override
-    // TODO: ideally want to set significant figures instead of decimals
     let shape = view.view_shape();
     write!(f, "D = {:?}", D)?;
     if D > 0 {
@@ -24,13 +22,19 @@ where
         }
     }
     writeln!(f)?;
+    // It would be nice to default to some precision for f32 and f64 but I can't
+    // work out how to easily check if T matches. If we use precision for all T
+    // then strings get truncated which is even worse for debugging.
     match D {
         0 => {
             let value = match view.get_reference([0; D]) {
                 Some(x) => x,
                 None => panic!("Expected [] to be a valid index for {:?}", shape),
             };
-            write!(f, "[ {:.*} ]", f.precision().unwrap_or(3), value)
+            match f.precision() {
+                Some(precision) => write!(f, "[ {:.*} ]", precision, value),
+                None => write!(f, "[ {} ]", value),
+            }
         }
         1 => {
             write!(f, "[ ")?;
@@ -42,7 +46,10 @@ where
                     Some(x) => x,
                     None => panic!("Expected {:?} to be a valid index for {:?}", index, shape),
                 };
-                write!(f, "{:.*}", f.precision().unwrap_or(3), value)?;
+                match f.precision() {
+                    Some(precision) => write!(f, "{:.*}", precision, value)?,
+                    None => write!(f, "{}", value)?,
+                };
                 if i < length - 1 {
                     write!(f, ", ")?;
                 }
@@ -67,7 +74,10 @@ where
                         None => panic!("Expected {:?} to be a valid index for {:?}", index, shape),
                     };
 
-                    write!(f, "{:.*}", f.precision().unwrap_or(3), value)?;
+                    match f.precision() {
+                        Some(precision) => write!(f, "{:.*}", precision, value)?,
+                        None => write!(f, "{}", value)?,
+                    };
                     if column < columns - 1 {
                         write!(f, ", ")?;
                     }
@@ -99,7 +109,10 @@ where
                             }
                         };
 
-                        write!(f, "{:.*}", f.precision().unwrap_or(3), value)?;
+                        match f.precision() {
+                            Some(precision) => write!(f, "{:.*}", precision, value)?,
+                            None => write!(f, "{}", value)?,
+                        };
                         if column < columns - 1 {
                             write!(f, ", ")?;
                         }
@@ -131,7 +144,10 @@ where
                     // starting a new row
                     write!(f, "  ")?;
                 }
-                write!(f, "{:.*}", f.precision().unwrap_or(3), value)?;
+                match f.precision() {
+                    Some(precision) => write!(f, "{:.*}", precision, value)?,
+                    None => write!(f, "{}", value)?,
+                };
                 if column < columns - 1 {
                     write!(f, ", ")?;
                 }
@@ -178,7 +194,7 @@ fn test_display() {
     let tensor_1 = Tensor::from([("x", 5)], vec![0.0, 1.0, 2.0, 3.0, 4.0]);
     let tensor_0 = Tensor::from_scalar(0.0);
     assert_eq!(
-        tensor_3.to_string(),
+        format!("{:.3}", tensor_3),
         r#"D = 3
 ("b", 3), ("x", 2), ("y", 2)
 [
@@ -193,7 +209,7 @@ fn test_display() {
 ]"#
     );
     assert_eq!(
-        tensor_2.to_string(),
+        format!("{:.3}", tensor_2),
         r#"D = 2
 ("x", 3), ("y", 4)
 [ 0.000, 1.000, 2.000, 3.000
@@ -201,13 +217,13 @@ fn test_display() {
   8.000, 9.000, 0.000, 1.000 ]"#
     );
     assert_eq!(
-        tensor_1.to_string(),
+        format!("{:.3}", tensor_1),
         r#"D = 1
 ("x", 5)
 [ 0.000, 1.000, 2.000, 3.000, 4.000 ]"#
     );
     assert_eq!(
-        tensor_0.to_string(),
+        format!("{:.3}", tensor_0),
         r#"D = 0
 [ 0.000 ]"#
     );
@@ -221,7 +237,7 @@ fn test_display_large_dimensionality() {
         (0..10).cycle().take(2 * 2 * 2 * 2 * 2).collect(),
     );
     assert_eq!(
-        tensor_5.to_string(),
+        format!("{:.3}", tensor_5),
         r#"D = 5
 ("a", 2), ("b", 2), ("c", 2), ("d", 2), ("e", 2)
 [
