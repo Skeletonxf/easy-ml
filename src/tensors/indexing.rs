@@ -137,6 +137,37 @@ where
         }
     }
 
+    // TODO: Can we even do this with just a TensorAccess?
+    // TODO: Could it be more elegant to 'undo' a TensorTranspose with another one?
+    // Syncing the view_shape to order of the data_layout naively doesn't actually work
+    // Wherever this is eventually defind, calling it again on itself should do nothing, so
+    // we need to be *actually* returning a view_shape that matches the data_layout
+    // pub fn from_memory_order(source: S) -> Option<TensorAccess<T, S, D>> {
+    //     let data_layout = match source.data_layout() {
+    //         DataLayout::Linear(order) => order,
+    //         _ => return None,
+    //     };
+    //     let shape = source.view_shape();
+    //     // We want to sync the data layout order and the view shape by changing the view shape.
+    //     let mapping: [usize; D] = std::array::from_fn(|i| {
+    //         let dimension_name_in_view_shape = shape[i].0;
+    //         data_layout
+    //             .iter()
+    //             .position(|name| *name == dimension_name_in_view_shape)
+    //             .unwrap_or_else(|| panic!(
+    //                 "Source implementation contained dimension {} in view_shape that was not in the data_layout {:?} which breaks the contract of TensorRef",
+    //                 dimension_name_in_view_shape, &shape
+    //             ))
+    //     });
+    //     // In the interest of not duplicating TensorAccess constructor logic, call into the
+    //     // dimension name order constructor, converting the mapping order back to dimension names
+    //     // in our source's view_shape
+    //     Some(TensorAccess::from(source, std::array::from_fn(|d| {
+    //         let order = mapping[d];
+    //         shape[order].0
+    //     })))
+    // }
+
     /**
      * The shape this TensorAccess has with the dimensions in the order the TensorAccess
      * was created with, not necessarily the same order as in the underlying tensor.
@@ -999,7 +1030,7 @@ where
 
     /**
      * The shape of this TensorTranspose rearranges the data to appear in the order of supplied
-     * dimensions. The order of the dimension names in the underlying tensor remains is unchanged,
+     * dimensions. The order of the dimension names in the underlying tensor remains unchanged,
      * although their lengths may swap.
      */
     pub fn shape(&self) -> [(Dimension, usize); D] {
@@ -1057,9 +1088,11 @@ where
         let data_layout = self.access.data_layout();
         match data_layout {
             DataLayout::Linear(order) => {
-                // Need to construct the mappings here so we can rename the dimensions in
-                // data_layout to match what they are now.
-                todo!()
+                DataLayout::Linear(
+                    self.access.dimension_mapping.map_linear_data_layout_to_transposed(
+                        &order
+                    )
+                )
             }
             _ => data_layout
         }

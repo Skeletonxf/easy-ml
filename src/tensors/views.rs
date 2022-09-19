@@ -167,7 +167,7 @@ pub enum DataLayout<const D: usize> {
      * ```
      *
      * To take one step in memory, we would increment the right most dimension index ("column"),
-     * counting our way up through to the left most dimension index ("batch"). If we transposed
+     * counting our way up through to the left most dimension index ("batch"). If we changed
      * this tensor to `[("column", 3), ("row", 2), ("batch", 2)]` so that the `view_shape` was
      * swapped to least significant dimension to most but the data remained in the same order,
      * our tensor would still have a DataLayout of `Linear(["batch", "row", "column"])`, since
@@ -186,12 +186,13 @@ pub enum DataLayout<const D: usize> {
      * To take one step in memory, we now need to increment the left most dimension index (on
      * the view shape) ("column"), counting our way in reverse to the right most dimension
      * index ("batch").
-     *
-     * That `["batch", "row", "column"]` is also exactly the order you would need to swap your
-     * dimensions on the `view_shape` to get back to most significant to least. A [TensorAccess]
-     * could reorder the tensor by this array order to get back to most significant to least
-     * ordering on the `view_shape` in order to iterate through the data efficiently.
      */
+     // That `["batch", "row", "column"]` is also exactly the order you would need to swap your
+     // dimensions on the `view_shape` to get back to most significant to least. A [TensorAccess]
+     // could reorder the tensor by this array order to get back to most significant to least
+     // ordering on the `view_shape` in order to iterate through the data efficiently.
+     // (this doesn't seem to be true for the general problem, only when the dimensions were moved
+     // in a symmetric manner (such that source<->requested is the same both ways))
     Linear([Dimension; D]),
     /**
      * The data is not laid out in linear storage in memory.

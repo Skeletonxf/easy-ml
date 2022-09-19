@@ -128,26 +128,16 @@ impl<const D: usize> DimensionMappings<D> {
         std::array::from_fn(|d| source[self.requested_to_source[d]])
     }
 
-    // TODO: Utility method to reorder a data_layout if we're given the view_shape of
-    // the source and the renamed one?
-    // Do we need two different implementations here for TensorTranspose and TensorRename?
-    // // Reorders some source linear data layout according to the dimension mapping
-    // // to return the new linear data layout order for what
-    // // the mapped shape will be.
-    // #[inline]
-    // pub(crate) fn map_linear_data_layout_to_requested(
-    //     &self,
-    //     source: &[usize; D],
-    // ) -> [usize; D] {
-    //     // FIXME: I can't even completely conceptualise the mapping here myself.
-    //     // The source is in most significant dimension to least, with the numbers referring
-    //     // to the dimension order of the source view shape. For each number we're returning,
-    //     // we're giving the most significant to least order
-    //     // For each number we're returning, we're giving what the
-    //     // This is identical to map_shape_to_requested because the swap of dimensions and
-    //     // corresponding swap on the view shape means the data layout order swaps the same way.
-    //     std::array::from_fn(|d| source[self.requested_to_source[d]])
-    // }
+    #[inline]
+    pub(crate) fn map_linear_data_layout_to_transposed(
+        &self,
+        //shape: &[(Dimension, usize); D],
+        order: &[Dimension; D],
+    ) -> [Dimension; D] {
+        // DataLayout should be transformed the same way as the shape since in transposing the
+        // view we're changing what each dimension name refers to in memory?
+        std::array::from_fn(|d| order[self.requested_to_source[d]])
+    }
 }
 
 /**

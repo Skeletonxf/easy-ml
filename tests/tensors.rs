@@ -483,7 +483,6 @@ mod tensors {
     }
 
     #[test]
-    #[should_panic] // TODO: Finish refactor implementation
     fn check_data_layout_tensor_access() {
         use easy_ml::tensors::views::{DataLayout, TensorRef};
         let tensor = Tensor::from([("b", 3), ("r", 3), ("c", 3)], (0..27).collect());
@@ -508,26 +507,65 @@ mod tensors {
             tensor.index_by(["c", "b", "r"]).data_layout(),
             DataLayout::Linear(["b", "r", "c"])
         );
+
+        let transposed = tensor.transpose_view(["b", "r", "c"]);
         assert_eq!(
-            tensor.transpose_view(["b", "r", "c"]).source_ref().data_layout(),
+            transposed.source_ref().data_layout(),
+            // Batch is stride of 9, row is stride of 3, column is stride of 1
             DataLayout::Linear(["b", "r", "c"])
         );
         assert_eq!(
-            tensor.transpose_view(["c", "r", "b"]).source_ref().data_layout(),
+            (0..27).collect::<Vec<_>>(),
+            transposed.index_by(["b", "r", "c"]).iter().collect::<Vec<_>>()
+        );
+
+        let transposed = tensor.transpose_view(["c", "r", "b"]);
+        assert_eq!(
+            // Column is stride of 9, row is stride of 3, batch is stride of 1
+            transposed.source_ref().data_layout(),
             DataLayout::Linear(["c", "r", "b"])
         );
         assert_eq!(
-            tensor.transpose_view(["r", "c", "b"]).source_ref().data_layout(),
-            DataLayout::Linear(["i", "d", "k"])
+            (0..27).collect::<Vec<_>>(),
+            transposed.index_by(["c", "r", "b"]).iter().collect::<Vec<_>>()
+        );
+
+        let transposed = tensor.transpose_view(["r", "c", "b"]);
+        assert_eq!(
+            transposed.source_ref().data_layout(),
+            // Row is stride of 9, column is stride of 3, batch is stride of 1
+            DataLayout::Linear(["r", "c", "b"])
         );
         assert_eq!(
-            tensor.transpose_view(["r", "b", "c"]).source_ref().data_layout(),
-            DataLayout::Linear(["i", "d", "k"])
+            (0..27).collect::<Vec<_>>(),
+            transposed.index_by(["c", "b", "r"]).iter().collect::<Vec<_>>()
+        );
+
+        let transposed = tensor.transpose_view(["r", "b", "c"]);
+        assert_eq!(
+            transposed.source_ref().data_layout(),
+            // Row is stride of 9, batch is stride of 3, column is stride of 1
+            DataLayout::Linear(["r", "b", "c"])
         );
         assert_eq!(
-            tensor.transpose_view(["c", "b", "r"]).source_ref().data_layout(),
-            DataLayout::Linear(["i", "d", "k"])
+            (0..27).collect::<Vec<_>>(),
+            transposed.index_by(["r", "b", "c"]).iter().collect::<Vec<_>>()
         );
+
+        let transposed = tensor.transpose_view(["c", "b", "r"]);
+        println!("{}", transposed);
+        assert_eq!(
+            transposed.source_ref().data_layout(),
+            // Column is stride of 9, batch is stride of 3, row is stride of 1
+            DataLayout::Linear(["c", "b", "r"])
+        );
+        assert_eq!(
+           (0..27).collect::<Vec<_>>(),
+           transposed.index_by(["r", "c", "b"]).iter().collect::<Vec<_>>()
+        );
+
+        // TODO: The data_layout seems correct, there must be a non confusing way to construct a
+        // Tensor that syncs the view_shape to data_layout?
     }
 
     #[test]

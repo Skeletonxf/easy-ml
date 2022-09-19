@@ -136,14 +136,14 @@ where
         let data_layout = self.source.data_layout();
         match data_layout {
             DataLayout::Linear(order) => {
-                let source_names = self.source.view_shape();
+                let shape = self.source.view_shape();
                 // Map the dimension name order to position in the view shape instead of name
                 let order_d: [usize; D] = std::array::from_fn(|i| {
                     let name = order[i];
-                    dimensions::position_of(&source_names, name)
+                    dimensions::position_of(&shape, name)
                         .unwrap_or_else(|| panic!(
                             "Source implementation contained dimension {} in data_layout that was not in the view_shape {:?} which breaks the contract of TensorRef",
-                            name, &source_names
+                            name, &shape
                         ))
                 });
                 // TensorRename doesn't move dimensions around, so now we can map from position
