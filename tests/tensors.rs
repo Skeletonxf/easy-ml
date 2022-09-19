@@ -531,7 +531,6 @@ mod tensors {
     }
 
     #[test]
-    #[should_panic] // TODO: Finish refactor implementation
     fn check_data_layout_linear_tensor_views() {
         use easy_ml::tensors::views::{DataLayout, TensorRef};
         let tensor = Tensor::from([("b", 3), ("r", 3), ("c", 3)], (0..27).collect());

@@ -1,5 +1,6 @@
 use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
 use crate::tensors::Dimension;
+use crate::tensors::dimensions;
 use std::marker::PhantomData;
 
 /**
@@ -135,10 +136,21 @@ where
         let data_layout = self.source.data_layout();
         match data_layout {
             DataLayout::Linear(order) => {
-                // Need to construct the mappings here so we can rename the dimensions in
-                // data_layout to match what they are now. We can't just return self.dimensions
-                // because that would only work if the data_layout matched the view_shape order.
-                todo!()
+                let source_names = self.source.view_shape();
+                // Map the dimension name order to position in the view shape instead of name
+                let order_d: [usize; D] = std::array::from_fn(|i| {
+                    let name = order[i];
+                    dimensions::position_of(&source_names, name)
+                        .unwrap_or_else(|| panic!(
+                            "Source implementation contained dimension {} in data_layout that was not in the view_shape {:?} which breaks the contract of TensorRef",
+                            name, &source_names
+                        ))
+                });
+                // TensorRename doesn't move dimensions around, so now we can map from position
+                // order to our new dimension names.
+                DataLayout::Linear(std::array::from_fn(|i| {
+                    self.dimensions[order_d[i]]
+                }))
             }
             _ => data_layout
         }
