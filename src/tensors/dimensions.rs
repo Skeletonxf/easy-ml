@@ -131,12 +131,30 @@ impl<const D: usize> DimensionMappings<D> {
     #[inline]
     pub(crate) fn map_linear_data_layout_to_transposed(
         &self,
-        //shape: &[(Dimension, usize); D],
         order: &[Dimension; D],
     ) -> [Dimension; D] {
-        // DataLayout should be transformed the same way as the shape since in transposing the
-        // view we're changing what each dimension name refers to in memory?
-        std::array::from_fn(|d| order[self.requested_to_source[d]])
+        // In most simple cases the transformation for source -> requested is the same as
+        // requested -> source so the data layout maps the same way as the shape. However,
+        // in most complex 3D or higher cases, we can transpose a tensor in such a way that
+        // the data_layout does not map the same way. To conceptualise this, consider we first
+        // just used a TensorAccess to swap the indexes from ["batch", "row", "column"] to
+        // ["row", "column", "batch"]. This is a mapping of [0->2, 1->0, 2->1] (or if we only
+        // want to write where each dimension ends up, we can call this a mapping of [2, 0, 1]).
+        // TensorAccess doesn't change what each dimension refers to in memory, so the data_layout
+        // stays as ["batch", "row", "column"]. We can then wrap our TensorAccess in a TensorRename
+        // to emulate the behavior of a TensorTranspose. We rename ["row", "column", "batch"]
+        // to ["batch", "row", "column"] again, retaining our swapped dimensions as they are.
+        // Now row in our data_layout is called batch, column becomes row, and batch becomes
+        // column. Hence our data layout becames ["column", "batch", "row"]. If we compare our
+        // data layout to what we started with (["batch", "row", "column"]) we see that we have
+        // mapped it as [1, 2, 0], not [2, 0, 1]. As a more general explanation, the data layout
+        // we return here is mapping from what the data layout of the source is to the order
+        // we're now requesting in, so we use the reverse mapping to what we use for the view_shape
+        // and indexing. This ensures the data layout we return is correct, which can always be
+        // sanity checked by constructing a TensorAccess from what we return and verifying that
+        // the data is restored to memory order (assuming the original source was in the same
+        // endianess as Tensor).
+        std::array::from_fn(|d| order[self.source_to_requested[d]])
     }
 }
 

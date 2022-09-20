@@ -484,7 +484,8 @@ mod tensors {
 
     #[test]
     fn check_data_layout_tensor_access() {
-        use easy_ml::tensors::views::{DataLayout, TensorRef};
+        use easy_ml::tensors::views::{DataLayout, TensorRef, TensorView, TensorRename};
+        use easy_ml::tensors::indexing::TensorAccess;
         let tensor = Tensor::from([("b", 3), ("r", 3), ("c", 3)], (0..27).collect());
         assert_eq!(tensor.data_layout(), DataLayout::Linear(["b", "r", "c"]));
         assert_eq!(
@@ -508,20 +509,37 @@ mod tensors {
             DataLayout::Linear(["b", "r", "c"])
         );
 
+        // Each time we transpose we expect the data layout we get back to be correct, which
+        // we can verify by using it as the index order. If the data layout is correct then
+        // returning to big endian order means we iterate through the tensor as the 0..27 it was
+        // defined with.
         let transposed = tensor.transpose_view(["b", "r", "c"]);
         assert_eq!(
             transposed.source_ref().data_layout(),
-            // Batch is stride of 9, row is stride of 3, column is stride of 1
             DataLayout::Linear(["b", "r", "c"])
         );
         assert_eq!(
             (0..27).collect::<Vec<_>>(),
             transposed.index_by(["b", "r", "c"]).iter().collect::<Vec<_>>()
         );
+        // We can avoid manually passing the linear data layout if we use from_memory_order
+        assert_eq!(
+            (0..27).collect::<Vec<_>>(),
+            TensorAccess::from_memory_order(transposed.source_ref())
+                .unwrap().iter().collect::<Vec<_>>()
+        );
+        // Alternative way to 'transpose', should match TensorTranspose exactly
+        let also_transposed = TensorView::from(
+            TensorRename::from(tensor.index_by(["b", "r", "c"]), ["b", "r", "c"])
+        );
+        assert_eq!(transposed, also_transposed);
+        assert_eq!(
+            also_transposed.source_ref().data_layout(),
+            DataLayout::Linear(["b", "r", "c"])
+        );
 
         let transposed = tensor.transpose_view(["c", "r", "b"]);
         assert_eq!(
-            // Column is stride of 9, row is stride of 3, batch is stride of 1
             transposed.source_ref().data_layout(),
             DataLayout::Linear(["c", "r", "b"])
         );
@@ -529,43 +547,88 @@ mod tensors {
             (0..27).collect::<Vec<_>>(),
             transposed.index_by(["c", "r", "b"]).iter().collect::<Vec<_>>()
         );
+        assert_eq!(
+            (0..27).collect::<Vec<_>>(),
+            TensorAccess::from_memory_order(transposed.source_ref())
+                .unwrap().iter().collect::<Vec<_>>()
+        );
+        let also_transposed = TensorView::from(
+            TensorRename::from(tensor.index_by(["c", "r", "b"]), ["b", "r", "c"])
+        );
+        assert_eq!(transposed, also_transposed);
+        assert_eq!(
+            also_transposed.source_ref().data_layout(),
+            DataLayout::Linear(["c", "r", "b"])
+        );
 
         let transposed = tensor.transpose_view(["r", "c", "b"]);
         assert_eq!(
             transposed.source_ref().data_layout(),
-            // Row is stride of 9, column is stride of 3, batch is stride of 1
-            DataLayout::Linear(["r", "c", "b"])
+            DataLayout::Linear(["c", "b", "r"])
         );
         assert_eq!(
             (0..27).collect::<Vec<_>>(),
             transposed.index_by(["c", "b", "r"]).iter().collect::<Vec<_>>()
         );
+        assert_eq!(
+            (0..27).collect::<Vec<_>>(),
+            TensorAccess::from_memory_order(transposed.source_ref())
+                .unwrap().iter().collect::<Vec<_>>()
+        );
+        let also_transposed = TensorView::from(
+            TensorRename::from(tensor.index_by(["r", "c", "b"]), ["b", "r", "c"])
+        );
+        assert_eq!(transposed, also_transposed);
+        assert_eq!(
+            also_transposed.source_ref().data_layout(),
+            DataLayout::Linear(["c", "b", "r"])
+        );
 
         let transposed = tensor.transpose_view(["r", "b", "c"]);
         assert_eq!(
             transposed.source_ref().data_layout(),
-            // Row is stride of 9, batch is stride of 3, column is stride of 1
             DataLayout::Linear(["r", "b", "c"])
         );
         assert_eq!(
             (0..27).collect::<Vec<_>>(),
             transposed.index_by(["r", "b", "c"]).iter().collect::<Vec<_>>()
         );
+        assert_eq!(
+            (0..27).collect::<Vec<_>>(),
+            TensorAccess::from_memory_order(transposed.source_ref())
+                .unwrap().iter().collect::<Vec<_>>()
+        );
+        let also_transposed = TensorView::from(
+            TensorRename::from(tensor.index_by(["r", "b", "c"]), ["b", "r", "c"])
+        );
+        assert_eq!(transposed, also_transposed);
+        assert_eq!(
+            also_transposed.source_ref().data_layout(),
+            DataLayout::Linear(["r", "b", "c"])
+        );
 
         let transposed = tensor.transpose_view(["c", "b", "r"]);
-        println!("{}", transposed);
         assert_eq!(
             transposed.source_ref().data_layout(),
-            // Column is stride of 9, batch is stride of 3, row is stride of 1
-            DataLayout::Linear(["c", "b", "r"])
+            DataLayout::Linear(["r", "c", "b"])
         );
         assert_eq!(
            (0..27).collect::<Vec<_>>(),
            transposed.index_by(["r", "c", "b"]).iter().collect::<Vec<_>>()
         );
-
-        // TODO: The data_layout seems correct, there must be a non confusing way to construct a
-        // Tensor that syncs the view_shape to data_layout?
+        assert_eq!(
+            (0..27).collect::<Vec<_>>(),
+            TensorAccess::from_memory_order(transposed.source_ref())
+                .unwrap().iter().collect::<Vec<_>>()
+        );
+        let also_transposed = TensorView::from(
+            TensorRename::from(tensor.index_by(["c", "b", "r"]), ["b", "r", "c"])
+        );
+        assert_eq!(transposed, also_transposed);
+        assert_eq!(
+            also_transposed.source_ref().data_layout(),
+            DataLayout::Linear(["r", "c", "b"])
+        );
     }
 
     #[test]
@@ -577,7 +640,5 @@ mod tensors {
             tensor.rename_view(["a", "q", "b"]).source_ref().data_layout(),
             DataLayout::Linear(["a", "q", "b"])
         );
-        // TODO: Transpose first then apply TensorRename to fully test the mapping we need to
-        // do with data layout here
     }
 }

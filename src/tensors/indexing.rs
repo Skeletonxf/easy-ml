@@ -108,8 +108,8 @@ where
     }
 
     /**
-     * Creates a TensorAccess which is indexed in the same order as the dimensions of
-     * the tensor it is created from.
+     * Creates a TensorAccess which is indexed in the same order as the dimensions in the view
+     * shape of the tensor it is created from.
      *
      * Hence if you create a TensorAccess directly from a Tensor by `from_source_order`
      * this uses the order the dimensions were laid out in memory with.
@@ -137,36 +137,26 @@ where
         }
     }
 
-    // TODO: Can we even do this with just a TensorAccess?
-    // TODO: Could it be more elegant to 'undo' a TensorTranspose with another one?
-    // Syncing the view_shape to order of the data_layout naively doesn't actually work
-    // Wherever this is eventually defind, calling it again on itself should do nothing, so
-    // we need to be *actually* returning a view_shape that matches the data_layout
-    // pub fn from_memory_order(source: S) -> Option<TensorAccess<T, S, D>> {
-    //     let data_layout = match source.data_layout() {
-    //         DataLayout::Linear(order) => order,
-    //         _ => return None,
-    //     };
-    //     let shape = source.view_shape();
-    //     // We want to sync the data layout order and the view shape by changing the view shape.
-    //     let mapping: [usize; D] = std::array::from_fn(|i| {
-    //         let dimension_name_in_view_shape = shape[i].0;
-    //         data_layout
-    //             .iter()
-    //             .position(|name| *name == dimension_name_in_view_shape)
-    //             .unwrap_or_else(|| panic!(
-    //                 "Source implementation contained dimension {} in view_shape that was not in the data_layout {:?} which breaks the contract of TensorRef",
-    //                 dimension_name_in_view_shape, &shape
-    //             ))
-    //     });
-    //     // In the interest of not duplicating TensorAccess constructor logic, call into the
-    //     // dimension name order constructor, converting the mapping order back to dimension names
-    //     // in our source's view_shape
-    //     Some(TensorAccess::from(source, std::array::from_fn(|d| {
-    //         let order = mapping[d];
-    //         shape[order].0
-    //     })))
-    // }
+    /**
+     * Creates a TensorAccess which is indexed in the same order as the linear data layout
+     * dimensions in the tensor it is created from, or None if the source data layout
+     * is not linear.
+     *
+     * Hence if you use `from_memory_order` on a source that was originally big endian like
+     * [Tensor](Tensor) this uses the order for efficient iteration through each step in memory
+     * when [iterating](TensorIterator).
+     */
+    pub fn from_memory_order(source: S) -> Option<TensorAccess<T, S, D>> {
+        let data_layout = match source.data_layout() {
+            DataLayout::Linear(order) => order,
+            _ => return None,
+        };
+        let shape = source.view_shape();
+        Some(TensorAccess::try_from(source, data_layout).unwrap_or_else(|_| panic!(
+            "Source implementation contained dimensions {:?} in data_layout that were not the same set as in the view_shape {:?} which breaks the contract of TensorRef",
+             data_layout, shape
+        )))
+    }
 
     /**
      * The shape this TensorAccess has with the dimensions in the order the TensorAccess
