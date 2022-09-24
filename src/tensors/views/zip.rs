@@ -6,6 +6,12 @@ use crate::tensors::dimensions;
 /**
  * Combines two or more tensors with the same shape along a new dimension to create a Tensor
  * with one additional dimension which stacks the sources together along that dimension.
+ *
+ * Note: due to limitations in Rust's const generics support, TensorStack only implements
+ * TensorRef for D from `1` to `6` (from sources of `0` to `5` dimensions respectively), and
+ * only supports tuple combinations for `2` to `4`. If you need to stack more than four tensors
+ * together, you can stack any number with the `[Box<dyn TensorRef<T, D>>; N]` implementation,
+ * though note this requires boxing and erasing the types of the sources.
  */
 pub struct TensorStack<T, S, const D: usize> {
     sources: S,
