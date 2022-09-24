@@ -24,11 +24,13 @@ use crate::tensors::{Dimension, Tensor};
 mod indexes;
 mod ranges;
 mod renamed;
+mod zip;
 pub mod traits;
 
 pub use indexes::*;
 pub use ranges::*;
 pub use renamed::*;
+pub use zip::*;
 
 /**
 * A shared/immutable reference to a tensor (or a portion of it) of some type and number of

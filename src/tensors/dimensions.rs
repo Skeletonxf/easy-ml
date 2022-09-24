@@ -45,6 +45,16 @@ pub fn position_of<const D: usize>(
     dimensions.iter().position(|(d, _)| d == &dimension)
 }
 
+/**
+ * Checks if the dimension name is in the set of dimensions.
+ */
+pub fn contains<const D: usize>(
+    dimensions: &[(Dimension, usize); D],
+    dimension: Dimension,
+) -> bool {
+    dimensions.iter().any(|(d, _)| d == &dimension)
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct DimensionMappings<const D: usize> {
     source_to_requested: [usize; D], // TODO: Doesn't look like we actually need this
