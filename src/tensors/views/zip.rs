@@ -10,14 +10,18 @@ use crate::tensors::dimensions;
  * Note: due to limitations in Rust's const generics support, TensorStack only implements
  * TensorRef for D from `1` to `6` (from sources of `0` to `5` dimensions respectively), and
  * only supports tuple combinations for `2` to `4`. If you need to stack more than four tensors
- * together, you can stack any number with the `[Box<dyn TensorRef<T, D>>; N]` implementation,
- * though note this requires boxing and erasing the types of the sources.
+ * together, you can stack any number with the `[S; N]` implementation, though note this requires
+ * that all the tensors are the same type so you may need to box and erase the types to
+ * `Box<dyn TensorRef<T, D>>`.
  */
+#[derive(Clone, Debug)]
 pub struct TensorStack<T, S, const D: usize> {
     sources: S,
     _type: PhantomData<T>,
     along: (usize, Dimension),
 }
+
+// TODO: Source ref methods
 
 fn validate_shapes_equal<const D: usize, I>(mut shapes: I)
 where
@@ -36,10 +40,12 @@ where
     }
 }
 
-// TODO: Can dyn TensorRef<T, D> be generalised here to any S: TensorRef<T, D>?
-impl<T, const D: usize, const N: usize> TensorStack<T, [Box<dyn TensorRef<T, D>>; N], D> {
+impl<T, S, const D: usize, const N: usize> TensorStack<T, [S; N], D>
+where
+    S: TensorRef<T, D>
+{
     #[track_caller]
-    pub fn from(sources: [Box<dyn TensorRef<T, D>>; N], along: (usize, Dimension)) -> Self {
+    pub fn from(sources: [S; N], along: (usize, Dimension)) -> Self {
         if N == 0 {
             panic!("No sources provided");
         }
@@ -67,6 +73,10 @@ impl<T, const D: usize, const N: usize> TensorStack<T, [Box<dyn TensorRef<T, D>>
 
     fn source_view_shape(&self) -> [(Dimension, usize); D] {
         self.sources[0].view_shape()
+    }
+
+    fn sources() -> usize {
+        N
     }
 }
 
@@ -101,6 +111,10 @@ where
 
     fn source_view_shape(&self) -> [(Dimension, usize); D] {
         self.sources.0.view_shape()
+    }
+
+    fn sources() -> usize {
+        2
     }
 }
 
@@ -140,6 +154,10 @@ where
 
     fn source_view_shape(&self) -> [(Dimension, usize); D] {
         self.sources.0.view_shape()
+    }
+
+    fn sources() -> usize {
+        3
     }
 }
 
@@ -183,27 +201,32 @@ where
     fn source_view_shape(&self) -> [(Dimension, usize); D] {
         self.sources.0.view_shape()
     }
+
+    fn sources() -> usize {
+        4
+    }
 }
 
 macro_rules! tensor_stack_ref_impl {
     (unsafe impl TensorRef for TensorStack $d:literal $mod:ident) => {
         // To avoid helper name clashes we use a different module per macro invocation
         mod $mod {
-            use crate::tensors::views::{TensorRef, DataLayout, TensorStack};
+            use crate::tensors::views::{TensorRef, TensorMut, DataLayout, TensorStack};
             use crate::tensors::Dimension;
 
             fn view_shape_impl(
                 shape: [(Dimension, usize); $d],
-                along: (usize, Dimension)
+                along: (usize, Dimension),
+                sources: usize,
             ) -> [(Dimension, usize); $d + 1] {
                 let mut extra_shape = [("", 0); $d + 1];
                 let mut i = 0;
-                for dimension in extra_shape.iter_mut() {
-                    match i == along.0 {
+                for (d, dimension) in extra_shape.iter_mut().enumerate() {
+                    match d == along.0 {
                         true => {
-                            *dimension = (along.1, along.0);
+                            *dimension = (along.1, sources);
                             // Do not increment i, this is the added dimension
-                        }
+                        },
                         false => {
                             *dimension = shape[i];
                             i += 1;
@@ -213,17 +236,38 @@ macro_rules! tensor_stack_ref_impl {
                 extra_shape
             }
 
-            unsafe impl<T, const N: usize> TensorRef<T, { $d + 1 }> for TensorStack<T, [Box<dyn TensorRef<T, $d>>; N], $d> {
-                fn get_reference(&self, _indexes: [usize; $d + 1]) -> Option<&T> {
-                    unimplemented!()
+            fn indexing(
+                indexes: [usize; $d + 1],
+                along: (usize, Dimension)
+            ) -> (usize, [usize; $d]) {
+                let mut indexes_into_source = [0; $d];
+                let mut i = 0;
+                for (d, &index) in indexes.iter().enumerate() {
+                    if d != along.0 {
+                        indexes_into_source[i] = index;
+                        i += 1;
+                    }
+                }
+                (indexes[along.0], indexes_into_source)
+            }
+
+            unsafe impl<T, S, const N: usize> TensorRef<T, { $d + 1 }> for TensorStack<T, [S; N], $d>
+            where
+                S: TensorRef<T, $d>
+            {
+                fn get_reference(&self, indexes: [usize; $d + 1]) -> Option<&T> {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    self.sources.get(source)?.get_reference(indexes)
                 }
 
                 fn view_shape(&self) -> [(Dimension, usize); $d + 1] {
-                    view_shape_impl(self.source_view_shape(), self.along)
+                    view_shape_impl(self.source_view_shape(), self.along, Self::sources())
                 }
 
-                unsafe fn get_reference_unchecked(&self, _indexes: [usize; $d + 1]) -> &T {
-                    unimplemented!()
+                unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    // TODO: Can we use get_unchecked here?
+                    self.sources.get(source).unwrap().get_reference_unchecked(indexes)
                 }
 
                 fn data_layout(&self) -> DataLayout<{ $d + 1 }> {
@@ -233,27 +277,83 @@ macro_rules! tensor_stack_ref_impl {
                 }
             }
 
+            unsafe impl<T, S, const N: usize> TensorMut<T, { $d + 1 }> for TensorStack<T, [S; N], $d>
+            where
+                S: TensorMut<T, $d>
+            {
+                fn get_reference_mut(&mut self, indexes: [usize; $d + 1]) -> Option<&mut T> {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    self.sources.get_mut(source)?.get_reference_mut(indexes)
+                }
+
+                unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + 1]) -> &mut T {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    // TODO: Can we use get_unchecked here?
+                    self.sources.get_mut(source).unwrap().get_reference_unchecked_mut(indexes)
+                }
+            }
+
             unsafe impl<T, S1, S2> TensorRef<T, { $d + 1 }> for TensorStack<T, (S1, S2), $d>
             where
                 S1: TensorRef<T, $d>,
                 S2: TensorRef<T, $d>,
             {
-                fn get_reference(&self, _indexes: [usize; $d + 1]) -> Option<&T> {
-                    unimplemented!()
+                fn get_reference(&self, indexes: [usize; $d + 1]) -> Option<&T> {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    match source {
+                        0 => self.sources.0.get_reference(indexes),
+                        1 => self.sources.1.get_reference(indexes),
+                        _ => None
+                    }
                 }
 
                 fn view_shape(&self) -> [(Dimension, usize); $d + 1] {
-                    view_shape_impl(self.source_view_shape(), self.along)
+                    view_shape_impl(self.source_view_shape(), self.along, Self::sources())
                 }
 
-                unsafe fn get_reference_unchecked(&self, _indexes: [usize; $d + 1]) -> &T {
-                    unimplemented!()
+                unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    match source {
+                        0 => self.sources.0.get_reference_unchecked(indexes),
+                        1 => self.sources.1.get_reference_unchecked(indexes),
+                        // TODO: Can we use unreachable_unchecked here?
+                        _ => panic!(
+                            "Invalid index should never be given to get_reference_unchecked"
+                        )
+                    }
                 }
 
                 fn data_layout(&self) -> DataLayout<{ $d + 1 }> {
                     // Our stacked shapes means the view shape no longer matches up to a single
                     // line of data in memory.
                     DataLayout::NonLinear
+                }
+            }
+
+            unsafe impl<T, S1, S2> TensorMut<T, { $d + 1 }> for TensorStack<T, (S1, S2), $d>
+            where
+                S1: TensorMut<T, $d>,
+                S2: TensorMut<T, $d>,
+            {
+                fn get_reference_mut(&mut self, indexes: [usize; $d + 1]) -> Option<&mut T> {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    match source {
+                        0 => self.sources.0.get_reference_mut(indexes),
+                        1 => self.sources.1.get_reference_mut(indexes),
+                        _ => None
+                    }
+                }
+
+                unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + 1]) -> &mut T {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    match source {
+                        0 => self.sources.0.get_reference_unchecked_mut(indexes),
+                        1 => self.sources.1.get_reference_unchecked_mut(indexes),
+                        // TODO: Can we use unreachable_unchecked here?
+                        _ => panic!(
+                            "Invalid index should never be given to get_reference_unchecked"
+                        )
+                    }
                 }
             }
 
@@ -263,22 +363,67 @@ macro_rules! tensor_stack_ref_impl {
                 S2: TensorRef<T, $d>,
                 S3: TensorRef<T, $d>,
             {
-                fn get_reference(&self, _indexes: [usize; $d + 1]) -> Option<&T> {
-                    unimplemented!()
+                fn get_reference(&self, indexes: [usize; $d + 1]) -> Option<&T> {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    match source {
+                        0 => self.sources.0.get_reference(indexes),
+                        1 => self.sources.1.get_reference(indexes),
+                        2 => self.sources.2.get_reference(indexes),
+                        _ => None
+                    }
                 }
 
                 fn view_shape(&self) -> [(Dimension, usize); $d + 1] {
-                    view_shape_impl(self.source_view_shape(), self.along)
+                    view_shape_impl(self.source_view_shape(), self.along, Self::sources())
                 }
 
-                unsafe fn get_reference_unchecked(&self, _indexes: [usize; $d + 1]) -> &T {
-                    unimplemented!()
+                unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    match source {
+                        0 => self.sources.0.get_reference_unchecked(indexes),
+                        1 => self.sources.1.get_reference_unchecked(indexes),
+                        2 => self.sources.2.get_reference_unchecked(indexes),
+                        // TODO: Can we use unreachable_unchecked here?
+                        _ => panic!(
+                            "Invalid index should never be given to get_reference_unchecked"
+                        )
+                    }
                 }
 
                 fn data_layout(&self) -> DataLayout<{ $d + 1 }> {
                     // Our stacked shapes means the view shape no longer matches up to a single
                     // line of data in memory.
                     DataLayout::NonLinear
+                }
+            }
+
+            unsafe impl<T, S1, S2, S3> TensorMut<T, { $d + 1 }> for TensorStack<T, (S1, S2, S3), $d>
+            where
+                S1: TensorMut<T, $d>,
+                S2: TensorMut<T, $d>,
+                S3: TensorMut<T, $d>,
+            {
+                fn get_reference_mut(&mut self, indexes: [usize; $d + 1]) -> Option<&mut T> {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    match source {
+                        0 => self.sources.0.get_reference_mut(indexes),
+                        1 => self.sources.1.get_reference_mut(indexes),
+                        2 => self.sources.2.get_reference_mut(indexes),
+                        _ => None
+                    }
+                }
+
+                unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + 1]) -> &mut T {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    match source {
+                        0 => self.sources.0.get_reference_unchecked_mut(indexes),
+                        1 => self.sources.1.get_reference_unchecked_mut(indexes),
+                        2 => self.sources.2.get_reference_unchecked_mut(indexes),
+                        // TODO: Can we use unreachable_unchecked here?
+                        _ => panic!(
+                            "Invalid index should never be given to get_reference_unchecked"
+                        )
+                    }
                 }
             }
 
@@ -289,22 +434,72 @@ macro_rules! tensor_stack_ref_impl {
                 S3: TensorRef<T, $d>,
                 S4: TensorRef<T, $d>,
             {
-                fn get_reference(&self, _indexes: [usize; $d + 1]) -> Option<&T> {
-                    unimplemented!()
+                fn get_reference(&self, indexes: [usize; $d + 1]) -> Option<&T> {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    match source {
+                        0 => self.sources.0.get_reference(indexes),
+                        1 => self.sources.1.get_reference(indexes),
+                        2 => self.sources.2.get_reference(indexes),
+                        3 => self.sources.3.get_reference(indexes),
+                        _ => None
+                    }
                 }
 
                 fn view_shape(&self) -> [(Dimension, usize); $d + 1] {
-                    view_shape_impl(self.source_view_shape(), self.along)
+                    view_shape_impl(self.source_view_shape(), self.along, Self::sources())
                 }
 
-                unsafe fn get_reference_unchecked(&self, _indexes: [usize; $d + 1]) -> &T {
-                    unimplemented!()
+                unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    match source {
+                        0 => self.sources.0.get_reference_unchecked(indexes),
+                        1 => self.sources.1.get_reference_unchecked(indexes),
+                        2 => self.sources.2.get_reference_unchecked(indexes),
+                        3 => self.sources.3.get_reference_unchecked(indexes),
+                        // TODO: Can we use unreachable_unchecked here?
+                        _ => panic!(
+                            "Invalid index should never be given to get_reference_unchecked"
+                        )
+                    }
                 }
 
                 fn data_layout(&self) -> DataLayout<{ $d + 1 }> {
                     // Our stacked shapes means the view shape no longer matches up to a single
                     // line of data in memory.
                     DataLayout::NonLinear
+                }
+            }
+
+            unsafe impl<T, S1, S2, S3, S4> TensorMut<T, { $d + 1 }> for TensorStack<T, (S1, S2, S3, S4), $d>
+            where
+                S1: TensorMut<T, $d>,
+                S2: TensorMut<T, $d>,
+                S3: TensorMut<T, $d>,
+                S4: TensorMut<T, $d>,
+            {
+                fn get_reference_mut(&mut self, indexes: [usize; $d + 1]) -> Option<&mut T> {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    match source {
+                        0 => self.sources.0.get_reference_mut(indexes),
+                        1 => self.sources.1.get_reference_mut(indexes),
+                        2 => self.sources.2.get_reference_mut(indexes),
+                        3 => self.sources.3.get_reference_mut(indexes),
+                        _ => None
+                    }
+                }
+
+                unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + 1]) -> &mut T {
+                    let (source, indexes) = indexing(indexes, self.along);
+                    match source {
+                        0 => self.sources.0.get_reference_unchecked_mut(indexes),
+                        1 => self.sources.1.get_reference_unchecked_mut(indexes),
+                        2 => self.sources.2.get_reference_unchecked_mut(indexes),
+                        3 => self.sources.3.get_reference_unchecked_mut(indexes),
+                        // TODO: Can we use unreachable_unchecked here?
+                        _ => panic!(
+                            "Invalid index should never be given to get_reference_unchecked"
+                        )
+                    }
                 }
             }
         }
@@ -317,3 +512,99 @@ tensor_stack_ref_impl!(unsafe impl TensorRef for TensorStack 2 two);
 tensor_stack_ref_impl!(unsafe impl TensorRef for TensorStack 3 three);
 tensor_stack_ref_impl!(unsafe impl TensorRef for TensorStack 4 four);
 tensor_stack_ref_impl!(unsafe impl TensorRef for TensorStack 5 five);
+
+#[test]
+fn test_stacking() {
+    use crate::tensors::Tensor;
+    use crate::tensors::views::{TensorView, TensorMut};
+    let vector1 = Tensor::from([("a", 3)], vec![9, 5, 2]);
+    let vector2 = Tensor::from([("a", 3)], vec![3, 6, 0]);
+    let vector3 = Tensor::from([("a", 3)], vec![8, 7, 1]);
+    let matrix = TensorView::from(
+        TensorStack::<_, (_, _, _), 1>::from((&vector1, &vector2, &vector3), (1, "b"))
+    );
+    assert_eq!(
+        matrix,
+        Tensor::from([("a", 3), ("b", 3)], vec![
+            9, 3, 8,
+            5, 6, 7,
+            2, 0, 1,
+        ])
+    );
+    let different_matrix = TensorView::from(
+        TensorStack::<_, (_, _, _), 1>::from((&vector1, &vector2, &vector3), (0, "b"))
+    );
+    assert_eq!(
+        different_matrix,
+        Tensor::from([("b", 3), ("a", 3)], vec![
+            9, 5, 2,
+            3, 6, 0,
+            8, 7, 1,
+        ])
+    );
+    let matrix_erased: Box<dyn TensorMut<_, 2>> = Box::new(matrix.map(|x| x));
+    let different_matrix_erased: Box<dyn TensorMut<_, 2>> = Box::new(
+        different_matrix.rename_view(["a", "b"]).map(|x| x)
+    );
+    let tensor = TensorView::from(
+        TensorStack::<_, [_; 2], 2>::from([matrix_erased, different_matrix_erased], (2, "c"))
+    );
+    assert!(
+        tensor.eq(
+            &Tensor::from([("a", 3), ("b", 3), ("c", 2)], vec![
+                9, 9,
+                3, 5,
+                8, 2,
+
+                5, 3,
+                6, 6,
+                7, 0,
+
+                2, 8,
+                0, 7,
+                1, 1
+            ])
+        ),
+    );
+    let matrix_erased: Box<dyn TensorMut<_, 2>> = Box::new(matrix.map(|x| x));
+    let different_matrix_erased: Box<dyn TensorMut<_, 2>> = Box::new(
+        different_matrix.rename_view(["a", "b"]).map(|x| x)
+    );
+    let different_tensor = TensorView::from(
+        TensorStack::<_, [_; 2], 2>::from([matrix_erased, different_matrix_erased], (1, "c"))
+    );
+    assert!(
+        different_tensor.eq(
+            &Tensor::from([("a", 3), ("c", 2), ("b", 3)], vec![
+                9, 3, 8,
+                9, 5, 2,
+
+                5, 6, 7,
+                3, 6, 0,
+
+                2, 0, 1,
+                8, 7, 1
+            ])
+        ),
+    );
+    let matrix_erased: Box<dyn TensorRef<_, 2>> = Box::new(matrix.map(|x| x));
+    let different_matrix_erased: Box<dyn TensorRef<_, 2>> = Box::new(
+        different_matrix.rename_view(["a", "b"]).map(|x| x)
+    );
+    let another_tensor = TensorView::from(
+        TensorStack::<_, [_; 2], 2>::from([matrix_erased, different_matrix_erased], (0, "c"))
+    );
+    assert!(
+        another_tensor.eq(
+            &Tensor::from([("c", 2), ("a", 3), ("b", 3)], vec![
+                9, 3, 8,
+                5, 6, 7,
+                2, 0, 1,
+
+                9, 5, 2,
+                3, 6, 0,
+                8, 7, 1,
+            ])
+        ),
+    );
+}
