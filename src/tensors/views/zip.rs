@@ -13,6 +13,44 @@ use crate::tensors::dimensions;
  * together, you can stack any number with the `[S; N]` implementation, though note this requires
  * that all the tensors are the same type so you may need to box and erase the types to
  * `Box<dyn TensorRef<T, D>>`.
+ *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ * use easy_ml::tensors::views::{TensorView, TensorStack, TensorRef};
+ * let vector1 = Tensor::from([("data", 5)], vec![0, 1, 2, 3, 4]);
+ * let vector2 = Tensor::from([("data", 5)], vec![2, 4, 8, 16, 32]);
+ * // Because there are 4 variants of `TensorStack::from` you may need to use the turbofish
+ * // to tell the Rust compiler which variant you're using, but the actual type of `S` can be
+ * // left unspecified by using an underscore.
+ * let matrix = TensorStack::<i32, [_; 2], 1>::from([&vector1, &vector2], (0, "sample"));
+ * let equal_matrix = Tensor::from([("sample", 2), ("data", 5)], vec![
+ *   0, 1, 2, 3, 4,
+ *   2, 4, 8, 16, 32
+ * ]);
+ * assert_eq!(equal_matrix, TensorView::from(matrix));
+ *
+ * let also_matrix = TensorStack::<i32, (_, _), 1>::from((vector1, vector2), (0, "sample"));
+ * assert_eq!(equal_matrix, TensorView::from(&also_matrix));
+ *
+ * // To stack `equal_matrix` and `also_matrix` using the `[S; N]` implementation we have to first
+ * // make them the same type, which we can do by boxing and erasing.
+ * let matrix_erased: Box<dyn TensorRef<i32, 2>> = Box::new(also_matrix);
+ * let equal_matrix_erased: Box<dyn TensorRef<i32, 2>> = Box::new(equal_matrix);
+ * let tensor = TensorStack::<i32, [_; 2], 2>::from(
+ *     [matrix_erased, equal_matrix_erased], (0, "experiment")
+ * );
+ * assert!(
+ *     TensorView::from(tensor).eq(
+ *         &Tensor::from([("experiment", 2), ("sample", 2), ("data", 5)], vec![
+ *             0, 1, 2, 3, 4,
+ *             2, 4, 8, 16, 32,
+ *
+ *             0, 1, 2, 3, 4,
+ *             2, 4, 8, 16, 32
+ *         ])
+ *     ),
+ * );
+ * ```
  */
 #[derive(Clone, Debug)]
 pub struct TensorStack<T, S, const D: usize> {
@@ -20,8 +58,6 @@ pub struct TensorStack<T, S, const D: usize> {
     _type: PhantomData<T>,
     along: (usize, Dimension),
 }
-
-// TODO: Source ref methods
 
 fn validate_shapes_equal<const D: usize, I>(mut shapes: I)
 where
@@ -44,6 +80,20 @@ impl<T, S, const D: usize, const N: usize> TensorStack<T, [S; N], D>
 where
     S: TensorRef<T, D>
 {
+    /**
+     * Creates a TensorStack from an array of sources of the same type and a tuple of which
+     * dimension and name to stack the sources along in the range of 0 <= `d` <= D. The sources
+     * must all have an identical shape, and the dimension name to add must not be in the sources'
+     * shape already.
+     *
+     * # Panics
+     *
+     * If N == 0, the shapes of the sources are not identical, the dimension for stacking is out
+     * of bounds, or the name is already in the sources' shape.
+     *
+     * While N == 1 arguments may be valid [TensorExpansion](crate::tensors::views::TensorExpansion)
+     * is a more general way to add dimensions with no additional data.
+     */
     #[track_caller]
     pub fn from(sources: [S; N], along: (usize, Dimension)) -> Self {
         if N == 0 {
@@ -71,11 +121,25 @@ where
         }
     }
 
+    pub fn sources(self) -> [S; N] {
+        self.sources
+    }
+
+    // # Safety
+    //
+    // Giving out a mutable reference to our sources could allow then to be changed out from under
+    // us and make our shape invalid. However, since the sources implement TensorRef interior
+    // mutability is not allowed, so we can give out shared references without breaking our own
+    // integrity.
+    pub fn sources_ref(&self) -> &[S; N] {
+        &self.sources
+    }
+
     fn source_view_shape(&self) -> [(Dimension, usize); D] {
         self.sources[0].view_shape()
     }
 
-    fn sources() -> usize {
+    fn number_of_sources() -> usize {
         N
     }
 }
@@ -85,6 +149,16 @@ where
     S1: TensorRef<T, D>,
     S2: TensorRef<T, D>,
 {
+    /**
+     * Creates a TensorStack from two sources and a tuple of which dimension and name to stack
+     * the sources along in the range of 0 <= `d` <= D. The sources must all have an identical
+     * shape, and the dimension name to add must not be in the sources' shape already.
+     *
+     * # Panics
+     *
+     * If the shapes of the sources are not identical, the dimension for stacking is out
+     * of bounds, or the name is already in the sources' shape.
+     */
     #[track_caller]
     pub fn from(sources: (S1, S2), along: (usize, Dimension)) -> Self {
         if along.0 > D {
@@ -109,11 +183,25 @@ where
         }
     }
 
+    pub fn sources(self) -> (S1, S2) {
+        self.sources
+    }
+
+    // # Safety
+    //
+    // Giving out a mutable reference to our sources could allow then to be changed out from under
+    // us and make our shape invalid. However, since the sources implement TensorRef interior
+    // mutability is not allowed, so we can give out shared references without breaking our own
+    // integrity.
+    pub fn sources_ref(&self) -> &(S1, S2) {
+        &self.sources
+    }
+
     fn source_view_shape(&self) -> [(Dimension, usize); D] {
         self.sources.0.view_shape()
     }
 
-    fn sources() -> usize {
+    fn number_of_sources() -> usize {
         2
     }
 }
@@ -124,6 +212,16 @@ where
     S2: TensorRef<T, D>,
     S3: TensorRef<T, D>,
 {
+    /**
+     * Creates a TensorStack from three sources and a tuple of which dimension and name to stack
+     * the sources along in the range of 0 <= `d` <= D. The sources must all have an identical
+     * shape, and the dimension name to add must not be in the sources' shape already.
+     *
+     * # Panics
+     *
+     * If the shapes of the sources are not identical, the dimension for stacking is out
+     * of bounds, or the name is already in the sources' shape.
+     */
     #[track_caller]
     pub fn from(sources: (S1, S2, S3), along: (usize, Dimension)) -> Self {
         if along.0 > D {
@@ -152,15 +250,28 @@ where
         }
     }
 
+    pub fn sources(self) -> (S1, S2, S3) {
+        self.sources
+    }
+
+    // # Safety
+    //
+    // Giving out a mutable reference to our sources could allow then to be changed out from under
+    // us and make our shape invalid. However, since the sources implement TensorRef interior
+    // mutability is not allowed, so we can give out shared references without breaking our own
+    // integrity.
+    pub fn sources_ref(&self) -> &(S1, S2, S3) {
+        &self.sources
+    }
+
     fn source_view_shape(&self) -> [(Dimension, usize); D] {
         self.sources.0.view_shape()
     }
 
-    fn sources() -> usize {
+    fn number_of_sources() -> usize {
         3
     }
 }
-
 
 impl<T, S1, S2, S3, S4, const D: usize> TensorStack<T, (S1, S2, S3, S4), D>
 where
@@ -169,6 +280,16 @@ where
     S3: TensorRef<T, D>,
     S4: TensorRef<T, D>,
 {
+    /**
+     * Creates a TensorStack from four sources and a tuple of which dimension and name to stack
+     * the sources along in the range of 0 <= `d` <= D. The sources must all have an identical
+     * shape, and the dimension name to add must not be in the sources' shape already.
+     *
+     * # Panics
+     *
+     * If the shapes of the sources are not identical, the dimension for stacking is out
+     * of bounds, or the name is already in the sources' shape.
+     */
     #[track_caller]
     pub fn from(sources: (S1, S2, S3, S4), along: (usize, Dimension)) -> Self {
         if along.0 > D {
@@ -198,11 +319,25 @@ where
         }
     }
 
+    pub fn sources(self) -> (S1, S2, S3, S4) {
+        self.sources
+    }
+
+    // # Safety
+    //
+    // Giving out a mutable reference to our sources could allow then to be changed out from under
+    // us and make our shape invalid. However, since the sources implement TensorRef interior
+    // mutability is not allowed, so we can give out shared references without breaking our own
+    // integrity.
+    pub fn sources_ref(&self) -> &(S1, S2, S3, S4) {
+        &self.sources
+    }
+
     fn source_view_shape(&self) -> [(Dimension, usize); D] {
         self.sources.0.view_shape()
     }
 
-    fn sources() -> usize {
+    fn number_of_sources() -> usize {
         4
     }
 }
@@ -261,7 +396,7 @@ macro_rules! tensor_stack_ref_impl {
                 }
 
                 fn view_shape(&self) -> [(Dimension, usize); $d + 1] {
-                    view_shape_impl(self.source_view_shape(), self.along, Self::sources())
+                    view_shape_impl(self.source_view_shape(), self.along, Self::number_of_sources())
                 }
 
                 unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T {
@@ -308,7 +443,7 @@ macro_rules! tensor_stack_ref_impl {
                 }
 
                 fn view_shape(&self) -> [(Dimension, usize); $d + 1] {
-                    view_shape_impl(self.source_view_shape(), self.along, Self::sources())
+                    view_shape_impl(self.source_view_shape(), self.along, Self::number_of_sources())
                 }
 
                 unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T {
@@ -374,7 +509,7 @@ macro_rules! tensor_stack_ref_impl {
                 }
 
                 fn view_shape(&self) -> [(Dimension, usize); $d + 1] {
-                    view_shape_impl(self.source_view_shape(), self.along, Self::sources())
+                    view_shape_impl(self.source_view_shape(), self.along, Self::number_of_sources())
                 }
 
                 unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T {
@@ -446,7 +581,7 @@ macro_rules! tensor_stack_ref_impl {
                 }
 
                 fn view_shape(&self) -> [(Dimension, usize); $d + 1] {
-                    view_shape_impl(self.source_view_shape(), self.along, Self::sources())
+                    view_shape_impl(self.source_view_shape(), self.along, Self::number_of_sources())
                 }
 
                 unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T {
