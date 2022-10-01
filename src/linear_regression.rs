@@ -23,7 +23,8 @@ use easy_ml::matrices::Matrix;
 
 // first create some data to fit a curve to
 let x: Matrix<f32> = Matrix::column(
-    vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0]);
+    vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0]
+);
 // we are going to fit a polynomial curve of x^2, but add the sin of x to each value for
 // y to create some deteriministic 'noise'.
 let y = x.map(|x| x.powi(2) + x.sin());
@@ -83,6 +84,7 @@ assert!(mean_squared_error > 0.99);
 
 ```
 use easy_ml::tensors::Tensor;
+use easy_ml::tensors::views::{TensorView, TensorStack};
 
 // first create some data to fit a curve to
 let x: Tensor<f32, 1> = Tensor::from(
@@ -95,7 +97,74 @@ let y = x.map(|x| x.powi(2) + x.sin());
 println!("{:?}", &y);
 
 // Now we create a quadratic basis where each row is [1, x, x^2]
-//let mut X = unimplemented!(); // TODO: Need an API to increase the dimensionality along a dimension for Tensors/views
+let mut X = TensorView::from(
+    TensorStack::<_, (_, _, _), 1>::from(
+        (
+            x.map(|x| 1.0), // the first column will be all 1.0s
+            x.clone(), // the second column will be x
+            x.map(|x| x * x) // the last column will be x^2
+        ),
+        // we want our X to have a shape of [("row", 13), ("column", 3)]
+        // so we insert the columns after the row dimension
+        (1, "column")
+    )
+);
+println!("{:?}", &X);
+
+// now we compute the weights that give the lowest error for y - (X * w)
+// by w = inv(X^T * X) * (X^T * y)
+// Note the use of referencing X, w, and y so we don't move them into
+// a computation.
+// Because we're doing linear regression and creating the matrix we take the inverse
+// of in a particular way we don't check if the inverse exists here, but in general
+// for arbitary matrices you cannot assume that an inverse exists.
+let w = (X.transpose(["column", "row"]) * &X).inverse().unwrap() *
+    (X.transpose(["column", "row"]) * y.expand([(1, "column")]));
+assert_eq!(w.shape(), [("row", 3), ("column", 1)]);
+// now predict y using the learned weights
+let predictions = &X * &w;
+// compute the error for each y and predicted y
+let errors = y.expand([(1, "column")]) - &predictions;
+// multiply each error by itself to get the squared error
+// and sum into a unit matrix by taking the inner prouct
+// then divide by the number of rows to get mean squared error
+let rows = errors.shape()[0].1;
+let mean_squared_error = (errors.transpose(["column", "row"]) * &errors).first() / rows as f32;
+
+println!("MSE: {}", mean_squared_error);
+assert!(mean_squared_error > 0.41);
+assert!(mean_squared_error < 0.42);
+println!("Predicted y values:\n{:?}", &predictions);
+println!("Actual y values:\n{:?}", &y);
+
+// now we have a model we can predict outside the range we trained the weights on
+let test_x: Tensor<f32, 1> = Tensor::from(
+    [("row", 6)],
+    vec![-3.0, -1.0, 0.5, 2.5, 13.0, 14.0]
+);
+let test_y = test_x.map(|x| x.powi(2) + x.sin());
+let test_X = TensorView::from(
+    TensorStack::<_, (_, _, _), 1>::from(
+        (
+            test_x.map(|x| 1.0),
+            test_x.clone(),
+            test_x.map(|x| x * x)
+        ),
+        (1, "column")
+    )
+);
+
+// unsurprisingly the model has generalised quite well but
+// did better on the training data
+println!("Unseen x values:\n{:?}", test_x);
+println!("Unseen y predictions:\n{:?}", &test_X * &w);
+println!("Unseen y actual values:\n{:?}", test_y);
+let errors = test_y.expand([(1, "column")]) - (&test_X * &w);
+let rows = errors.shape()[0].1;
+let mean_squared_error = (errors.transpose(["column", "row"]) * &errors).first() / rows as f32;
+println!("MSE on unseen values: {}", mean_squared_error);
+assert!(mean_squared_error < 1.0);
+assert!(mean_squared_error > 0.99);
 ```
 
 */

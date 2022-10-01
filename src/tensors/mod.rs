@@ -378,6 +378,15 @@ unsafe impl<T, const D: usize> TensorMut<T, D> for Tensor<T, D> {
 }
 
 /**
+ * Any tensor of a Cloneable type implements Clone.
+ */
+impl<T: Clone, const D: usize> Clone for Tensor<T, D> {
+    fn clone(&self) -> Self {
+        self.map(|element| element)
+    }
+}
+
+/**
  * Any tensor of a Displayable type implements Display
  */
 impl<T: std::fmt::Display, const D: usize> std::fmt::Display for Tensor<T, D> {
