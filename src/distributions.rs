@@ -115,7 +115,7 @@ use crate::matrices::Matrix;
  *
  * See: [https://en.wikipedia.org/wiki/Gaussian_function](https://en.wikipedia.org/wiki/Gaussian_function)
  */
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Gaussian<T: Numeric + Real> {
     /**
      * The mean is the expected value of this gaussian.
@@ -256,7 +256,7 @@ where
  * The mean [Matrix](..::matrices::Matrix) must always be a column vector, and
  * must be the same length as the covariance matrix.
  */
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct MultivariateGaussian<T: Numeric + Real> {
     /**
      * The mean is a column vector of expected values in each dimension
