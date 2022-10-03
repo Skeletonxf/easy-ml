@@ -187,5 +187,7 @@ println!("1 0: {:?}", model::<f32>(&inputs[2].map(|x| x.number), &w1_final, &w2_
 println!("1 1: {:?}", model::<f32>(&inputs[3].map(|x| x.number), &w1_final, &w2_final, &w3_final));
 ```
 
-# [Handwritten digit recognition on the MNIST dataset](super::web_assembly#handwritten-digit-recognition-on-the-mnist-dataset)
+# Handwritten digit recognition on the MNIST dataset
+
+[Web Assembly example](super::web_assembly#handwritten-digit-recognition-on-the-mnist-dataset)
  */
