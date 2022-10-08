@@ -1002,40 +1002,36 @@ where
     }
     // The computation steps are outlined nicely at https://rosettacode.org/wiki/Cholesky_decomposition
     let mut lower_triangular = Matrix::empty(T::zero(), matrix.size());
-    for i in 0..lower_triangular.rows() {
-        // For each column k we need to compute all i, k entries
-        // before incrementing k further as the diagonals depend
+    let n = lower_triangular.rows();
+    for i in 0..n {
+        // For each column j we need to compute all i, j entries
+        // before incrementing j further as the diagonals depend
         // on the elements below the diagonal of the previous columns,
         // and the elements below the diagonal depend on the diagonal
         // of their column and elements below the diagonal up to that
         // column.
-        for k in 0..lower_triangular.columns() {
-            if i == k {
+        for j in 0..=i {
+            // For the i = j case we compute the sum of squares, otherwise we're
+            // computing a sum of L_ik * L_jk using the current column and prior columns
+            let sum = {
                 let mut sum = T::zero();
-                for j in 0..k {
+                for k in 0..j {
                     sum = &sum
-                        + (lower_triangular.get_reference(k, j)
-                            * lower_triangular.get_reference(k, j));
+                        + (lower_triangular.get_reference(i, k)
+                            * lower_triangular.get_reference(j, k));
                 }
-                lower_triangular.set(i, k, (matrix.get_reference(i, k) - sum).sqrt());
-            }
-            // after 0,0 we iterate down the rows for i,k where i > k
-            // these elements only depend on values already computed in
-            // their own column and prior columns
-            if i > k {
-                let mut sum = T::zero();
-                for j in 0..k {
-                    sum = &sum
-                        + (lower_triangular.get_reference(i, j)
-                            * lower_triangular.get_reference(k, j));
+                sum
+            };
+            // Calculate L_ij as we step through the lower diagonal
+            lower_triangular.set(
+                i,
+                j,
+                if i == j {
+                    (matrix.get_reference(i, j) - sum).sqrt()
+                } else /* j < i */ {
+                    (matrix.get_reference(i, j) - sum) * (T::one() / lower_triangular.get_reference(j, j))
                 }
-                lower_triangular.set(
-                    i,
-                    k,
-                    (T::one() / lower_triangular.get_reference(k, k))
-                        * (matrix.get_reference(i, k) - sum),
-                );
-            }
+            );
         }
     }
     Some(lower_triangular)
