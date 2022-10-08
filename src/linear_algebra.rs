@@ -992,6 +992,7 @@ pub fn f1_score<T: Numeric>(precision: T, recall: T) -> T {
  * be returned. In the future additional checks that the input is positive definite could
  * be added.
  */
+// TODO: Check if sqrt(0) means input is not positive definite
 pub fn cholesky_decomposition<T: Numeric + Sqrt<Output = T>>(
     matrix: &Matrix<T>,
 ) -> Option<Matrix<T>>
@@ -1041,6 +1042,65 @@ where
         }
     }
     Some(lower_triangular)
+}
+
+fn ldlt_decomposition<T>(
+    matrix: &Matrix<T>,
+) -> Option<()>
+where
+    T: Numeric,
+    for<'a> &'a T: NumericRef<T>,
+{
+    // The algorithm is outlined nicely in context as Algorithm 1.2 here:
+    // https://mcsweeney90.github.io/files/modified-cholesky-decomposition-and-applications.pdf
+    // and here as proper code: https://astroanddata.blogspot.com/2020/04/ldl-decomposition-with-python.html
+    if matrix.rows() != matrix.columns() {
+        return None;
+    }
+    // The computation steps are outlined nicely at https://rosettacode.org/wiki/Cholesky_decomposition
+    let mut lower_triangular = Matrix::empty(T::zero(), matrix.size());
+    let mut diagonal = Matrix::empty(T::zero(), matrix.size());
+    let n = lower_triangular.rows();
+    for i in 0..n {
+        let sum = {
+            let mut sum = T::zero();
+            for k in 0..i {
+                sum = &sum + (
+                    lower_triangular.get_reference(i, k) * lower_triangular.get_reference(i, k) *
+                        diagonal.get_reference(k, k)
+                );
+            }
+            sum
+        };
+        diagonal.set(i, i, matrix.get_reference(i, i) - sum);
+        for j in 0..=i {
+            lower_triangular.set(
+                i,
+                j,
+                if i == j {
+                    T::one()
+                } else /* j < i */ {
+                    let sum = {
+                        let mut sum = T::zero();
+                        for k in 0..j {
+                            sum = &sum + (
+                                lower_triangular.get_reference(i, k) * lower_triangular.get_reference(j, k) *
+                                    diagonal.get_reference(k, k)
+                            );
+                        }
+                        sum
+                    };
+                    (matrix.get_reference(i, j) - sum) * (T::one() / diagonal.get_reference(j, j))
+                }
+            )
+        }
+    }
+    // TODO: Return L and D
+    // TODO: Tests to make sure this does actually work
+    // TODO: Document differences between Cholesky, an input that's positive semidefinite could
+    // still result in division by zero when we do diagonal.get_reference(j, j), but we're 'better'
+    // as negatives are fine since we're not taking square roots
+    unimplemented!()
 }
 
 /**

@@ -319,7 +319,8 @@ where
     for<'a> &'a T: NumericRef<T> + RealRef<T>,
 {
     /**
-     * Draws samples from this multivariate distribution.
+     * Draws samples from this multivariate distribution, provided that the covariance
+     * matrix is positive definite.
      *
      * For max_samples of M, sufficient random numbers from the source iterator,
      * and this Gaussian's dimensionality of N, returns an MxN matrix of drawn values.
@@ -330,6 +331,10 @@ where
      * covariance matrix then `None` is also returned.
      *
      * [Example of generating and feeding random numbers](super::k_means)
+     *
+     * If the covariance matrix is only positive semi definite, `None` is returned. You
+     * can check if a given covariance matrix is positive definite instead of just positive semi
+     * definite with the [cholesky](linear_algebra::cholesky_decomposition) decomposition.
      */
     pub fn draw<I>(&self, source: &mut I, max_samples: usize) -> Option<Matrix<T>>
     where
