@@ -987,9 +987,10 @@ pub fn f1_score<T: Numeric>(precision: T, recall: T) -> T {
  * matrices. For a real valued (ie not containing complex numbers) matrix, if it is
  * [Symmetric](https://en.wikipedia.org/wiki/Symmetric_matrix) it is Hermitian.
  *
- * This function does not check that the provided matrix is Hermitian or
- * positive definite at present, but may in the future, in which case `None`
- * will be returned.
+ * This function does not check that the provided matrix is Hermitian. If square roots
+ * would be taken on a negative number (ie the input was not positive definite) None will
+ * be returned. In the future additional checks that the input is positive definite could
+ * be added.
  */
 pub fn cholesky_decomposition<T: Numeric + Sqrt<Output = T>>(
     matrix: &Matrix<T>,
@@ -1027,7 +1028,12 @@ where
                 i,
                 j,
                 if i == j {
-                    (matrix.get_reference(i, j) - sum).sqrt()
+                    let entry_squared = matrix.get_reference(i, j) - sum;
+                    if entry_squared < T::zero() {
+                        // input wasn't positive definite! avoid sqrt of a negative number
+                        return None;
+                    }
+                    entry_squared.sqrt()
                 } else /* j < i */ {
                     (matrix.get_reference(i, j) - sum) * (T::one() / lower_triangular.get_reference(j, j))
                 }
