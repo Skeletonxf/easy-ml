@@ -983,16 +983,15 @@ pub fn f1_score<T: Numeric>(precision: T, recall: T) -> T {
  *
  * Cholesky decomposition is defined for
  * [Hermitian](https://en.wikipedia.org/wiki/Hermitian_matrix),
- * [positive definite](https://en.wikipedia.org/wiki/Definiteness_of_a_matrix)
+ * [positive definite](https://en.wikipedia.org/wiki/Definite_matrix)
  * matrices. For a real valued (ie not containing complex numbers) matrix, if it is
  * [Symmetric](https://en.wikipedia.org/wiki/Symmetric_matrix) it is Hermitian.
  *
- * This function does not check that the provided matrix is Hermitian. If square roots
- * would be taken on a negative number (ie the input was not positive definite) None will
- * be returned. In the future additional checks that the input is positive definite could
- * be added.
+ * This function does not check that the provided matrix is Hermitian. However, given a Hermitian
+ * input, if the input is not positive definite `None` is returned. Attempting a cholseky
+ * decomposition is also an efficient way to check if such a matrix is positive definite.
+ * In the future additional checks that the input is valid could be added.
  */
-// TODO: Check if sqrt(0) means input is not positive definite
 pub fn cholesky_decomposition<T: Numeric + Sqrt<Output = T>>(
     matrix: &Matrix<T>,
 ) -> Option<Matrix<T>>
@@ -1030,13 +1029,16 @@ where
                 j,
                 if i == j {
                     let entry_squared = matrix.get_reference(i, j) - sum;
-                    if entry_squared < T::zero() {
-                        // input wasn't positive definite! avoid sqrt of a negative number
+                    if entry_squared <= T::zero() {
+                        // input wasn't positive definite! avoid sqrt of a negative number.
+                        // We can take sqrt(0) but that will leave a 0 on the diagonal which
+                        // will then cause division by zero for the j < i case later.
                         return None;
                     }
                     entry_squared.sqrt()
                 } else /* j < i */ {
-                    (matrix.get_reference(i, j) - sum) * (T::one() / lower_triangular.get_reference(j, j))
+                    (matrix.get_reference(i, j) - sum) *
+                        (T::one() / lower_triangular.get_reference(j, j))
                 }
             );
         }
@@ -1044,9 +1046,56 @@ where
     Some(lower_triangular)
 }
 
-fn ldlt_decomposition<T>(
+/**
+ * The result of an LDL^T Decomposition of some matrix A such that LDL^T = A.
+ */
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub struct LDLTDecomposition<T> {
+    pub l: Matrix<T>,
+    pub d: Matrix<T>,
+}
+
+impl<T: std::fmt::Display + Clone> std::fmt::Display for LDLTDecomposition<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "L:\n{}", &self.l)?;
+        write!(f, "D:\n{}", &self.d)
+    }
+}
+
+impl<T> LDLTDecomposition<T> {
+    /**
+     * Creates an LDL^T Decomposition struct from two matrices without checking that LDL^T = A
+     * or that L and D have the intended properties.
+     *
+     * This is provided for assistance with unit testing.
+     */
+    pub fn from_unchecked(l: Matrix<T>, d: Matrix<T>) -> LDLTDecomposition<T> {
+        LDLTDecomposition { l, d }
+    }
+}
+
+/**
+ * Computes the LDL^T decomposition of a matrix. This yields a matrix `L` and a matrix `D`
+ * such that for the provided matrix `A`, `L * D * L^T = A`. `L` will always be
+ * unit lower triangular, ie all entries above the diagonal will be 0, and all entries along
+ * the diagonal will br 1. `D` will always contain zeros except along the diagonal. This
+ * decomposition is closely related to the [cholesky decomposition](cholesky_decomposition)
+ * with the notable difference that it avoids taking square roots.
+ *
+ * Similarly to the cholseky decomposition, the input matrix must be
+ * [Hermitian](https://en.wikipedia.org/wiki/Hermitian_matrix) and
+ * [positive definite](https://en.wikipedia.org/wiki/Definite_matrix). For a real valued
+ * (ie not containing complex numbers) matrix, if it is
+ * [Symmetric](https://en.wikipedia.org/wiki/Symmetric_matrix) it is Hermitian.
+ *
+ * This function does not check that the provided matrix is Hermitian. However, given a Hermitian
+ * input, if the input is only positive **semi**definite `None` is returned. In the future
+ * additional checks that the input is valid could be added.
+ */
+pub fn ldlt_decomposition<T>(
     matrix: &Matrix<T>,
-) -> Option<()>
+) -> Option<LDLTDecomposition<T>>
 where
     T: Numeric,
     for<'a> &'a T: NumericRef<T>,
@@ -1057,7 +1106,6 @@ where
     if matrix.rows() != matrix.columns() {
         return None;
     }
-    // The computation steps are outlined nicely at https://rosettacode.org/wiki/Cholesky_decomposition
     let mut lower_triangular = Matrix::empty(T::zero(), matrix.size());
     let mut diagonal = Matrix::empty(T::zero(), matrix.size());
     let n = lower_triangular.rows();
@@ -1072,7 +1120,21 @@ where
             }
             sum
         };
-        diagonal.set(i, i, matrix.get_reference(i, i) - sum);
+        diagonal.set(
+            i,
+            i,
+            {
+                let entry = matrix.get_reference(i, i) - sum;
+                if entry == T::zero() {
+                    // If input is positive definite then no diagonal will be 0. Otherwise we
+                    // fail the decomposition to avoid division by zero in the j < i case later.
+                    // Note: unlike cholseky, negatives here are fine since we can still perform
+                    // the calculations sensibly.
+                    return None;
+                }
+                entry
+            }
+        );
         for j in 0..=i {
             lower_triangular.set(
                 i,
@@ -1095,12 +1157,11 @@ where
             )
         }
     }
-    // TODO: Return L and D
+    Some(LDLTDecomposition {
+        l: lower_triangular,
+        d: diagonal,
+    })
     // TODO: Tests to make sure this does actually work
-    // TODO: Document differences between Cholesky, an input that's positive semidefinite could
-    // still result in division by zero when we do diagonal.get_reference(j, j), but we're 'better'
-    // as negatives are fine since we're not taking square roots
-    unimplemented!()
 }
 
 /**
