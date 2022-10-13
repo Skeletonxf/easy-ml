@@ -224,6 +224,45 @@ mod linear_algebra {
     }
 
     #[test]
+    fn test_ldlt_decomposition_3_by_3() {
+        // example taken from wikipedia: https://en.wikipedia.org/wiki/Cholesky_decomposition#Positive_semidefinite_matrices
+        #[rustfmt::skip]
+        let matrix = Matrix::from(vec![
+            vec![   4.0,  12.0, -16.0 ],
+            vec![  12.0,  37.0, -43.0 ],
+            vec![ -16.0, -43.0,  98.0 ]
+        ]);
+        let result = linear_algebra::ldlt_decomposition::<f64>(&matrix).unwrap();
+        let lower_triangular = result.l;
+        let diagonal = result.d;
+        #[rustfmt::skip]
+        let expected_lower_triangular = Matrix::from(vec![
+            vec![  1.0, 0.0, 0.0 ],
+            vec![  3.0, 1.0, 0.0 ],
+            vec![ -4.0, 5.0, 1.0 ]
+        ]);
+        let expected_diagonal = Matrix::from(vec![
+            vec![ 4.0, 0.0, 0.0 ],
+            vec![ 0.0, 1.0, 0.0 ],
+            vec![ 0.0, 0.0, 9.0 ]
+        ]);
+        let absolute_difference_l: f64 = lower_triangular
+            .column_major_iter()
+            .zip(expected_lower_triangular.column_major_iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        println!("absolute_difference L: {}", absolute_difference_l);
+        assert!(absolute_difference_l < 0.0001);
+        let absolute_difference_d: f64 = diagonal
+            .column_major_iter()
+            .zip(expected_diagonal.column_major_iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        println!("absolute_difference D: {}", absolute_difference_d);
+        assert!(absolute_difference_d < 0.0001);
+    }
+
+    #[test]
     fn test_mean() {
         assert_eq!(
             linear_algebra::mean(vec![2.0, -2.0, 0.0, 1.0].drain(..)),

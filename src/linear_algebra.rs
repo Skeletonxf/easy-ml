@@ -1102,29 +1102,30 @@ where
 {
     // The algorithm is outlined nicely in context as Algorithm 1.2 here:
     // https://mcsweeney90.github.io/files/modified-cholesky-decomposition-and-applications.pdf
-    // and here as proper code: https://astroanddata.blogspot.com/2020/04/ldl-decomposition-with-python.html
+    // and also as proper code here (though a less efficient solution):
+    // https://astroanddata.blogspot.com/2020/04/ldl-decomposition-with-python.html
     if matrix.rows() != matrix.columns() {
         return None;
     }
     let mut lower_triangular = Matrix::empty(T::zero(), matrix.size());
     let mut diagonal = Matrix::empty(T::zero(), matrix.size());
     let n = lower_triangular.rows();
-    for i in 0..n {
+    for j in 0..n {
         let sum = {
             let mut sum = T::zero();
-            for k in 0..i {
+            for k in 0..j {
                 sum = &sum + (
-                    lower_triangular.get_reference(i, k) * lower_triangular.get_reference(i, k) *
+                    lower_triangular.get_reference(j, k) * lower_triangular.get_reference(j, k) *
                         diagonal.get_reference(k, k)
                 );
             }
             sum
         };
         diagonal.set(
-            i,
-            i,
+            j,
+            j,
             {
-                let entry = matrix.get_reference(i, i) - sum;
+                let entry = matrix.get_reference(j, j) - sum;
                 if entry == T::zero() {
                     // If input is positive definite then no diagonal will be 0. Otherwise we
                     // fail the decomposition to avoid division by zero in the j < i case later.
@@ -1135,7 +1136,7 @@ where
                 entry
             }
         );
-        for j in 0..=i {
+        for i in j..n {
             lower_triangular.set(
                 i,
                 j,
@@ -1161,7 +1162,6 @@ where
         l: lower_triangular,
         d: diagonal,
     })
-    // TODO: Tests to make sure this does actually work
 }
 
 /**
