@@ -241,6 +241,7 @@ mod linear_algebra {
             vec![  3.0, 1.0, 0.0 ],
             vec![ -4.0, 5.0, 1.0 ]
         ]);
+        #[rustfmt::skip]
         let expected_diagonal = Matrix::from(vec![
             vec![ 4.0, 0.0, 0.0 ],
             vec![ 0.0, 1.0, 0.0 ],
@@ -256,6 +257,48 @@ mod linear_algebra {
         let absolute_difference_d: f64 = diagonal
             .column_major_iter()
             .zip(expected_diagonal.column_major_iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        println!("absolute_difference D: {}", absolute_difference_d);
+        assert!(absolute_difference_d < 0.0001);
+    }
+
+    #[test]
+    fn test_ldlt_decomposition_4_by_4() {
+        // we can construct a 4x4 example by going backwards
+        #[rustfmt::skip]
+        let constructed_lower_triangular = Matrix::from(vec![
+            vec![  1.0, 0.0, 0.0, 0.0 ],
+            vec![  2.0, 1.0, 0.0, 0.0 ],
+            vec![ -8.0, 6.0, 1.0, 0.0 ],
+            vec![ -6.0, 2.0, 4.0, 1.0 ],
+        ]);
+        #[rustfmt::skip]
+        let constructed_diagonal = Matrix::from(vec![
+            vec![ 2.0, 0.0,  0.0, 0.0 ],
+            vec![ 0.0, 3.0,  0.0, 0.0 ],
+            vec![ 0.0, 0.0, -3.0, 0.0 ],
+            vec![ 0.0, 0.0,  0.0, 1.0 ],
+        ]);
+        let matrix = {
+            let l = &constructed_lower_triangular;
+            let d = &constructed_diagonal;
+            l * d * l.transpose()
+        };
+        let result = linear_algebra::ldlt_decomposition::<f64>(&matrix).unwrap();
+        let lower_triangular = result.l;
+        let diagonal = result.d;
+
+        let absolute_difference_l: f64 = lower_triangular
+            .column_major_iter()
+            .zip(constructed_lower_triangular.column_major_iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        println!("absolute_difference L: {}", absolute_difference_l);
+        assert!(absolute_difference_l < 0.0001);
+        let absolute_difference_d: f64 = diagonal
+            .column_major_iter()
+            .zip(constructed_diagonal.column_major_iter())
             .map(|(x, y)| (x - y).abs())
             .sum();
         println!("absolute_difference D: {}", absolute_difference_d);
