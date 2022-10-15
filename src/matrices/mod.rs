@@ -791,6 +791,31 @@ impl<T> Matrix<T> {
             bottom_right: parts.next().unwrap(),
         }
     }
+
+    /**
+     * Converts this Matrix into a 2 dimensional Tensor with the provided dimension names.
+     *
+     * This is a wrapper around the non panicking `TryFrom<(Matrix<T>, [Dimension; 2])>`
+     * implementation.
+     *
+     * The Tensor will have the data in the same order, a shape with lengths of `self.rows()` then
+     * `self.columns()` and the provided dimension names respectively.
+     *
+     * # Panics
+     *
+     * If the `rows` and `columns` dimension names are the same.
+     */
+    #[track_caller]
+    pub fn into_tensor(
+        self,
+        rows: crate::tensors::Dimension,
+        columns: crate::tensors::Dimension,
+    ) -> crate::tensors::Tensor<T, 2> {
+        match (self, [rows, columns]).try_into() {
+            Ok(tensor) => tensor,
+            Err(invalid_shape) => panic!("Invalid shape: {:?}", invalid_shape),
+        }
+    }
 }
 
 /**
@@ -1305,6 +1330,29 @@ impl<T: Clone> Clone for Matrix<T> {
 impl<T: std::fmt::Display> std::fmt::Display for Matrix<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         crate::matrices::views::format_view(self, f)
+    }
+}
+
+/**
+ * Any matrix and two different dimension names can be converted to a 2 dimensional tensor with
+ * the same number of rows and columns.
+ *
+ * Conversion will fail if the dimension names for `self.rows()` and `self.columns()` respectively
+ * are the same.
+ */
+impl<T> TryFrom<(Matrix<T>, [crate::tensors::Dimension; 2])> for crate::tensors::Tensor<T, 2> {
+    type Error = crate::tensors::InvalidShapeError<2>;
+
+    fn try_from(value: (Matrix<T>, [crate::tensors::Dimension; 2])) -> Result<Self, Self::Error> {
+        let (matrix, [row_name, column_name]) = value;
+        let shape = [(row_name, matrix.rows), (column_name, matrix.columns)];
+        let check = crate::tensors::InvalidShapeError::new(shape);
+        if !check.is_valid() {
+            return Err(check);
+        }
+        // Now we know the shape is valid, we can call the standard Tensor constructor knowing
+        // it won't fail since our data length will match the size of our shape.
+        Ok(crate::tensors::Tensor::from(shape, matrix.data))
     }
 }
 

@@ -19,6 +19,21 @@
  *
  * You might be working with a generic type of T, in which case specify that
  * `linear_algebra::inverse::<T>(&matrix)`
+ *
+ * ## Generics
+ *
+ * For the tensor variants of these functions, the generics allow very flexible input types.
+ *
+ * A function like
+ * ```
+ * pub fn inverse_tensor<T, S, I>(tensor: I) -> Option<Tensor<T, 2>> where
+ *    T: Numeric,
+ *    for<'a> &'a T: NumericRef<T>,
+ *    I: Into<TensorView<T, S, 2>>,
+ *    S: TensorRef<T, 2>,
+ * ```
+ * Means it takes any type that can be converted to a TensorView, which includes Tensor, &Tensor,
+ * &mut Tensor as well as references to a TensorView.
  */
 
 use crate::matrices::{Column, Matrix, Row};
@@ -982,12 +997,10 @@ pub fn f1_score<T: Numeric>(precision: T, recall: T) -> T {
  * decomposition can be interpreted as a generalised square root function.
  *
  * Cholesky decomposition is defined for
- * [Hermitian](https://en.wikipedia.org/wiki/Hermitian_matrix),
- * [positive definite](https://en.wikipedia.org/wiki/Definite_matrix)
- * matrices. For a real valued (ie not containing complex numbers) matrix, if it is
- * [Symmetric](https://en.wikipedia.org/wiki/Symmetric_matrix) it is Hermitian.
+ * [symmetric](https://en.wikipedia.org/wiki/Hermitian_matrix),
+ * [positive definite](https://en.wikipedia.org/wiki/Definite_matrix) matrices.
  *
- * This function does not check that the provided matrix is Hermitian. However, given a Hermitian
+ * This function does not check that the provided matrix is symmetric. However, given a symmetric
  * input, if the input is not positive definite `None` is returned. Attempting a cholseky
  * decomposition is also an efficient way to check if such a matrix is positive definite.
  * In the future additional checks that the input is valid could be added.
@@ -1047,7 +1060,47 @@ where
 }
 
 /**
- * The result of an LDL^T Decomposition of some matrix A such that LDL^T = A.
+ * Computes the cholesky decomposition of a Tensor matrix. This yields a matrix `L`
+ * such that for the provided matrix `A`, `L * L^T = A`. `L` will always be
+ * lower triangular, ie all entries above the diagonal will be 0. Hence cholesky
+ * decomposition can be interpreted as a generalised square root function.
+ *
+ * Cholesky decomposition is defined for
+ * [symmetric](https://en.wikipedia.org/wiki/Hermitian_matrix),
+ * [positive definite](https://en.wikipedia.org/wiki/Definite_matrix) matrices.
+ *
+ * This function does not check that the provided matrix is symmetric. However, given a symmetric
+ * input, if the input is not positive definite `None` is returned. Attempting a cholseky
+ * decomposition is also an efficient way to check if such a matrix is positive definite.
+ * In the future additional checks that the input is valid could be added.
+ *
+ * The output matrix will have the same shape as the input.
+ */
+pub fn cholesky_decomposition_tensor<T, S, I>(tensor: I) -> Option<Tensor<T, 2>>
+where
+    T: Numeric + Sqrt<Output = T>,
+    for<'a> &'a T: NumericRef<T>,
+    I: Into<TensorView<T, S, 2>>,
+    S: TensorRef<T, 2>,
+{
+    cholesky_decomposition_less_generic::<T, S>(&tensor.into())
+}
+
+fn cholesky_decomposition_less_generic<T, S>(tensor: &TensorView<T, S, 2>) -> Option<Tensor<T, 2>>
+where
+    T: Numeric + Sqrt<Output = T>,
+    for<'a> &'a T: NumericRef<T>,
+    S: TensorRef<T, 2>,
+{
+    // TODO: Port matrix implementation and delegate matrix API to the tensor one to avoid copies
+    let shape = tensor.shape();
+    let matrix = Matrix::from_flat_row_major((shape[0].1, shape[1].1), tensor.iter().collect());
+    let lower_triangular = cholesky_decomposition::<T>(&matrix)?;
+    (lower_triangular, [shape[0].0, shape[1].0]).try_into().ok()
+}
+
+/**
+ * The result of an `LDL^T` Decomposition of some matrix `A` such that `LDL^T = A`.
  */
 #[derive(Clone, Debug)]
 #[non_exhaustive]
@@ -1065,7 +1118,7 @@ impl<T: std::fmt::Display + Clone> std::fmt::Display for LDLTDecomposition<T> {
 
 impl<T> LDLTDecomposition<T> {
     /**
-     * Creates an LDL^T Decomposition struct from two matrices without checking that LDL^T = A
+     * Creates an `LDL^T` Decomposition struct from two matrices without checking that `LDL^T = A`
      * or that L and D have the intended properties.
      *
      * This is provided for assistance with unit testing.
@@ -1084,14 +1137,22 @@ impl<T> LDLTDecomposition<T> {
  * with the notable difference that it avoids taking square roots.
  *
  * Similarly to the cholseky decomposition, the input matrix must be
- * [Hermitian](https://en.wikipedia.org/wiki/Hermitian_matrix) and
- * [positive definite](https://en.wikipedia.org/wiki/Definite_matrix). For a real valued
- * (ie not containing complex numbers) matrix, if it is
- * [Symmetric](https://en.wikipedia.org/wiki/Symmetric_matrix) it is Hermitian.
+ * [symmetric](https://en.wikipedia.org/wiki/Hermitian_matrix) and
+ * [positive definite](https://en.wikipedia.org/wiki/Definite_matrix).
  *
- * This function does not check that the provided matrix is Hermitian. However, given a Hermitian
+ * This function does not check that the provided matrix is symmetric. However, given a symmetric
  * input, if the input is only positive **semi**definite `None` is returned. In the future
  * additional checks that the input is valid could be added.
+ *
+ * # Warning
+ *
+ * With some uses of this function the Rust compiler gets confused about what type `T`
+ * should be and you will get the error:
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ *
+ * In this case you need to manually specify the type of T by using the
+ * turbofish syntax like:
+ * `linear_algebra::ldlt_decomposition::<f32>(&matrix)`
  */
 pub fn ldlt_decomposition<T>(
     matrix: &Matrix<T>,
@@ -1165,7 +1226,7 @@ where
 }
 
 /**
- * The result of a QR Decomposition of some matrix A such that QR = A.
+ * The result of a QR Decomposition of some matrix A such that `QR = A`.
  */
 #[derive(Clone, Debug)]
 #[non_exhaustive]
@@ -1183,7 +1244,7 @@ impl<T: std::fmt::Display + Clone> std::fmt::Display for QRDecomposition<T> {
 
 impl<T> QRDecomposition<T> {
     /**
-     * Creates a QR Decomposition struct from two matrices without checking that QR = A
+     * Creates a QR Decomposition struct from two matrices without checking that `QR = A`
      * or that Q and R have the intended properties.
      *
      * This is provided for assistance with unit testing.
