@@ -795,26 +795,19 @@ impl<T> Matrix<T> {
     /**
      * Converts this Matrix into a 2 dimensional Tensor with the provided dimension names.
      *
-     * This is a wrapper around the non panicking `TryFrom<(Matrix<T>, [Dimension; 2])>`
-     * implementation.
+     * This is a wrapper around the `TryFrom<(Matrix<T>, [Dimension; 2])>` implementation.
      *
      * The Tensor will have the data in the same order, a shape with lengths of `self.rows()` then
      * `self.columns()` and the provided dimension names respectively.
      *
-     * # Panics
-     *
-     * If the `rows` and `columns` dimension names are the same.
+     * Result::Err is returned if the `rows` and `columns` dimension names are the same.
      */
-    #[track_caller]
     pub fn into_tensor(
         self,
         rows: crate::tensors::Dimension,
         columns: crate::tensors::Dimension,
-    ) -> crate::tensors::Tensor<T, 2> {
-        match (self, [rows, columns]).try_into() {
-            Ok(tensor) => tensor,
-            Err(invalid_shape) => panic!("Invalid shape: {:?}", invalid_shape),
-        }
+    ) -> Result<crate::tensors::Tensor<T, 2>, crate::tensors::InvalidShapeError<2>> {
+        (self, [rows, columns]).try_into()
     }
 }
 

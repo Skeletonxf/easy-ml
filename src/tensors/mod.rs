@@ -395,6 +395,19 @@ impl<T: std::fmt::Display, const D: usize> std::fmt::Display for Tensor<T, D> {
     }
 }
 
+/**
+ * Any 2 dimensional tensor can be converted to a matrix with rows equal to the length of the
+ * first dimension in the tensor, and columns equal to the length of the second.
+ */
+impl<T> From<Tensor<T, 2>> for crate::matrices::Matrix<T> {
+    fn from(tensor: Tensor<T, 2>) -> Self {
+        crate::matrices::Matrix::from_flat_row_major(
+            (tensor.dimensions[0].1, tensor.dimensions[1].1),
+            tensor.data
+        )
+    }
+}
+
 fn compute_strides<const D: usize>(dimensions: &[(Dimension, usize); D]) -> [usize; D] {
     let mut strides = [0; D];
     for d in 0..D {
@@ -1312,6 +1325,22 @@ where
      */
     pub fn covariance(&self, feature_dimension: Dimension) -> Tensor<T, 2> {
         linear_algebra::covariance::<T, _, _>(self, feature_dimension)
+    }
+}
+
+impl<T> Tensor<T, 2> {
+    /**
+     * Converts this 2 dimensional Tensor into a Matrix.
+     *
+     * This is a wrapper around the `From<Tensor<T, 2>>` implementation.
+     *
+     * The Matrix will have the data in the same order, with rows equal to the length of
+     * the first dimension in the tensor, and columns equal to the length of the second.
+     */
+    pub fn into_matrix(
+        self,
+    ) -> crate::matrices::Matrix<T> {
+        self.into()
     }
 }
 
