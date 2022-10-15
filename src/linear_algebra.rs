@@ -25,7 +25,7 @@
  * For the tensor variants of these functions, the generics allow very flexible input types.
  *
  * A function like
- * ```
+ * ```ignore
  * pub fn inverse_tensor<T, S, I>(tensor: I) -> Option<Tensor<T, 2>> where
  *    T: Numeric,
  *    for<'a> &'a T: NumericRef<T>,
