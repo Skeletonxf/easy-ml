@@ -1599,11 +1599,15 @@ fn test_send() {
 #[cfg(feature = "serde")]
 mod serde_impls {
     use serde::{Deserialize, Deserializer};
-    use crate::matrices::Matrix;
+    use crate::matrices::{Matrix, Row, Column};
 
     #[derive(Deserialize)]
-    #[serde(transparent)]
-    struct MatrixWrapper<T>(Matrix<T>);
+    #[serde(rename = "Matrix")]
+    struct MatrixDeserialize<T> {
+        data: Vec<T>,
+        rows: Row,
+        columns: Column,
+    }
 
     impl<'de, T> Deserialize<'de> for Matrix<T>
     where
@@ -1613,8 +1617,14 @@ mod serde_impls {
        where
            D: Deserializer<'de>,
        {
-           // TODO: Validate matrix is meeting all invariants
-           MatrixWrapper::<T>::deserialize(deserializer).map(|wrapper| wrapper.0)
+           MatrixDeserialize::<T>::deserialize(deserializer).map(|d| {
+               // Safety: Use the no copy constructor that performs validation to prevent invalid
+               // serialized data being created as a Matrix, which would then break all the
+               // code that's relying on these invariants.
+               Matrix::from_flat_row_major(
+                   (d.rows, d.columns), d.data
+               )
+           })
        }
    }
 }
@@ -1651,7 +1661,20 @@ columns = 4
 "#,
     );
     let parsed: Result<Matrix<i32>, _> = toml::from_str(&encoded);
+    assert!(parsed.is_ok());
 }
+
+#[cfg(feature = "serde")]
+#[test]
+#[should_panic]
+fn test_deserialization_validation() {
+    let _result: Result<Matrix<i32>, _> = toml::from_str(
+        r#"data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+rows = 3
+columns = 3
+"#);
+}
+
 
 #[test]
 fn test_indexing() {
