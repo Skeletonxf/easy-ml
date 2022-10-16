@@ -1096,7 +1096,7 @@ where
     let shape = tensor.shape();
     let matrix = Matrix::from_flat_row_major((shape[0].1, shape[1].1), tensor.iter().collect());
     let lower_triangular = cholesky_decomposition::<T>(&matrix)?;
-    (lower_triangular, [shape[0].0, shape[1].0]).try_into().ok()
+    lower_triangular.into_tensor(shape[0].0, shape[1].0).ok()
 }
 
 /**
