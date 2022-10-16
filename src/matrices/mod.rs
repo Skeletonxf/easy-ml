@@ -6,7 +6,7 @@
  */
 
 #[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 mod errors;
 pub mod iterators;
@@ -59,7 +59,7 @@ use crate::numeric::{Numeric, NumericRef};
  * [See operations submodule](operations)
  */
 #[derive(Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 pub struct Matrix<T> {
     data: Vec<T>,
     rows: Row,
@@ -1597,6 +1597,29 @@ fn test_send() {
 }
 
 #[cfg(feature = "serde")]
+mod serde_impls {
+    use serde::{Deserialize, Deserializer};
+    use crate::matrices::Matrix;
+
+    #[derive(Deserialize)]
+    #[serde(transparent)]
+    struct MatrixWrapper<T>(Matrix<T>);
+
+    impl<'de, T> Deserialize<'de> for Matrix<T>
+    where
+        T: Deserialize<'de>,
+    {
+       fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+       where
+           D: Deserializer<'de>,
+       {
+           // TODO: Validate matrix is meeting all invariants
+           MatrixWrapper::<T>::deserialize(deserializer).map(|wrapper| wrapper.0)
+       }
+   }
+}
+
+#[cfg(feature = "serde")]
 #[test]
 fn test_serialize() {
     fn assert_serialize<T: Serialize>() {}
@@ -1606,8 +1629,28 @@ fn test_serialize() {
 #[cfg(feature = "serde")]
 #[test]
 fn test_deserialize() {
+    use serde::Deserialize;
     fn assert_deserialize<'de, T: Deserialize<'de>>() {}
     assert_deserialize::<Matrix<f64>>();
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn test_serialization_deserialization_loop() {
+    let matrix = Matrix::from(vec![
+        vec![ 1,  2,  3,  4 ],
+        vec![ 5,  6,  7,  8 ],
+        vec![ 9, 10, 11, 12 ]
+    ]);
+    let encoded = toml::to_string(&matrix).unwrap();
+    assert_eq!(
+        encoded,
+        r#"data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+rows = 3
+columns = 4
+"#,
+    );
+    let parsed: Result<Matrix<i32>, _> = toml::from_str(&encoded);
 }
 
 #[test]
