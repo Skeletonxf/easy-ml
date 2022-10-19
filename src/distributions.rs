@@ -108,6 +108,10 @@ use crate::numeric::{Numeric, NumericRef};
 //use crate::numeric::extra::{Sqrt, Pi, Exp, Pow, Ln, Sin, Cos};
 use crate::linear_algebra;
 use crate::matrices::Matrix;
+use crate::tensors::{Tensor, Dimension};
+
+use std::error::Error;
+use std::fmt;
 
 /**
  * A Gaussian probability density function of a normally distributed
@@ -253,7 +257,7 @@ where
  *
  * # Invariants
  *
- * The mean [Matrix](..::matrices::Matrix) must always be a column vector, and
+ * The mean [Matrix](Matrix) must always be a column vector, and
  * must be the same length as the covariance matrix.
  */
 #[derive(Clone, Debug)]
@@ -297,7 +301,7 @@ impl<T: Numeric + Real> MultivariateGaussian<T> {
      *
      * Panics if the covariance matrix is not square, or the column vector
      * is not the same length as the covariance matrix size. Does not currently
-     * panic if the covariance matrix is symmetric, but this could be checked
+     * panic if the covariance matrix is not symmetric, but this could be checked
      * in the future.
      */
     pub fn new(mean: Matrix<T>, covariance: Matrix<T>) -> MultivariateGaussian<T> {
@@ -343,8 +347,6 @@ where
         // Follow the method outlined at
         // https://en.wikipedia.org/wiki/Multivariate_normal_distribution#Computational_methods
         let normal_distribution = Gaussian::new(T::zero(), T::one());
-
-        // hope cholesky works for now and check later
         let lower_triangular = linear_algebra::cholesky_decomposition::<T>(&self.covariance)?;
 
         let mut samples = Matrix::empty(T::zero(), (max_samples, self.mean.rows()));
@@ -360,5 +362,199 @@ where
             }
         }
         Some(samples)
+    }
+}
+
+/**
+ * A multivariate Gaussian distribution with mean vector μ, and covariance matrix Σ.
+ *
+ * See: [https://en.wikipedia.org/wiki/Multivariate_normal_distribution](https://en.wikipedia.org/wiki/Multivariate_normal_distribution)
+ *
+ * # Invariants
+ *
+ * The mean [Tenosr](Tensor) vector must be the same length as the covariance matrix.
+ */
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub struct MultivariateGaussianTensor<T: Numeric + Real> {
+    mean: Tensor<T, 1>,
+    covariance: Tensor<T, 2>,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, PartialEq)]
+pub enum MultivariateGaussianError<T> {
+    NotCovarianceMatrix {
+        mean: Tensor<T, 1>,
+        covariance: Tensor<T, 2>,
+    },
+    MeanVectorWrongLength {
+        mean: Tensor<T, 1>,
+        covariance: Tensor<T, 2>,
+    },
+}
+
+impl<T: fmt::Debug> fmt::Display for MultivariateGaussianError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MultivariateGaussianError::NotCovarianceMatrix { mean: _, covariance } => write!(
+                f,
+                "Covariance matrix is not square: {:?}",
+                covariance,
+            ),
+            MultivariateGaussianError::MeanVectorWrongLength { mean, covariance } => write!(
+                f,
+                "Mean vector has a different length {:?} to the covariance matrix size: {:?}",
+                mean.shape(),
+                covariance.shape(),
+            )
+        }
+    }
+}
+
+impl<T: fmt::Debug> Error for MultivariateGaussianError<T> {}
+
+impl<T: Numeric + Real> MultivariateGaussianTensor<T> {
+    /**
+     * Constructs a new multivariate Gaussian distribution from
+     * a N length vector of means and a NxN covariance matrix
+     *
+     * This function does not check that the provided covariance matrix
+     * is actually a covariance matrix. If a square matrix that is not
+     * symmetric is supplied the gaussian is not defined.
+     *
+     * Result::Err is returned if the covariance matrix is not square, or the mean
+     * vector is not the same length as the size of the covariance matrix. Does not currently
+     * panic if the covariance matrix is not symmetric, but this could be checked
+     * in the future.
+     */
+    pub fn new(
+        mean: Tensor<T, 1>,
+        covariance: Tensor<T, 2>
+    ) -> Result<MultivariateGaussianTensor<T>, MultivariateGaussianError<T>> {
+        let covariance_shape = covariance.shape();
+        if !crate::tensors::dimensions::is_square(&covariance_shape) {
+            return Err(MultivariateGaussianError::NotCovarianceMatrix {
+                mean,
+                covariance,
+            });
+        }
+        let length = covariance_shape[0].1;
+        if mean.shape()[0].1 != length {
+            return Err(MultivariateGaussianError::MeanVectorWrongLength {
+                mean,
+                covariance,
+            });
+        }
+        Ok(
+            MultivariateGaussianTensor { mean, covariance }
+        )
+    }
+
+    /**
+     * The mean is a vector of expected values in each dimension
+     */
+    pub fn mean(&self) -> &Tensor<T, 1> {
+        &self.mean
+    }
+
+    /**
+     * The covariance matrix is a NxN matrix where N is the number of dimensions for
+     * this Gaussian. A covariance matrix must always be symmetric, that is `C[i,j] = C[j,i]`.
+     *
+     * The covariance matrix is a measure of how much values from each dimension vary
+     * from their expected value with respect to each other.
+     *
+     * For a 2 dimensional multivariate Gaussian the covariance matrix could be the 2x2 identity
+     * matrix:
+     *
+     * ```ignore
+     * [
+     *   1.0, 0.0
+     *   0.0, 1.0
+     * ]
+     * ```
+     *
+     * In which case the two dimensions are completely uncorrelated as `C[0,1] = C[1,0] = 0`.
+     */
+    pub fn covariance(&self) -> &Tensor<T, 2> {
+        &self.covariance
+    }
+}
+
+impl<T: Numeric + Real> MultivariateGaussianTensor<T>
+where
+    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+{
+    /**
+     * Draws samples from this multivariate distribution, provided that the covariance
+     * matrix is positive definite.
+     *
+     * For max_samples of M, sufficient random numbers from the source iterator,
+     * and this Gaussian's dimensionality of N, returns an MxN matrix of drawn values with
+     * dimension names `samples` and `features` for M and N respectively.
+     *
+     * The source iterator must have at least MxN random values if N is even, and
+     * Mx(N+1) random values if N is odd, or `None` will be returned. If
+     * the cholesky decomposition cannot be taken on this Gaussian's
+     * covariance matrix then `None` is also returned.
+     *
+     * [Example of generating and feeding random numbers](super::k_means)
+     *
+     * If the covariance matrix is only positive semi definite, `None` is returned. You
+     * can check if a given covariance matrix is positive definite instead of just positive semi
+     * definite with the [cholesky](linear_algebra::cholesky_decomposition_tensor) decomposition.
+     */
+    // TODO: Call this from the MultivariateGaussian impls to avoid duplication after checking
+    // the two calculate distributions identically
+    pub fn draw<I>(
+        &self,
+        source: &mut I,
+        max_samples: usize,
+        samples: Dimension,
+        features: Dimension
+    ) -> Option<Tensor<T, 2>>
+    where
+        I: Iterator<Item = T>,
+    {
+        if samples == features {
+            return None;
+        }
+        use linear_algebra::cholesky_decomposition_tensor as cholesky_decomposition;
+        // Follow the method outlined at
+        // https://en.wikipedia.org/wiki/Multivariate_normal_distribution#Computational_methods
+        let normal_distribution = Gaussian::new(T::zero(), T::one());
+        let mut lower_triangular = cholesky_decomposition::<T, _, _>(&self.covariance)?;
+        lower_triangular.rename([samples, features]);
+
+        let number_of_samples = max_samples;
+        let number_of_features = self.mean.shape()[0].1;
+        let shape = [(samples, max_samples), (features, number_of_features)];
+        let mut drawn_samples = Tensor::empty(shape, T::zero());
+
+        // Construct a TensorView from the mean vector with a shape of
+        // [(samples, number_of_features), (features, 1)]
+        let column_vector_mean = self.mean.rename_view([samples]).expand_owned([(1, features)]);
+
+        let mut drawn_samples_iterator = drawn_samples.iter_reference_mut();
+        for _sample_row in 0..number_of_samples {
+            // use the box muller transform to get N independent values from
+            // a normal distribution (x)
+            let standard_normals = normal_distribution.draw(source, number_of_features)?;
+            let standard_normals = Tensor::from(
+                // Construct a column vector with as many rows as our N features
+                [(samples, standard_normals.len()), (features, 1)],
+                standard_normals
+            );
+            // mean + (L * standard_normals) yields each m'th vector from the distribution
+            let random_vector = &column_vector_mean + (&lower_triangular * standard_normals);
+            // We now have an Nx1 matrix of samples which we can assign to this sample row vector
+            for x in random_vector.iter() {
+                // Since we'll assign a value exactly number_of_samples * number_of_features times
+                // this will always be the Some case
+                *drawn_samples_iterator.next()? = x;
+            }
+        }
+        Some(drawn_samples)
     }
 }
