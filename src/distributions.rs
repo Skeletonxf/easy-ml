@@ -262,6 +262,7 @@ where
  */
 #[derive(Clone, Debug)]
 pub struct MultivariateGaussian<T: Numeric + Real> {
+    // TODO: Make these non public so we don't have to check them again each time we call `draw()`
     /**
      * The mean is a column vector of expected values in each dimension
      */
@@ -295,7 +296,7 @@ impl<T: Numeric + Real> MultivariateGaussian<T> {
      *
      * This function does not check that the provided covariance matrix
      * is actually a covariance matrix. If a square matrix that is not
-     * symmetric is supplied the gaussian is not defined.
+     * symmetric is supplied the Gaussian is not defined.
      *
      * # Panics
      *
@@ -330,9 +331,7 @@ where
      * and this Gaussian's dimensionality of N, returns an MxN matrix of drawn values.
      *
      * The source iterator must have at least MxN random values if N is even, and
-     * Mx(N+1) random values if N is odd, or `None` will be returned. If
-     * the cholesky decomposition cannot be taken on this Gaussian's
-     * covariance matrix then `None` is also returned.
+     * Mx(N+1) random values if N is odd, or `None` will be returned.
      *
      * [Example of generating and feeding random numbers](super::k_means)
      *
@@ -344,6 +343,13 @@ where
     where
         I: Iterator<Item = T>,
     {
+        // Since both our fields are public, we have to recheck they're still meeting our
+        // invariants before doing any calculations.
+        if self.mean.columns() != 1 ||
+            self.covariance.rows() != self.covariance.columns() ||
+            self.mean.rows() != self.covariance.rows() {
+            return None;
+        }
         // Follow the method outlined at
         // https://en.wikipedia.org/wiki/Multivariate_normal_distribution#Computational_methods
         let normal_distribution = Gaussian::new(T::zero(), T::one());
@@ -369,13 +375,8 @@ where
  * A multivariate Gaussian distribution with mean vector μ, and covariance matrix Σ.
  *
  * See: [https://en.wikipedia.org/wiki/Multivariate_normal_distribution](https://en.wikipedia.org/wiki/Multivariate_normal_distribution)
- *
- * # Invariants
- *
- * The mean [Tenosr](Tensor) vector must be the same length as the covariance matrix.
  */
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub struct MultivariateGaussianTensor<T: Numeric + Real> {
     mean: Tensor<T, 1>,
     covariance: Tensor<T, 2>,
@@ -421,7 +422,7 @@ impl<T: Numeric + Real> MultivariateGaussianTensor<T> {
      *
      * This function does not check that the provided covariance matrix
      * is actually a covariance matrix. If a square matrix that is not
-     * symmetric is supplied the gaussian is not defined.
+     * symmetric is supplied the Gaussian is not defined.
      *
      * Result::Err is returned if the covariance matrix is not square, or the mean
      * vector is not the same length as the size of the covariance matrix. Does not currently
@@ -495,9 +496,7 @@ where
      * dimension names `samples` and `features` for M and N respectively.
      *
      * The source iterator must have at least MxN random values if N is even, and
-     * Mx(N+1) random values if N is odd, or `None` will be returned. If
-     * the cholesky decomposition cannot be taken on this Gaussian's
-     * covariance matrix then `None` is also returned.
+     * Mx(N+1) random values if N is odd, or `None` will be returned.
      *
      * [Example of generating and feeding random numbers](super::k_means)
      *
