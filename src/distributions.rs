@@ -109,6 +109,7 @@ use crate::numeric::{Numeric, NumericRef};
 use crate::linear_algebra;
 use crate::matrices::Matrix;
 use crate::tensors::{Tensor, Dimension};
+use crate::tensors::views::{TensorRef, TensorView};
 
 use std::error::Error;
 use std::fmt;
@@ -350,24 +351,19 @@ where
             self.mean.rows() != self.covariance.rows() {
             return None;
         }
-        // Follow the method outlined at
-        // https://en.wikipedia.org/wiki/Multivariate_normal_distribution#Computational_methods
-        let normal_distribution = Gaussian::new(T::zero(), T::one());
-        let lower_triangular = linear_algebra::cholesky_decomposition::<T>(&self.covariance)?;
-
-        let mut samples = Matrix::empty(T::zero(), (max_samples, self.mean.rows()));
-
-        for row in 0..samples.rows() {
-            // use the box muller transform to get N independent values from
-            //  a normal distribution (x)
-            let standard_normals = normal_distribution.draw(source, self.mean.rows())?;
-            // mean + (L * standard_normals) yields each m'th vector from the distribution
-            let random_vector = &self.mean + (&lower_triangular * Matrix::column(standard_normals));
-            for x in 0..random_vector.rows() {
-                samples.set(row, x, random_vector.get(x, 0));
-            }
-        }
-        Some(samples)
+        use crate::interop::{TensorRefMatrix, RowAndColumn, DimensionNames};
+        // Since we already validated our state, we wouldn't expect these conversions to fail
+        // but if they do return None
+        // Convert the column vector to a 1 dimensional tensor by selecting the sole column
+        let mean = crate::tensors::views::TensorIndex::from(
+            TensorRefMatrix::from(&self.mean).ok()?,
+            [(RowAndColumn.names()[1], 0)]
+        );
+        let covariance = TensorRefMatrix::from(&self.covariance).ok()?;
+        let samples = draw_tensor_samples::<T, _, _, _>(
+            &mean, &covariance, source, max_samples, "samples", "features"
+        );
+        samples.map(|tensor| tensor.into_matrix())
     }
 }
 
@@ -483,6 +479,64 @@ impl<T: Numeric + Real> MultivariateGaussianTensor<T> {
     }
 }
 
+fn draw_tensor_samples<T, S1, S2, I>(
+    mean: S1,
+    covariance: S2,
+    source: &mut I,
+    max_samples: usize,
+    samples: Dimension,
+    features: Dimension
+) -> Option<Tensor<T, 2>>
+where
+    T: Numeric + Real,
+    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    I: Iterator<Item = T>,
+    S1: TensorRef<T, 1>,
+    S2: TensorRef<T, 2>,
+{
+    if samples == features {
+        return None;
+    }
+    let mean = TensorView::from(mean);
+    let covariance = TensorView::from(covariance);
+    use linear_algebra::cholesky_decomposition_tensor as cholesky_decomposition;
+    // Follow the method outlined at
+    // https://en.wikipedia.org/wiki/Multivariate_normal_distribution#Computational_methods
+    let normal_distribution = Gaussian::new(T::zero(), T::one());
+    let mut lower_triangular = cholesky_decomposition::<T, _, _>(&covariance)?;
+    lower_triangular.rename([samples, features]);
+
+    let number_of_samples = max_samples;
+    let number_of_features = mean.shape()[0].1;
+    let shape = [(samples, max_samples), (features, number_of_features)];
+    let mut drawn_samples = Tensor::empty(shape, T::zero());
+
+    // Construct a TensorView from the mean vector with a shape of
+    // [(samples, number_of_features), (features, 1)]
+    let column_vector_mean = mean.rename_view([samples]).expand_owned([(1, features)]);
+
+    let mut drawn_samples_iterator = drawn_samples.iter_reference_mut();
+    for _sample_row in 0..number_of_samples {
+        // use the box muller transform to get N independent values from
+        // a normal distribution (x)
+        let standard_normals = normal_distribution.draw(source, number_of_features)?;
+        let standard_normals = Tensor::from(
+            // Construct a column vector with as many rows as our N features
+            [(samples, standard_normals.len()), (features, 1)],
+            standard_normals
+        );
+        // mean + (L * standard_normals) yields each m'th vector from the distribution
+        let random_vector = &column_vector_mean + (&lower_triangular * standard_normals);
+        // We now have an Nx1 matrix of samples which we can assign to this sample row vector
+        for x in random_vector.iter() {
+            // Since we'll assign a value exactly number_of_samples * number_of_features times
+            // this will always be the Some case
+            *drawn_samples_iterator.next()? = x;
+        }
+    }
+    Some(drawn_samples)
+}
+
 impl<T: Numeric + Real> MultivariateGaussianTensor<T>
 where
     for<'a> &'a T: NumericRef<T> + RealRef<T>,
@@ -504,8 +558,6 @@ where
      * can check if a given covariance matrix is positive definite instead of just positive semi
      * definite with the [cholesky](linear_algebra::cholesky_decomposition_tensor) decomposition.
      */
-    // TODO: Call this from the MultivariateGaussian impls to avoid duplication after checking
-    // the two calculate distributions identically
     pub fn draw<I>(
         &self,
         source: &mut I,
@@ -516,44 +568,8 @@ where
     where
         I: Iterator<Item = T>,
     {
-        if samples == features {
-            return None;
-        }
-        use linear_algebra::cholesky_decomposition_tensor as cholesky_decomposition;
-        // Follow the method outlined at
-        // https://en.wikipedia.org/wiki/Multivariate_normal_distribution#Computational_methods
-        let normal_distribution = Gaussian::new(T::zero(), T::one());
-        let mut lower_triangular = cholesky_decomposition::<T, _, _>(&self.covariance)?;
-        lower_triangular.rename([samples, features]);
-
-        let number_of_samples = max_samples;
-        let number_of_features = self.mean.shape()[0].1;
-        let shape = [(samples, max_samples), (features, number_of_features)];
-        let mut drawn_samples = Tensor::empty(shape, T::zero());
-
-        // Construct a TensorView from the mean vector with a shape of
-        // [(samples, number_of_features), (features, 1)]
-        let column_vector_mean = self.mean.rename_view([samples]).expand_owned([(1, features)]);
-
-        let mut drawn_samples_iterator = drawn_samples.iter_reference_mut();
-        for _sample_row in 0..number_of_samples {
-            // use the box muller transform to get N independent values from
-            // a normal distribution (x)
-            let standard_normals = normal_distribution.draw(source, number_of_features)?;
-            let standard_normals = Tensor::from(
-                // Construct a column vector with as many rows as our N features
-                [(samples, standard_normals.len()), (features, 1)],
-                standard_normals
-            );
-            // mean + (L * standard_normals) yields each m'th vector from the distribution
-            let random_vector = &column_vector_mean + (&lower_triangular * standard_normals);
-            // We now have an Nx1 matrix of samples which we can assign to this sample row vector
-            for x in random_vector.iter() {
-                // Since we'll assign a value exactly number_of_samples * number_of_features times
-                // this will always be the Some case
-                *drawn_samples_iterator.next()? = x;
-            }
-        }
-        Some(drawn_samples)
+        draw_tensor_samples::<T, _, _, _>(
+            &self.mean, &self.covariance, source, max_samples, samples, features
+        )
     }
 }
