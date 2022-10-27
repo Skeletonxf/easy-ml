@@ -328,8 +328,9 @@ where
      * Draws samples from this multivariate distribution, provided that the covariance
      * matrix is positive definite.
      *
-     * For max_samples of M, sufficient random numbers from the source iterator,
-     * and this Gaussian's dimensionality of N, returns an MxN matrix of drawn values.
+     * For max_samples of M, sufficient random numbers from the source iterator in the uniformly
+     * distributed range [0, 1] inclusive, and this Gaussian's dimensionality of N, returns an
+     * MxN matrix of drawn values.
      *
      * The source iterator must have at least MxN random values if N is even, and
      * Mx(N+1) random values if N is odd, or `None` will be returned.
@@ -424,6 +425,9 @@ impl<T: Numeric + Real> MultivariateGaussianTensor<T> {
      * vector is not the same length as the size of the covariance matrix. Does not currently
      * panic if the covariance matrix is not symmetric, but this could be checked
      * in the future.
+     *
+     * The dimension names of the mean and covariance matrix are not used, and do not need
+     * to match.
      */
     pub fn new(
         mean: Tensor<T, 1>,
@@ -545,9 +549,9 @@ where
      * Draws samples from this multivariate distribution, provided that the covariance
      * matrix is positive definite.
      *
-     * For max_samples of M, sufficient random numbers from the source iterator,
-     * and this Gaussian's dimensionality of N, returns an MxN matrix of drawn values with
-     * dimension names `samples` and `features` for M and N respectively.
+     * For max_samples of M, sufficient random numbers from the source iterator, in the uniformly
+     * distributed range [0, 1] inclusive and this Gaussian's dimensionality of N, returns an MxN
+     * matrix of drawn values with dimension names `samples` and `features` for M and N respectively.
      *
      * The source iterator must have at least MxN random values if N is even, and
      * Mx(N+1) random values if N is odd, or `None` will be returned.
