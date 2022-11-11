@@ -1,4 +1,4 @@
-use crate::tensors::views::TensorRef;
+use crate::tensors::views::{TensorRef, DataLayout};
 use crate::tensors::Dimension;
 use std::marker::PhantomData;
 use crate::tensors::dimensions;
@@ -742,4 +742,286 @@ fn test_stacking() {
             ])
         ),
     );
+}
+
+#[derive(Clone, Debug)]
+pub struct TensorZip<T, S, const D: usize> {
+    sources: S,
+    _type: PhantomData<T>,
+    along: usize,
+}
+
+fn validate_shapes_similar<const D: usize, I>(mut shapes: I, along: usize)
+where
+    I: Iterator<Item = [(Dimension, usize); D]>
+{
+    // We'll reject fewer than one tensors in the constructors before getting here, so first unwrap
+    // is always going to succeed.
+    let first_shape = shapes.next().unwrap();
+    for (i, shape) in shapes.enumerate() {
+        for d in 0..D {
+            let similar = if d == along {
+                // don't need match for dimension lengths in the `along` dimension
+                shape[d].0 == first_shape[d].0
+            } else {
+                shape[d] == first_shape[d]
+            };
+            if !similar {
+                panic!(
+                    "The shapes of each tensor in the sources to zip along must be the same. Shape {:?} {:?} did not match the first shape {:?}",
+                    i + 1, shape, first_shape
+                );
+            }
+        }
+    }
+}
+
+impl<T, S, const D: usize, const N: usize> TensorZip<T, [S; N], D>
+where
+    S: TensorRef<T, D>
+{
+    /**
+     * Creates a TensorZip from an array of sources of the same type and the dimension name to
+     * zip the sources along. The sources must all have an identical shape, including the provided
+     * dimension, except for the dimension lengths of the provided dimension name which may be
+     * different.
+     *
+     * # Panics
+     *
+     * If N == 0, D == 0, the shapes of the sources are not identical*, or the dimension for
+     * zipping is not in sources' shape.
+     *
+     * *except for the lengths along the provided dimension.
+     */
+    #[track_caller]
+    pub fn from(sources: [S; N], along: Dimension) -> Self {
+        if N == 0 {
+            panic!("No sources provided");
+        }
+        if D == 0 {
+            panic!("Can't zip along 0 dimensional tensors");
+        }
+        let shape = sources[0].view_shape();
+        let along = match dimensions::position_of(&shape, along) {
+            Some(d) => d,
+            None => panic!("The dimension {:?} is not in the source's shapes: {:?}", along, shape),
+        };
+        validate_shapes_similar(sources.iter().map(|tensor| tensor.view_shape()), along);
+        Self {
+            sources,
+            along,
+            _type: PhantomData,
+        }
+    }
+
+    pub fn sources(self) -> [S; N] {
+        self.sources
+    }
+
+    // # Safety
+    //
+    // Giving out a mutable reference to our sources could allow then to be changed out from under
+    // us and make our shape invalid. However, since the sources implement TensorRef interior
+    // mutability is not allowed, so we can give out shared references without breaking our own
+    // integrity.
+    pub fn sources_ref(&self) -> &[S; N] {
+        &self.sources
+    }
+}
+
+impl<T, S1, S2, const D: usize> TensorZip<T, (S1, S2), D>
+where
+    S1: TensorRef<T, D>,
+    S2: TensorRef<T, D>,
+{
+    /**
+     * Creates a TensorZip from two sources and the dimension name to zip the sources along. The
+     * sources must all have an identical shape, including the provided dimension, except for the
+     * dimension lengths of the provided dimension name which may be different.
+     *
+     * # Panics
+     *
+     * If D == 0, the shapes of the sources are not identical*, or the dimension for
+     * zipping is not in sources' shape.
+     *
+     * *except for the lengths along the provided dimension.
+     */
+    #[track_caller]
+    pub fn from(sources: (S1, S2), along: Dimension) -> Self {
+        if D == 0 {
+            panic!("Can't zip along 0 dimensional tensors");
+        }
+        let shape = sources.0.view_shape();
+        let along = match dimensions::position_of(&shape, along) {
+            Some(d) => d,
+            None => panic!("The dimension {:?} is not in the source's shapes: {:?}", along, shape),
+        };
+        validate_shapes_similar(
+            [sources.0.view_shape(), sources.1.view_shape()].into_iter(),
+            along
+        );
+        Self {
+            sources,
+            along,
+            _type: PhantomData,
+        }
+    }
+
+    pub fn sources(self) -> (S1, S2) {
+        self.sources
+    }
+
+    // # Safety
+    //
+    // Giving out a mutable reference to our sources could allow then to be changed out from under
+    // us and make our shape invalid. However, since the sources implement TensorRef interior
+    // mutability is not allowed, so we can give out shared references without breaking our own
+    // integrity.
+    pub fn sources_ref(&self) -> &(S1, S2) {
+        &self.sources
+    }
+}
+
+impl<T, S1, S2, S3, const D: usize> TensorZip<T, (S1, S2, S3), D>
+where
+    S1: TensorRef<T, D>,
+    S2: TensorRef<T, D>,
+    S3: TensorRef<T, D>,
+{
+    /**
+     * Creates a TensorZip from three sources and the dimension name to zip the sources along. The
+     * sources must all have an identical shape, including the provided dimension, except for the
+     * dimension lengths of the provided dimension name which may be different.
+     *
+     * # Panics
+     *
+     * If D == 0, the shapes of the sources are not identical*, or the dimension for
+     * zipping is not in sources' shape.
+     *
+     * *except for the lengths along the provided dimension.
+     */
+    #[track_caller]
+    pub fn from(sources: (S1, S2, S3), along: Dimension) -> Self {
+        if D == 0 {
+            panic!("Can't zip along 0 dimensional tensors");
+        }
+        let shape = sources.0.view_shape();
+        let along = match dimensions::position_of(&shape, along) {
+            Some(d) => d,
+            None => panic!("The dimension {:?} is not in the source's shapes: {:?}", along, shape),
+        };
+        validate_shapes_similar(
+            [
+                sources.0.view_shape(), sources.1.view_shape(), sources.2.view_shape()
+            ].into_iter(),
+            along
+        );
+        Self {
+            sources,
+            along,
+            _type: PhantomData,
+        }
+    }
+
+    pub fn sources(self) -> (S1, S2, S3) {
+        self.sources
+    }
+
+    // # Safety
+    //
+    // Giving out a mutable reference to our sources could allow then to be changed out from under
+    // us and make our shape invalid. However, since the sources implement TensorRef interior
+    // mutability is not allowed, so we can give out shared references without breaking our own
+    // integrity.
+    pub fn sources_ref(&self) -> &(S1, S2, S3) {
+        &self.sources
+    }
+}
+
+impl<T, S1, S2, S3, S4, const D: usize> TensorZip<T, (S1, S2, S3, S4), D>
+where
+    S1: TensorRef<T, D>,
+    S2: TensorRef<T, D>,
+    S3: TensorRef<T, D>,
+    S4: TensorRef<T, D>,
+{
+    /**
+     * Creates a TensorZip from four sources and the dimension name to zip the sources along. The
+     * sources must all have an identical shape, including the provided dimension, except for the
+     * dimension lengths of the provided dimension name which may be different.
+     *
+     * # Panics
+     *
+     * If D == 0, the shapes of the sources are not identical*, or the dimension for
+     * zipping is not in sources' shape.
+     *
+     * *except for the lengths along the provided dimension.
+     */
+    #[track_caller]
+    pub fn from(sources: (S1, S2, S3, S4), along: Dimension) -> Self {
+        if D == 0 {
+            panic!("Can't zip along 0 dimensional tensors");
+        }
+        let shape = sources.0.view_shape();
+        let along = match dimensions::position_of(&shape, along) {
+            Some(d) => d,
+            None => panic!("The dimension {:?} is not in the source's shapes: {:?}", along, shape),
+        };
+        validate_shapes_similar(
+            [
+                sources.0.view_shape(), sources.1.view_shape(),
+                sources.2.view_shape(), sources.3.view_shape()
+            ].into_iter(),
+            along
+        );
+        Self {
+            sources,
+            along,
+            _type: PhantomData,
+        }
+    }
+
+    pub fn sources(self) -> (S1, S2, S3, S4) {
+        self.sources
+    }
+
+    // # Safety
+    //
+    // Giving out a mutable reference to our sources could allow then to be changed out from under
+    // us and make our shape invalid. However, since the sources implement TensorRef interior
+    // mutability is not allowed, so we can give out shared references without breaking our own
+    // integrity.
+    pub fn sources_ref(&self) -> &(S1, S2, S3, S4) {
+        &self.sources
+    }
+}
+
+// For indexing, need to go from indexes into D dimensions, to indexes into D dimensions + which
+// source the provided dimension index fell into, in general case, we can iterate till our index
+// is less than the length of the nth tensor, and when it's not, subtract that length and increase
+// n by one
+// View shape will match sources in all dimensions expect provided, where it'll be the sum of the
+// lengths
+
+unsafe impl<T, S, const D: usize, const N: usize> TensorRef<T, D> for TensorZip<T, [S; N], D>
+where
+    S: TensorRef<T, D>
+{
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        unimplemented!()
+    }
+
+    fn view_shape(&self) -> [(Dimension, usize); D] {
+        unimplemented!()
+    }
+
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        unimplemented!()
+    }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        // Our zipped shapes means the view shape no longer matches up to a single
+        // line of data in memory in the general case.
+        DataLayout::NonLinear
+    }
 }
