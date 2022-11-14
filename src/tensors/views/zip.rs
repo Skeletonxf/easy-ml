@@ -1104,11 +1104,331 @@ where
     }
 }
 
+unsafe impl<T, S1, S2, const D: usize> TensorRef<T, D> for TensorChain<T, (S1, S2), D>
+where
+    S1: TensorRef<T, D>,
+    S2: TensorRef<T, D>,
+{
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        let (source, indexes) = indexing(
+            indexes,
+            [self.sources.0.view_shape(), self.sources.1.view_shape()].into_iter(),
+            self.along
+        )?;
+        match source {
+            0 => self.sources.0.get_reference(indexes),
+            1 => self.sources.1.get_reference(indexes),
+            _ => None
+        }
+    }
+
+    fn view_shape(&self) -> [(Dimension, usize); D] {
+        view_shape_impl(
+            self.sources.0.view_shape(),
+            [self.sources.0.view_shape(), self.sources.1.view_shape()].into_iter(),
+            self.along
+        )
+    }
+
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        // TODO: Can we use get_unchecked here?
+        let (source, indexes) = indexing(
+            indexes,
+            [self.sources.0.view_shape(), self.sources.1.view_shape()].into_iter(),
+            self.along
+        ).unwrap();
+        match source {
+            0 => self.sources.0.get_reference_unchecked(indexes),
+            1 => self.sources.1.get_reference_unchecked(indexes),
+            // TODO: Can we use unreachable_unchecked here?
+            _ => panic!(
+                "Invalid index should never be given to get_reference_unchecked"
+            )
+        }
+    }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        // Our chained shapes means the view shape no longer matches up to a single
+        // line of data in memory in the general case.
+        DataLayout::NonLinear
+    }
+}
+
+unsafe impl<T, S1, S2, const D: usize> TensorMut<T, D> for TensorChain<T, (S1, S2), D>
+where
+    S1: TensorMut<T, D>,
+    S2: TensorMut<T, D>,
+{
+    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
+        let (source, indexes) = indexing(
+            indexes,
+            [self.sources.0.view_shape(), self.sources.1.view_shape()].into_iter(),
+            self.along
+        )?;
+        match source {
+            0 => self.sources.0.get_reference_mut(indexes),
+            1 => self.sources.1.get_reference_mut(indexes),
+            _ => None
+        }
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        // TODO: Can we use get_unchecked here?
+        let (source, indexes) = indexing(
+            indexes,
+            [self.sources.0.view_shape(), self.sources.1.view_shape()].into_iter(),
+            self.along
+        ).unwrap();
+        match source {
+            0 => self.sources.0.get_reference_unchecked_mut(indexes),
+            1 => self.sources.1.get_reference_unchecked_mut(indexes),
+            // TODO: Can we use unreachable_unchecked here?
+            _ => panic!(
+                "Invalid index should never be given to get_reference_unchecked"
+            )
+        }
+    }
+}
+
+unsafe impl<T, S1, S2, S3, const D: usize> TensorRef<T, D> for TensorChain<T, (S1, S2, S3), D>
+where
+    S1: TensorRef<T, D>,
+    S2: TensorRef<T, D>,
+    S3: TensorRef<T, D>,
+{
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        let (source, indexes) = indexing(
+            indexes,
+            [
+                self.sources.0.view_shape(),
+                self.sources.1.view_shape(),
+                self.sources.2.view_shape()
+            ].into_iter(),
+            self.along
+        )?;
+        match source {
+            0 => self.sources.0.get_reference(indexes),
+            1 => self.sources.1.get_reference(indexes),
+            2 => self.sources.2.get_reference(indexes),
+            _ => None
+        }
+    }
+
+    fn view_shape(&self) -> [(Dimension, usize); D] {
+        view_shape_impl(
+            self.sources.0.view_shape(),
+            [
+                self.sources.0.view_shape(),
+                self.sources.1.view_shape(),
+                self.sources.2.view_shape()
+            ].into_iter(),
+            self.along
+        )
+    }
+
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        // TODO: Can we use get_unchecked here?
+        let (source, indexes) = indexing(
+            indexes,
+            [
+                self.sources.0.view_shape(),
+                self.sources.1.view_shape(),
+                self.sources.2.view_shape()
+            ].into_iter(),
+            self.along
+        ).unwrap();
+        match source {
+            0 => self.sources.0.get_reference_unchecked(indexes),
+            1 => self.sources.1.get_reference_unchecked(indexes),
+            2 => self.sources.2.get_reference_unchecked(indexes),
+            // TODO: Can we use unreachable_unchecked here?
+            _ => panic!(
+                "Invalid index should never be given to get_reference_unchecked"
+            )
+        }
+    }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        // Our chained shapes means the view shape no longer matches up to a single
+        // line of data in memory in the general case.
+        DataLayout::NonLinear
+    }
+}
+
+unsafe impl<T, S1, S2, S3, const D: usize> TensorMut<T, D> for TensorChain<T, (S1, S2, S3), D>
+where
+    S1: TensorMut<T, D>,
+    S2: TensorMut<T, D>,
+    S3: TensorMut<T, D>,
+{
+    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
+        let (source, indexes) = indexing(
+            indexes,
+            [
+                self.sources.0.view_shape(),
+                self.sources.1.view_shape(),
+                self.sources.2.view_shape()
+            ].into_iter(),
+            self.along
+        )?;
+        match source {
+            0 => self.sources.0.get_reference_mut(indexes),
+            1 => self.sources.1.get_reference_mut(indexes),
+            2 => self.sources.2.get_reference_mut(indexes),
+            _ => None
+        }
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        // TODO: Can we use get_unchecked here?
+        let (source, indexes) = indexing(
+            indexes,
+            [
+                self.sources.0.view_shape(),
+                self.sources.1.view_shape(),
+                self.sources.2.view_shape()
+            ].into_iter(),
+            self.along
+        ).unwrap();
+        match source {
+            0 => self.sources.0.get_reference_unchecked_mut(indexes),
+            1 => self.sources.1.get_reference_unchecked_mut(indexes),
+            2 => self.sources.2.get_reference_unchecked_mut(indexes),
+            // TODO: Can we use unreachable_unchecked here?
+            _ => panic!(
+                "Invalid index should never be given to get_reference_unchecked"
+            )
+        }
+    }
+}
+
+unsafe impl<T, S1, S2, S3, S4, const D: usize> TensorRef<T, D> for TensorChain<T, (S1, S2, S3, S4), D>
+where
+    S1: TensorRef<T, D>,
+    S2: TensorRef<T, D>,
+    S3: TensorRef<T, D>,
+    S4: TensorRef<T, D>,
+{
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+        let (source, indexes) = indexing(
+            indexes,
+            [
+                self.sources.0.view_shape(),
+                self.sources.1.view_shape(),
+                self.sources.2.view_shape(),
+                self.sources.3.view_shape()
+            ].into_iter(),
+            self.along
+        )?;
+        match source {
+            0 => self.sources.0.get_reference(indexes),
+            1 => self.sources.1.get_reference(indexes),
+            2 => self.sources.2.get_reference(indexes),
+            3 => self.sources.3.get_reference(indexes),
+            _ => None
+        }
+    }
+
+    fn view_shape(&self) -> [(Dimension, usize); D] {
+        view_shape_impl(
+            self.sources.0.view_shape(),
+            [
+                self.sources.0.view_shape(),
+                self.sources.1.view_shape(),
+                self.sources.2.view_shape(),
+                self.sources.3.view_shape()
+            ].into_iter(),
+            self.along
+        )
+    }
+
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        // TODO: Can we use get_unchecked here?
+        let (source, indexes) = indexing(
+            indexes,
+            [
+                self.sources.0.view_shape(),
+                self.sources.1.view_shape(),
+                self.sources.2.view_shape(),
+                self.sources.3.view_shape()
+            ].into_iter(),
+            self.along
+        ).unwrap();
+        match source {
+            0 => self.sources.0.get_reference_unchecked(indexes),
+            1 => self.sources.1.get_reference_unchecked(indexes),
+            2 => self.sources.2.get_reference_unchecked(indexes),
+            3 => self.sources.3.get_reference_unchecked(indexes),
+            // TODO: Can we use unreachable_unchecked here?
+            _ => panic!(
+                "Invalid index should never be given to get_reference_unchecked"
+            )
+        }
+    }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        // Our chained shapes means the view shape no longer matches up to a single
+        // line of data in memory in the general case.
+        DataLayout::NonLinear
+    }
+}
+
+unsafe impl<T, S1, S2, S3, S4, const D: usize> TensorMut<T, D> for TensorChain<T, (S1, S2, S3, S4), D>
+where
+    S1: TensorMut<T, D>,
+    S2: TensorMut<T, D>,
+    S3: TensorMut<T, D>,
+    S4: TensorMut<T, D>,
+{
+    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
+        let (source, indexes) = indexing(
+            indexes,
+            [
+                self.sources.0.view_shape(),
+                self.sources.1.view_shape(),
+                self.sources.2.view_shape(),
+                self.sources.3.view_shape()
+            ].into_iter(),
+            self.along
+        )?;
+        match source {
+            0 => self.sources.0.get_reference_mut(indexes),
+            1 => self.sources.1.get_reference_mut(indexes),
+            2 => self.sources.2.get_reference_mut(indexes),
+            3 => self.sources.3.get_reference_mut(indexes),
+            _ => None
+        }
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        // TODO: Can we use get_unchecked here?
+        let (source, indexes) = indexing(
+            indexes,
+            [
+                self.sources.0.view_shape(),
+                self.sources.1.view_shape(),
+                self.sources.2.view_shape(),
+                self.sources.3.view_shape()
+            ].into_iter(),
+            self.along
+        ).unwrap();
+        match source {
+            0 => self.sources.0.get_reference_unchecked_mut(indexes),
+            1 => self.sources.1.get_reference_unchecked_mut(indexes),
+            2 => self.sources.2.get_reference_unchecked_mut(indexes),
+            3 => self.sources.3.get_reference_unchecked_mut(indexes),
+            // TODO: Can we use unreachable_unchecked here?
+            _ => panic!(
+                "Invalid index should never be given to get_reference_unchecked"
+            )
+        }
+    }
+}
+
 #[test]
 fn test_chaining() {
     use crate::tensors::Tensor;
     use crate::tensors::views::TensorView;
-    // TODO: Test erasing types and tuple variants
     let matrix1 = Tensor::from(
         [("a", 3), ("b", 2)],
         vec![
@@ -1127,7 +1447,7 @@ fn test_chaining() {
         ]
     );
     let matrix = TensorView::from(
-        TensorChain::<_, [_; 2], 2>::from([&matrix1, &matrix2], "a")
+        TensorChain::<_, (_, _), 2>::from((&matrix1, &matrix2), "a")
     );
     assert_eq!(
         matrix,
@@ -1140,5 +1460,24 @@ fn test_chaining() {
             1, 7,
             6, 3
         ])
+    );
+    let matrix_erased: Box<dyn TensorMut<_, 2>> = Box::new(matrix.map(|x| x));
+    let different_matrix = Tensor::from([("a", 7), ("b", 1)], (0..7).collect());
+    let different_matrix_erased: Box<dyn TensorMut<_, 2>> = Box::new(different_matrix);
+    let another_matrix = TensorView::from(
+        TensorChain::<_, [_; 2], 2>::from([matrix_erased, different_matrix_erased], "b")
+    );
+    assert!(
+        another_matrix.eq(
+            &Tensor::from([("a", 7), ("b", 3)], vec![
+                9, 5, 0,
+                2, 1, 1,
+                3, 5, 2,
+                0, 1, 3,
+                8, 4, 4,
+                1, 7, 5,
+                6, 3, 6
+            ])
+        )
     );
 }
