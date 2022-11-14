@@ -1,4 +1,4 @@
-use crate::tensors::views::{TensorRef, DataLayout};
+use crate::tensors::views::{TensorRef, TensorMut, DataLayout};
 use crate::tensors::Dimension;
 use std::marker::PhantomData;
 use crate::tensors::dimensions;
@@ -744,8 +744,16 @@ fn test_stacking() {
     );
 }
 
+/**
+ * Combines two or more tensors along an existing dimension in their shapes to create a Tensor
+ * with a length in that dimension equal to the sum of the sources together along that dimension.
+ * All other dimensions in the tensors' shapes must be the same.
+ *
+ * This can be framed as an D dimensional version of
+ * [std::iter::Iterator::chain](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.chain)
+ */
 #[derive(Clone, Debug)]
-pub struct TensorZip<T, S, const D: usize> {
+pub struct TensorChain<T, S, const D: usize> {
     sources: S,
     _type: PhantomData<T>,
     along: usize,
@@ -768,7 +776,7 @@ where
             };
             if !similar {
                 panic!(
-                    "The shapes of each tensor in the sources to zip along must be the same. Shape {:?} {:?} did not match the first shape {:?}",
+                    "The shapes of each tensor in the sources to chain along must be the same. Shape {:?} {:?} did not match the first shape {:?}",
                     i + 1, shape, first_shape
                 );
             }
@@ -776,20 +784,20 @@ where
     }
 }
 
-impl<T, S, const D: usize, const N: usize> TensorZip<T, [S; N], D>
+impl<T, S, const D: usize, const N: usize> TensorChain<T, [S; N], D>
 where
     S: TensorRef<T, D>
 {
     /**
-     * Creates a TensorZip from an array of sources of the same type and the dimension name to
-     * zip the sources along. The sources must all have an identical shape, including the provided
-     * dimension, except for the dimension lengths of the provided dimension name which may be
-     * different.
+     * Creates a TensorChain from an array of sources of the same type and the dimension name to
+     * chain the sources along. The sources must all have an identical shape, including the
+     * provided dimension, except for the dimension lengths of the provided dimension name which
+     * may be different.
      *
      * # Panics
      *
      * If N == 0, D == 0, the shapes of the sources are not identical*, or the dimension for
-     * zipping is not in sources' shape.
+     * chaining is not in sources' shape.
      *
      * *except for the lengths along the provided dimension.
      */
@@ -799,7 +807,7 @@ where
             panic!("No sources provided");
         }
         if D == 0 {
-            panic!("Can't zip along 0 dimensional tensors");
+            panic!("Can't chain along 0 dimensional tensors");
         }
         let shape = sources[0].view_shape();
         let along = match dimensions::position_of(&shape, along) {
@@ -829,27 +837,27 @@ where
     }
 }
 
-impl<T, S1, S2, const D: usize> TensorZip<T, (S1, S2), D>
+impl<T, S1, S2, const D: usize> TensorChain<T, (S1, S2), D>
 where
     S1: TensorRef<T, D>,
     S2: TensorRef<T, D>,
 {
     /**
-     * Creates a TensorZip from two sources and the dimension name to zip the sources along. The
-     * sources must all have an identical shape, including the provided dimension, except for the
-     * dimension lengths of the provided dimension name which may be different.
+     * Creates a TensorChain from two sources and the dimension name to chain the sources along.
+     * The sources must all have an identical shape, including the provided dimension, except for
+     * the dimension lengths of the provided dimension name which may be different.
      *
      * # Panics
      *
      * If D == 0, the shapes of the sources are not identical*, or the dimension for
-     * zipping is not in sources' shape.
+     * chaining is not in sources' shape.
      *
      * *except for the lengths along the provided dimension.
      */
     #[track_caller]
     pub fn from(sources: (S1, S2), along: Dimension) -> Self {
         if D == 0 {
-            panic!("Can't zip along 0 dimensional tensors");
+            panic!("Can't chain along 0 dimensional tensors");
         }
         let shape = sources.0.view_shape();
         let along = match dimensions::position_of(&shape, along) {
@@ -882,28 +890,28 @@ where
     }
 }
 
-impl<T, S1, S2, S3, const D: usize> TensorZip<T, (S1, S2, S3), D>
+impl<T, S1, S2, S3, const D: usize> TensorChain<T, (S1, S2, S3), D>
 where
     S1: TensorRef<T, D>,
     S2: TensorRef<T, D>,
     S3: TensorRef<T, D>,
 {
     /**
-     * Creates a TensorZip from three sources and the dimension name to zip the sources along. The
-     * sources must all have an identical shape, including the provided dimension, except for the
-     * dimension lengths of the provided dimension name which may be different.
+     * Creates a TensorChain from three sources and the dimension name to chain the sources along.
+     * The sources must all have an identical shape, including the provided dimension, except for
+     * the dimension lengths of the provided dimension name which may be different.
      *
      * # Panics
      *
      * If D == 0, the shapes of the sources are not identical*, or the dimension for
-     * zipping is not in sources' shape.
+     * chaining is not in sources' shape.
      *
      * *except for the lengths along the provided dimension.
      */
     #[track_caller]
     pub fn from(sources: (S1, S2, S3), along: Dimension) -> Self {
         if D == 0 {
-            panic!("Can't zip along 0 dimensional tensors");
+            panic!("Can't chain along 0 dimensional tensors");
         }
         let shape = sources.0.view_shape();
         let along = match dimensions::position_of(&shape, along) {
@@ -938,7 +946,7 @@ where
     }
 }
 
-impl<T, S1, S2, S3, S4, const D: usize> TensorZip<T, (S1, S2, S3, S4), D>
+impl<T, S1, S2, S3, S4, const D: usize> TensorChain<T, (S1, S2, S3, S4), D>
 where
     S1: TensorRef<T, D>,
     S2: TensorRef<T, D>,
@@ -946,21 +954,21 @@ where
     S4: TensorRef<T, D>,
 {
     /**
-     * Creates a TensorZip from four sources and the dimension name to zip the sources along. The
-     * sources must all have an identical shape, including the provided dimension, except for the
-     * dimension lengths of the provided dimension name which may be different.
+     * Creates a TensorChain from four sources and the dimension name to chain the sources along.
+     * The sources must all have an identical shape, including the provided dimension, except for
+     * the dimension lengths of the provided dimension name which may be different.
      *
      * # Panics
      *
      * If D == 0, the shapes of the sources are not identical*, or the dimension for
-     * zipping is not in sources' shape.
+     * chaining is not in sources' shape.
      *
      * *except for the lengths along the provided dimension.
      */
     #[track_caller]
     pub fn from(sources: (S1, S2, S3, S4), along: Dimension) -> Self {
         if D == 0 {
-            panic!("Can't zip along 0 dimensional tensors");
+            panic!("Can't chain along 0 dimensional tensors");
         }
         let shape = sources.0.view_shape();
         let along = match dimensions::position_of(&shape, along) {
@@ -996,32 +1004,141 @@ where
     }
 }
 
-// For indexing, need to go from indexes into D dimensions, to indexes into D dimensions + which
-// source the provided dimension index fell into, in general case, we can iterate till our index
-// is less than the length of the nth tensor, and when it's not, subtract that length and increase
-// n by one
-// View shape will match sources in all dimensions expect provided, where it'll be the sum of the
-// lengths
+fn view_shape_impl<I, const D: usize>(
+    first_shape: [(Dimension, usize); D],
+    shapes: I,
+    along: usize,
+) -> [(Dimension, usize); D]
+where
+    I: Iterator<Item = [(Dimension, usize); D]>,
+{
+    let mut shape = first_shape;
+    shape[along].1 = shapes.into_iter().map(|shape| shape[along].1).sum();
+    shape
+}
 
-unsafe impl<T, S, const D: usize, const N: usize> TensorRef<T, D> for TensorZip<T, [S; N], D>
+fn indexing<I, const D: usize>(
+    indexes: [usize; D],
+    shapes: I,
+    along: usize,
+) -> Option<(usize, [usize; D])>
+where
+    I: Iterator<Item = [(Dimension, usize); D]>,
+{
+    let mut shapes = shapes.enumerate();
+    // Keep trying to index the next shape in the chain, if i is still greater
+    // than the available length we know it's for a later shape, and can subtract
+    // that available length till we find one.
+    let mut i = indexes[along];
+    loop {
+        let (source, next_shape) = shapes.next()?;
+        let length_along_chained_dimension = next_shape[along].1;
+        if i < length_along_chained_dimension {
+            let mut indexes = indexes.clone();
+            indexes[along] = i;
+            return Some((source, indexes));
+        }
+        i -= length_along_chained_dimension;
+    }
+}
+
+unsafe impl<T, S, const D: usize, const N: usize> TensorRef<T, D> for TensorChain<T, [S; N], D>
 where
     S: TensorRef<T, D>
 {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        unimplemented!()
+        let (source, indexes) = indexing(
+            indexes,
+            self.sources.iter().map(|s| s.view_shape()),
+            self.along
+        )?;
+        self.sources.get(source)?.get_reference(indexes)
     }
 
     fn view_shape(&self) -> [(Dimension, usize); D] {
-        unimplemented!()
+        view_shape_impl(
+            self.sources[0].view_shape(),
+            self.sources.iter().map(|s| s.view_shape()),
+            self.along
+        )
     }
 
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
-        unimplemented!()
+        // TODO: Can we use get_unchecked here?
+        let (source, indexes) = indexing(
+            indexes,
+            self.sources.iter().map(|s| s.view_shape()),
+            self.along
+        ).unwrap();
+        self.sources.get(source).unwrap().get_reference_unchecked(indexes)
     }
 
     fn data_layout(&self) -> DataLayout<D> {
-        // Our zipped shapes means the view shape no longer matches up to a single
+        // Our chained shapes means the view shape no longer matches up to a single
         // line of data in memory in the general case.
         DataLayout::NonLinear
     }
+}
+
+unsafe impl<T, S, const D: usize, const N: usize> TensorMut<T, D> for TensorChain<T, [S; N], D>
+where
+    S: TensorMut<T, D>
+{
+    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
+        let (source, indexes) = indexing(
+            indexes,
+            self.sources.iter().map(|s| s.view_shape()),
+            self.along
+        )?;
+        self.sources.get_mut(source)?.get_reference_mut(indexes)
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        // TODO: Can we use get_unchecked here?
+        let (source, indexes) = indexing(
+            indexes,
+            self.sources.iter().map(|s| s.view_shape()),
+            self.along
+        ).unwrap();
+        self.sources.get_mut(source).unwrap().get_reference_unchecked_mut(indexes)
+    }
+}
+
+#[test]
+fn test_chaining() {
+    use crate::tensors::Tensor;
+    use crate::tensors::views::TensorView;
+    // TODO: Test erasing types and tuple variants
+    let matrix1 = Tensor::from(
+        [("a", 3), ("b", 2)],
+        vec![
+            9, 5,
+            2, 1,
+            3, 5
+        ]
+    );
+    let matrix2 = Tensor::from(
+        [("a", 4), ("b", 2)],
+        vec![
+            0, 1,
+            8, 4,
+            1, 7,
+            6, 3
+        ]
+    );
+    let matrix = TensorView::from(
+        TensorChain::<_, [_; 2], 2>::from([&matrix1, &matrix2], "a")
+    );
+    assert_eq!(
+        matrix,
+        Tensor::from([("a", 7), ("b", 2)], vec![
+            9, 5,
+            2, 1,
+            3, 5,
+            0, 1,
+            8, 4,
+            1, 7,
+            6, 3
+        ])
+    );
 }
