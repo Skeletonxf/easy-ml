@@ -751,7 +751,48 @@ fn test_stacking() {
  *
  * This can be framed as an D dimensional version of
  * [std::iter::Iterator::chain](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.chain)
+ *
+ * Note: TensorChain only supports tuple combinations for `2` to `4`. If you need to stack more
+ * than four tensors together, you can stack any number with the `[S; N]` implementation, though
+ * note this requires that all the tensors are the same type so you may need to box and erase
+ * the types to `Box<dyn TensorRef<T, D>>`.
+ *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ * use easy_ml::tensors::views::{TensorView, TensorChain, TensorRef};
+ * let sample1 = Tensor::from([("sample", 1), ("data", 5)], vec![0, 1, 2, 3, 4]);
+ * let sample2 = Tensor::from([("sample", 1), ("data", 5)], vec![2, 4, 8, 16, 32]);
+ * // Because there are 4 variants of `TensorChain::from` you may need to use the turbofish
+ * // to tell the Rust compiler which variant you're using, but the actual type of `S` can be
+ * // left unspecified by using an underscore.
+ * let matrix = TensorChain::<i32, [_; 2], 2>::from([&sample1, &sample2], "sample");
+ * let equal_matrix = Tensor::from([("sample", 2), ("data", 5)], vec![
+ *     0, 1, 2, 3, 4,
+ *     2, 4, 8, 16, 32
+ *  ]);
+ * assert_eq!(equal_matrix, TensorView::from(matrix));
+ *
+ * let also_matrix = TensorChain::<i32, (_, _), 2>::from((sample1, sample2), "sample");
+ * assert_eq!(equal_matrix, TensorView::from(&also_matrix));
+ *
+ * // To stack `equal_matrix` and `also_matrix` using the `[S; N]` implementation we have to first
+ * // make them the same type, which we can do by boxing and erasing.
+ * let matrix_erased: Box<dyn TensorRef<i32, 2>> = Box::new(also_matrix);
+ * let equal_matrix_erased: Box<dyn TensorRef<i32, 2>> = Box::new(equal_matrix);
+ * let repeated_data = TensorChain::<i32, [_; 2], 2>::from(
+ *     [matrix_erased, equal_matrix_erased], "data"
+ * );
+ * assert!(
+ *     TensorView::from(repeated_data).eq(
+ *         &Tensor::from([("sample", 2), ("data", 10)], vec![
+ *             0, 1, 2,  3,  4, 0, 1, 2,  3,  4,
+ *             2, 4, 8, 16, 32, 2, 4, 8, 16, 32
+ *         ])
+ *     ),
+ * );
+ * ```
  */
+// TODO: Update doc example with helper methods on Tensor and TensorView once implemented
 #[derive(Clone, Debug)]
 pub struct TensorChain<T, S, const D: usize> {
     sources: S,
