@@ -527,6 +527,7 @@ where
      *
      * If the two tensors have different shapes.
      */
+    #[track_caller]
     pub fn elementwise_reference<S2, I, M>(&self, rhs: I, mapping_function: M) -> Tensor<T, D>
     where
         I: Into<TensorView<T, S2, D>>,
@@ -552,6 +553,7 @@ where
      *
      * If the two tensors have different shapes.
      */
+    #[track_caller]
     pub fn elementwise_reference_with_index<S2, I, M>(
         &self,
         rhs: I,
@@ -565,6 +567,7 @@ where
         self.elementwise_reference_less_generic_with_index(rhs.into(), mapping_function)
     }
 
+    #[track_caller]
     fn elementwise_reference_less_generic<S2, M>(
         &self,
         rhs: TensorView<T, S2, D>,
@@ -590,6 +593,7 @@ where
         Tensor::from(left_shape, mapped)
     }
 
+    #[track_caller]
     fn elementwise_reference_less_generic_with_index<S2, M>(
         &self,
         rhs: TensorView<T, S2, D>,
@@ -811,6 +815,7 @@ where
      *
      * If the two tensors have different shapes.
      */
+    #[track_caller]
     pub fn elementwise<S2, I, M>(&self, rhs: I, mapping_function: M) -> Tensor<T, D>
     where
         I: Into<TensorView<T, S2, D>>,
@@ -836,6 +841,7 @@ where
      *
      * If the two tensors have different shapes.
      */
+    #[track_caller]
     pub fn elementwise_with_index<S2, I, M>(&self, rhs: I, mapping_function: M) -> Tensor<T, D>
     where
         I: Into<TensorView<T, S2, D>>,

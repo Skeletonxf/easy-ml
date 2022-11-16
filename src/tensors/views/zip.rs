@@ -792,7 +792,6 @@ fn test_stacking() {
  * );
  * ```
  */
-// TODO: Update doc example with helper methods on Tensor and TensorView once implemented
 #[derive(Clone, Debug)]
 pub struct TensorChain<T, S, const D: usize> {
     sources: S,
