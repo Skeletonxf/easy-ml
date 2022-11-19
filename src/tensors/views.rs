@@ -1264,6 +1264,9 @@ TensorView {
 
 /**
  * Any tensor view of a Displayable type implements Display
+ *
+ * You can control the precision of the formatting using format arguments, i.e.
+ * `format!("{:.3}", tensor)`
  */
 impl<T: std::fmt::Display, S, const D: usize> std::fmt::Display for TensorView<T, S, D>
 where

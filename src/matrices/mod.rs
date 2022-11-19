@@ -1319,6 +1319,9 @@ impl<T: Clone> Clone for Matrix<T> {
 
 /**
  * Any matrix of a Displayable type implements Display
+ *
+ * You can control the precision of the formatting using format arguments, i.e.
+ * `format!("{:.3}", matrix)`
  */
 impl<T: std::fmt::Display> std::fmt::Display for Matrix<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

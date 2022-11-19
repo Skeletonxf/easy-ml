@@ -388,6 +388,9 @@ impl<T: Clone, const D: usize> Clone for Tensor<T, D> {
 
 /**
  * Any tensor of a Displayable type implements Display
+ *
+ * You can control the precision of the formatting using format arguments, i.e.
+ * `format!("{:.3}", tensor)`
  */
 impl<T: std::fmt::Display, const D: usize> std::fmt::Display for Tensor<T, D> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

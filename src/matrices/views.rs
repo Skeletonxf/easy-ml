@@ -761,6 +761,9 @@ where
 {
     let rows = view.view_rows();
     let columns = view.view_columns();
+    // It would be nice to default to some precision for f32 and f64 but I can't
+    // work out how to easily check if T matches. If we use precision for all T
+    // then strings get truncated which is even worse for debugging.
     write!(f, "[ ")?;
     for row in 0..rows {
         if row > 0 {
@@ -774,9 +777,10 @@ where
                     row, column, rows, columns
                 ),
             };
-            // default to 3 decimals but allow the caller to override
-            // TODO: ideally want to set significant figures instead of decimals
-            write!(f, "{:.*}", f.precision().unwrap_or(3), value)?;
+            match f.precision() {
+                Some(precision) => write!(f, "{:.*}", precision, value)?,
+                None => write!(f, "{}", value)?
+            };
             if column < columns - 1 {
                 write!(f, ", ")?;
             }
@@ -790,6 +794,9 @@ where
 
 /**
  * Any matrix view of a Displayable type implements Display
+ *
+ * You can control the precision of the formatting using format arguments, i.e.
+ * `format!("{:.3}", matrix)`
  */
 impl<T, S> std::fmt::Display for MatrixView<T, S>
 where
@@ -805,8 +812,9 @@ where
 fn printing_matrices() {
     use crate::matrices::Matrix;
     let view = MatrixView::from(Matrix::from(vec![vec![1.0, 2.0], vec![3.0, 4.0]]));
-    let formatted = view.to_string();
+    let formatted = format!("{:.3}", view);
     assert_eq!("[ 1.000, 2.000\n  3.000, 4.000 ]", formatted);
+    assert_eq!("[ 1, 2\n  3, 4 ]", view.to_string());
 }
 
 // Common matrix equality definition
