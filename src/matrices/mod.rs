@@ -1665,6 +1665,10 @@ columns = 4
     );
     let parsed: Result<Matrix<i32>, _> = toml::from_str(&encoded);
     assert!(parsed.is_ok());
+    assert_eq!(
+        matrix,
+        parsed.unwrap()
+    )
 }
 
 #[cfg(feature = "serde")]

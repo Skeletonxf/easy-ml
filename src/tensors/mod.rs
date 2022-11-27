@@ -22,11 +22,16 @@ use crate::tensors::views::{
 use std::error::Error;
 use std::fmt;
 
+#[cfg(feature = "serde")]
+use serde::Serialize;
+
 pub mod dimensions;
 mod display;
 pub mod indexing;
 pub mod operations;
 pub mod views;
+#[cfg(feature = "serde")]
+pub use serde_impls::TensorDeserialize;
 
 /**
  * Dimension names are represented as static string references.
@@ -64,6 +69,9 @@ impl<const D: usize> InvalidShapeError<D> {
     /**
      * Checks if this shape is valid. This is mainly for internal library use but may also be
      * useful for unit testing.
+     *
+     * Note: in some functions and methods, an InvalidShapeError may be returned which is a valid
+     * shape, but not the right size for the quantity of data provided.
      */
     pub fn is_valid(&self) -> bool {
         !crate::tensors::dimensions::has_duplicates(&self.shape)
@@ -84,6 +92,33 @@ impl<const D: usize> InvalidShapeError<D> {
 
     pub fn shape_ref(&self) -> &[(Dimension, usize); D] {
         &self.shape
+    }
+
+    // Panics if the dimensions are invalid for any reason with the appropriate error message.
+    #[track_caller]
+    #[inline]
+    fn validate_dimensions_or_panic(dimensions: &[(Dimension, usize); D], data_len: usize) {
+        let elements = crate::tensors::dimensions::elements(dimensions);
+        if data_len != elements {
+            panic!(
+                "Product of dimension lengths must match size of data. {} != {}",
+                elements, data_len
+            );
+        }
+        if crate::tensors::dimensions::has_duplicates(dimensions) {
+            panic!("Dimension names must all be unique: {:?}", &dimensions);
+        }
+        if dimensions.iter().any(|d| d.1 == 0) {
+            panic!("No dimension can have 0 elements: {:?}", &dimensions);
+        }
+    }
+
+    // Returns true if the dimensions are valid and match the data length
+    fn validate_dimensions(dimensions: &[(Dimension, usize); D], data_len: usize) -> bool {
+        let elements = crate::tensors::dimensions::elements(dimensions);
+        data_len == elements
+            && !crate::tensors::dimensions::has_duplicates(dimensions)
+            && !dimensions.iter().any(|d| d.1 == 0)
     }
 }
 
@@ -201,9 +236,12 @@ fn test_send() {
  * - [indexing](indexing)
  */
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 pub struct Tensor<T, const D: usize> {
     data: Vec<T>,
+    #[cfg_attr(feature = "serde", serde(with = "serde_arrays"))]
     dimensions: [(Dimension, usize); D],
+    #[cfg_attr(feature = "serde", serde(skip))]
     strides: [usize; D],
 }
 
@@ -229,7 +267,7 @@ impl<T, const D: usize> Tensor<T, D> {
      */
     #[track_caller]
     pub fn from(dimensions: [(Dimension, usize); D], data: Vec<T>) -> Self {
-        validate_dimensions(&dimensions, data.len());
+        InvalidShapeError::validate_dimensions_or_panic(&dimensions, data.len());
         let strides = compute_strides(&dimensions);
         Tensor {
             data,
@@ -250,6 +288,45 @@ impl<T, const D: usize> Tensor<T, D> {
         self.dimensions
     }
 
+    /**
+     * A non panicking version of [from](Tensor::from) which returns `Result::Err` if the input
+     * is invalid.
+     *
+     * Creates a Tensor with a particular number of dimensions and lengths in each dimension.
+     *
+     * The product of the dimension lengths corresponds to the number of elements the Tensor
+     * will store. Elements are stored in what would be row major order for a Matrix.
+     * Each step in memory through the N dimensions corresponds to incrementing the rightmost
+     * index, hence a shape of `[("row", 5), ("column", 5)]` would mean the first 6 elements
+     * passed in the Vec would be for (0,0), (0,1), (0,2), (0,3), (0,4), (1,0) and so on to (4,4)
+     * for the 25th and final element.
+     *
+     * Returns the Err variant if
+     * - If the number of provided elements does not match the product of the dimension lengths.
+     * - If a dimension name is not unique
+     * - If any dimension has 0 elements
+     *
+     * Note that an empty list for dimensions is valid, and constructs a 0 dimensional tensor with
+     * a single element (since the product of an empty list is 1).
+     */
+    pub fn try_from(
+        dimensions: [(Dimension, usize); D],
+        data: Vec<T>
+    ) -> Result<Self, InvalidShapeError<D>> {
+        let valid = InvalidShapeError::validate_dimensions(&dimensions, data.len());
+        if !valid {
+            return Err(InvalidShapeError::new(dimensions));
+        }
+        let strides = compute_strides(&dimensions);
+        Ok(
+            Tensor {
+                data,
+                dimensions,
+                strides,
+            }
+        )
+    }
+
     // Unverified constructor for interal use when we know the dimensions/data/strides are
     // unchanged and don't need reverification
     pub(crate) fn direct_from(
@@ -262,26 +339,6 @@ impl<T, const D: usize> Tensor<T, D> {
             dimensions,
             strides,
         }
-    }
-}
-
-// TODO: Merge with InvalidShapeError type
-// Panics if the dimensions are invalid for any reason with the appropriate error message.
-#[track_caller]
-#[inline]
-fn validate_dimensions<const D: usize>(dimensions: &[(Dimension, usize); D], data_len: usize) {
-    let elements = crate::tensors::dimensions::elements(dimensions);
-    if data_len != elements {
-        panic!(
-            "Product of dimension lengths must match size of data. {} != {}",
-            elements, data_len
-        );
-    }
-    if crate::tensors::dimensions::has_duplicates(dimensions) {
-        panic!("Dimension names must all be unique: {:?}", &dimensions);
-    }
-    if dimensions.iter().any(|d| d.1 == 0) {
-        panic!("No dimension can have 0 elements: {:?}", &dimensions);
     }
 }
 
@@ -617,7 +674,7 @@ impl<T, const D: usize> Tensor<T, D> {
      */
     #[track_caller]
     pub fn reshape_mut(&mut self, dimensions: [(Dimension, usize); D]) {
-        validate_dimensions(&dimensions, self.data.len());
+        InvalidShapeError::validate_dimensions_or_panic(&dimensions, self.data.len());
         let strides = compute_strides(&dimensions);
         self.dimensions = dimensions;
         self.strides = strides;
@@ -1351,6 +1408,126 @@ impl<T> Tensor<T, 2> {
     ) -> crate::matrices::Matrix<T> {
         self.into()
     }
+}
+
+#[cfg(feature = "serde")]
+mod serde_impls {
+    use serde::Deserialize;
+    use crate::tensors::{Dimension, Tensor, InvalidShapeError};
+    use std::convert::TryFrom;
+
+    /**
+     * Deserialised data for a Tensor. Can be converted into a Tensor by providing `&'static str`
+     * dimension names.
+     */
+    #[derive(Deserialize)]
+    #[serde(rename = "Tensor")]
+    pub struct TensorDeserialize<'a, T, const D: usize> {
+        data: Vec<T>,
+        #[serde(with = "serde_arrays")]
+        #[serde(borrow)]
+        dimensions: [(&'a str, usize); D],
+    }
+
+    impl <'a, T, const D: usize> TensorDeserialize<'a, T, D> {
+        /**
+         * Converts this deserialised Tensor data to a Tensor, using the provided `&'static str`
+         * dimension names in place of what was serialised (which wouldn't necessarily live
+         * long enough).
+         */
+        pub fn into_tensor(
+            self,
+            dimensions: [Dimension; D]
+        ) -> Result<Tensor<T, D>, InvalidShapeError<D>> {
+            let shape = std::array::from_fn(|d| (dimensions[d], self.dimensions[d].1));
+            // Safety: Use the normal constructor that performs validation to prevent invalid
+            // serialized data being created as a Tensor, which would then break all the
+            // code that's relying on these invariants.
+            // By never serialising the strides in the first place, we reduce the possibility
+            // of creating invalid serialised represenations at the slight increase in
+            // serialisation work.
+            Tensor::try_from(
+                shape,
+                self.data
+            )
+        }
+    }
+
+    /**
+     * Converts this deserialised Tensor data which has a static lifetime for the dimension
+     * names to a Tensor, using the serialised data.
+     */
+    impl <T, const D: usize> TryFrom<TensorDeserialize<'static, T, D>> for Tensor<T, D> {
+        type Error = InvalidShapeError<D>;
+
+        fn try_from(value: TensorDeserialize<'static, T, D>) -> Result<Self, Self::Error> {
+            Tensor::try_from(
+                value.dimensions,
+                value.data
+            )
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn test_serialize() {
+    fn assert_serialize<T: Serialize>() {}
+    assert_serialize::<Tensor<f64, 3>>();
+    assert_serialize::<Tensor<f64, 2>>();
+    assert_serialize::<Tensor<f64, 1>>();
+    assert_serialize::<Tensor<f64, 0>>();
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn test_deserialize() {
+    use serde::Deserialize;
+    fn assert_deserialize<'de, T: Deserialize<'de>>() {}
+    assert_deserialize::<TensorDeserialize<f64, 3>>();
+    assert_deserialize::<TensorDeserialize<f64, 2>>();
+    assert_deserialize::<TensorDeserialize<f64, 1>>();
+    assert_deserialize::<TensorDeserialize<f64, 0>>();
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn test_serialization_deserialization_loop() {
+    let tensor = Tensor::from(
+        [("rows", 3), ("columns", 4)],
+        vec![
+            1,  2,  3,  4,
+            5,  6,  7,  8,
+            9, 10, 11, 12
+        ]
+    );
+    let encoded = toml::to_string(&tensor).unwrap();
+    assert_eq!(
+        encoded,
+        r#"data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+dimensions = [["rows", 3], ["columns", 4]]
+"#,
+    );
+    let parsed: Result<TensorDeserialize<i32, 2>, _> = toml::from_str(&encoded);
+    assert!(parsed.is_ok());
+    let result = parsed.unwrap().into_tensor(["rows", "columns"]);
+    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        tensor
+    );
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn test_deserialization_validation() {
+    let parsed: Result<TensorDeserialize<i32, 2>, _> = toml::from_str(
+        r#"data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+dimensions = [["rows", 4], ["columns", 4]]
+"#);
+    assert!(parsed.is_ok());
+    let result = parsed.unwrap().into_tensor(["rows", "columns"]);
+    assert!(result.is_err());
 }
 
 macro_rules! tensor_select_impl {
