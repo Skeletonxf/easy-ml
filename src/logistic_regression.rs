@@ -61,8 +61,8 @@ d(log(P(**y**|X))) / d**w** = the sum over all i data of ((y<sub>i</sub> - p(y<s
 
 where p(y<sub>i</sub>=True|**x<sub>i</sub>**) = 1 / (1 + e^(-(w0 + w1 * x1 + w2 * x2))) as defined
 earlier. This derivative will maximise log(P(**y**|X)), and as logs are monotonic P(**y**|X) as
-well, when it equals 0. Unfortunatly there is no closed form solution so we must perform gradient
-descent to fit **w**. In this example i is small enough we perform gradient descent over all the
+well, when it equals 0. Unfortunately there is no closed form solution so we must perform gradient
+descent to fit **w**. In this example i is small enough so we perform gradient descent over all the
 training data, for big data problems stochastic gradient descent would scale better.
 
 The update rule:
@@ -116,7 +116,8 @@ let class2 = MultivariateGaussian::new(
 let points = 200;
 let mut random_numbers: DistIter<Standard, &mut ChaCha8Rng, f64> =
     (&mut random_generator).sample_iter(Standard);
-// unwrap is perfectly safe if and only if we know we have supplied enough random numbers
+// we can unwrap here because we deliberately constructed a positive definite covariance matrix
+// and supplied enough random numbers
 let class1_points = class1.draw(&mut random_numbers, points).unwrap();
 let class2_points = class2.draw(&mut random_numbers, points).unwrap();
 
