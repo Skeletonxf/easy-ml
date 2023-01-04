@@ -1256,7 +1256,7 @@ TensorView {
                 length: 2,
             },
         ],
-        _type: PhantomData,
+        _type: PhantomData<i32>,
     },
 }"#
     )
