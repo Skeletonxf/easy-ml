@@ -29,6 +29,7 @@ mod tensors {
 
         let abc = tensor.index_by(["a", "b", "c"]);
         assert_eq!(abc.shape(), [("a", 3), ("b", 3), ("c", 3)]);
+        // Our first index is for a, our second index is for b, and our third index is for c
         assert_eq!(abc.get([0, 0, 0]), [0, 0, 0]);
         assert_eq!(abc.get([0, 0, 1]), [0, 0, 1]);
         assert_eq!(abc.get([0, 0, 2]), [0, 0, 2]);
@@ -59,6 +60,7 @@ mod tensors {
 
         let cba = tensor.index_by(["c", "b", "a"]);
         assert_eq!(cba.shape(), [("c", 3), ("b", 3), ("a", 3)]);
+        // Our first index is for c, our second index is for b, and our third index is for a
         assert_eq!(cba.get([0, 0, 0]), [0, 0, 0]);
         assert_eq!(cba.get([0, 0, 1]), [1, 0, 0]);
         assert_eq!(cba.get([0, 0, 2]), [2, 0, 0]);
@@ -89,6 +91,7 @@ mod tensors {
 
         let cab = tensor.index_by(["c", "a", "b"]);
         assert_eq!(cab.shape(), [("c", 3), ("a", 3), ("b", 3)]);
+        // Our first index is for c, our second index is for a, and our third index is for b
         assert_eq!(cab.get([0, 0, 0]), [0, 0, 0]);
         assert_eq!(cab.get([0, 0, 1]), [0, 1, 0]);
         assert_eq!(cab.get([0, 0, 2]), [0, 2, 0]);
@@ -119,6 +122,7 @@ mod tensors {
 
         let bca = tensor.index_by(["b", "c", "a"]);
         assert_eq!(bca.shape(), [("b", 3), ("c", 3), ("a", 3)]);
+        // Our first index is for b, our second index is for c, and our third index is for a
         assert_eq!(bca.get([0, 0, 0]), [0, 0, 0]);
         assert_eq!(bca.get([0, 0, 1]), [1, 0, 0]);
         assert_eq!(bca.get([0, 0, 2]), [2, 0, 0]);
