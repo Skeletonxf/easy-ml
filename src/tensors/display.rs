@@ -227,6 +227,35 @@ fn test_display() {
         r#"D = 0
 [ 0.000 ]"#
     );
+
+    assert_eq!(
+        format!("{:.3}", tensor_3.index_by(["x", "y", "b"])),
+        r#"D = 3
+("x", 2), ("y", 2), ("b", 3)
+[
+  0.000, 4.000, 8.000
+  1.000, 5.000, 9.000
+
+  2.000, 6.000, 0.000
+  3.000, 7.000, 1.000
+]
+Data Layout = Linear(["b", "x", "y"])"#
+    );
+
+    println!("{:?}", tensor_3.transpose_view(["x", "y", "b"]).source());
+    assert_eq!(
+        format!("{:.3}", tensor_3.transpose_view(["x", "y", "b"]).source()),
+        r#"D = 3
+("b", 2), ("x", 2), ("y", 3)
+[
+  0.000, 4.000, 8.000
+  1.000, 5.000, 9.000
+
+  2.000, 6.000, 0.000
+  3.000, 7.000, 1.000
+]
+Data Layout = Linear(["y", "b", "x"])"#
+    );
 }
 
 #[test]

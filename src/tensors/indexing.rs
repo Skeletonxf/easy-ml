@@ -491,6 +491,24 @@ where
 }
 
 /**
+ * Any tensor access of a Displayable type implements Display
+ *
+ * You can control the precision of the formatting using format arguments, i.e.
+ * `format!("{:.3}", tensor)`
+ */
+impl<T: std::fmt::Display, S, const D: usize> std::fmt::Display for TensorAccess<T, S, D>
+where
+    T: std::fmt::Display,
+    S: TensorRef<T, D>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        crate::tensors::display::format_view(&self, f)?;
+        writeln!(f)?;
+        write!(f, "Data Layout = {:?}", self.data_layout())
+    }
+}
+
+/**
  * An iterator over all indexes in a shape.
  *
  * First the all 0 index is iterated, then each iteration increments the rightmost index.
@@ -1106,5 +1124,23 @@ where
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
         self.access.get_reference_unchecked_mut(indexes)
+    }
+}
+
+/**
+ * Any tensor transpose of a Displayable type implements Display
+ *
+ * You can control the precision of the formatting using format arguments, i.e.
+ * `format!("{:.3}", tensor)`
+ */
+impl<T: std::fmt::Display, S, const D: usize> std::fmt::Display for TensorTranspose<T, S, D>
+where
+    T: std::fmt::Display,
+    S: TensorRef<T, D>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        crate::tensors::display::format_view(&self, f)?;
+        writeln!(f)?;
+        write!(f, "Data Layout = {:?}", self.data_layout())
     }
 }
