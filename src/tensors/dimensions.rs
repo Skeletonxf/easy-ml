@@ -120,9 +120,10 @@ impl<const D: usize> DimensionMappings<D> {
         &self,
         indexes: &[usize; D],
     ) -> [usize; D] {
-        // Our input is in requested order, so we need to lookup the order in the source
-        // to return the correct indexes.
-        std::array::from_fn(|d| indexes[self.requested_to_source[d]])
+        // Our input is in requested order and we return indexes in the source order, so for each
+        // dimension to return (in source order) we're looking up which index from the input to
+        // use, just like for map_linear_data_layout_to_transposed.
+        std::array::from_fn(|d| indexes[self.source_to_requested[d]])
     }
 
     // Reorders some shape according to the dimension mapping to return the
@@ -133,8 +134,9 @@ impl<const D: usize> DimensionMappings<D> {
         source: &[(Dimension, usize); D],
     ) -> [(Dimension, usize); D] {
         // For each d we're returning, we're giving what the requested dth dimension is
-        // in the source, so we reorder with requested_to_source even though we're mapping
-        // an input in source order to requested order.
+        // in the source, so we use requested_to_source for mapping. This is different to indexing
+        // or map_linear_data_layout_to_transposed because our output here is in requested order,
+        // not our input.
         std::array::from_fn(|d| source[self.requested_to_source[d]])
     }
 
@@ -159,8 +161,8 @@ impl<const D: usize> DimensionMappings<D> {
         // data layout to what we started with (["batch", "row", "column"]) we see that we have
         // mapped it as [1, 2, 0], not [2, 0, 1]. As a more general explanation, the data layout
         // we return here is mapping from what the data layout of the source is to the order
-        // we're now requesting in, so we use the reverse mapping to what we use for the view_shape
-        // and indexing. This ensures the data layout we return is correct, which can always be
+        // we're now requesting in, so we use the reverse mapping to what we use for the
+        // view_shape. This ensures the data layout we return is correct, which can always be
         // sanity checked by constructing a TensorAccess from what we return and verifying that
         // the data is restored to memory order (assuming the original source was in the same
         // endianess as Tensor).
