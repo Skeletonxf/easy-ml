@@ -15,8 +15,8 @@ where
     if D > 0 {
         writeln!(f)?;
     }
-    for d in 0..D {
-        write!(f, "({:?}, {:?})", shape[d].0, shape[d].1)?;
+    for (d, (name, length)) in shape.iter().enumerate() {
+        write!(f, "({:?}, {:?})", name, length)?;
         if d < D - 1 {
             write!(f, ", ")?;
         }

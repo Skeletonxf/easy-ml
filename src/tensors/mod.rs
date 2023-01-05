@@ -469,11 +469,7 @@ impl<T> From<Tensor<T, 2>> for crate::matrices::Matrix<T> {
 }
 
 fn compute_strides<const D: usize>(dimensions: &[(Dimension, usize); D]) -> [usize; D] {
-    let mut strides = [0; D];
-    for d in 0..D {
-        strides[d] = dimensions.iter().skip(d + 1).map(|d| d.1).product();
-    }
-    strides
+    std::array::from_fn(|d| dimensions.iter().skip(d + 1).map(|d| d.1).product())
 }
 
 // returns the 1 dimensional index to use to get the requested index into some tensor
@@ -1026,8 +1022,7 @@ where
      */
     pub fn first(&self) -> T {
         self.data
-            .iter()
-            .next()
+            .get(0)
             .expect("Tensors always have at least 1 element")
             .clone()
     }

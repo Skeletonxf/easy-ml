@@ -1074,6 +1074,7 @@ where
         let (source, next_shape) = shapes.next()?;
         let length_along_chained_dimension = next_shape[along].1;
         if i < length_along_chained_dimension {
+            #[allow(clippy::clone_on_copy)]
             let mut indexes = indexes.clone();
             indexes[along] = i;
             return Some((source, indexes));

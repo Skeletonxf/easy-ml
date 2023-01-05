@@ -429,23 +429,25 @@ impl<T: Numeric + Real> MultivariateGaussianTensor<T> {
      * The dimension names of the mean and covariance matrix are not used, and do not need
      * to match.
      */
+    // Boxing error variant as per clippy lint that MultivariateGaussianError is 152 bytes which
+    // is kinda big
     pub fn new(
         mean: Tensor<T, 1>,
         covariance: Tensor<T, 2>
-    ) -> Result<MultivariateGaussianTensor<T>, MultivariateGaussianError<T>> {
+    ) -> Result<MultivariateGaussianTensor<T>, Box<MultivariateGaussianError<T>>> {
         let covariance_shape = covariance.shape();
         if !crate::tensors::dimensions::is_square(&covariance_shape) {
-            return Err(MultivariateGaussianError::NotCovarianceMatrix {
+            return Err(Box::new(MultivariateGaussianError::NotCovarianceMatrix {
                 mean,
                 covariance,
-            });
+            }));
         }
         let length = covariance_shape[0].1;
         if mean.shape()[0].1 != length {
-            return Err(MultivariateGaussianError::MeanVectorWrongLength {
+            return Err(Box::new(MultivariateGaussianError::MeanVectorWrongLength {
                 mean,
                 covariance,
-            });
+            }));
         }
         Ok(
             MultivariateGaussianTensor { mean, covariance }
