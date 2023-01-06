@@ -47,17 +47,15 @@ mod distributions {
 
     #[test]
     fn test_multivariate_distribution() {
-        let mean = Matrix::column(vec![ 0.0, 10.0, -10.0 ]);
+        let mean = Matrix::column(vec![0.0, 10.0, -10.0]);
+        #[rustfmt::skip]
         let covariance = Matrix::from(vec![
             vec![  1.0, 0.5, -0.1 ],
             vec![  0.5, 2.0,  0.9 ],
-            vec![ -0.1, 0.9,  1.0 ]
+            vec![ -0.1, 0.9,  1.0 ],
         ]);
 
-        let function: MultivariateGaussian<f64> = MultivariateGaussian::new(
-            mean,
-            covariance
-        );
+        let function: MultivariateGaussian<f64> = MultivariateGaussian::new(mean, covariance);
 
         // test drawing samples
         // for reproducibility we use a fixed source of randomness
@@ -161,7 +159,7 @@ mod distributions {
             0.3335030618321242,
             0.20847389033467123,
             0.7034874950351062,
-            0.8874968748931777
+            0.8874968748931777,
         ];
         let random_source_2 = random_source.clone();
 
@@ -198,24 +196,23 @@ mod distributions {
 
         // Verify tensor version produces the same outputs if we give it the same inputs
         // (since algorithm should be identical)
-        let mean = Tensor::from([("means", 3)], vec![ 0.0, 10.0, -10.0 ]);
+        let mean = Tensor::from([("means", 3)], vec![0.0, 10.0, -10.0]);
+        #[rustfmt::skip]
         let covariance = Tensor::from([("rows", 3), ("columns", 3)], vec![
             1.0, 0.5, -0.1,
             0.5, 2.0,  0.9,
-            -0.1, 0.9,  1.0
+            -0.1, 0.9, 1.0,
         ]);
 
-        let function: MultivariateGaussianTensor<f64> = MultivariateGaussianTensor::new(
-            mean,
-            covariance
-        ).unwrap();
+        let function: MultivariateGaussianTensor<f64> =
+            MultivariateGaussianTensor::new(mean, covariance).unwrap();
 
         let samples_tensor = function
             .draw(
                 &mut random_source_2.into_iter(),
                 max_samples as usize,
                 "samples",
-                "features"
+                "features",
             )
             .unwrap();
         let samples_tensor = samples_tensor.into_matrix();

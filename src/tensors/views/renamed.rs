@@ -1,6 +1,6 @@
+use crate::tensors::dimensions;
 use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
 use crate::tensors::Dimension;
-use crate::tensors::dimensions;
 use std::marker::PhantomData;
 
 /**
@@ -148,11 +148,9 @@ where
                 });
                 // TensorRename doesn't move dimensions around, so now we can map from position
                 // order to our new dimension names.
-                DataLayout::Linear(std::array::from_fn(|i| {
-                    self.dimensions[order_d[i]]
-                }))
+                DataLayout::Linear(std::array::from_fn(|i| self.dimensions[order_d[i]]))
             }
-            _ => data_layout
+            _ => data_layout,
         }
     }
 }

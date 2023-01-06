@@ -311,20 +311,18 @@ impl<T, const D: usize> Tensor<T, D> {
      */
     pub fn try_from(
         dimensions: [(Dimension, usize); D],
-        data: Vec<T>
+        data: Vec<T>,
     ) -> Result<Self, InvalidShapeError<D>> {
         let valid = InvalidShapeError::validate_dimensions(&dimensions, data.len());
         if !valid {
             return Err(InvalidShapeError::new(dimensions));
         }
         let strides = compute_strides(&dimensions);
-        Ok(
-            Tensor {
-                data,
-                dimensions,
-                strides,
-            }
-        )
+        Ok(Tensor {
+            data,
+            dimensions,
+            strides,
+        })
     }
 
     // Unverified constructor for interal use when we know the dimensions/data/strides are
@@ -463,7 +461,7 @@ impl<T> From<Tensor<T, 2>> for crate::matrices::Matrix<T> {
     fn from(tensor: Tensor<T, 2>) -> Self {
         crate::matrices::Matrix::from_flat_row_major(
             (tensor.dimensions[0].1, tensor.dimensions[1].1),
-            tensor.data
+            tensor.data,
         )
     }
 }
@@ -1398,17 +1396,15 @@ impl<T> Tensor<T, 2> {
      * The Matrix will have the data in the same order, with rows equal to the length of
      * the first dimension in the tensor, and columns equal to the length of the second.
      */
-    pub fn into_matrix(
-        self,
-    ) -> crate::matrices::Matrix<T> {
+    pub fn into_matrix(self) -> crate::matrices::Matrix<T> {
         self.into()
     }
 }
 
 #[cfg(feature = "serde")]
 mod serde_impls {
+    use crate::tensors::{Dimension, InvalidShapeError, Tensor};
     use serde::Deserialize;
-    use crate::tensors::{Dimension, Tensor, InvalidShapeError};
     use std::convert::TryFrom;
 
     /**
@@ -1424,7 +1420,7 @@ mod serde_impls {
         dimensions: [(&'a str, usize); D],
     }
 
-    impl <'a, T, const D: usize> TensorDeserialize<'a, T, D> {
+    impl<'a, T, const D: usize> TensorDeserialize<'a, T, D> {
         /**
          * Converts this deserialised Tensor data to a Tensor, using the provided `&'static str`
          * dimension names in place of what was serialised (which wouldn't necessarily live
@@ -1432,7 +1428,7 @@ mod serde_impls {
          */
         pub fn into_tensor(
             self,
-            dimensions: [Dimension; D]
+            dimensions: [Dimension; D],
         ) -> Result<Tensor<T, D>, InvalidShapeError<D>> {
             let shape = std::array::from_fn(|d| (dimensions[d], self.dimensions[d].1));
             // Safety: Use the normal constructor that performs validation to prevent invalid
@@ -1441,10 +1437,7 @@ mod serde_impls {
             // By never serialising the strides in the first place, we reduce the possibility
             // of creating invalid serialised represenations at the slight increase in
             // serialisation work.
-            Tensor::try_from(
-                shape,
-                self.data
-            )
+            Tensor::try_from(shape, self.data)
         }
     }
 
@@ -1452,14 +1445,11 @@ mod serde_impls {
      * Converts this deserialised Tensor data which has a static lifetime for the dimension
      * names to a Tensor, using the serialised data.
      */
-    impl <T, const D: usize> TryFrom<TensorDeserialize<'static, T, D>> for Tensor<T, D> {
+    impl<T, const D: usize> TryFrom<TensorDeserialize<'static, T, D>> for Tensor<T, D> {
         type Error = InvalidShapeError<D>;
 
         fn try_from(value: TensorDeserialize<'static, T, D>) -> Result<Self, Self::Error> {
-            Tensor::try_from(
-                value.dimensions,
-                value.data
-            )
+            Tensor::try_from(value.dimensions, value.data)
         }
     }
 }
@@ -1488,13 +1478,14 @@ fn test_deserialize() {
 #[cfg(feature = "serde")]
 #[test]
 fn test_serialization_deserialization_loop() {
+    #[rustfmt::skip]
     let tensor = Tensor::from(
         [("rows", 3), ("columns", 4)],
         vec![
             1,  2,  3,  4,
             5,  6,  7,  8,
             9, 10, 11, 12
-        ]
+        ],
     );
     let encoded = toml::to_string(&tensor).unwrap();
     assert_eq!(
@@ -1507,10 +1498,7 @@ dimensions = [["rows", 3], ["columns", 4]]
     assert!(parsed.is_ok());
     let result = parsed.unwrap().into_tensor(["rows", "columns"]);
     assert!(result.is_ok());
-    assert_eq!(
-        result.unwrap(),
-        tensor
-    );
+    assert_eq!(result.unwrap(), tensor);
 }
 
 #[cfg(feature = "serde")]
@@ -1519,7 +1507,8 @@ fn test_deserialization_validation() {
     let parsed: Result<TensorDeserialize<i32, 2>, _> = toml::from_str(
         r#"data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 dimensions = [["rows", 4], ["columns", 4]]
-"#);
+"#,
+    );
     assert!(parsed.is_ok());
     let result = parsed.unwrap().into_tensor(["rows", "columns"]);
     assert!(result.is_err());

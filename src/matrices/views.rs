@@ -779,7 +779,7 @@ where
             };
             match f.precision() {
                 Some(precision) => write!(f, "{:.*}", precision, value)?,
-                None => write!(f, "{}", value)?
+                None => write!(f, "{}", value)?,
             };
             if column < columns - 1 {
                 write!(f, ", ")?;

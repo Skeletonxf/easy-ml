@@ -24,8 +24,8 @@ use crate::tensors::{Dimension, Tensor};
 mod indexes;
 mod ranges;
 mod renamed;
-mod zip;
 pub mod traits;
+mod zip;
 
 pub use indexes::*;
 pub use ranges::*;

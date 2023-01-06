@@ -92,14 +92,11 @@ where
         dimensions: [Dimension; D],
     ) -> Result<TensorAccess<T, S, D>, InvalidDimensionsError<D>> {
         Ok(TensorAccess {
-            dimension_mapping: DimensionMappings::new(
-                &source.view_shape(),
-                &dimensions,
-            )
-            .ok_or_else(|| InvalidDimensionsError {
-                actual: source.view_shape(),
-                requested: dimensions,
-            })?,
+            dimension_mapping: DimensionMappings::new(&source.view_shape(), &dimensions)
+                .ok_or_else(|| InvalidDimensionsError {
+                    actual: source.view_shape(),
+                    requested: dimensions,
+                })?,
             source,
             _type: PhantomData,
         })
@@ -161,7 +158,8 @@ where
      * was created with, not necessarily the same order as in the underlying tensor.
      */
     pub fn shape(&self) -> [(Dimension, usize); D] {
-        self.dimension_mapping.map_shape_to_requested(&self.source.view_shape())
+        self.dimension_mapping
+            .map_shape_to_requested(&self.source.view_shape())
     }
 
     pub fn source(self) -> S {
@@ -222,7 +220,8 @@ where
      * index if the index is in range. Otherwise returns None.
      */
     pub fn try_get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        self.source.get_reference(self.dimension_mapping.map_dimensions_to_source(&indexes))
+        self.source
+            .get_reference(self.dimension_mapping.map_dimensions_to_source(&indexes))
     }
 
     /**
@@ -1093,14 +1092,12 @@ where
     fn data_layout(&self) -> DataLayout<D> {
         let data_layout = self.access.data_layout();
         match data_layout {
-            DataLayout::Linear(order) => {
-                DataLayout::Linear(
-                    self.access.dimension_mapping.map_linear_data_layout_to_transposed(
-                        &order
-                    )
-                )
-            }
-            _ => data_layout
+            DataLayout::Linear(order) => DataLayout::Linear(
+                self.access
+                    .dimension_mapping
+                    .map_linear_data_layout_to_transposed(&order),
+            ),
+            _ => data_layout,
         }
     }
 }

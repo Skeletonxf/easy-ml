@@ -1037,6 +1037,7 @@ where
                 sum
             };
             // Calculate L_ij as we step through the lower diagonal
+            #[rustfmt::skip]
             lower_triangular.set(
                 i,
                 j,
@@ -1050,9 +1051,9 @@ where
                     }
                     entry_squared.sqrt()
                 } else /* j < i */ {
-                    (matrix.get_reference(i, j) - sum) *
-                        (T::one() / lower_triangular.get_reference(j, j))
-                }
+                    (matrix.get_reference(i, j) - sum)
+                        * (T::one() / lower_triangular.get_reference(j, j))
+                },
             );
         }
     }
@@ -1154,9 +1155,7 @@ impl<T> LDLTDecomposition<T> {
  * turbofish syntax like:
  * `linear_algebra::ldlt_decomposition::<f32>(&matrix)`
  */
-pub fn ldlt_decomposition<T>(
-    matrix: &Matrix<T>,
-) -> Option<LDLTDecomposition<T>>
+pub fn ldlt_decomposition<T>(matrix: &Matrix<T>) -> Option<LDLTDecomposition<T>>
 where
     T: Numeric,
     for<'a> &'a T: NumericRef<T>,
@@ -1172,6 +1171,7 @@ where
     let mut diagonal = Matrix::empty(T::zero(), matrix.size());
     let n = lower_triangular.rows();
     for j in 0..n {
+        #[rustfmt::skip]
         let sum = {
             let mut sum = T::zero();
             for k in 0..j {
@@ -1182,22 +1182,19 @@ where
             }
             sum
         };
-        diagonal.set(
-            j,
-            j,
-            {
-                let entry = matrix.get_reference(j, j) - sum;
-                if entry == T::zero() {
-                    // If input is positive definite then no diagonal will be 0. Otherwise we
-                    // fail the decomposition to avoid division by zero in the j < i case later.
-                    // Note: unlike cholseky, negatives here are fine since we can still perform
-                    // the calculations sensibly.
-                    return None;
-                }
-                entry
+        diagonal.set(j, j, {
+            let entry = matrix.get_reference(j, j) - sum;
+            if entry == T::zero() {
+                // If input is positive definite then no diagonal will be 0. Otherwise we
+                // fail the decomposition to avoid division by zero in the j < i case later.
+                // Note: unlike cholseky, negatives here are fine since we can still perform
+                // the calculations sensibly.
+                return None;
             }
-        );
+            entry
+        });
         for i in j..n {
+            #[rustfmt::skip]
             lower_triangular.set(
                 i,
                 j,
@@ -1207,16 +1204,16 @@ where
                     let sum = {
                         let mut sum = T::zero();
                         for k in 0..j {
-                            sum = &sum + (
-                                lower_triangular.get_reference(i, k) * lower_triangular.get_reference(j, k) *
-                                    diagonal.get_reference(k, k)
-                            );
+                            sum = &sum
+                                + (lower_triangular.get_reference(i, k)
+                                    * lower_triangular.get_reference(j, k)
+                                    * diagonal.get_reference(k, k));
                         }
                         sum
                     };
                     (matrix.get_reference(i, j) - sum) * (T::one() / diagonal.get_reference(j, j))
-                }
-            )
+                },
+            );
         }
     }
     Some(LDLTDecomposition {

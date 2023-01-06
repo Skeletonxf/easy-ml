@@ -105,21 +105,16 @@ impl<const D: usize> DimensionMappings<D> {
                 requested_to_source[d] = n_in_source;
             };
         }
-        Some(
-            DimensionMappings {
-                source_to_requested,
-                requested_to_source,
-            }
-        )
+        Some(DimensionMappings {
+            source_to_requested,
+            requested_to_source,
+        })
     }
 
     // Reorders some indexes according to the dimension mapping to return the
     // indexes in the source order
     #[inline]
-    pub(crate) fn map_dimensions_to_source(
-        &self,
-        indexes: &[usize; D],
-    ) -> [usize; D] {
+    pub(crate) fn map_dimensions_to_source(&self, indexes: &[usize; D]) -> [usize; D] {
         // Our input is in requested order and we return indexes in the source order, so for each
         // dimension to return (in source order) we're looking up which index from the input to
         // use, just like for map_linear_data_layout_to_transposed.

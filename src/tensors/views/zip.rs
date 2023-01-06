@@ -1,7 +1,7 @@
-use crate::tensors::views::{TensorRef, TensorMut, DataLayout};
+use crate::tensors::dimensions;
+use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
 use crate::tensors::Dimension;
 use std::marker::PhantomData;
-use crate::tensors::dimensions;
 
 /**
  * Combines two or more tensors with the same shape along a new dimension to create a Tensor
@@ -61,7 +61,7 @@ pub struct TensorStack<T, S, const D: usize> {
 
 fn validate_shapes_equal<const D: usize, I>(mut shapes: I)
 where
-    I: Iterator<Item = [(Dimension, usize); D]>
+    I: Iterator<Item = [(Dimension, usize); D]>,
 {
     // We'll reject fewer than one tensors in the constructors before getting here, so first unwrap
     // is always going to succeed.
@@ -78,7 +78,7 @@ where
 
 impl<T, S, const D: usize, const N: usize> TensorStack<T, [S; N], D>
 where
-    S: TensorRef<T, D>
+    S: TensorRef<T, D>,
 {
     /**
      * Creates a TensorStack from an array of sources of the same type and a tuple of which
@@ -240,8 +240,11 @@ where
         }
         validate_shapes_equal(
             [
-                sources.0.view_shape(), sources.1.view_shape(), sources.2.view_shape()
-            ].into_iter()
+                sources.0.view_shape(),
+                sources.1.view_shape(),
+                sources.2.view_shape(),
+            ]
+            .into_iter(),
         );
         Self {
             sources,
@@ -308,9 +311,12 @@ where
         }
         validate_shapes_equal(
             [
-                sources.0.view_shape(), sources.1.view_shape(),
-                sources.2.view_shape(), sources.3.view_shape()
-            ].into_iter()
+                sources.0.view_shape(),
+                sources.1.view_shape(),
+                sources.2.view_shape(),
+                sources.3.view_shape(),
+            ]
+            .into_iter(),
         );
         Self {
             sources,
@@ -650,14 +656,16 @@ tensor_stack_ref_impl!(unsafe impl TensorRef for TensorStack 5 five);
 
 #[test]
 fn test_stacking() {
+    use crate::tensors::views::{TensorMut, TensorView};
     use crate::tensors::Tensor;
-    use crate::tensors::views::{TensorView, TensorMut};
     let vector1 = Tensor::from([("a", 3)], vec![9, 5, 2]);
     let vector2 = Tensor::from([("a", 3)], vec![3, 6, 0]);
     let vector3 = Tensor::from([("a", 3)], vec![8, 7, 1]);
-    let matrix = TensorView::from(
-        TensorStack::<_, (_, _, _), 1>::from((&vector1, &vector2, &vector3), (1, "b"))
-    );
+    let matrix = TensorView::from(TensorStack::<_, (_, _, _), 1>::from(
+        (&vector1, &vector2, &vector3),
+        (1, "b"),
+    ));
+    #[rustfmt::skip]
     assert_eq!(
         matrix,
         Tensor::from([("a", 3), ("b", 3)], vec![
@@ -666,9 +674,11 @@ fn test_stacking() {
             2, 0, 1,
         ])
     );
-    let different_matrix = TensorView::from(
-        TensorStack::<_, (_, _, _), 1>::from((&vector1, &vector2, &vector3), (0, "b"))
-    );
+    let different_matrix = TensorView::from(TensorStack::<_, (_, _, _), 1>::from(
+        (&vector1, &vector2, &vector3),
+        (0, "b"),
+    ));
+    #[rustfmt::skip]
     assert_eq!(
         different_matrix,
         Tensor::from([("b", 3), ("a", 3)], vec![
@@ -678,12 +688,13 @@ fn test_stacking() {
         ])
     );
     let matrix_erased: Box<dyn TensorMut<_, 2>> = Box::new(matrix.map(|x| x));
-    let different_matrix_erased: Box<dyn TensorMut<_, 2>> = Box::new(
-        different_matrix.rename_view(["a", "b"]).map(|x| x)
-    );
-    let tensor = TensorView::from(
-        TensorStack::<_, [_; 2], 2>::from([matrix_erased, different_matrix_erased], (2, "c"))
-    );
+    let different_matrix_erased: Box<dyn TensorMut<_, 2>> =
+        Box::new(different_matrix.rename_view(["a", "b"]).map(|x| x));
+    let tensor = TensorView::from(TensorStack::<_, [_; 2], 2>::from(
+        [matrix_erased, different_matrix_erased],
+        (2, "c"),
+    ));
+    #[rustfmt::skip]
     assert!(
         tensor.eq(
             &Tensor::from([("a", 3), ("b", 3), ("c", 2)], vec![
@@ -702,12 +713,13 @@ fn test_stacking() {
         ),
     );
     let matrix_erased: Box<dyn TensorMut<_, 2>> = Box::new(matrix.map(|x| x));
-    let different_matrix_erased: Box<dyn TensorMut<_, 2>> = Box::new(
-        different_matrix.rename_view(["a", "b"]).map(|x| x)
-    );
-    let different_tensor = TensorView::from(
-        TensorStack::<_, [_; 2], 2>::from([matrix_erased, different_matrix_erased], (1, "c"))
-    );
+    let different_matrix_erased: Box<dyn TensorMut<_, 2>> =
+        Box::new(different_matrix.rename_view(["a", "b"]).map(|x| x));
+    let different_tensor = TensorView::from(TensorStack::<_, [_; 2], 2>::from(
+        [matrix_erased, different_matrix_erased],
+        (1, "c"),
+    ));
+    #[rustfmt::skip]
     assert!(
         different_tensor.eq(
             &Tensor::from([("a", 3), ("c", 2), ("b", 3)], vec![
@@ -723,12 +735,13 @@ fn test_stacking() {
         ),
     );
     let matrix_erased: Box<dyn TensorRef<_, 2>> = Box::new(matrix.map(|x| x));
-    let different_matrix_erased: Box<dyn TensorRef<_, 2>> = Box::new(
-        different_matrix.rename_view(["a", "b"]).map(|x| x)
-    );
-    let another_tensor = TensorView::from(
-        TensorStack::<_, [_; 2], 2>::from([matrix_erased, different_matrix_erased], (0, "c"))
-    );
+    let different_matrix_erased: Box<dyn TensorRef<_, 2>> =
+        Box::new(different_matrix.rename_view(["a", "b"]).map(|x| x));
+    let another_tensor = TensorView::from(TensorStack::<_, [_; 2], 2>::from(
+        [matrix_erased, different_matrix_erased],
+        (0, "c"),
+    ));
+    #[rustfmt::skip]
     assert!(
         another_tensor.eq(
             &Tensor::from([("c", 2), ("a", 3), ("b", 3)], vec![
@@ -801,7 +814,7 @@ pub struct TensorChain<T, S, const D: usize> {
 
 fn validate_shapes_similar<const D: usize, I>(mut shapes: I, along: usize)
 where
-    I: Iterator<Item = [(Dimension, usize); D]>
+    I: Iterator<Item = [(Dimension, usize); D]>,
 {
     // We'll reject fewer than one tensors in the constructors before getting here, so first unwrap
     // is always going to succeed.
@@ -826,7 +839,7 @@ where
 
 impl<T, S, const D: usize, const N: usize> TensorChain<T, [S; N], D>
 where
-    S: TensorRef<T, D>
+    S: TensorRef<T, D>,
 {
     /**
      * Creates a TensorChain from an array of sources of the same type and the dimension name to
@@ -852,7 +865,10 @@ where
         let shape = sources[0].view_shape();
         let along = match dimensions::position_of(&shape, along) {
             Some(d) => d,
-            None => panic!("The dimension {:?} is not in the source's shapes: {:?}", along, shape),
+            None => panic!(
+                "The dimension {:?} is not in the source's shapes: {:?}",
+                along, shape
+            ),
         };
         validate_shapes_similar(sources.iter().map(|tensor| tensor.view_shape()), along);
         Self {
@@ -902,11 +918,14 @@ where
         let shape = sources.0.view_shape();
         let along = match dimensions::position_of(&shape, along) {
             Some(d) => d,
-            None => panic!("The dimension {:?} is not in the source's shapes: {:?}", along, shape),
+            None => panic!(
+                "The dimension {:?} is not in the source's shapes: {:?}",
+                along, shape
+            ),
         };
         validate_shapes_similar(
             [sources.0.view_shape(), sources.1.view_shape()].into_iter(),
-            along
+            along,
         );
         Self {
             sources,
@@ -956,13 +975,19 @@ where
         let shape = sources.0.view_shape();
         let along = match dimensions::position_of(&shape, along) {
             Some(d) => d,
-            None => panic!("The dimension {:?} is not in the source's shapes: {:?}", along, shape),
+            None => panic!(
+                "The dimension {:?} is not in the source's shapes: {:?}",
+                along, shape
+            ),
         };
         validate_shapes_similar(
             [
-                sources.0.view_shape(), sources.1.view_shape(), sources.2.view_shape()
-            ].into_iter(),
-            along
+                sources.0.view_shape(),
+                sources.1.view_shape(),
+                sources.2.view_shape(),
+            ]
+            .into_iter(),
+            along,
         );
         Self {
             sources,
@@ -1013,14 +1038,20 @@ where
         let shape = sources.0.view_shape();
         let along = match dimensions::position_of(&shape, along) {
             Some(d) => d,
-            None => panic!("The dimension {:?} is not in the source's shapes: {:?}", along, shape),
+            None => panic!(
+                "The dimension {:?} is not in the source's shapes: {:?}",
+                along, shape
+            ),
         };
         validate_shapes_similar(
             [
-                sources.0.view_shape(), sources.1.view_shape(),
-                sources.2.view_shape(), sources.3.view_shape()
-            ].into_iter(),
-            along
+                sources.0.view_shape(),
+                sources.1.view_shape(),
+                sources.2.view_shape(),
+                sources.3.view_shape(),
+            ]
+            .into_iter(),
+            along,
         );
         Self {
             sources,
@@ -1085,13 +1116,13 @@ where
 
 unsafe impl<T, S, const D: usize, const N: usize> TensorRef<T, D> for TensorChain<T, [S; N], D>
 where
-    S: TensorRef<T, D>
+    S: TensorRef<T, D>,
 {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
         let (source, indexes) = indexing(
             indexes,
             self.sources.iter().map(|s| s.view_shape()),
-            self.along
+            self.along,
         )?;
         self.sources.get(source)?.get_reference(indexes)
     }
@@ -1100,7 +1131,7 @@ where
         view_shape_impl(
             self.sources[0].view_shape(),
             self.sources.iter().map(|s| s.view_shape()),
-            self.along
+            self.along,
         )
     }
 
@@ -1109,9 +1140,13 @@ where
         let (source, indexes) = indexing(
             indexes,
             self.sources.iter().map(|s| s.view_shape()),
-            self.along
-        ).unwrap();
-        self.sources.get(source).unwrap().get_reference_unchecked(indexes)
+            self.along,
+        )
+        .unwrap();
+        self.sources
+            .get(source)
+            .unwrap()
+            .get_reference_unchecked(indexes)
     }
 
     fn data_layout(&self) -> DataLayout<D> {
@@ -1123,13 +1158,13 @@ where
 
 unsafe impl<T, S, const D: usize, const N: usize> TensorMut<T, D> for TensorChain<T, [S; N], D>
 where
-    S: TensorMut<T, D>
+    S: TensorMut<T, D>,
 {
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
         let (source, indexes) = indexing(
             indexes,
             self.sources.iter().map(|s| s.view_shape()),
-            self.along
+            self.along,
         )?;
         self.sources.get_mut(source)?.get_reference_mut(indexes)
     }
@@ -1139,9 +1174,13 @@ where
         let (source, indexes) = indexing(
             indexes,
             self.sources.iter().map(|s| s.view_shape()),
-            self.along
-        ).unwrap();
-        self.sources.get_mut(source).unwrap().get_reference_unchecked_mut(indexes)
+            self.along,
+        )
+        .unwrap();
+        self.sources
+            .get_mut(source)
+            .unwrap()
+            .get_reference_unchecked_mut(indexes)
     }
 }
 
@@ -1154,12 +1193,12 @@ where
         let (source, indexes) = indexing(
             indexes,
             [self.sources.0.view_shape(), self.sources.1.view_shape()].into_iter(),
-            self.along
+            self.along,
         )?;
         match source {
             0 => self.sources.0.get_reference(indexes),
             1 => self.sources.1.get_reference(indexes),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1167,7 +1206,7 @@ where
         view_shape_impl(
             self.sources.0.view_shape(),
             [self.sources.0.view_shape(), self.sources.1.view_shape()].into_iter(),
-            self.along
+            self.along,
         )
     }
 
@@ -1176,15 +1215,14 @@ where
         let (source, indexes) = indexing(
             indexes,
             [self.sources.0.view_shape(), self.sources.1.view_shape()].into_iter(),
-            self.along
-        ).unwrap();
+            self.along,
+        )
+        .unwrap();
         match source {
             0 => self.sources.0.get_reference_unchecked(indexes),
             1 => self.sources.1.get_reference_unchecked(indexes),
             // TODO: Can we use unreachable_unchecked here?
-            _ => panic!(
-                "Invalid index should never be given to get_reference_unchecked"
-            )
+            _ => panic!("Invalid index should never be given to get_reference_unchecked"),
         }
     }
 
@@ -1204,12 +1242,12 @@ where
         let (source, indexes) = indexing(
             indexes,
             [self.sources.0.view_shape(), self.sources.1.view_shape()].into_iter(),
-            self.along
+            self.along,
         )?;
         match source {
             0 => self.sources.0.get_reference_mut(indexes),
             1 => self.sources.1.get_reference_mut(indexes),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1218,15 +1256,14 @@ where
         let (source, indexes) = indexing(
             indexes,
             [self.sources.0.view_shape(), self.sources.1.view_shape()].into_iter(),
-            self.along
-        ).unwrap();
+            self.along,
+        )
+        .unwrap();
         match source {
             0 => self.sources.0.get_reference_unchecked_mut(indexes),
             1 => self.sources.1.get_reference_unchecked_mut(indexes),
             // TODO: Can we use unreachable_unchecked here?
-            _ => panic!(
-                "Invalid index should never be given to get_reference_unchecked"
-            )
+            _ => panic!("Invalid index should never be given to get_reference_unchecked"),
         }
     }
 }
@@ -1243,15 +1280,16 @@ where
             [
                 self.sources.0.view_shape(),
                 self.sources.1.view_shape(),
-                self.sources.2.view_shape()
-            ].into_iter(),
-            self.along
+                self.sources.2.view_shape(),
+            ]
+            .into_iter(),
+            self.along,
         )?;
         match source {
             0 => self.sources.0.get_reference(indexes),
             1 => self.sources.1.get_reference(indexes),
             2 => self.sources.2.get_reference(indexes),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1261,9 +1299,10 @@ where
             [
                 self.sources.0.view_shape(),
                 self.sources.1.view_shape(),
-                self.sources.2.view_shape()
-            ].into_iter(),
-            self.along
+                self.sources.2.view_shape(),
+            ]
+            .into_iter(),
+            self.along,
         )
     }
 
@@ -1274,18 +1313,18 @@ where
             [
                 self.sources.0.view_shape(),
                 self.sources.1.view_shape(),
-                self.sources.2.view_shape()
-            ].into_iter(),
-            self.along
-        ).unwrap();
+                self.sources.2.view_shape(),
+            ]
+            .into_iter(),
+            self.along,
+        )
+        .unwrap();
         match source {
             0 => self.sources.0.get_reference_unchecked(indexes),
             1 => self.sources.1.get_reference_unchecked(indexes),
             2 => self.sources.2.get_reference_unchecked(indexes),
             // TODO: Can we use unreachable_unchecked here?
-            _ => panic!(
-                "Invalid index should never be given to get_reference_unchecked"
-            )
+            _ => panic!("Invalid index should never be given to get_reference_unchecked"),
         }
     }
 
@@ -1308,15 +1347,16 @@ where
             [
                 self.sources.0.view_shape(),
                 self.sources.1.view_shape(),
-                self.sources.2.view_shape()
-            ].into_iter(),
-            self.along
+                self.sources.2.view_shape(),
+            ]
+            .into_iter(),
+            self.along,
         )?;
         match source {
             0 => self.sources.0.get_reference_mut(indexes),
             1 => self.sources.1.get_reference_mut(indexes),
             2 => self.sources.2.get_reference_mut(indexes),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1327,23 +1367,24 @@ where
             [
                 self.sources.0.view_shape(),
                 self.sources.1.view_shape(),
-                self.sources.2.view_shape()
-            ].into_iter(),
-            self.along
-        ).unwrap();
+                self.sources.2.view_shape(),
+            ]
+            .into_iter(),
+            self.along,
+        )
+        .unwrap();
         match source {
             0 => self.sources.0.get_reference_unchecked_mut(indexes),
             1 => self.sources.1.get_reference_unchecked_mut(indexes),
             2 => self.sources.2.get_reference_unchecked_mut(indexes),
             // TODO: Can we use unreachable_unchecked here?
-            _ => panic!(
-                "Invalid index should never be given to get_reference_unchecked"
-            )
+            _ => panic!("Invalid index should never be given to get_reference_unchecked"),
         }
     }
 }
 
-unsafe impl<T, S1, S2, S3, S4, const D: usize> TensorRef<T, D> for TensorChain<T, (S1, S2, S3, S4), D>
+unsafe impl<T, S1, S2, S3, S4, const D: usize> TensorRef<T, D>
+    for TensorChain<T, (S1, S2, S3, S4), D>
 where
     S1: TensorRef<T, D>,
     S2: TensorRef<T, D>,
@@ -1357,16 +1398,17 @@ where
                 self.sources.0.view_shape(),
                 self.sources.1.view_shape(),
                 self.sources.2.view_shape(),
-                self.sources.3.view_shape()
-            ].into_iter(),
-            self.along
+                self.sources.3.view_shape(),
+            ]
+            .into_iter(),
+            self.along,
         )?;
         match source {
             0 => self.sources.0.get_reference(indexes),
             1 => self.sources.1.get_reference(indexes),
             2 => self.sources.2.get_reference(indexes),
             3 => self.sources.3.get_reference(indexes),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1377,9 +1419,10 @@ where
                 self.sources.0.view_shape(),
                 self.sources.1.view_shape(),
                 self.sources.2.view_shape(),
-                self.sources.3.view_shape()
-            ].into_iter(),
-            self.along
+                self.sources.3.view_shape(),
+            ]
+            .into_iter(),
+            self.along,
         )
     }
 
@@ -1391,19 +1434,19 @@ where
                 self.sources.0.view_shape(),
                 self.sources.1.view_shape(),
                 self.sources.2.view_shape(),
-                self.sources.3.view_shape()
-            ].into_iter(),
-            self.along
-        ).unwrap();
+                self.sources.3.view_shape(),
+            ]
+            .into_iter(),
+            self.along,
+        )
+        .unwrap();
         match source {
             0 => self.sources.0.get_reference_unchecked(indexes),
             1 => self.sources.1.get_reference_unchecked(indexes),
             2 => self.sources.2.get_reference_unchecked(indexes),
             3 => self.sources.3.get_reference_unchecked(indexes),
             // TODO: Can we use unreachable_unchecked here?
-            _ => panic!(
-                "Invalid index should never be given to get_reference_unchecked"
-            )
+            _ => panic!("Invalid index should never be given to get_reference_unchecked"),
         }
     }
 
@@ -1414,7 +1457,8 @@ where
     }
 }
 
-unsafe impl<T, S1, S2, S3, S4, const D: usize> TensorMut<T, D> for TensorChain<T, (S1, S2, S3, S4), D>
+unsafe impl<T, S1, S2, S3, S4, const D: usize> TensorMut<T, D>
+    for TensorChain<T, (S1, S2, S3, S4), D>
 where
     S1: TensorMut<T, D>,
     S2: TensorMut<T, D>,
@@ -1428,16 +1472,17 @@ where
                 self.sources.0.view_shape(),
                 self.sources.1.view_shape(),
                 self.sources.2.view_shape(),
-                self.sources.3.view_shape()
-            ].into_iter(),
-            self.along
+                self.sources.3.view_shape(),
+            ]
+            .into_iter(),
+            self.along,
         )?;
         match source {
             0 => self.sources.0.get_reference_mut(indexes),
             1 => self.sources.1.get_reference_mut(indexes),
             2 => self.sources.2.get_reference_mut(indexes),
             3 => self.sources.3.get_reference_mut(indexes),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1449,27 +1494,28 @@ where
                 self.sources.0.view_shape(),
                 self.sources.1.view_shape(),
                 self.sources.2.view_shape(),
-                self.sources.3.view_shape()
-            ].into_iter(),
-            self.along
-        ).unwrap();
+                self.sources.3.view_shape(),
+            ]
+            .into_iter(),
+            self.along,
+        )
+        .unwrap();
         match source {
             0 => self.sources.0.get_reference_unchecked_mut(indexes),
             1 => self.sources.1.get_reference_unchecked_mut(indexes),
             2 => self.sources.2.get_reference_unchecked_mut(indexes),
             3 => self.sources.3.get_reference_unchecked_mut(indexes),
             // TODO: Can we use unreachable_unchecked here?
-            _ => panic!(
-                "Invalid index should never be given to get_reference_unchecked"
-            )
+            _ => panic!("Invalid index should never be given to get_reference_unchecked"),
         }
     }
 }
 
 #[test]
 fn test_chaining() {
-    use crate::tensors::Tensor;
     use crate::tensors::views::TensorView;
+    use crate::tensors::Tensor;
+    #[rustfmt::skip]
     let matrix1 = Tensor::from(
         [("a", 3), ("b", 2)],
         vec![
@@ -1478,6 +1524,7 @@ fn test_chaining() {
             3, 5
         ]
     );
+    #[rustfmt::skip]
     let matrix2 = Tensor::from(
         [("a", 4), ("b", 2)],
         vec![
@@ -1487,9 +1534,8 @@ fn test_chaining() {
             6, 3
         ]
     );
-    let matrix = TensorView::from(
-        TensorChain::<_, (_, _), 2>::from((&matrix1, &matrix2), "a")
-    );
+    let matrix = TensorView::from(TensorChain::<_, (_, _), 2>::from((&matrix1, &matrix2), "a"));
+    #[rustfmt::skip]
     assert_eq!(
         matrix,
         Tensor::from([("a", 7), ("b", 2)], vec![
@@ -1505,9 +1551,11 @@ fn test_chaining() {
     let matrix_erased: Box<dyn TensorMut<_, 2>> = Box::new(matrix.map(|x| x));
     let different_matrix = Tensor::from([("a", 7), ("b", 1)], (0..7).collect());
     let different_matrix_erased: Box<dyn TensorMut<_, 2>> = Box::new(different_matrix);
-    let another_matrix = TensorView::from(
-        TensorChain::<_, [_; 2], 2>::from([matrix_erased, different_matrix_erased], "b")
-    );
+    let another_matrix = TensorView::from(TensorChain::<_, [_; 2], 2>::from(
+        [matrix_erased, different_matrix_erased],
+        "b",
+    ));
+    #[rustfmt::skip]
     assert!(
         another_matrix.eq(
             &Tensor::from([("a", 7), ("b", 3)], vec![

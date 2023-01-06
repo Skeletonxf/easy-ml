@@ -108,8 +108,8 @@ use crate::numeric::{Numeric, NumericRef};
 //use crate::numeric::extra::{Sqrt, Pi, Exp, Pow, Ln, Sin, Cos};
 use crate::linear_algebra;
 use crate::matrices::Matrix;
-use crate::tensors::{Tensor, Dimension};
 use crate::tensors::views::{TensorRef, TensorView};
+use crate::tensors::{Dimension, Tensor};
 
 use std::error::Error;
 use std::fmt;
@@ -347,22 +347,28 @@ where
     {
         // Since both our fields are public, we have to recheck they're still meeting our
         // invariants before doing any calculations.
-        if self.mean.columns() != 1 ||
-            self.covariance.rows() != self.covariance.columns() ||
-            self.mean.rows() != self.covariance.rows() {
+        if self.mean.columns() != 1
+            || self.covariance.rows() != self.covariance.columns()
+            || self.mean.rows() != self.covariance.rows()
+        {
             return None;
         }
-        use crate::interop::{TensorRefMatrix, RowAndColumn, DimensionNames};
+        use crate::interop::{DimensionNames, RowAndColumn, TensorRefMatrix};
         // Since we already validated our state, we wouldn't expect these conversions to fail
         // but if they do return None
         // Convert the column vector to a 1 dimensional tensor by selecting the sole column
         let mean = crate::tensors::views::TensorIndex::from(
             TensorRefMatrix::from(&self.mean).ok()?,
-            [(RowAndColumn.names()[1], 0)]
+            [(RowAndColumn.names()[1], 0)],
         );
         let covariance = TensorRefMatrix::from(&self.covariance).ok()?;
         let samples = draw_tensor_samples::<T, _, _, _>(
-            &mean, &covariance, source, max_samples, "samples", "features"
+            &mean,
+            &covariance,
+            source,
+            max_samples,
+            "samples",
+            "features",
         );
         samples.map(|tensor| tensor.into_matrix())
     }
@@ -395,17 +401,16 @@ pub enum MultivariateGaussianError<T> {
 impl<T: fmt::Debug> fmt::Display for MultivariateGaussianError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MultivariateGaussianError::NotCovarianceMatrix { mean: _, covariance } => write!(
-                f,
-                "Covariance matrix is not square: {:?}",
+            MultivariateGaussianError::NotCovarianceMatrix {
+                mean: _,
                 covariance,
-            ),
+            } => write!(f, "Covariance matrix is not square: {:?}", covariance,),
             MultivariateGaussianError::MeanVectorWrongLength { mean, covariance } => write!(
                 f,
                 "Mean vector has a different length {:?} to the covariance matrix size: {:?}",
                 mean.shape(),
                 covariance.shape(),
-            )
+            ),
         }
     }
 }
@@ -433,7 +438,7 @@ impl<T: Numeric + Real> MultivariateGaussianTensor<T> {
     // is kinda big
     pub fn new(
         mean: Tensor<T, 1>,
-        covariance: Tensor<T, 2>
+        covariance: Tensor<T, 2>,
     ) -> Result<MultivariateGaussianTensor<T>, Box<MultivariateGaussianError<T>>> {
         let covariance_shape = covariance.shape();
         if !crate::tensors::dimensions::is_square(&covariance_shape) {
@@ -449,9 +454,7 @@ impl<T: Numeric + Real> MultivariateGaussianTensor<T> {
                 covariance,
             }));
         }
-        Ok(
-            MultivariateGaussianTensor { mean, covariance }
-        )
+        Ok(MultivariateGaussianTensor { mean, covariance })
     }
 
     /**
@@ -491,7 +494,7 @@ fn draw_tensor_samples<T, S1, S2, I>(
     source: &mut I,
     max_samples: usize,
     samples: Dimension,
-    features: Dimension
+    features: Dimension,
 ) -> Option<Tensor<T, 2>>
 where
     T: Numeric + Real,
@@ -529,7 +532,7 @@ where
         let standard_normals = Tensor::from(
             // Construct a column vector with as many rows as our N features
             [(samples, standard_normals.len()), (features, 1)],
-            standard_normals
+            standard_normals,
         );
         // mean + (L * standard_normals) yields each m'th vector from the distribution
         let random_vector = &column_vector_mean + (&lower_triangular * standard_normals);
@@ -569,13 +572,18 @@ where
         source: &mut I,
         max_samples: usize,
         samples: Dimension,
-        features: Dimension
+        features: Dimension,
     ) -> Option<Tensor<T, 2>>
     where
         I: Iterator<Item = T>,
     {
         draw_tensor_samples::<T, _, _, _>(
-            &self.mean, &self.covariance, source, max_samples, samples, features
+            &self.mean,
+            &self.covariance,
+            source,
+            max_samples,
+            samples,
+            features,
         )
     }
 }

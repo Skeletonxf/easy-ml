@@ -1601,8 +1601,8 @@ fn test_send() {
 
 #[cfg(feature = "serde")]
 mod serde_impls {
+    use crate::matrices::{Column, Matrix, Row};
     use serde::{Deserialize, Deserializer};
-    use crate::matrices::{Matrix, Row, Column};
 
     #[derive(Deserialize)]
     #[serde(rename = "Matrix")]
@@ -1616,20 +1616,18 @@ mod serde_impls {
     where
         T: Deserialize<'de>,
     {
-       fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-       where
-           D: Deserializer<'de>,
-       {
-           MatrixDeserialize::<T>::deserialize(deserializer).map(|d| {
-               // Safety: Use the no copy constructor that performs validation to prevent invalid
-               // serialized data being created as a Matrix, which would then break all the
-               // code that's relying on these invariants.
-               Matrix::from_flat_row_major(
-                   (d.rows, d.columns), d.data
-               )
-           })
-       }
-   }
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            MatrixDeserialize::<T>::deserialize(deserializer).map(|d| {
+                // Safety: Use the no copy constructor that performs validation to prevent invalid
+                // serialized data being created as a Matrix, which would then break all the
+                // code that's relying on these invariants.
+                Matrix::from_flat_row_major((d.rows, d.columns), d.data)
+            })
+        }
+    }
 }
 
 #[cfg(feature = "serde")]
@@ -1650,10 +1648,11 @@ fn test_deserialize() {
 #[cfg(feature = "serde")]
 #[test]
 fn test_serialization_deserialization_loop() {
+    #[rustfmt::skip]
     let matrix = Matrix::from(vec![
-        vec![ 1,  2,  3,  4 ],
-        vec![ 5,  6,  7,  8 ],
-        vec![ 9, 10, 11, 12 ]
+        vec![1,  2,  3,  4],
+        vec![5,  6,  7,  8],
+        vec![9, 10, 11, 12],
     ]);
     let encoded = toml::to_string(&matrix).unwrap();
     assert_eq!(
@@ -1665,10 +1664,7 @@ columns = 4
     );
     let parsed: Result<Matrix<i32>, _> = toml::from_str(&encoded);
     assert!(parsed.is_ok());
-    assert_eq!(
-        matrix,
-        parsed.unwrap()
-    )
+    assert_eq!(matrix, parsed.unwrap())
 }
 
 #[cfg(feature = "serde")]
@@ -1679,9 +1675,9 @@ fn test_deserialization_validation() {
         r#"data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 rows = 3
 columns = 3
-"#);
+"#,
+    );
 }
-
 
 #[test]
 fn test_indexing() {
