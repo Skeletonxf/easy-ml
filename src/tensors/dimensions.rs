@@ -8,7 +8,7 @@
  * Tensors in Easy ML have a **shape** of type `[(Dimension, usize); D]`, where D is a compile time
  * constant. This type defines a list of dimension names and the lengths along each dimension name.
  * A tensor with some shape will have data ranging from 0 to the length - 1 along each
- * dimension name. Many APIs simply refer to this type as the **dimensions**.
+ * dimension name.
  * Often we want to call methods which only take dimension names in some order, so those
  * **dimension names** have a type of `[Dimension; D]`. We also may want to index into a Tensor,
  * which is done by providing the **index**es only, with a type of `[usize; D]`.
@@ -23,41 +23,41 @@
 use crate::tensors::Dimension;
 
 /**
- * Returns the product of the provided dimension lengths
+ * Returns the product of the dimension lengths in the provided shape.
  *
  * This is equal to the number of elements that will be stored for these dimensions.
  * A 0 dimensional tensor stores exactly 1 element, a 1 dimensional tensor stores N elements,
  * a 2 dimensional tensor stores NxM elements and so on.
  */
-pub fn elements<const D: usize>(dimensions: &[(Dimension, usize); D]) -> usize {
-    dimensions.iter().map(|d| d.1).product()
+pub fn elements<const D: usize>(shape: &[(Dimension, usize); D]) -> usize {
+    shape.iter().map(|d| d.1).product()
 }
 
 /**
- * Finds the position of the dimension name in the set of dimensions.
+ * Finds the position of the dimension name in the shape.
  *
- * `None` is returned if the dimension name is not in the set.
+ * `None` is returned if the dimension name is not in the shape.
  */
 pub fn position_of<const D: usize>(
-    dimensions: &[(Dimension, usize); D],
+    shape: &[(Dimension, usize); D],
     dimension: Dimension,
 ) -> Option<usize> {
-    dimensions.iter().position(|(d, _)| d == &dimension)
+    shape.iter().position(|(d, _)| d == &dimension)
 }
 
 /**
- * Checks if the dimension name is in the set of dimensions.
+ * Checks if the dimension name is in the shape.
  */
 pub fn contains<const D: usize>(
-    dimensions: &[(Dimension, usize); D],
+    shape: &[(Dimension, usize); D],
     dimension: Dimension,
 ) -> bool {
-    dimensions.iter().any(|(d, _)| d == &dimension)
+    shape.iter().any(|(d, _)| d == &dimension)
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct DimensionMappings<const D: usize> {
-    source_to_requested: [usize; D], // TODO: Doesn't look like we actually need this
+    source_to_requested: [usize; D],
     requested_to_source: [usize; D],
 }
 
@@ -69,7 +69,7 @@ impl<const D: usize> DimensionMappings<D> {
         }
     }
 
-    // Computes both mappings from from a set of dimensions in source order and a matching set of
+    // Computes both mappings from from a shape in source order and a matching set of
     // dimensions in an arbitary order.
     // If the source order is x,y,z but the requested order is z,x,y then the mapping
     // from source to requested is [1,2,0] (x becomes second, y becomes last, z becomes first) and
@@ -111,8 +111,10 @@ impl<const D: usize> DimensionMappings<D> {
         })
     }
 
-    // Reorders some indexes according to the dimension mapping to return the
-    // indexes in the source order
+    /// Reorders some indexes according to the dimension mapping to return the
+    /// indexes in the source order
+    // TODO: Review the order TensorAccess displays its data in. Previously it didn't match the
+    // memory layout when this was using the wrong mapping which was a source of confusion.
     #[inline]
     pub(crate) fn map_dimensions_to_source(&self, indexes: &[usize; D]) -> [usize; D] {
         // Our input is in requested order and we return indexes in the source order, so for each
@@ -121,8 +123,8 @@ impl<const D: usize> DimensionMappings<D> {
         std::array::from_fn(|d| indexes[self.source_to_requested[d]])
     }
 
-    // Reorders some shape according to the dimension mapping to return the
-    // shape in the requested order
+    /// Reorders some shape according to the dimension mapping to return the
+    /// shape in the requested order
     #[inline]
     pub(crate) fn map_shape_to_requested(
         &self,
@@ -170,11 +172,11 @@ impl<const D: usize> DimensionMappings<D> {
  * true. For 2 dimensions, this corresponds to a square matrix, and for 3 dimensions, a cube shaped
  * tensor, and so on.
  */
-pub fn is_square<const D: usize>(dimensions: &[(Dimension, usize); D]) -> bool {
+pub fn is_square<const D: usize>(shape: &[(Dimension, usize); D]) -> bool {
     if D > 1 {
-        let first = dimensions[0].1;
+        let first = shape[0].1;
         for d in 1..D {
-            if dimensions[d].1 != first {
+            if shape[d].1 != first {
                 return false;
             }
         }
@@ -185,16 +187,16 @@ pub fn is_square<const D: usize>(dimensions: &[(Dimension, usize); D]) -> bool {
 }
 
 /**
- * Returns just the dimension names of the dimensions, in the same order.
+ * Returns just the dimension names of the shape, in the same order.
  */
-pub fn names_of<const D: usize>(dimensions: &[(Dimension, usize); D]) -> [Dimension; D] {
-    dimensions.map(|(dimension, _length)| dimension)
+pub fn names_of<const D: usize>(shape: &[(Dimension, usize); D]) -> [Dimension; D] {
+    shape.map(|(dimension, _length)| dimension)
 }
 
-pub(crate) fn has_duplicates(dimensions: &[(Dimension, usize)]) -> bool {
-    for i in 1..dimensions.len() {
-        let name = dimensions[i - 1].0;
-        if dimensions[i..].iter().any(|d| d.0 == name) {
+pub(crate) fn has_duplicates(shape: &[(Dimension, usize)]) -> bool {
+    for i in 1..shape.len() {
+        let name = shape[i - 1].0;
+        if shape[i..].iter().any(|d| d.0 == name) {
             return true;
         }
     }

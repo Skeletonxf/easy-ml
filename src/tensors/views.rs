@@ -705,7 +705,7 @@ where
         // of the original order, this means we may swap dimension lengths, but the dimensions
         // will not change order.
         for d in 0..D {
-            reordered.dimensions[d].0 = shape[d].0;
+            reordered.shape[d].0 = shape[d].0;
         }
         reordered
     }
@@ -1122,7 +1122,7 @@ where
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("TensorView")
             .field("visible", &DebugSourceVisible::from(&self.source))
-            .field("dimensions", &self.source.view_shape())
+            .field("shape", &self.source.view_shape())
             .field("source", &self.source)
             .finish()
     }
@@ -1165,8 +1165,8 @@ fn test_debug() {
     let debugged = format!("{:?}\n{:?}", x, view);
     assert_eq!(
         debugged,
-        r#"Tensor { data: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], dimensions: [("rows", 3), ("columns", 4)], strides: [4, 1] }
-TensorView { visible: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], dimensions: [("rows", 3), ("columns", 4)], source: Tensor { data: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], dimensions: [("rows", 3), ("columns", 4)], strides: [4, 1] } }"#
+        r#"Tensor { data: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], shape: [("rows", 3), ("columns", 4)], strides: [4, 1] }
+TensorView { visible: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], shape: [("rows", 3), ("columns", 4)], source: Tensor { data: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], shape: [("rows", 3), ("columns", 4)], strides: [4, 1] } }"#
     )
 }
 
@@ -1189,7 +1189,7 @@ fn test_debug_clipped() {
         4,
         5,
     ],
-    dimensions: [
+    shape: [
         (
             "rows",
             2,
@@ -1211,7 +1211,7 @@ TensorView {
         4,
         5,
     ],
-    dimensions: [
+    shape: [
         (
             "rows",
             2,
@@ -1231,7 +1231,7 @@ TensorView {
                 4,
                 5,
             ],
-            dimensions: [
+            shape: [
                 (
                     "rows",
                     2,

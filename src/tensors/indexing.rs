@@ -19,7 +19,7 @@
  * `[("batch", 2000), ("width", 100), ("height", 100), ("rgb", 3)]` shaped tensor.
  *
  * This can't stop you from getting the math wrong, but confusion over which dimension
- * means what is reduced, tensors carry around their pairs of dimension name and length
+ * means what is reduced. Tensors carry around their pairs of dimension name and length
  * so adding a `[("batch", 2000), ("width", 100), ("height", 100), ("rgb", 3)]` shaped tensor
  * to a `[("batch", 2000), ("height", 100), ("width", 100), ("rgb", 3)]` will fail unless you
  * reorder one first, and you could access an element as
@@ -154,7 +154,7 @@ where
     }
 
     /**
-     * The shape this TensorAccess has with the dimensions in the order the TensorAccess
+     * The shape this TensorAccess has with the dimensions mapped to the order the TensorAccess
      * was created with, not necessarily the same order as in the underlying tensor.
      */
     pub fn shape(&self) -> [(Dimension, usize); D] {
@@ -179,7 +179,7 @@ where
 
 /**
  * An error indicating failure to create a TensorAccess because the requested dimension order
- * does not match the set of dimensions in the source data.
+ * does not match the shape in the source data.
  */
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct InvalidDimensionsError<const D: usize> {
@@ -193,7 +193,7 @@ impl<const D: usize> fmt::Display for InvalidDimensionsError<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Requested dimension order: {:?} does not match the set of dimensions in the source: {:?}",
+            "Requested dimension order: {:?} does not match the shape in the source: {:?}",
             &self.actual, &self.requested
         )
     }
@@ -211,6 +211,8 @@ fn test_send() {
     assert_send::<InvalidDimensionsError<3>>();
 }
 
+// TODO: Name clashes here with TensorRef trait, signatures aren't quite identical either
+// so might want to rename API here to avoid name clash
 impl<T, S, const D: usize> TensorAccess<T, S, D>
 where
     S: TensorRef<T, D>,
@@ -307,7 +309,7 @@ where
      * Creates and returns a new tensor with all values from the original with the
      * function applied to each.
      *
-     * Note: mapping methods are defind on [Tensor](Tensor) and
+     * Note: mapping methods are defined on [Tensor](Tensor) and
      * [TensorView](crate::tensors::views::TensorView) directly so you don't need to create a
      * TensorAccess unless you want to do the mapping with a different dimension order.
      */
@@ -323,7 +325,7 @@ where
      * order that the TensorAccess is indexed by, not neccessarily the index order the
      * original source uses.
      *
-     * Note: mapping methods are defind on [Tensor](Tensor) and
+     * Note: mapping methods are defined on [Tensor](Tensor) and
      * [TensorView](crate::tensors::views::TensorView) directly so you don't need to create a
      * TensorAccess unless you want to do the mapping with a different dimension order.
      */
@@ -558,7 +560,7 @@ impl<const D: usize> Iterator for ShapeIterator<D> {
     }
 }
 
-// Common index order iterator logic
+/// Common index order iterator logic
 fn iter<const D: usize>(
     finished: &mut bool,
     indexes: &mut [usize; D],
@@ -999,7 +1001,7 @@ where
     S: TensorRef<T, D>,
 {
     /**
-     * Creates a TensorTranspose which makes the data to appear in the order of the
+     * Creates a TensorTranspose which makes the data appear in the order of the
      * supplied dimensions. The order of the dimension names is unchanged, although their lengths
      * may swap.
      *
@@ -1034,17 +1036,15 @@ where
     }
 
     /**
-     * The shape of this TensorTranspose rearranges the data to appear in the order of supplied
-     * dimensions. The order of the dimension names in the underlying tensor remains unchanged,
-     * although their lengths may swap.
+     * The shape of this TensorTranspose appears to rearrange the data to the order of supplied
+     * dimensions. The actual data in the underlying tensor and the order of the dimension names
+     * on this TensorTranspose remains unchanged, although the lengths of the dimensions in this
+     * shape of may swap compared to the source's shape.
      */
     pub fn shape(&self) -> [(Dimension, usize); D] {
         let names = self.access.source.view_shape();
-        let mut order = self.access.shape();
-        for d in 0..D {
-            order[d].0 = names[d].0;
-        }
-        order
+        let order = self.access.shape();
+        std::array::from_fn(|d| (names[d].0, order[d].1))
     }
 
     pub fn source(self) -> S {

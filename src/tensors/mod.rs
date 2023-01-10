@@ -94,31 +94,31 @@ impl<const D: usize> InvalidShapeError<D> {
         &self.shape
     }
 
-    // Panics if the dimensions are invalid for any reason with the appropriate error message.
+    // Panics if the shape is invalid for any reason with the appropriate error message.
     #[track_caller]
     #[inline]
-    fn validate_dimensions_or_panic(dimensions: &[(Dimension, usize); D], data_len: usize) {
-        let elements = crate::tensors::dimensions::elements(dimensions);
+    fn validate_dimensions_or_panic(shape: &[(Dimension, usize); D], data_len: usize) {
+        let elements = crate::tensors::dimensions::elements(shape);
         if data_len != elements {
             panic!(
                 "Product of dimension lengths must match size of data. {} != {}",
                 elements, data_len
             );
         }
-        if crate::tensors::dimensions::has_duplicates(dimensions) {
-            panic!("Dimension names must all be unique: {:?}", &dimensions);
+        if crate::tensors::dimensions::has_duplicates(shape) {
+            panic!("Dimension names must all be unique: {:?}", &shape);
         }
-        if dimensions.iter().any(|d| d.1 == 0) {
-            panic!("No dimension can have 0 elements: {:?}", &dimensions);
+        if shape.iter().any(|d| d.1 == 0) {
+            panic!("No dimension can have 0 elements: {:?}", &shape);
         }
     }
 
-    // Returns true if the dimensions are valid and match the data length
-    fn validate_dimensions(dimensions: &[(Dimension, usize); D], data_len: usize) -> bool {
-        let elements = crate::tensors::dimensions::elements(dimensions);
+    // Returns true if the shape is valid and matches the data length
+    fn validate_dimensions(shape: &[(Dimension, usize); D], data_len: usize) -> bool {
+        let elements = crate::tensors::dimensions::elements(shape);
         data_len == elements
-            && !crate::tensors::dimensions::has_duplicates(dimensions)
-            && !dimensions.iter().any(|d| d.1 == 0)
+            && !crate::tensors::dimensions::has_duplicates(shape)
+            && !shape.iter().any(|d| d.1 == 0)
     }
 }
 
@@ -216,7 +216,7 @@ fn test_send() {
  * A [named tensor](http://nlp.seas.harvard.edu/NamedTensor) of some type `T` and number of
  * dimensions `D`.
  *
- * Tensors are a generalisation of matrices, whereas [Matrix](crate::matrices::Matrix) only
+ * Tensors are a generalisation of matrices; whereas [Matrix](crate::matrices::Matrix) only
  * supports 2 dimensions, and vectors are represented in Matrix by making either the rows or
  * columns have a length of one, [Tensor](Tensor) supports an arbitary number of dimensions,
  * with 0 through 6 having full API support. A `Tensor<T, 2>` is very similar to a `Matrix<T>`
@@ -240,7 +240,7 @@ fn test_send() {
 pub struct Tensor<T, const D: usize> {
     data: Vec<T>,
     #[cfg_attr(feature = "serde", serde(with = "serde_arrays"))]
-    dimensions: [(Dimension, usize); D],
+    shape: [(Dimension, usize); D],
     #[cfg_attr(feature = "serde", serde(skip))]
     strides: [usize; D],
 }
@@ -266,26 +266,26 @@ impl<T, const D: usize> Tensor<T, D> {
      * a single element (since the product of an empty list is 1).
      */
     #[track_caller]
-    pub fn from(dimensions: [(Dimension, usize); D], data: Vec<T>) -> Self {
-        InvalidShapeError::validate_dimensions_or_panic(&dimensions, data.len());
-        let strides = compute_strides(&dimensions);
+    pub fn from(shape: [(Dimension, usize); D], data: Vec<T>) -> Self {
+        InvalidShapeError::validate_dimensions_or_panic(&shape, data.len());
+        let strides = compute_strides(&shape);
         Tensor {
             data,
-            dimensions,
+            shape,
             strides,
         }
     }
 
     /**
      * The shape of this tensor. Since Tensors are named Tensors, their shape is not just a
-     * list of length along each dimension, but instead a list of pairs of names and lengths.
+     * list of lengths along each dimension, but instead a list of pairs of names and lengths.
      *
      * See also
      * - [dimensions](crate::tensors::dimensions)
      * - [indexing](crate::tensors::indexing)
      */
     pub fn shape(&self) -> [(Dimension, usize); D] {
-        self.dimensions
+        self.shape
     }
 
     /**
@@ -310,17 +310,17 @@ impl<T, const D: usize> Tensor<T, D> {
      * a single element (since the product of an empty list is 1).
      */
     pub fn try_from(
-        dimensions: [(Dimension, usize); D],
+        shape: [(Dimension, usize); D],
         data: Vec<T>,
     ) -> Result<Self, InvalidShapeError<D>> {
-        let valid = InvalidShapeError::validate_dimensions(&dimensions, data.len());
+        let valid = InvalidShapeError::validate_dimensions(&shape, data.len());
         if !valid {
-            return Err(InvalidShapeError::new(dimensions));
+            return Err(InvalidShapeError::new(shape));
         }
-        let strides = compute_strides(&dimensions);
+        let strides = compute_strides(&shape);
         Ok(Tensor {
             data,
-            dimensions,
+            shape,
             strides,
         })
     }
@@ -329,12 +329,12 @@ impl<T, const D: usize> Tensor<T, D> {
     // unchanged and don't need reverification
     pub(crate) fn direct_from(
         data: Vec<T>,
-        dimensions: [(Dimension, usize); D],
+        shape: [(Dimension, usize); D],
         strides: [usize; D],
     ) -> Self {
         Tensor {
             data,
-            dimensions,
+            shape,
             strides,
         }
     }
@@ -347,7 +347,7 @@ impl<T> Tensor<T, 0> {
     pub fn from_scalar(value: T) -> Tensor<T, 0> {
         Tensor {
             data: vec![value],
-            dimensions: [],
+            shape: [],
             strides: [],
         }
     }
@@ -390,7 +390,7 @@ impl<T> From<T> for Tensor<T, 0> {
  */
 unsafe impl<T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        let i = get_index_direct(&indexes, &self.strides, &self.dimensions)?;
+        let i = get_index_direct(&indexes, &self.strides, &self.shape)?;
         self.data.get(i)
     }
 
@@ -403,13 +403,13 @@ unsafe impl<T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
         // it does not make any sense to just use `unwrap` here. The trait documents that
         // it's undefind behaviour to call this method with an out of bounds index, so we
         // can assume the None case will never happen.
-        let i = get_index_direct(&indexes, &self.strides, &self.dimensions).unwrap_unchecked();
+        let i = get_index_direct(&indexes, &self.strides, &self.shape).unwrap_unchecked();
         self.data.get_unchecked(i)
     }
 
     fn data_layout(&self) -> DataLayout<D> {
         // We always have our memory in most significant to least
-        DataLayout::Linear(std::array::from_fn(|i| self.dimensions[i].0))
+        DataLayout::Linear(std::array::from_fn(|i| self.shape[i].0))
     }
 }
 
@@ -418,7 +418,7 @@ unsafe impl<T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
 // We promise to never implement interior mutability for Tensor.
 unsafe impl<T, const D: usize> TensorMut<T, D> for Tensor<T, D> {
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
-        let i = get_index_direct(&indexes, &self.strides, &self.dimensions)?;
+        let i = get_index_direct(&indexes, &self.strides, &self.shape)?;
         self.data.get_mut(i)
     }
 
@@ -427,7 +427,7 @@ unsafe impl<T, const D: usize> TensorMut<T, D> for Tensor<T, D> {
         // it does not make any sense to just use `unwrap` here. The trait documents that
         // it's undefind behaviour to call this method with an out of bounds index, so we
         // can assume the None case will never happen.
-        let i = get_index_direct(&indexes, &self.strides, &self.dimensions).unwrap_unchecked();
+        let i = get_index_direct(&indexes, &self.strides, &self.shape).unwrap_unchecked();
         self.data.get_unchecked_mut(i)
     }
 }
@@ -460,14 +460,14 @@ impl<T: std::fmt::Display, const D: usize> std::fmt::Display for Tensor<T, D> {
 impl<T> From<Tensor<T, 2>> for crate::matrices::Matrix<T> {
     fn from(tensor: Tensor<T, 2>) -> Self {
         crate::matrices::Matrix::from_flat_row_major(
-            (tensor.dimensions[0].1, tensor.dimensions[1].1),
+            (tensor.shape[0].1, tensor.shape[1].1),
             tensor.data,
         )
     }
 }
 
-fn compute_strides<const D: usize>(dimensions: &[(Dimension, usize); D]) -> [usize; D] {
-    std::array::from_fn(|d| dimensions.iter().skip(d + 1).map(|d| d.1).product())
+fn compute_strides<const D: usize>(shape: &[(Dimension, usize); D]) -> [usize; D] {
+    std::array::from_fn(|d| shape.iter().skip(d + 1).map(|d| d.1).product())
 }
 
 // returns the 1 dimensional index to use to get the requested index into some tensor
@@ -477,13 +477,13 @@ fn get_index_direct<const D: usize>(
     indexes: &[usize; D],
     // strides for indexing into the tensor
     strides: &[usize; D],
-    // dimensions of the tensor to index into
-    dimensions: &[(Dimension, usize); D],
+    // shape of the tensor to index into
+    shape: &[(Dimension, usize); D],
 ) -> Option<usize> {
     let mut index = 0;
     for d in 0..D {
         let n = indexes[d];
-        if n >= dimensions[d].1 {
+        if n >= shape[d].1 {
             return None;
         }
         index += n * strides[d];
@@ -613,8 +613,29 @@ impl<T, const D: usize> Tensor<T, D> {
             panic!("Dimension names must all be unique: {:?}", &dimensions);
         }
         for d in 0..D {
-            self.dimensions[d].0 = dimensions[d];
+            self.shape[d].0 = dimensions[d];
         }
+    }
+
+    /**
+     * Renames the dimension names of the tensor and returns it without changing the lengths
+     * of the dimensions in the tensor or moving any data around.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * let tensor = Tensor::from([("x", 2), ("y", 3)], vec![1, 2, 3, 4, 5, 6])
+     *     .rename_owned(["y", "z"]);
+     * assert_eq!([("y", 2), ("z", 3)], tensor.shape());
+     * ```
+     *
+     * # Panics
+     *
+     * - If a dimension name is not unique
+     */
+    #[track_caller]
+    pub fn rename_owned(mut self, dimensions: [Dimension; D]) -> Tensor<T, D> {
+        self.rename(dimensions);
+        self
     }
 
     /**
@@ -667,10 +688,10 @@ impl<T, const D: usize> Tensor<T, D> {
      * ```
      */
     #[track_caller]
-    pub fn reshape_mut(&mut self, dimensions: [(Dimension, usize); D]) {
-        InvalidShapeError::validate_dimensions_or_panic(&dimensions, self.data.len());
-        let strides = compute_strides(&dimensions);
-        self.dimensions = dimensions;
+    pub fn reshape_mut(&mut self, shape: [(Dimension, usize); D]) {
+        InvalidShapeError::validate_dimensions_or_panic(&shape, self.data.len());
+        let strides = compute_strides(&shape);
+        self.shape = shape;
         self.strides = strides;
     }
 
@@ -699,9 +720,9 @@ impl<T, const D: usize> Tensor<T, D> {
     #[track_caller]
     pub fn reshape_owned<const D2: usize>(
         self,
-        dimensions: [(Dimension, usize); D2],
+        shape: [(Dimension, usize); D2],
     ) -> Tensor<T, D2> {
-        Tensor::from(dimensions, self.data)
+        Tensor::from(shape, self.data)
     }
 
     /**
@@ -940,7 +961,7 @@ impl<T, const D: usize> Tensor<T, D> {
             .map(|(x, y)| mapping_function(x, y))
             .collect();
         // We're not changing the shape of the Tensor, so don't need to revalidate
-        Tensor::direct_from(mapped, self.dimensions, self.strides)
+        Tensor::direct_from(mapped, self.shape, self.strides)
     }
 
     #[track_caller]
@@ -969,7 +990,7 @@ impl<T, const D: usize> Tensor<T, D> {
             .map(|(x, (i, y))| mapping_function(i, x, y))
             .collect();
         // We're not changing the shape of the Tensor, so don't need to revalidate
-        Tensor::direct_from(mapped, self.dimensions, self.strides)
+        Tensor::direct_from(mapped, self.shape, self.strides)
     }
 
     /**
@@ -1008,9 +1029,9 @@ where
      * - If any dimension has 0 elements
      */
     #[track_caller]
-    pub fn empty(dimensions: [(Dimension, usize); D], value: T) -> Self {
-        let elements = crate::tensors::dimensions::elements(&dimensions);
-        Tensor::from(dimensions, vec![value; elements])
+    pub fn empty(shape: [(Dimension, usize); D], value: T) -> Self {
+        let elements = crate::tensors::dimensions::elements(&shape);
+        Tensor::from(shape, vec![value; elements])
     }
 
     /**
@@ -1048,13 +1069,13 @@ where
      */
     #[track_caller]
     pub fn transpose(&self, dimensions: [Dimension; D]) -> Tensor<T, D> {
-        let shape = self.dimensions;
+        let shape = self.shape;
         let mut reordered = self.reorder(dimensions);
         // Transposition is essentially reordering, but we retain the dimension name ordering
         // of the original order, this means we may swap dimension lengths, but the dimensions
         // will not change order.
         for d in 0..D {
-            reordered.dimensions[d].0 = shape[d].0;
+            reordered.shape[d].0 = shape[d].0;
         }
         reordered
     }
@@ -1079,13 +1100,13 @@ where
      */
     #[track_caller]
     pub fn transpose_mut(&mut self, dimensions: [Dimension; D]) {
-        let shape = self.dimensions;
+        let shape = self.shape;
         self.reorder_mut(dimensions);
         // Transposition is essentially reordering, but we retain the dimension name ordering
         // we had before, this means we may swap dimension lengths, but the dimensions
         // will not change order.
         for d in 0..D {
-            self.dimensions[d].0 = shape[d].0;
+            self.shape[d].0 = shape[d].0;
         }
     }
 
@@ -1118,7 +1139,7 @@ where
             Err(_error) => panic!(
                 "Dimension names provided {:?} must be the same set of dimension names in the tensor: {:?}",
                 dimensions,
-                &self.dimensions,
+                &self.shape,
             ),
         };
         let reorderd_shape = reorderd.shape();
@@ -1146,17 +1167,17 @@ where
     #[track_caller]
     pub fn reorder_mut(&mut self, dimensions: [Dimension; D]) {
         use crate::tensors::dimensions::DimensionMappings;
-        if D == 2 && crate::tensors::dimensions::is_square(&self.dimensions) {
-            let dimension_mapping = match DimensionMappings::new(&self.dimensions, &dimensions) {
+        if D == 2 && crate::tensors::dimensions::is_square(&self.shape) {
+            let dimension_mapping = match DimensionMappings::new(&self.shape, &dimensions) {
                 Some(dimension_mapping) => dimension_mapping,
                 None => panic!(
                     "Dimension names provided {:?} must be the same set of dimension names in the tensor: {:?}",
                     dimensions,
-                    &self.dimensions,
+                    &self.shape,
                 ),
             };
 
-            let shape = dimension_mapping.map_shape_to_requested(&self.dimensions);
+            let shape = dimension_mapping.map_shape_to_requested(&self.shape);
             let shape_iterator = ShapeIterator::from(shape);
 
             for index in shape_iterator {
@@ -1178,19 +1199,19 @@ where
             }
 
             // now update our shape and strides to match
-            self.dimensions = shape;
+            self.shape = shape;
             self.strides = compute_strides(&shape);
         } else {
             // fallback to allocating a new reordered tensor
             let reordered = self.reorder(dimensions);
             self.data = reordered.data;
-            self.dimensions = reordered.dimensions;
+            self.shape = reordered.shape;
             self.strides = reordered.strides;
         }
     }
 
     /**
-     * Returns an iterator over copes of the data in this Tensor.
+     * Returns an iterator over copies of the data in this Tensor.
      */
     pub fn iter(&self) -> TensorIterator<T, Tensor<T, D>, D> {
         TensorIterator::from(self)
@@ -1221,7 +1242,7 @@ where
             .map(|x| mapping_function(x.clone()))
             .collect();
         // We're not changing the shape of the Tensor, so don't need to revalidate
-        Tensor::direct_from(mapped, self.dimensions, self.strides)
+        Tensor::direct_from(mapped, self.shape, self.strides)
     }
 
     /**
@@ -1235,7 +1256,7 @@ where
             .map(|(i, x)| mapping_function(i, x))
             .collect();
         // We're not changing the shape of the Tensor, so don't need to revalidate
-        Tensor::direct_from(mapped, self.dimensions, self.strides)
+        Tensor::direct_from(mapped, self.shape, self.strides)
     }
 
     /**
@@ -1417,7 +1438,7 @@ mod serde_impls {
         data: Vec<T>,
         #[serde(with = "serde_arrays")]
         #[serde(borrow)]
-        dimensions: [(&'a str, usize); D],
+        shape: [(&'a str, usize); D],
     }
 
     impl<'a, T, const D: usize> TensorDeserialize<'a, T, D> {
@@ -1449,7 +1470,7 @@ mod serde_impls {
         type Error = InvalidShapeError<D>;
 
         fn try_from(value: TensorDeserialize<'static, T, D>) -> Result<Self, Self::Error> {
-            Tensor::try_from(value.dimensions, value.data)
+            Tensor::try_from(value.shape, value.data)
         }
     }
 }
@@ -1491,7 +1512,7 @@ fn test_serialization_deserialization_loop() {
     assert_eq!(
         encoded,
         r#"data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-dimensions = [["rows", 3], ["columns", 4]]
+shape = [["rows", 3], ["columns", 4]]
 "#,
     );
     let parsed: Result<TensorDeserialize<i32, 2>, _> = toml::from_str(&encoded);
@@ -1506,7 +1527,7 @@ dimensions = [["rows", 3], ["columns", 4]]
 fn test_deserialization_validation() {
     let parsed: Result<TensorDeserialize<i32, 2>, _> = toml::from_str(
         r#"data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-dimensions = [["rows", 4], ["columns", 4]]
+shape = [["rows", 4], ["columns", 4]]
 "#,
     );
     assert!(parsed.is_ok());
