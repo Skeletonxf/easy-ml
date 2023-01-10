@@ -1451,7 +1451,7 @@ mod serde_impls {
             self,
             dimensions: [Dimension; D],
         ) -> Result<Tensor<T, D>, InvalidShapeError<D>> {
-            let shape = std::array::from_fn(|d| (dimensions[d], self.dimensions[d].1));
+            let shape = std::array::from_fn(|d| (dimensions[d], self.shape[d].1));
             // Safety: Use the normal constructor that performs validation to prevent invalid
             // serialized data being created as a Tensor, which would then break all the
             // code that's relying on these invariants.
