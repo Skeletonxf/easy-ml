@@ -186,6 +186,20 @@ mod linear_algebra {
             vec![ 3.0, 3.0, 0.0 ],
             vec![-1.0, 1.0, 3.0 ]]));
         assert_eq!(matrix, recovered);
+        // Tensor APIs should calculate exactly the same result
+        let tensor = Tensor::from([("r", 3), ("c", 3)], vec![
+            25.0, 15.0, -5.0,
+            15.0, 18.0,  0.0,
+            -5.0,  0.0, 11.0,
+        ]);
+        let lower_triangular = linear_algebra::cholesky_decomposition_tensor::<f32, _, _>(&tensor).unwrap();
+        let recovered = &lower_triangular * lower_triangular.transpose(["c", "r"]);
+        assert_eq!(lower_triangular, Tensor::from([("r", 3), ("c", 3)], vec![
+             5.0, 0.0, 0.0,
+             3.0, 3.0, 0.0,
+            -1.0, 1.0, 3.0
+        ]));
+        assert_eq!(tensor, recovered);
     }
 
     #[test]
@@ -218,6 +232,36 @@ mod linear_algebra {
         let absolute_difference: f64 = matrix
             .column_major_iter()
             .zip(recovered.column_major_iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        assert!(absolute_difference < 0.0001);
+        // Tensor APIs should calculate exactly the same result
+        #[rustfmt::skip]
+        let tensor = Tensor::from([("r", 4), ("c", 4)], vec![
+            18.0, 22.0,  54.0,  42.0,
+            22.0, 70.0,  86.0,  62.0,
+            54.0, 86.0, 174.0, 134.0,
+            42.0, 62.0, 134.0, 106.0,
+        ]);
+        let lower_triangular = linear_algebra::cholesky_decomposition_tensor::<f64, _, _>(&tensor).unwrap();
+        let recovered = &lower_triangular * lower_triangular.transpose(["c", "r"]);
+        #[rustfmt::skip]
+        let expected = Tensor::from([("r", 4), ("c", 4)], vec![
+             4.24264, 0.0,     0.0,     0.0,
+             5.18545, 6.56591, 0.0,     0.0,
+            12.72792, 3.04604, 1.64974, 0.0,
+             9.89949, 1.62455, 1.84971, 1.39262,
+         ]);
+        let absolute_difference: f64 = lower_triangular
+            .iter()
+            .zip(expected.iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        println!("absolute_difference: {}", absolute_difference);
+        assert!(absolute_difference < 0.0001);
+        let absolute_difference: f64 = tensor
+            .iter()
+            .zip(recovered.iter())
             .map(|(x, y)| (x - y).abs())
             .sum();
         assert!(absolute_difference < 0.0001);
