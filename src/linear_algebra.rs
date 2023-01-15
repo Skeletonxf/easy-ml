@@ -1220,6 +1220,91 @@ where
 }
 
 /**
+ * The result of an `LDL^T` Decomposition of some matrix `A` such that `LDL^T = A`.
+ */
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub struct LDLTDecompositionTensor<T> {
+    pub l: Tensor<T, 2>,
+    pub d: Tensor<T, 2>,
+}
+
+impl<T: std::fmt::Display + Clone> std::fmt::Display for LDLTDecompositionTensor<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "L:\n{}", &self.l)?;
+        write!(f, "D:\n{}", &self.d)
+    }
+}
+
+impl<T> LDLTDecompositionTensor<T> {
+    /**
+     * Creates an `LDL^T` Decomposition struct from two matrices without checking that `LDL^T = A`
+     * or that L and D have the intended properties.
+     *
+     * This is provided for assistance with unit testing.
+     */
+    pub fn from_unchecked(l: Tensor<T, 2>, d: Tensor<T, 2>) -> LDLTDecompositionTensor<T> {
+        LDLTDecompositionTensor { l, d }
+    }
+}
+
+/**
+ * Computes the LDL^T decomposition of a matrix. This yields a matrix `L` and a matrix `D`
+ * such that for the provided matrix `A`, `L * D * L^T = A`. `L` will always be
+ * unit lower triangular, ie all entries above the diagonal will be 0, and all entries along
+ * the diagonal will br 1. `D` will always contain zeros except along the diagonal. This
+ * decomposition is closely related to the [cholesky decomposition](cholesky_decomposition)
+ * with the notable difference that it avoids taking square roots.
+ *
+ * Similarly to the cholseky decomposition, the input matrix must be
+ * [symmetric](https://en.wikipedia.org/wiki/Hermitian_matrix) and
+ * [positive definite](https://en.wikipedia.org/wiki/Definite_matrix).
+ *
+ * This function does not check that the provided matrix is symmetric. However, given a symmetric
+ * input, if the input is only positive **semi**definite `None` is returned. In the future
+ * additional checks that the input is valid could be added.
+ *
+ * The shapes of the `L` and `D` matrices will be the same as the input matrix.
+ *
+ * # Warning
+ *
+ * With some uses of this function the Rust compiler gets confused about what type `T`
+ * should be and you will get the error:
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ *
+ * In this case you need to manually specify the type of T by using the
+ * turbofish syntax like:
+ * `linear_algebra::ldlt_decomposition_tensor::<f32, _, _>(&tensor)`
+ */
+pub fn ldlt_decomposition_tensor<T, S, I>(tensor: I) -> Option<LDLTDecompositionTensor<T>>
+where
+    T: Numeric + Sqrt<Output = T>,
+    for<'a> &'a T: NumericRef<T>,
+    I: Into<TensorView<T, S, 2>>,
+    S: TensorRef<T, 2>,
+{
+    ldlt_decomposition_less_generic::<T, S>(&tensor.into())
+}
+
+fn ldlt_decomposition_less_generic<T, S>(
+    tensor: &TensorView<T, S, 2>
+) -> Option<LDLTDecompositionTensor<T>>
+where
+    T: Numeric + Sqrt<Output = T>,
+    for<'a> &'a T: NumericRef<T>,
+    S: TensorRef<T, 2>,
+{
+    // TODO: Port matrix implementation and delegate matrix API to the tensor one to avoid copies
+    let shape = tensor.shape();
+    let matrix = Matrix::from_flat_row_major((shape[0].1, shape[1].1), tensor.iter().collect());
+    let decomposition = ldlt_decomposition::<T>(&matrix)?;
+    Some(LDLTDecompositionTensor {
+        l: decomposition.l.into_tensor(shape[0].0, shape[1].0).ok()?,
+        d: decomposition.d.into_tensor(shape[0].0, shape[1].0).ok()?,
+    })
+}
+
+/**
  * The result of a QR Decomposition of some matrix A such that `QR = A`.
  */
 #[derive(Clone, Debug)]
@@ -1364,5 +1449,81 @@ where
         // This should always be Some because the input matrix has to be at least 1x1
         q: q.unwrap(),
         r,
+    })
+}
+
+/**
+ * The result of a QR Decomposition of some matrix A such that `QR = A`.
+ */
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub struct QRDecompositionTensor<T> {
+    pub q: Tensor<T, 2>,
+    pub r: Tensor<T, 2>,
+}
+
+impl<T: std::fmt::Display + Clone> std::fmt::Display for QRDecompositionTensor<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "Q:\n{}", &self.q)?;
+        write!(f, "R:\n{}", &self.r)
+    }
+}
+
+impl<T> QRDecompositionTensor<T> {
+    /**
+     * Creates a QR Decomposition struct from two matrices without checking that `QR = A`
+     * or that Q and R have the intended properties.
+     *
+     * This is provided for assistance with unit testing.
+     */
+    pub fn from_unchecked(q: Tensor<T, 2>, r: Tensor<T, 2>) -> QRDecompositionTensor<T> {
+        QRDecompositionTensor { q, r }
+    }
+}
+
+/**
+ * Computes a QR decomposition of a MxN matrix where M >= N.
+ *
+ * For an input matrix A, decomposes this matrix into a product of QR, where Q is an
+ * [orthogonal matrix](https://en.wikipedia.org/wiki/Orthogonal_matrix) and R is an
+ * upper triangular matrix (all entries below the diagonal are 0), and QR = A.
+ *
+ * If the input matrix has more columns than rows, returns None.
+ *
+ * # Warning
+ *
+ * With some uses of this function the Rust compiler gets confused about what type `T`
+ * should be and you will get the error:
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ *
+ * In this case you need to manually specify the type of T by using the
+ * turbofish syntax like:
+ * `linear_algebra::qr_decomposition_tensor::<f32, _, _>(&tensor)`
+ */
+// TODO: Document shapes of returned Q and R in relation to input
+pub fn qr_decomposition_tensor<T, S, I>(tensor: I) -> Option<QRDecompositionTensor<T>>
+where
+    T: Numeric + Real,
+    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    I: Into<TensorView<T, S, 2>>,
+    S: TensorRef<T, 2>,
+{
+    qr_decomposition_less_generic::<T, S>(&tensor.into())
+}
+
+fn qr_decomposition_less_generic<T, S>(
+    tensor: &TensorView<T, S, 2>
+) -> Option<QRDecompositionTensor<T>>
+where
+    T: Numeric + Real,
+    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    S: TensorRef<T, 2>,
+{
+    let shape = tensor.shape();
+    let matrix = Matrix::from_flat_row_major((shape[0].1, shape[1].1), tensor.iter().collect());
+    let decomposition = qr_decomposition::<T>(&matrix)?;
+    Some(QRDecompositionTensor {
+        q: decomposition.q.into_tensor(shape[0].0, shape[1].0).ok()?,
+        r: decomposition.r.into_tensor(shape[0].0, shape[1].0).ok()?,
     })
 }
