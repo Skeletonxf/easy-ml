@@ -305,6 +305,42 @@ mod linear_algebra {
             .sum();
         println!("absolute_difference D: {}", absolute_difference_d);
         assert!(absolute_difference_d < 0.0001);
+        // Tensor APIs should calculate exactly the same result
+        #[rustfmt::skip]
+        let tensor = Tensor::from([("r", 3), ("c", 3)], vec![
+              4.0,  12.0, -16.0,
+             12.0,  37.0, -43.0,
+            -16.0, -43.0,  98.0
+        ]);
+        let result = linear_algebra::ldlt_decomposition_tensor::<f64, _, _>(&tensor).unwrap();
+        let lower_triangular = result.l;
+        let diagonal = result.d;
+        #[rustfmt::skip]
+        let expected_lower_triangular = Tensor::from([("r", 3), ("c", 3)], vec![
+             1.0, 0.0, 0.0,
+             3.0, 1.0, 0.0,
+            -4.0, 5.0, 1.0
+        ]);
+        #[rustfmt::skip]
+        let expected_diagonal = Tensor::from([("r", 3), ("c", 3)], vec![
+            4.0, 0.0, 0.0,
+            0.0, 1.0, 0.0,
+            0.0, 0.0, 9.0
+        ]);
+        let absolute_difference_l: f64 = lower_triangular
+            .iter()
+            .zip(expected_lower_triangular.iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        println!("absolute_difference L: {}", absolute_difference_l);
+        assert!(absolute_difference_l < 0.0001);
+        let absolute_difference_d: f64 = diagonal
+            .iter()
+            .zip(expected_diagonal.iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        println!("absolute_difference D: {}", absolute_difference_d);
+        assert!(absolute_difference_d < 0.0001);
     }
 
     #[test]
@@ -332,7 +368,6 @@ mod linear_algebra {
         let result = linear_algebra::ldlt_decomposition::<f64>(&matrix).unwrap();
         let lower_triangular = result.l;
         let diagonal = result.d;
-
         let absolute_difference_l: f64 = lower_triangular
             .column_major_iter()
             .zip(constructed_lower_triangular.column_major_iter())
@@ -343,6 +378,43 @@ mod linear_algebra {
         let absolute_difference_d: f64 = diagonal
             .column_major_iter()
             .zip(constructed_diagonal.column_major_iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        println!("absolute_difference D: {}", absolute_difference_d);
+        assert!(absolute_difference_d < 0.0001);
+        // Tensor APIs should calculate exactly the same result
+        #[rustfmt::skip]
+        let constructed_lower_triangular = Tensor::from([("r", 4), ("c", 4)], vec![
+             1.0, 0.0, 0.0, 0.0,
+             2.0, 1.0, 0.0, 0.0,
+            -8.0, 6.0, 1.0, 0.0,
+            -6.0, 2.0, 4.0, 1.0,
+        ]);
+        #[rustfmt::skip]
+        let constructed_diagonal = Tensor::from([("r", 4), ("c", 4)], vec![
+            2.0, 0.0,  0.0, 0.0,
+            0.0, 3.0,  0.0, 0.0,
+            0.0, 0.0, -3.0, 0.0,
+            0.0, 0.0,  0.0, 1.0,
+        ]);
+        let matrix = {
+            let l = &constructed_lower_triangular;
+            let d = &constructed_diagonal;
+            l * d * l.transpose(["c", "r"])
+        };
+        let result = linear_algebra::ldlt_decomposition_tensor::<f64, _, _>(&matrix).unwrap();
+        let lower_triangular = result.l;
+        let diagonal = result.d;
+        let absolute_difference_l: f64 = lower_triangular
+            .iter()
+            .zip(constructed_lower_triangular.iter())
+            .map(|(x, y)| (x - y).abs())
+            .sum();
+        println!("absolute_difference L: {}", absolute_difference_l);
+        assert!(absolute_difference_l < 0.0001);
+        let absolute_difference_d: f64 = diagonal
+            .iter()
+            .zip(constructed_diagonal.iter())
             .map(|(x, y)| (x - y).abs())
             .sum();
         println!("absolute_difference D: {}", absolute_difference_d);
@@ -464,6 +536,38 @@ mod linear_algebra {
             .row_major_iter()
             .zip(output.r.row_major_iter())
             .all(|(expected, actual)| expected - actual < 0.001));
+        // Tensor APIs should calculate exactly the same result
+        #[rustfmt::skip]
+        let input = Tensor::from([("r", 3), ("c", 3)], vec![
+            12.0, -51.0,   4.0,
+             6.0, 167.0, -68.0,
+            -4.0,  24.0, -41.0,
+        ]);
+        let output = linear_algebra::qr_decomposition_tensor::<f64, _, _>(&input).unwrap();
+        println!("Q:\n{}", output.q);
+        println!("R:\n{}", output.r);
+        #[rustfmt::skip]
+        let q = Tensor::from([("r", 3), ("c", 3)], vec![
+            -0.857,  0.394,  0.331,
+            -0.429, -0.903, -0.034,
+             0.286, -0.171,  0.943,
+        ]);
+        #[rustfmt::skip]
+        let r = Tensor::from([("r", 3), ("c", 3)], vec![
+            -14.000,  -21.000,   14.000,
+             -0.000, -175.000,   70.000,
+             -0.000,    0.0000, -35.000,
+        ]);
+        assert_eq!(q.shape(), output.q.shape());
+        assert_eq!(r.shape(), output.r.shape());
+        assert!(q
+            .iter()
+            .zip(output.q.iter())
+            .all(|(expected, actual)| expected - actual < 0.001));
+        assert!(r
+            .iter()
+            .zip(output.r.iter())
+            .all(|(expected, actual)| expected - actual < 0.001));
     }
 
     #[test]
@@ -506,6 +610,39 @@ mod linear_algebra {
             assert!(a
                 .row_major_iter()
                 .zip(matrix.row_major_iter())
+                .map(|(x, y)| x - y)
+                .all(|x| x.abs() < 0.00001));
+            // Tensor APIs should calculate exactly the same result
+            let tensor = matrix.into_tensor("r", "c").unwrap();
+            let output = linear_algebra::qr_decomposition_tensor::<f64, _, _>(&tensor).unwrap();
+            let q = output.q;
+            let r = output.r;
+            // Q should be orthogonal
+            let identity = q.transpose(["c", "r"]) * &q;
+            println!("Q:\n{}\nR:\n{}\nA:\n{}", q, r, tensor);
+            println!("Q^TQ:\n{}", identity);
+            for ([row, column], x) in identity.iter().with_index() {
+                if row == column {
+                    // diagonal should be 1
+                    assert!((1.0 - x).abs() < 0.00001);
+                } else {
+                    // non diagonal should be 0
+                    assert!(x.abs() < 0.00001);
+                }
+            }
+            // All entries below diagonal on R should be zero
+            for ([row, column], x) in r.iter().with_index() {
+                if row > column {
+                    assert!(x.abs() < 0.00001);
+                }
+            }
+            // QR should return the input
+            let a = q * r;
+            println!("A:\n{}", tensor);
+            println!("Reconstructed A:\n{}", a);
+            assert!(a
+                .iter()
+                .zip(tensor.iter())
                 .map(|(x, y)| x - y)
                 .all(|x| x.abs() < 0.00001));
         }
