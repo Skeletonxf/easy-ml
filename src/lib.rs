@@ -1,7 +1,12 @@
 /*!
  * If this is your first time using Easy ML you should check out some of the examples
- * to get an overview of how to use matrices then study the
- * [Matrix](matrices::Matrix) type for what you need.
+ * to get an overview of how to use matrices or tensors then check out the
+ * [Matrix](matrices::Matrix) type or [Tensor](tensors::Tensor) type for what you need.
+ *
+ * `Matrix` is a straightforward 2 dimensional matrix with APIs built around the notion of
+ * rows and columns; `Tensor` is a named tensor with full API support for 0 to 6 dimensions.
+ * Naturally, a 2 dimensional tensor is also a matrix, but the APIs are more general so may
+ * be less familiar or ergonomic if all you need is 2 dimensional data.
  *
  * # Examples
  * - [Linear Regression](linear_regression)
@@ -12,6 +17,7 @@
  *
  * # API Modules
  * - [Matrices](matrices)
+ * - [Named tensors](tensors)
  * - [Linear Algebra](linear_algebra)
  * - [Distributions](distributions)
  * - [(Automatic) Differentiation](differentiation)

@@ -1,6 +1,6 @@
 # Easy ML
 
-A completely deterministic machine learning library providing matrices, linear algebra and automatic differentiation over generic number types aimed at being easy to use.
+A completely deterministic machine learning library providing matrices, named tensors, linear algebra and automatic differentiation over generic number types aimed at being easy to use.
 
 ## Usage
 
@@ -22,7 +22,7 @@ This library is not designed for deep learning. The implementations of everythin
 
 ## State of library
 
-This library is currently usable for simple linear algebra tasks like linear regression and for storing 2 dimensional data. This library also has support for forward and reverse automatic differentiation and can train simple feedforward neural networks. Currently there is no support for 3d or higher dimensional data, though matrices can be nested into each other. This library supports compilation to Web Assembly.
+Easy ML is currently usable for simple linear algebra tasks like linear regression. Easy ML also has support for storing and manipulating N dimensional data, which can form the basis of many classical machine learning tasks. There is also support for forward and reverse automatic differentiation which can be used to train simple feedforward neural networks. Easy ML supports compilation to Web Assembly.
 
 ## Level of abstraction
 
@@ -30,7 +30,7 @@ Where as other machine learning libraries often create objects/structs to repres
 
 ## Features
 
-- `serde` - Optional, enables serde Serialize and Deserialize implementations.
+- `serde` - Optional, enables [serde](https://crates.io/crates/serde) Serialize and Deserialize implementations for `Matrix` and `Tensor`.
 
 *****
 

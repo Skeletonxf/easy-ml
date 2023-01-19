@@ -4,7 +4,7 @@ Using custom numeric types examples.
 # Using a custom numeric type
 
 The following example shows how to make a type defined outside this crate implement Numeric
-so it can be used by this library for matrix operations.
+so it can be used by this library for matrix and tensor operations.
 
 In this case the type is `BigInt` from [`num_bigint`](https://docs.rs/num-bigint/0.3.1/num_bigint/)
 but as the type is also outside this crate we need to wrap it in another struct first so we can
