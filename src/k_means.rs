@@ -331,7 +331,7 @@ while absolute_changes == -1.0 || absolute_changes > CHANGE_THRESHOLD {
                 }
             }
             // save the cluster that is closest to each point
-            *points.get_reference_mut([point, CLUSTER]) = closest_cluster;
+            *points.get_ref_mut([point, CLUSTER]) = closest_cluster;
         }
     } // drop the TensorAccess wrapper on points
 
@@ -359,8 +359,8 @@ while absolute_changes == -1.0 || absolute_changes > CHANGE_THRESHOLD {
         absolute_changes += (clusters.get([cluster, X]) - mean_x).abs();
         absolute_changes += (clusters.get([cluster, Y]) - mean_y).abs();
         // set the new mean x and y for this cluster
-        *clusters.get_reference_mut([cluster, X]) = mean_x;
-        *clusters.get_reference_mut([cluster, Y]) = mean_y;
+        *clusters.get_ref_mut([cluster, X]) = mean_x;
+        *clusters.get_ref_mut([cluster, Y]) = mean_y;
     }
 }
 let clusters = clusters.index_by(["cluster", "xy"]);

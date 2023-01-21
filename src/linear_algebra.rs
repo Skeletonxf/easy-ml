@@ -459,7 +459,7 @@ where
         for (n, i) in permutation.iter().enumerate() {
             // Get the element at the index corresponding to n and the n'th
             // element in the permutation list.
-            let element = matrix.get_reference([n, *i]);
+            let element = matrix.get_ref([n, *i]);
             product = product * element;
         }
         // copying the sum to prevent a move that stops us from returning it
@@ -1073,14 +1073,14 @@ where
                 let mut sum = T::zero();
                 for k in 0..j {
                     sum = &sum
-                        + (lower_triangular_indexing.get_reference([i, k])
-                            * lower_triangular_indexing.get_reference([j, k]));
+                        + (lower_triangular_indexing.get_ref([i, k])
+                            * lower_triangular_indexing.get_ref([j, k]));
                 }
                 sum
             };
             // Calculate L_ij as we step through the lower diagonal
-            *lower_triangular_indexing.get_reference_mut([i, j]) = if i == j {
-                let entry_squared = tensor_indexing.get_reference([i, j]) - sum;
+            *lower_triangular_indexing.get_ref_mut([i, j]) = if i == j {
+                let entry_squared = tensor_indexing.get_ref([i, j]) - sum;
                 if entry_squared <= T::zero() {
                     // input wasn't positive definite! avoid sqrt of a negative number.
                     // We can take sqrt(0) but that will leave a 0 on the diagonal which
@@ -1089,8 +1089,8 @@ where
                 }
                 entry_squared.sqrt()
             } else /* j < i */ {
-                (tensor_indexing.get_reference([i, j]) - sum)
-                    * (T::one() / lower_triangular_indexing.get_reference([j, j]))
+                (tensor_indexing.get_ref([i, j]) - sum)
+                    * (T::one() / lower_triangular_indexing.get_ref([j, j]))
             };
         }
     }

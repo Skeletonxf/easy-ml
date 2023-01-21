@@ -211,8 +211,6 @@ fn test_send() {
     assert_send::<InvalidDimensionsError<3>>();
 }
 
-// TODO: Name clashes here with TensorRef trait, signatures aren't quite identical either
-// so might want to rename API here to avoid name clash
 impl<T, S, const D: usize> TensorAccess<T, S, D>
 where
     S: TensorRef<T, D>,
@@ -230,8 +228,11 @@ where
      * Using the dimension ordering of the TensorAccess, gets a reference to the value at the
      * index if the index is in range, panicking if the index is out of range.
      */
+    // NOTE: Ideally `get_reference` would be used here for consistency, but that opens the
+    // minefield of TensorRef::get_reference and TensorAccess::get_ref being different signatures
+    // but the same name.
     #[track_caller]
-    pub fn get_reference(&self, indexes: [usize; D]) -> &T {
+    pub fn get_ref(&self, indexes: [usize; D]) -> &T {
         match self.try_get_reference(indexes) {
             Some(reference) => reference,
             None => panic!(
@@ -257,6 +258,8 @@ where
      * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [TensorRef]: TensorRef
      */
+    // NOTE: This aliases with TensorRef::get_reference_unchecked but the TensorRef impl
+    // just calls this and the signatures match anyway, so there are no potential issues.
     pub unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         self.source
             .get_reference_unchecked(self.dimension_mapping.map_dimensions_to_source(&indexes))
@@ -364,8 +367,11 @@ where
      * Using the dimension ordering of the TensorAccess, gets a mutable reference to the value at
      * the index if the index is in range, panicking if the index is out of range.
      */
+     // NOTE: Ideally `get_reference_mut` would be used here for consistency, but that opens the
+     // minefield of TensorMut::get_reference_mut and TensorAccess::get_ref_mut being different
+     // signatures but the same name.
     #[track_caller]
-    pub fn get_reference_mut(&mut self, indexes: [usize; D]) -> &mut T {
+    pub fn get_ref_mut(&mut self, indexes: [usize; D]) -> &mut T {
         match self.try_get_reference_mut(indexes) {
             Some(reference) => reference,
             // can't provide a better error because the borrow checker insists that returning
@@ -390,6 +396,8 @@ where
      * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [TensorRef]: TensorRef
      */
+     // NOTE: This aliases with TensorRef::get_reference_unchecked_mut but the TensorMut impl
+     // just calls this and the signatures match anyway, so there are no potential issues.
     pub unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
         self.source
             .get_reference_unchecked_mut(self.dimension_mapping.map_dimensions_to_source(&indexes))

@@ -527,5 +527,5 @@ fn dimensionality_reduction_invalid_extra_index() {
     let tensor = Tensor::from([("a", 2), ("b", 2), ("d", 2)], (0..8).collect());
     let tensor = TensorView::from(TensorExpansion::from(&tensor, [(2, "c")]));
     assert_eq!(tensor.shape(), [("a", 2), ("b", 2), ("c", 1), ("d", 2)]);
-    tensor.index().get_reference([2, 2, 2, 2]);
+    tensor.index().get_ref([2, 2, 2, 2]);
 }
