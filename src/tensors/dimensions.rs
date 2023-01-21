@@ -113,8 +113,6 @@ impl<const D: usize> DimensionMappings<D> {
 
     /// Reorders some indexes according to the dimension mapping to return the
     /// indexes in the source order
-    // TODO: Review the order TensorAccess displays its data in. Previously it didn't match the
-    // memory layout when this was using the wrong mapping which was a source of confusion.
     #[inline]
     pub(crate) fn map_dimensions_to_source(&self, indexes: &[usize; D]) -> [usize; D] {
         // Our input is in requested order and we return indexes in the source order, so for each

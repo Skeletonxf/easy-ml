@@ -686,4 +686,78 @@ mod tensors {
             DataLayout::Linear(["a", "q", "b"])
         );
     }
+
+    #[test]
+    fn display_and_indexing_for_reordering() {
+        use easy_ml::tensors::views::TensorView;
+        let tensor = Tensor::from([("a", 2), ("b", 3), ("c", 4)], (0..(2*3*4)).collect());
+        assert_eq!(tensor.iter().collect::<Vec<_>>(), (0..(2*3*4)).collect::<Vec<_>>());
+        assert_eq!(
+            r#"D = 3
+("a", 2), ("b", 3), ("c", 4)
+[
+  0, 1, 2, 3
+  4, 5, 6, 7
+  8, 9, 10, 11
+
+  12, 13, 14, 15
+  16, 17, 18, 19
+  20, 21, 22, 23
+]"#,
+             tensor.to_string(),
+        );
+        let reordered = tensor.index_by(["b", "c", "a"]);
+        // reordering the 3D tensor should yield a tensor that still displays with the leftmost
+        // dimension as the largest group, the second dimension as rows and the final dimension as
+        // columns
+        assert_eq!(
+            reordered.iter().collect::<Vec<_>>(),
+            vec![
+                0, 12, 1, 13, 2, 14, 3, 15, 4, 16, 5, 17, 6, 18, 7, 19, 8, 20, 9, 21, 10, 22,
+                11, 23
+            ]
+        );
+        assert_eq!(
+            r#"D = 3
+("b", 3), ("c", 4), ("a", 2)
+[
+  0, 12
+  1, 13
+  2, 14
+  3, 15
+
+  4, 16
+  5, 17
+  6, 18
+  7, 19
+
+  8, 20
+  9, 21
+  10, 22
+  11, 23
+]
+Data Layout = Linear(["a", "b", "c"])"#,
+             reordered.to_string(),
+        );
+
+        // To transpose our way back, make biggest dimension a, since as from above that's a
+        // stride of 12. Make next dimension b. since that's a stride of 4, then make smallest
+        // dimension c since that's a stride of 1 (this aligns with data layout too).
+        let transposed = TensorView::from(reordered).transpose(["a", "b", "c"]);
+        assert_eq!(transposed.iter().collect::<Vec<_>>(), (0..(2*3*4)).collect::<Vec<_>>());
+        assert_eq!(
+            r#"D = 3
+("b", 2), ("c", 3), ("a", 4)
+[
+  0, 1, 2, 3
+  4, 5, 6, 7
+  8, 9, 10, 11
+
+  12, 13, 14, 15
+  16, 17, 18, 19
+  20, 21, 22, 23
+]"#,
+             transposed.to_string(),
+        );
+    }
 }
