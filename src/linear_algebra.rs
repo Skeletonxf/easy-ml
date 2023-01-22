@@ -1157,65 +1157,12 @@ where
     T: Numeric,
     for<'a> &'a T: NumericRef<T>,
 {
-    // The algorithm is outlined nicely in context as Algorithm 1.2 here:
-    // https://mcsweeney90.github.io/files/modified-cholesky-decomposition-and-applications.pdf
-    // and also as proper code here (though a less efficient solution):
-    // https://astroanddata.blogspot.com/2020/04/ldl-decomposition-with-python.html
-    if matrix.rows() != matrix.columns() {
-        return None;
-    }
-    let mut lower_triangular = Matrix::empty(T::zero(), matrix.size());
-    let mut diagonal = Matrix::empty(T::zero(), matrix.size());
-    let n = lower_triangular.rows();
-    for j in 0..n {
-        #[rustfmt::skip]
-        let sum = {
-            let mut sum = T::zero();
-            for k in 0..j {
-                sum = &sum + (
-                    lower_triangular.get_reference(j, k) * lower_triangular.get_reference(j, k) *
-                        diagonal.get_reference(k, k)
-                );
-            }
-            sum
-        };
-        diagonal.set(j, j, {
-            let entry = matrix.get_reference(j, j) - sum;
-            if entry == T::zero() {
-                // If input is positive definite then no diagonal will be 0. Otherwise we
-                // fail the decomposition to avoid division by zero in the j < i case later.
-                // Note: unlike cholseky, negatives here are fine since we can still perform
-                // the calculations sensibly.
-                return None;
-            }
-            entry
-        });
-        for i in j..n {
-            #[rustfmt::skip]
-            lower_triangular.set(
-                i,
-                j,
-                if i == j {
-                    T::one()
-                } else /* j < i */ {
-                    let sum = {
-                        let mut sum = T::zero();
-                        for k in 0..j {
-                            sum = &sum
-                                + (lower_triangular.get_reference(i, k)
-                                    * lower_triangular.get_reference(j, k)
-                                    * diagonal.get_reference(k, k));
-                        }
-                        sum
-                    };
-                    (matrix.get_reference(i, j) - sum) * (T::one() / diagonal.get_reference(j, j))
-                },
-            );
-        }
-    }
+    let decomposition = ldlt_decomposition_less_generic::<T, _>(&TensorView::from(
+        crate::interop::TensorRefMatrix::from(matrix).ok()?,
+    ))?;
     Some(LDLTDecomposition {
-        l: lower_triangular,
-        d: diagonal,
+        l: decomposition.l.into_matrix(),
+        d: decomposition.d.into_matrix(),
     })
 }
 
@@ -1278,7 +1225,7 @@ impl<T> LDLTDecompositionTensor<T> {
  */
 pub fn ldlt_decomposition_tensor<T, S, I>(tensor: I) -> Option<LDLTDecompositionTensor<T>>
 where
-    T: Numeric + Sqrt<Output = T>,
+    T: Numeric,
     for<'a> &'a T: NumericRef<T>,
     I: Into<TensorView<T, S, 2>>,
     S: TensorRef<T, 2>,
@@ -1290,7 +1237,7 @@ fn ldlt_decomposition_less_generic<T, S>(
     tensor: &TensorView<T, S, 2>
 ) -> Option<LDLTDecompositionTensor<T>>
 where
-    T: Numeric + Sqrt<Output = T>,
+    T: Numeric,
     for<'a> &'a T: NumericRef<T>,
     S: TensorRef<T, 2>,
 {
