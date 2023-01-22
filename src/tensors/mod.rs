@@ -10,6 +10,7 @@
  */
 use crate::linear_algebra;
 use crate::numeric::{Numeric, NumericRef};
+use crate::numeric::extra::{Real, RealRef};
 use crate::tensors::indexing::{
     ShapeIterator, TensorAccess, TensorIterator, TensorReferenceIterator,
     TensorReferenceMutIterator, TensorTranspose,
@@ -1419,6 +1420,49 @@ impl<T> Tensor<T, 2> {
      */
     pub fn into_matrix(self) -> crate::matrices::Matrix<T> {
         self.into()
+    }
+}
+
+/**
+ * Methods for tensors with numerical real valued types, such as f32 or f64.
+ *
+ * This excludes signed and unsigned integers as they do not support decimal
+ * precision and hence can't be used for operations like square roots.
+ *
+ * Third party fixed precision and infinite precision decimal types should
+ * be able to implement all of the methods for [Real](super::numeric::extra::Real)
+ * and then utilise these functions.
+ */
+impl<T: Numeric + Real> Tensor<T, 1>
+where
+    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+{
+    /**
+     * Computes the [L2 norm](https://en.wikipedia.org/wiki/Euclidean_vector#Length)
+     * of this vector, also referred to as the length or magnitude,
+     * and written as ||x||, or sometimes |x|.
+     *
+     * ||**a**|| = sqrt(a<sub>1</sub><sup>2</sup> + a<sub>2</sub><sup>2</sup> + a<sub>3</sub><sup>2</sup>...) = sqrt(**a**<sup>T</sup> * **a**)
+     *
+     * This is a shorthand for `(x.iter().map(|x| x * x).sum().sqrt()`, ie
+     * the square root of the dot product of a vector with itself.
+     *
+     * The euclidean length can be used to compute a
+     * [unit vector](https://en.wikipedia.org/wiki/Unit_vector), that is, a
+     * vector with length of 1. This should not be confused with a unit matrix,
+     * which is another name for an identity matrix.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * let a = Tensor::from([("data", 3)], vec![ 1.0, 2.0, 3.0 ]);
+     * let length = a.euclidean_length(); // (1^2 + 2^2 + 3^2)^0.5
+     * let unit = a.map(|x| x / length);
+     * assert_eq!(unit.euclidean_length(), 1.0);
+     * ```
+     */
+    // TODO: Scalar ops for tensors
+    pub fn euclidean_length(&self) -> T {
+        self.direct_iter_reference().map(|x| x * x).sum::<T>().sqrt()
     }
 }
 

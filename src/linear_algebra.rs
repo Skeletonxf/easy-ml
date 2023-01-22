@@ -1381,6 +1381,59 @@ where
     identity - ((&v * v.transpose()) * two)
 }
 
+fn householder_matrix_tensor<T: Numeric + Real>(
+    vector: Vec<T>,
+    names: [Dimension; 2]
+) -> Tensor<T, 2>
+where
+    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+{
+    // The computation steps are outlined nicely at https://en.wikipedia.org/wiki/QR_decomposition#Using_Householder_reflections
+    // Supporting reference implementations are on Rosettacode https://rosettacode.org/wiki/QR_decomposition
+    // we hardcode to taking the first column vector of the input matrix
+    let x = Tensor::from([("r", vector.len())], vector);
+    let shape = x.shape();
+    let rows = shape[0].1;
+    let length = x.euclidean_length();
+    let a = {
+        // we hardcode to wanting to zero all elements below the first
+        let sign = x.first();
+        if sign > T::zero() {
+            length
+        } else {
+            -length
+        }
+    };
+    let u = {
+        // u = x - ae, where e is [1 0 0 0 ... 0]^T, and x is the column vector so
+        // u is equal to x except for the first element.
+        // Also, we invert the sign of a to avoid loss of significance, so u[0] becomes x[0] + a
+        let mut u = x;
+        let mut u_indexing = u.index_mut();
+        *u_indexing.get_ref_mut([0]) = u_indexing.get_ref([0]) + a;
+        u
+    };
+    // v = u / ||u||
+    let v = {
+        let length = u.euclidean_length();
+        u.map(|element| element / &length)
+    };
+    let identity = {
+        let mut i = Tensor::empty([(names[0], rows), (names[1], rows)], T::zero());
+        for ([r, c], value) in i.iter_reference_mut().with_index() {
+            if r == c {
+                *value = T::one();
+            }
+        }
+        i
+    };
+    let two = T::one() + T::one();
+    let v_column = Tensor::from([("r", rows), ("c", 1)], v.iter().collect());
+    let v_row = Tensor::from([("r", 1), ("c", rows)], v.iter().collect());
+    // I - 2 v v^T
+    identity - (v_column * v_row).map(|e| e * &two)
+}
+
 /**
  * Computes a QR decomposition of a MxN matrix where M >= N.
  *
@@ -1492,6 +1545,10 @@ impl<T> QRDecompositionTensor<T> {
  * [orthogonal matrix](https://en.wikipedia.org/wiki/Orthogonal_matrix) and R is an
  * upper triangular matrix (all entries below the diagonal are 0), and QR = A.
  *
+ * The first dimension in the Tensor's shape will be taken as the rows of the matrix, and the
+ * second dimension as the columns. If you instead have columns and then rows for the Tensor's
+ * shape, you should reorder the Tensor before calling this function to get the appropriate matrix.
+ *
  * If the input matrix has more columns than rows, returns None.
  *
  * # Warning
@@ -1524,10 +1581,59 @@ where
     S: TensorRef<T, 2>,
 {
     let shape = tensor.shape();
-    let matrix = Matrix::from_flat_row_major((shape[0].1, shape[1].1), tensor.iter().collect());
-    let decomposition = qr_decomposition::<T>(&matrix)?;
+    let names = crate::tensors::dimensions::names_of(&shape);
+    let rows = shape[0].1;
+    let columns = shape[1].1;
+    if columns > rows {
+        return None;
+    }
+    // The computation steps are outlined nicely at https://en.wikipedia.org/wiki/QR_decomposition#Using_Householder_reflections
+    // Supporting reference implementations are at Rosettacode https://rosettacode.org/wiki/QR_decomposition
+    let iterations = std::cmp::min(rows - 1, columns);
+    let mut q = None;
+    let mut r = tensor.map(|x| x);
+    for c in 0..iterations {
+        // Conceptually, on each iteration we take a minor of r to retain the bottom right of
+        // the matrix, with one fewer row/column on each iteration since that will have already
+        // been zeroed. However, we then immediately discard all but the first column of that
+        // minor, so we skip the minor step and compute directly the first column of the minor
+        // we would have taken.
+        let submatrix_first_column = r.select([(shape[1].0, c)]).iter().skip(c).collect::<Vec<_>>();
+        // compute the (M-column)x(M-column) householder matrix
+        let h = householder_matrix_tensor::<T>(submatrix_first_column, names);
+        // pad the h into the bottom right of an identity matrix so it is MxM
+        // like so:
+        // 1 0 0
+        // 0 H H
+        // 0 H H
+        let h = {
+            let h_indexing = h.index();
+            let mut identity = Tensor::empty([(shape[0].0, rows), (shape[1].0, rows)], T::zero());
+            // the column we're on is the same as how many steps we inset the
+            // householder matrix into the identity
+            let inset = c;
+            for ([i, j], x) in identity.iter_reference_mut().with_index() {
+                if i >= inset && j >= inset {
+                    *x = h_indexing.get([i - inset, j - inset]);
+                } else if i == j {
+                    // TODO: Add a diagonal constructor for Tensors so this can start as an
+                    // identity matrix
+                    *x = T::one();
+                }
+            }
+            identity
+        };
+        // R = H_n * ... H_3 * H_2 * H_1 * A
+        r = &h * r;
+        // Q = H_1 * H_2 * H_3 .. H_n
+        match q {
+            None => q = Some(h),
+            Some(h_previous) => q = Some(h_previous * h),
+        }
+    }
     Some(QRDecompositionTensor {
-        q: decomposition.q.into_tensor(shape[0].0, shape[1].0).ok()?,
-        r: decomposition.r.into_tensor(shape[0].0, shape[1].0).ok()?,
+        // This should always be Some because the input matrix has to be at least 1x1
+        q: q.unwrap(),
+        r,
     })
 }
