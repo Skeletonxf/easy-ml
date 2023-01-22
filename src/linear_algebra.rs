@@ -1294,13 +1294,70 @@ where
     for<'a> &'a T: NumericRef<T>,
     S: TensorRef<T, 2>,
 {
-    // TODO: Port matrix implementation and delegate matrix API to the tensor one to avoid copies
+    // The algorithm is outlined nicely in context as Algorithm 1.2 here:
+    // https://mcsweeney90.github.io/files/modified-cholesky-decomposition-and-applications.pdf
+    // and also as proper code here (though a less efficient solution):
+    // https://astroanddata.blogspot.com/2020/04/ldl-decomposition-with-python.html
     let shape = tensor.shape();
-    let matrix = Matrix::from_flat_row_major((shape[0].1, shape[1].1), tensor.iter().collect());
-    let decomposition = ldlt_decomposition::<T>(&matrix)?;
+    if !crate::tensors::dimensions::is_square(&shape) {
+        return None;
+    }
+    let mut lower_triangular = Tensor::empty(shape, T::zero());
+    let mut diagonal = Tensor::empty(shape, T::zero());
+    let mut lower_triangular_indexing = lower_triangular.index_mut();
+    let mut diagonal_indexing = diagonal.index_mut();
+    let tensor_indexing = tensor.index();
+    let n = shape[0].1;
+
+    for j in 0..n {
+        #[rustfmt::skip]
+        let sum = {
+            let mut sum = T::zero();
+            for k in 0..j {
+                sum = &sum + (
+                    lower_triangular_indexing.get_ref([j, k]) *
+                    lower_triangular_indexing.get_ref([j, k]) *
+                    diagonal_indexing.get_ref([k, k])
+                );
+            }
+            sum
+        };
+        *diagonal_indexing.get_ref_mut([j, j]) = {
+            let entry = tensor_indexing.get_ref([j, j]) - sum;
+            if entry == T::zero() {
+                // If input is positive definite then no diagonal will be 0. Otherwise we
+                // fail the decomposition to avoid division by zero in the j < i case later.
+                // Note: unlike cholseky, negatives here are fine since we can still perform
+                // the calculations sensibly.
+                return None;
+            }
+            entry
+        };
+        for i in j..n {
+            #[rustfmt::skip]
+            let x = if i == j {
+                T::one()
+            } else /* j < i */ {
+                let sum = {
+                    let mut sum = T::zero();
+                    for k in 0..j {
+                        sum = &sum + (
+                            lower_triangular_indexing.get_ref([i, k]) *
+                            lower_triangular_indexing.get_ref([j, k]) *
+                            diagonal_indexing.get_ref([k, k])
+                        );
+                    }
+                    sum
+                };
+                (tensor_indexing.get_ref([i, j]) - sum) *
+                    (T::one() / diagonal_indexing.get_ref([j, j]))
+            };
+            *lower_triangular_indexing.get_ref_mut([i, j]) = x;
+        }
+    }
     Some(LDLTDecompositionTensor {
-        l: decomposition.l.into_tensor(shape[0].0, shape[1].0).ok()?,
-        d: decomposition.d.into_tensor(shape[0].0, shape[1].0).ok()?,
+        l: lower_triangular,
+        d: diagonal,
     })
 }
 
