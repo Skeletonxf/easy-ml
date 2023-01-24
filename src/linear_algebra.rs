@@ -1428,8 +1428,8 @@ where
         i
     };
     let two = T::one() + T::one();
-    let v_column = Tensor::from([("r", rows), ("c", 1)], v.iter().collect());
-    let v_row = Tensor::from([("r", 1), ("c", rows)], v.iter().collect());
+    let v_column = Tensor::from([(names[0], rows), (names[1], 1)], v.iter().collect());
+    let v_row = Tensor::from([(names[0], 1), (names[1], rows)], v.iter().collect());
     // I - 2 v v^T
     identity - (v_column * v_row).map(|e| e * &two)
 }
