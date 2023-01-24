@@ -1418,15 +1418,7 @@ where
         let length = u.euclidean_length();
         u.map(|element| element / &length)
     };
-    let identity = {
-        let mut i = Tensor::empty([(names[0], rows), (names[1], rows)], T::zero());
-        for ([r, c], value) in i.iter_reference_mut().with_index() {
-            if r == c {
-                *value = T::one();
-            }
-        }
-        i
-    };
+    let identity = Tensor::diagonal([(names[0], rows), (names[1], rows)], T::one());
     let two = T::one() + T::one();
     let v_column = Tensor::from([(names[0], rows), (names[1], 1)], v.iter().collect());
     let v_row = Tensor::from([(names[0], 1), (names[1], rows)], v.iter().collect());
@@ -1608,17 +1600,16 @@ where
         // 0 H H
         let h = {
             let h_indexing = h.index();
-            let mut identity = Tensor::empty([(shape[0].0, rows), (shape[1].0, rows)], T::zero());
+            let mut identity = Tensor::diagonal(
+                [(shape[0].0, rows), (shape[1].0, rows)],
+                T::one()
+            );
             // the column we're on is the same as how many steps we inset the
             // householder matrix into the identity
             let inset = c;
             for ([i, j], x) in identity.iter_reference_mut().with_index() {
                 if i >= inset && j >= inset {
                     *x = h_indexing.get([i - inset, j - inset]);
-                } else if i == j {
-                    // TODO: Add a diagonal constructor for Tensors so this can start as an
-                    // identity matrix
-                    *x = T::one();
                 }
             }
             identity

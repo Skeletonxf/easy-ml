@@ -1409,6 +1409,50 @@ where
     }
 }
 
+// FIXME: want this to be callable in the main numeric impl block
+impl<T> Tensor<T, 2>
+where
+    T: Numeric,
+{
+    /**
+     * Creates a diagonal matrix of the provided size with the diagonal elements
+     * set to the provided value and all other elements in the tensor set to 0.
+     * A diagonal matrix is always square.
+     *
+     * The size is still taken as a shape to facilitate creating a diagonal matrix
+     * from the dimensionality of an existing one. If the provided value is 1 then
+     * this will create an identity matrix.
+     *
+     * A 3 x 3 identity matrix:
+     * ```ignore
+     * [
+     *   1, 0, 0
+     *   0, 1, 0
+     *   0, 0, 1
+     * ]
+     * ```
+     *
+     * # Panics
+     *
+     * - If the shape is not square.
+     * - If a dimension name is not unique
+     * - If any dimension has 0 elements
+     */
+    #[track_caller]
+    pub fn diagonal(shape: [(Dimension, usize); 2], value: T) -> Tensor<T, 2> {
+        if !crate::tensors::dimensions::is_square(&shape) {
+            panic!("Shape must be square: {:?}", shape);
+        }
+        let mut tensor = Tensor::empty(shape, T::zero());
+        for ([r, c], x) in tensor.iter_reference_mut().with_index() {
+            if r == c {
+                *x = value.clone();
+            }
+        }
+        tensor
+    }
+}
+
 impl<T> Tensor<T, 2> {
     /**
      * Converts this 2 dimensional Tensor into a Matrix.

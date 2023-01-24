@@ -760,4 +760,18 @@ Data Layout = Linear(["a", "b", "c"])"#,
              transposed.to_string(),
         );
     }
+
+    #[test]
+    fn test_identity_constructor() {
+        let identity = Tensor::diagonal([("a", 3), ("b", 3)], 1.0);
+        #[rustfmt::skip]
+        assert_eq!(
+            identity,
+            Tensor::from([("a", 3), ("b", 3)], vec![
+                1.0, 0.0, 0.0,
+                0.0, 1.0, 0.0,
+                0.0, 0.0, 1.0
+            ])
+        );
+    }
 }
