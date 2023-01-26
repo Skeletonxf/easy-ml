@@ -1337,50 +1337,6 @@ impl<T> QRDecomposition<T> {
     }
 }
 
-/**
- * Computes the householder matrix along the column vector input.
- *
- * For an Mx1 input, the householder matrix output will be MxM
- */
-fn householder_matrix<T: Numeric + Real>(matrix: Matrix<T>) -> Matrix<T>
-where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
-{
-    // The computation steps are outlined nicely at https://en.wikipedia.org/wiki/QR_decomposition#Using_Householder_reflections
-    // Supporting reference implementations are on Rosettacode https://rosettacode.org/wiki/QR_decomposition
-    // we hardcode to taking the first column vector of the input matrix
-    assert_eq!(matrix.columns(), 1, "Input must be a column vector");
-    let x = matrix;
-    let rows = x.rows();
-    let length = x.euclidean_length();
-    let a = {
-        // we hardcode to wanting to zero all elements below the first
-        let sign = x.get(0, 0);
-        if sign > T::zero() {
-            length
-        } else {
-            -length
-        }
-    };
-    let u = {
-        // u = x - ae, where e is [1 0 0 0 ... 0]^T, and x is the column vector so
-        // u is equal to x except for the first element.
-        // Also, we invert the sign of a to avoid loss of significance, so u[0] becomes x[0] + a
-        let mut u = x;
-        u.set(0, 0, u.get(0, 0) + a);
-        u
-    };
-    // v = u / ||u||
-    let v = {
-        let length = u.euclidean_length();
-        u / length
-    };
-    let identity = Matrix::diagonal(T::one(), (rows, rows));
-    let two = T::one() + T::one();
-    // I - 2 v v^T
-    identity - ((&v * v.transpose()) * two)
-}
-
 fn householder_matrix_tensor<T: Numeric + Real>(
     vector: Vec<T>,
     names: [Dimension; 2]
@@ -1449,55 +1405,12 @@ pub fn qr_decomposition<T: Numeric + Real>(matrix: &Matrix<T>) -> Option<QRDecom
 where
     for<'a> &'a T: NumericRef<T> + RealRef<T>,
 {
-    if matrix.columns() > matrix.rows() {
-        return None;
-    }
-    // The computation steps are outlined nicely at https://en.wikipedia.org/wiki/QR_decomposition#Using_Householder_reflections
-    // Supporting reference implementations are at Rosettacode https://rosettacode.org/wiki/QR_decomposition
-    let iterations = std::cmp::min(matrix.rows() - 1, matrix.columns());
-    let mut q = None;
-    let mut r = matrix.clone();
-    for column in 0..iterations {
-        // Conceptually, on each iteration we take a minor of r to retain the bottom right of
-        // the matrix, with one fewer row/column on each iteration since that will have already
-        // been zeroed. However, we then immediately discard all but the first column of that
-        // minor, so we skip the minor step and compute directly the first column of the minor
-        // we would have taken.
-        // let submatrix = r.retain(
-        //     Slice2D::new()
-        //         .rows(Slice::Range(column..matrix.rows()))
-        //         .columns(Slice::Range(column..matrix.columns()))
-        // );
-        // let submatrix_first_column = Matrix::column(submatrix.column_iter(0).collect());
-        let submatrix_first_column = Matrix::column(r.column_iter(column).skip(column).collect());
-        // compute the (M-column)x(M-column) householder matrix
-        let h = householder_matrix::<T>(submatrix_first_column);
-        // pad the h into the bottom right of an identity matrix so it is MxM
-        // like so:
-        // 1 0 0
-        // 0 H H
-        // 0 H H
-        let h = {
-            let mut identity = Matrix::diagonal(T::one(), (matrix.rows(), matrix.rows()));
-            for i in 0..h.rows() {
-                for j in 0..h.columns() {
-                    identity.set(column + i, column + j, h.get(i, j));
-                }
-            }
-            identity
-        };
-        // R = H_n * ... H_3 * H_2 * H_1 * A
-        r = &h * r;
-        // Q = H_1 * H_2 * H_3 .. H_n
-        match q {
-            None => q = Some(h),
-            Some(h_previous) => q = Some(h_previous * h),
-        }
-    }
+    let decomposition = qr_decomposition_less_generic::<T, _>(&TensorView::from(
+        crate::interop::TensorRefMatrix::from(matrix).ok()?,
+    ))?;
     Some(QRDecomposition {
-        // This should always be Some because the input matrix has to be at least 1x1
-        q: q.unwrap(),
-        r,
+        q: decomposition.q.into_matrix(),
+        r: decomposition.r.into_matrix(),
     })
 }
 
@@ -1543,6 +1456,10 @@ impl<T> QRDecompositionTensor<T> {
  *
  * If the input matrix has more columns than rows, returns None.
  *
+ * The shape of R will be the same as the input, and the shape of Q will be of lengths MxM
+ * in relation to the MxN input matrix with the same dimension names as the input. Hence, QR
+ * yields the same shape as the input.
+ *
  * # Warning
  *
  * With some uses of this function the Rust compiler gets confused about what type `T`
@@ -1553,7 +1470,6 @@ impl<T> QRDecompositionTensor<T> {
  * turbofish syntax like:
  * `linear_algebra::qr_decomposition_tensor::<f32, _, _>(&tensor)`
  */
-// TODO: Document shapes of returned Q and R in relation to input
 pub fn qr_decomposition_tensor<T, S, I>(tensor: I) -> Option<QRDecompositionTensor<T>>
 where
     T: Numeric + Real,
