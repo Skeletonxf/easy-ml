@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 1.9
+
+Release of named Tensor APIs, and extended linear algebra support. Fixed serde
+deserialisation issue with Matrices not validating their inputs. Fixed oversight
+in Matrix Display impls where the default precision was truncating strings - now
+precision is not defaulted to any value so no unexpected truncation will happen
+automatically.
+
 ## Versions 1.8.2 and 1.7.2
 
 Backported a series of bugfixes for the `MatrixRange` and `IndexRange` APIs.
@@ -11,7 +19,7 @@ been corrrected to match their documented behaviour. The `Range<usize>`
 conversion method will now correctly saturate to 0 lengths if the `end` of the
 range is equal to or less than the `start`.
 
-Version 1.9 when eventually released will also include these bugfixes.
+Version 1.9 also includes all backported bugfixes since version 1.8.0
 
 ## Versions 1.8.1, 1.7.1 and 1.6.2
 

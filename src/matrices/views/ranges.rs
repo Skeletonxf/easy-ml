@@ -60,7 +60,7 @@ where
      * let range = MatrixRange::from(&matrix, 0..4, 1..4);
      * ```
      *
-     * NOTE: In previous versions (1.8.1), this erroneously did not clip the IndexRange input to
+     * NOTE: In previous versions (<=1.8.1), this erroneously did not clip the IndexRange input to
      * not exceed the rows and columns of the source, which led to the possibility to create
      * MatrixRanges that reported a greater number of rows and columns in their shape than their
      * actual data. This function will now correctly clip any ranges that exceed their sources.
@@ -162,7 +162,7 @@ impl IndexRange {
 /**
  * Converts from a range of start..end to an IndexRange of start and length
  *
- * NOTE: In previous versions (1.8.1) this did not saturate when attempting to subtract the
+ * NOTE: In previous versions (<=1.8.1) this did not saturate when attempting to subtract the
  * start of the range from the end to calculate the length. It will now correctly produce an
  * IndexRange with a length of 0 if the end is before or equal to the start.
  */
@@ -185,7 +185,7 @@ impl From<IndexRange> for Range<usize> {
 /**
  * Converts from a tuple of start and length to an IndexRange
  *
- * NOTE: In previous versions (1.8.1), this was erroneously implemented as conversion from a
+ * NOTE: In previous versions (<=1.8.1), this was erroneously implemented as conversion from a
  * tuple of start and end, not start and length as documented.
  */
 impl From<(usize, usize)> for IndexRange {
@@ -198,7 +198,7 @@ impl From<(usize, usize)> for IndexRange {
 /**
  * Converts from an array of start and length to an IndexRange
  *
- * NOTE: In previous versions (1.8.1), this was erroneously implemented as conversion from an
+ * NOTE: In previous versions (<=1.8.1), this was erroneously implemented as conversion from an
  * array of start and end, not start and length as documented.
  */
 impl From<[usize; 2]> for IndexRange {

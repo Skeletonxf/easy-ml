@@ -854,7 +854,7 @@ impl<T: Clone> Matrix<T> {
      * assert_eq!(x, y);
      * ```
      *
-     * Note: None square matrices were erroneously not supported in previous versions and
+     * Note: None square matrices were erroneously not supported in previous versions (<=1.8.0) and
      * could be incorrectly mutated. This method will now correctly transpose non square matrices
      * by not attempting to transpose them in place.
      */
