@@ -1,9 +1,6 @@
 /*!
  * Generic N dimensional [named tensors](http://nlp.seas.harvard.edu/NamedTensor).
  *
- * **These APIs are still in development, use at your own risk! Minor breaking changes still
- * expected.**
- *
  * Tensors are generic over some type `T` and some usize `D`. If `T` is [Numeric](super::numeric)
  * then the tensor can be used in a mathematical way. `D` is the number of dimensions in the tensor
  * and a compile time constant. Each tensor also carries `D` dimension name and length pairs.

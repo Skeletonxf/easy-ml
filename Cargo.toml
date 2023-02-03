@@ -1,6 +1,6 @@
 [package]
 name = "easy-ml"
-version = "1.9.0-dev"
+version = "1.9.0"
 authors = ["Skeletonxf <skeletonxf@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/Skeletonxf/easy-ml"
