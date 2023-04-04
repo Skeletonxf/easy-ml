@@ -5,6 +5,23 @@ mod tensors {
     use easy_ml::tensors::Tensor;
 
     #[test]
+    #[rustfmt::skip]
+    fn from_fn_test() {
+        let tensor = Tensor::from_fn([("a", 3), ("b", 2)], |[i, j]| format!("{:?}x{:?}", i, j));
+        assert_eq!(
+            tensor,
+            Tensor::from(
+                [("a", 3), ("b", 2)],
+                vec![
+                    "0x0", "0x1",
+                    "1x0", "1x1",
+                    "2x0", "2x1"
+                ]
+            ).map(|str| str.to_string())
+        )
+    }
+
+    #[test]
     fn indexing_test() {
         let tensor = Tensor::from([("x", 2), ("y", 2)], vec![1, 2, 3, 4]);
         let xy = tensor.index_by(["x", "y"]);

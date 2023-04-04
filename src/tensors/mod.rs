@@ -275,6 +275,39 @@ impl<T, const D: usize> Tensor<T, D> {
     }
 
     /**
+     * Creates a Tensor with a particular shape initialised from a function.
+     *
+     * The product of the dimension lengths corresponds to the number of elements the Tensor
+     * will store. Elements are stored in what would be row major order for a Matrix.
+     * Each step in memory through the N dimensions corresponds to incrementing the rightmost
+     * index, hence a shape of `[("row", 5), ("column", 5)]` would mean the first 6 elements
+     * passed in the Vec would be for (0,0), (0,1), (0,2), (0,3), (0,4), (1,0) and so on to (4,4)
+     * for the 25th and final element. These same indexes will be passed to the producer function
+     * to initialised the values for the Tensor.
+     *
+     * # Panics
+     *
+     * - If a dimension name is not unique
+     * - If any dimension has 0 elements
+     *
+     * Note that an empty list for dimensions is valid, and constructs a 0 dimensional tensor with
+     * a single element (since the product of an empty list is 1).
+     */
+    #[track_caller]
+    pub fn from_fn<F>(shape: [(Dimension, usize); D], mut producer: F) -> Self
+    where
+        F: FnMut([usize; D]) -> T,
+    {
+        let length = dimensions::elements(&shape);
+        let mut data = Vec::with_capacity(length);
+        let iterator = ShapeIterator::from(shape.clone());
+        for index in iterator {
+            data.push(producer(index));
+        }
+        Tensor::from(shape, data)
+    }
+
+    /**
      * The shape of this tensor. Since Tensors are named Tensors, their shape is not just a
      * list of lengths along each dimension, but instead a list of pairs of names and lengths.
      *
