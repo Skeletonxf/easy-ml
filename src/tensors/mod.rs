@@ -285,6 +285,20 @@ impl<T, const D: usize> Tensor<T, D> {
      * for the 25th and final element. These same indexes will be passed to the producer function
      * to initialised the values for the Tensor.
      *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * let tensor = Tensor::from_fn([("rows", 4), ("columns", 4)], |[r, c]| r * c);
+     * assert_eq!(
+     *     tensor,
+     *     Tensor::from([("rows", 4), ("columns", 4)], vec![
+     *         0, 0, 0, 0,
+     *         0, 1, 2, 3,
+     *         0, 2, 4, 6,
+     *         0, 3, 6, 9,
+     *     ])
+     * );
+     * ```
+     *
      * # Panics
      *
      * - If a dimension name is not unique

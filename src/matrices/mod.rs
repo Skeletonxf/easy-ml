@@ -138,7 +138,8 @@ impl<T> Matrix<T> {
      * use easy_ml::matrices::Matrix;
      * Matrix::from(vec![
      *     vec![ 1, 2, 4 ],
-     *     vec![ 8, 9, 3 ]]);
+     *     vec![ 8, 9, 3 ]
+     * ]);
      * ```
      *
      * # Panics
@@ -190,7 +191,8 @@ impl<T> Matrix<T> {
      * use easy_ml::matrices::Matrix;
      * Matrix::from_flat_row_major((2, 3), vec![
      *     1, 2, 4,
-     *     8, 9, 3]);
+     *     8, 9, 3
+     * ]);
      * ```
      *
      * This method is more efficient than [`Matrix::from`](Matrix::from())
@@ -214,6 +216,42 @@ impl<T> Matrix<T> {
             rows: size.0,
             columns: size.1,
         }
+    }
+
+    /**
+     * Creates a matrix with the specified size initalised from a function.
+     *
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * let matrix = Matrix::from_fn((4, 4), |(r, c)| r * c);
+     * assert_eq!(
+     *     matrix,
+     *     Matrix::from(vec![
+     *         vec![ 0, 0, 0, 0 ],
+     *         vec![ 0, 1, 2, 3 ],
+     *         vec![ 0, 2, 4, 6 ],
+     *         vec![ 0, 3, 6, 9 ],
+     *     ])
+     * );
+     * ```
+     *
+     * # Panics
+     *
+     * Panics if the size has 0 rows or columns.
+     */
+    #[track_caller]
+    pub fn from_fn<F>(size: (Row, Column), mut producer: F) -> Matrix<T>
+    where
+        F: FnMut((Row, Column)) -> T,
+    {
+        use crate::tensors::indexing::ShapeIterator;
+        let length = size.0 * size.1;
+        let mut data = Vec::with_capacity(length);
+        let iterator = ShapeIterator::from([("row", size.0), ("column", size.1)]);
+        for [r, c] in iterator {
+            data.push(producer((r, c)));
+        }
+        Matrix::from_flat_row_major(size, data)
     }
 
     #[deprecated(
