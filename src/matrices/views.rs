@@ -387,6 +387,25 @@ where
     }
 
     /**
+     * Computes and returns the transpose of this matrix
+     *
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * use easy_ml::matrices::views::MatrixView;
+     * let x = MatrixView::from(Matrix::from(vec![
+     *    vec![ 1, 2 ],
+     *    vec![ 3, 4 ]]));
+     * let y = Matrix::from(vec![
+     *    vec![ 1, 3 ],
+     *    vec![ 2, 4 ]]);
+     * assert_eq!(x.transpose(), y);
+     * ```
+     */
+    pub fn transpose(&self) -> Matrix<T> {
+        Matrix::from_fn((self.columns(), self.rows()), |(column, row)| self.get(row, column))
+    }
+
+    /**
      * Returns an iterator over a column vector in this matrix view. Columns are 0 indexed.
      *
      * If you have a matrix such as:

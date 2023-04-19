@@ -868,13 +868,7 @@ impl<T: Clone> Matrix<T> {
      * ```
      */
     pub fn transpose(&self) -> Matrix<T> {
-        let mut result = Matrix::empty(self.get(0, 0), (self.columns(), self.rows()));
-        for i in 0..self.columns() {
-            for j in 0..self.rows() {
-                result.set(i, j, self.get(j, i).clone());
-            }
-        }
-        result
+        Matrix::from_fn((self.columns(), self.rows()), |(column, row)| self.get(row, column))
     }
 
     /**
