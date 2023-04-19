@@ -156,9 +156,9 @@ impl IndexRange {
 
     // Clips the range or mask to not exceed an index. Note, this may yield 0 length ranges
     // that have non zero starting positions, however map and mask will still calculate correctly.
-    pub(crate) fn clip(&mut self, to_length: usize) {
+    pub(crate) fn clip(&mut self, max_index: usize) {
         let end = self.start + self.length;
-        let end = std::cmp::min(end, to_length);
+        let end = std::cmp::min(end, max_index);
         let length = end.saturating_sub(self.start);
         self.length = length;
     }
