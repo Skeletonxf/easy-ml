@@ -42,13 +42,13 @@ use crate::numeric::{Numeric, NumericRef};
  * Matrices must always be at least 1x1. You cannot construct a matrix with no rows or
  * no columns, and any function that resizes matrices will error if you try to use it
  * in a way that would construct a 0x1, 1x0, or 0x0 matrix. The maximum size of a matrix
- * is dependent on the platform's `std::usize::MAX` value. Matrices with dimensions NxM
- * such that N * M < `std::usize::MAX` should not cause any errors in this library, but
+ * is dependent on the platform's `std::isize::MAX` value. Matrices with dimensions NxM
+ * such that N * M < `std::isize::MAX` should not cause any errors in this library, but
  * attempting to expand their size further may cause panics and or errors. At the time of
  * writing it is no longer possible to construct or use matrices where the product of their
- * number of rows and columns exceed `std::usize::MAX`, but some constructor methods may be used
+ * number of rows and columns exceed `std::isize::MAX`, but some constructor methods may be used
  * to attempt this. Concerned readers should note that on a 64 bit computer this maximum
- * value is 18,446,744,073,709,551,615 so running out of memory is likely to occur first.
+ * value is 9,223,372,036,854,775,807 so running out of memory is likely to occur first.
  *
  * # Matrix layout and iterator performance
  *

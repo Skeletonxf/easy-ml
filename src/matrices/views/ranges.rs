@@ -110,6 +110,11 @@ where
  * let also_range: IndexRange = (3, 2).into();
  * let also_also_range: IndexRange = [3, 2].into();
  * ```
+ *
+ * NB: You can construct an IndexRange where start+length exceeds isize::MAX or even
+ * usize::MAX, however matrices and tensors themselves cannot contain more than isize::MAX
+ * elements. Concerned readers should note that on a 64 bit computer this maximum
+ * value is 9,223,372,036,854,775,807 so running out of memory is likely to occur first.
  */
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct IndexRange {
@@ -149,7 +154,7 @@ impl IndexRange {
         }
     }
 
-    // Clips the range or mask to not exceed a length. Note, this may yield 0 length ranges
+    // Clips the range or mask to not exceed an index. Note, this may yield 0 length ranges
     // that have non zero starting positions, however map and mask will still calculate correctly.
     pub(crate) fn clip(&mut self, to_length: usize) {
         let end = self.start + self.length;

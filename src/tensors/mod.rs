@@ -226,6 +226,10 @@ fn test_send() {
  * are defined and if the type implements Numeric then the tensor can be used in a mathematical
  * way.
  *
+ * Like Matrix, a Tensor must always contain at least one element, and it may not not have more
+ * elements than `std::isize::MAX`. Concerned readers should note that on a 64 bit computer this
+ * maximum value is 9,223,372,036,854,775,807 so running out of memory is likely to occur first.
+ *
  * When doing numeric operations with Tensors you should be careful to not consume a tensor by
  * accidentally using it by value. All the operations are also defined on references to tensors
  * so you should favor &x + &y style notation for tensors you intend to continue using.
