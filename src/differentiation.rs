@@ -195,6 +195,7 @@
 pub mod operations;
 pub mod record_operations;
 pub mod trace_operations;
+pub mod container_record;
 
 use crate::numeric::{Numeric, NumericRef};
 
@@ -416,8 +417,8 @@ type Index = usize;
  * borrows at runtime rather than compile time. This is neccessary to maintain the
  * illusion that Records are just ordinary numbers, and the side effects of doing
  * arithmetic with Records are limited to their referenced WengertList. Hence, the Rust
- * compiler infers that it is not safe to share references to WengertLists between threads,
- * nor transfer Records across threads. If you called a method on two Records that both
+ * compiler correctly infers that it is not safe to share references to WengertLists between
+ * threads, nor transfer Records across threads. If you called a method on two Records that both
  * mutably borrowed from the same WengertList at once, which could be trivially done with
  * multiple threads, then the code would panic. Easy ML shouldn't allow you to do this
  * in safe Rust because each mutable borrow of the WengertList is dropped at the end of each
@@ -766,6 +767,33 @@ impl<T: Numeric + Primitive> WengertList<T> {
             right_derivative: T::zero(),
         });
         index
+    }
+
+    /**
+     * Adds a number of values to the list which do not have any parent values, returning
+     * the index of the first added value, the others will be contiguously afterwards.
+     *
+     * If values is 0, returns the first index that would be used but wasn't.
+     */
+    fn append_nullary_repeating(&self, values: usize) -> Index {
+        let mut operations = self.operations.borrow_mut();
+        // insert into end of list
+        let starting_index = operations.len();
+        for i in 0..values {
+            let index = starting_index + i;
+            operations.push(Operation {
+                // this index of the child is used for both indexes as these
+                // won't be needed but will always be valid (ie point to a
+                // real entry on the list)
+                left_parent: index,
+                right_parent: index,
+                // for the parents 0 is used to zero out these calculations
+                // as there are no parents
+                left_derivative: T::zero(),
+                right_derivative: T::zero(),
+            });
+        }
+        starting_index
     }
 
     /**
