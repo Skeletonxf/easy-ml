@@ -13,9 +13,6 @@ use crate::tensors::views::TensorRef;
 pub struct RecordContainer<'a, T: Primitive, S, const D: usize> {
     numbers: S,
     history: Option<&'a WengertList<T>>,
-    // would be nice to replace this with Box<[Index; D]> once there's a way to allocate it on
-    // the heap directly. Kinda defeats the point if we have to allocate a Vec first since at
-    // least half of the uses of this field will be writes for new arrays of indexes.
     indexes: Vec<Index>,
 }
 
@@ -26,9 +23,9 @@ where
 {
     pub fn constants(c: S) -> Self {
         RecordContainer {
+            indexes: vec![0; RecordContainer::total(&c)],
             numbers: c,
             history: None,
-            indexes: vec![0; D],
         }
     }
 
@@ -66,7 +63,7 @@ where
         match self.history {
             None => (), // noop
             Some(history) => self.indexes = {
-                let total = RecordContainer::total(&self.numbers);
+                let total = self.elements();
                 let starting_index = history.append_nullary_repeating(total);
                 let mut indexes = vec![0; total];
                 for i in 0..total {
