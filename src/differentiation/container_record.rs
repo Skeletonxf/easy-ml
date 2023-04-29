@@ -1,14 +1,15 @@
 //use crate::differentiation::Record;
 use crate::numeric::Numeric;
 use crate::differentiation::{Primitive, Index, WengertList};
-use crate::interop::{TensorRefMatrix, DimensionNames, RowAndColumn};
-use crate::tensors::InvalidShapeError;
-use crate::tensors::views::TensorRef;
-use crate::matrices::views::{MatrixRef, NoInteriorMutability};
+use crate::tensors::views::{TensorView, TensorRef};
+use crate::matrices::views::{MatrixView, MatrixRef, NoInteriorMutability};
 
 /**
  * A pluralisation of [Record](crate::differentiation::Record) that groups together a
  * **s**ource of numbers instead of storing one number of type T individually.
+ *
+ * Typically you would refer to one of the type aliases to disambiguate the type of `S` and
+ * use more succinct generics: [RecordMatrix](RecordMatrix), [RecordTensor](RecordTensor).
  */
 #[derive(Debug)]
 pub struct RecordContainer<'a, T: Primitive, S, const D: usize> {
@@ -23,7 +24,25 @@ pub struct RecordContainer<'a, T: Primitive, S, const D: usize> {
     indexes: Vec<Index>,
 }
 
-impl<'a, T, S, const D: usize> RecordContainer<'a, T, S, D>
+/**
+ * Alias for succinctly refering to RecordContainers backed by a matrix.
+ */
+pub type RecordMatrix<'a, T, S> = RecordContainer<'a, T, MatrixView<T, S>, 2>;
+
+/**
+ * Alias for succinctly refering to RecordContainers backed by a tensor.
+ */
+pub type RecordTensor<'a, T, S, const D: usize> = RecordContainer<'a, T, TensorView<T, S, D>, D>;
+
+fn calculate_incrementing_indexes(starting_index: usize, total: usize) -> Vec<Index> {
+    let mut indexes = vec![0; total];
+    for i in 0..total {
+        indexes[i] = starting_index + i;
+    }
+    indexes
+}
+
+impl<'a, T, S, const D: usize> RecordTensor<'a, T, S, D>
 where
     T: Numeric + Primitive,
     S: TensorRef<T, D>,
@@ -42,7 +61,7 @@ where
     pub fn constants(c: S) -> Self {
         RecordContainer {
             indexes: vec![0; RecordContainer::total(&c)],
-            numbers: c,
+            numbers: TensorView::from(c),
             history: None,
         }
     }
@@ -54,12 +73,12 @@ where
      * the following example does not compile
      *
      * ```compile_fail
-     * use easy_ml::differentiation::RecordContainer;
+     * use easy_ml::differentiation::RecordTensor;
      * use easy_ml::differentiation::WengertList;
      * use easy_ml::tensors::Tensor;
      * let record = {
      *     let list = WengertList::new();
-     *     RecordContainer::variables(
+     *     RecordTensor::variables(
      *         Tensor::from([("r", 2), ("c", 2)], vec![ 1.0, 2.0, 3.0, 4.0 ]),
      *         &list
      *     )
@@ -69,14 +88,10 @@ where
     pub fn variables(x: S, history: &'a WengertList<T>) -> Self {
         let total = RecordContainer::total(&x);
         let starting_index = history.append_nullary_repeating(total);
-        let mut indexes = vec![0; total];
-        for i in 0..total {
-            indexes[i] = starting_index + i;
-        }
         RecordContainer {
-            numbers: x,
+            numbers: TensorView::from(x),
             history: Some(history),
-            indexes,
+            indexes: calculate_incrementing_indexes(starting_index, total),
         }
     }
 
@@ -89,7 +104,7 @@ where
      * see also [dimensions::elements](crate::tensors::dimensions::elements)
      */
     pub fn elements(&self) -> usize {
-        RecordContainer::total(&self.numbers)
+        RecordContainer::total(self.numbers.source_ref())
     }
 
     fn total(numbers: &S) -> usize {
@@ -106,11 +121,7 @@ where
             Some(history) => self.indexes = {
                 let total = self.elements();
                 let starting_index = history.append_nullary_repeating(total);
-                let mut indexes = vec![0; total];
-                for i in 0..total {
-                    indexes[i] = starting_index + i;
-                }
-                indexes
+                calculate_incrementing_indexes(starting_index, total)
             },
         };
     }
@@ -126,66 +137,94 @@ where
 }
 
 
-/**
- * Alias for succinctly refering to RecordContainers backed by a matrix.
- */
-pub type RecordMatrixContainer<'a, T, S> = RecordContainer<'a, T, TensorRefMatrix<T, S, RowAndColumn>, 2>;
-
-/**
- * Convenience helper functions for creating a RecordContainer from a matrix with defaulted
- * shape names.
- */
-impl<'a, T, S> RecordMatrixContainer<'a, T, S>
+impl<'a, T, S> RecordMatrix<'a, T, S>
 where
     T: Numeric + Primitive,
     S: MatrixRef<T> + NoInteriorMutability,
 {
     /**
-     * `Err` variant is returned as documented on [TensorRefMatrix](TensorRefMatrix::from)
+     * Creates multiple untracked Records which have no backing WengertList.
+     *
+     * This is provided for using constants along with Records in operations.
+     *
+     * For example with `Y = X + 4` the computation graph could be conceived as many
+     * `Y[i,j]` nodes with parent nodes of `X[i,j]` and 4 combined with the operation `+`.
+     * However there is no need to record the derivatives of a constant, so
+     * instead the computation graph can be conceived as `Y[i,j]` nodes each with a single
+     * parent node of `X[i,j]` and the unary operation of `+4`.
      */
-    pub fn matrix_constants(c: S) -> Result<Self, InvalidShapeError<2>> {
-        RecordContainer::matrix_with_names_constants(c, RowAndColumn)
+    pub fn constants(c: S) -> Self {
+        RecordContainer {
+            indexes: vec![0; RecordContainer::size(&c)],
+            numbers: MatrixView::from(c),
+            history: None,
+        }
     }
 
     /**
-     * `Err` variant is returned as documented on [TensorRefMatrix](TensorRefMatrix::from)
+     * Creates multiple records backed by the provided WengertList.
+     *
+     * The records cannot live longer than the WengertList, hence
+     * the following example does not compile
+     *
+     * ```compile_fail
+     * use easy_ml::differentiation::RecordMatrix;
+     * use easy_ml::differentiation::WengertList;
+     * use easy_ml::matrices::Matrix;
+     * let record = {
+     *     let list = WengertList::new();
+     *     RecordMatrix::variables(
+     *         Matrix::from(vec![vec![1.0, 2.0], vec![3.0, 4.0]]),
+     *         &list
+     *     )
+     * }; // list no longer in scope
+     * ```
      */
-    pub fn matrix_variables(
-        x: S, history: &'a WengertList<T>
-    ) -> Result<Self, InvalidShapeError<2>> {
-        RecordContainer::matrix_with_names_variables(x, RowAndColumn, history)
+    pub fn variables(x: S, history: &'a WengertList<T>) -> Self {
+        let total = RecordContainer::size(&x);
+        let starting_index = history.append_nullary_repeating(total);
+        RecordContainer {
+            numbers: MatrixView::from(x),
+            history: Some(history),
+            indexes: calculate_incrementing_indexes(starting_index, total),
+        }
+    }
+
+    /**
+     * Returns the number of elements stored by this container's source.
+     *
+     * For a 2 x 3 Matrix, this would return 6, and for a 3 x 4 Matrix this would return 12
+     * and so on.
+     */
+    pub fn elements(&self) -> usize {
+        RecordContainer::size(self.numbers.source_ref())
+    }
+
+    fn size(numbers: &S) -> usize {
+        numbers.view_rows() * numbers.view_columns()
+    }
+
+    /**
+     * Resets all of the records to place them back on the WengertList, for use
+     * in performing another derivation after clearing the WengertList.
+     */
+    pub fn reset(&mut self) {
+        match self.history {
+            None => (), // noop
+            Some(history) => self.indexes = {
+                let total = self.elements();
+                let starting_index = history.append_nullary_repeating(total);
+                calculate_incrementing_indexes(starting_index, total)
+            },
+        };
+    }
+
+    /**
+     * A convenience helper function which takes a RecordContainer by value and
+     * calls [reset](RecordContainer::reset()) on it.
+     */
+    pub fn do_reset(mut x: Self) -> Self {
+        x.reset();
+        x
     }
 }
-
-/**
- * Convenience helper functions for creating a RecordContainer from a matrix.
- */
-impl<'a, T, S, N> RecordContainer<'a, T, TensorRefMatrix<T, S, N>, 2>
-where
-    T: Numeric + Primitive,
-    S: MatrixRef<T> + NoInteriorMutability,
-    N: DimensionNames,
-{
-    /**
-     * `Err` variant is returned as documented on [TensorRefMatrix](TensorRefMatrix::with_names)
-     */
-    pub fn matrix_with_names_constants(c: S, names: N) -> Result<Self, InvalidShapeError<2>> {
-        TensorRefMatrix::with_names(c, names).map(|tensor| RecordContainer::constants(tensor))
-    }
-
-    /**
-     * `Err` variant is returned as documented on [TensorRefMatrix](TensorRefMatrix::with_names)
-     */
-    pub fn matrix_with_names_variables(
-        x: S,
-        names: N,
-        history: &'a WengertList<T>
-    ) -> Result<Self, InvalidShapeError<2>> {
-        TensorRefMatrix::with_names(x, names)
-            .map(|tensor| RecordContainer::variables(tensor, history))
-    }
-}
-
-// TODO: Need helper conversion methods for going from RecordContainer Tensor back to Matrix
-// otherwise being able to start with matrices is a bit pointless because you don't end up with
-// them after doing any operations.
