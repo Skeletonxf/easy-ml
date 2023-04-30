@@ -1,6 +1,7 @@
 //use crate::differentiation::Record;
-use crate::numeric::Numeric;
+use crate::numeric::{Numeric, NumericRef};
 use crate::differentiation::{Primitive, Index, WengertList};
+use crate::tensors::Tensor;
 use crate::tensors::views::{TensorView, TensorRef};
 use crate::matrices::views::{MatrixView, MatrixRef, NoInteriorMutability};
 
@@ -226,5 +227,81 @@ where
     pub fn do_reset(mut x: Self) -> Self {
         x.reset();
         x
+    }
+}
+
+impl<'a, T, S, const D: usize> RecordTensor<'a, T, S, D>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S: TensorRef<T, D>,
+{
+    /**
+     * Creates a new RecordContainer from a reference to an existing RecordContainer by applying
+     * some unary function from `T` to `T` to every element in the container.
+     *
+     * To compute the new records, the unary function of some input x to some
+     * output y is needed along with its derivative with respect to its input x.
+     *
+     * For example, tanh is a commonly used activation function, but the Real trait
+     * does not include this operation and Record has no operations for it specifically.
+     * However, you can use this function to compute the tanh for a record container like so:
+     *
+     * ```
+     * use easy_ml::differentiation::{RecordTensor, WengertList};
+     * use easy_ml::tensors::Tensor;
+     * let list = WengertList::new();
+     * let X = RecordTensor::variables(
+     *     Tensor::from_fn(
+     *         [("rows", 2), ("columns", 2)],
+     *         |[r, c]| 0.15 * ((1 + r + c) as f32)
+     *     ),
+     *     &list
+     * );
+     * // the derivative of tanh(x) is sech(x) * sech(x) which is equivalent to
+     * // 1 / (cosh(x) * cosh(x))
+     * let Y = X.unary(|x| x.tanh(), |x| 1.0 / (x.cosh() * x.cosh()));
+     * // TODO Inspecting derivatives
+     * ```
+     */
+    pub fn unary(
+        &self,
+        fx: impl Fn(T) -> T,
+        dfx_dx: impl Fn(T) -> T
+    ) -> RecordTensor<'a, T, Tensor<T, D>, D> {
+        match self.history {
+            None => RecordTensor::constants(self.numbers.map(fx)),
+            Some(history) => {
+                let total = self.elements();
+                assert_eq!(
+                    total,
+                    self.indexes.len(),
+                    "Unexpected illegal state, number of elements should always match number of indexes"
+                );
+                let mut indexes = vec![0; total];
+                let mut ys = vec![T::zero(); total];
+                history.borrow(|history| {
+                    // shadow the name so we can't accidentally try to use history while holding
+                    // the borrow
+                    // use enumerate not with_index because we need the 1D index for indexing
+                    // self.indexes
+                    for (i, (x, &parent)) in (self.numbers.iter().zip(&self.indexes)).enumerate() {
+                        ys[i] = fx(x.clone());
+                        let derivative = dfx_dx(x);
+                        indexes[i] = history.append_unary(parent, derivative);
+                    }
+                }); // drop borrow on history
+                RecordContainer {
+                    // TODO: Perhaps it would be a lot better to just store Tensor/Matrix and
+                    // clone on creating from a TensorRef/MatrixRef, might be a lot of cases where
+                    // we don't need to revalidate shapes but TensorView/MatrixView is too generic
+                    // to take advantage of that. Also could cut on monomorphisation bloat a lot
+                    // if most methods aren't generic over TensorRef/MatrixRef types.
+                    numbers: TensorView::from(Tensor::from(self.numbers.shape(), ys)),
+                    history: Some(history),
+                    indexes,
+                }
+            },
+        }
     }
 }

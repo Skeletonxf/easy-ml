@@ -433,6 +433,10 @@ pub struct WengertList<T> {
     operations: RefCell<Vec<Operation<T>>>,
 }
 
+struct BorrowedWengertList<'a, T> {
+    operations: &'a mut Vec<Operation<T>>,
+}
+
 /**
  * A binary operation to record on a WengertList. For unary operations the
  * right derivative is set to 0, and for nullary operations both derivatives
@@ -754,21 +758,9 @@ impl<T: Numeric + Primitive> WengertList<T> {
      * Adds a value to the list which does not have any parent values.
      */
     fn append_nullary(&self) -> Index {
-        let mut operations = self.operations.borrow_mut();
-        // insert into end of list
-        let index = operations.len();
-        operations.push(Operation {
-            // this index of the child is used for both indexes as these
-            // won't be needed but will always be valid (ie point to a
-            // real entry on the list)
-            left_parent: index,
-            right_parent: index,
-            // for the parents 0 is used to zero out these calculations
-            // as there are no parents
-            left_derivative: T::zero(),
-            right_derivative: T::zero(),
-        });
-        index
+        use std::ops::DerefMut;
+        let mut borrow = self.operations.borrow_mut();
+        BorrowedWengertList::new(borrow.deref_mut()).append_nullary()
     }
 
     /**
@@ -807,10 +799,104 @@ impl<T: Numeric + Primitive> WengertList<T> {
      * For example, if z = sin(x), then δz/δx = cos(x)
      */
     fn append_unary(&self, parent: Index, derivative: T) -> Index {
-        let mut operations = self.operations.borrow_mut();
+        use std::ops::DerefMut;
+        let mut borrow = self.operations.borrow_mut();
+        BorrowedWengertList::new(borrow.deref_mut()).append_unary(parent, derivative)
+    }
+
+    /**
+     * Adds a value to the list which has two parents.
+     *
+     * For an output w_N which depends on two parents w_N-1
+     * and w_N-2 the derivatives cached here are δw_N / δw_N-1
+     * and δw_N / δw_N-2.
+     *
+     * For example, if z = y + x, then δz/δy = 1 and δz/δx = 1
+     * For example, if z = y * x, then δz/δy = x and δz/δ/x = y
+     */
+    fn append_binary(
+        &self,
+        left_parent: Index,
+        left_derivative: T,
+        right_parent: Index,
+        right_derivative: T,
+    ) -> Index {
+        use std::ops::DerefMut;
+        let mut borrow = self.operations.borrow_mut();
+        BorrowedWengertList::new(borrow.deref_mut())
+            .append_binary(left_parent, left_derivative, right_parent, right_derivative)
+    }
+
+    /**
+     * Borrows the WengertList mutably for batch operations. It is *very* important to
+     * hold onto the borrow only for as long as needed then drop it immediately. To avoid panics
+     * Easy ML needs to ensure 100% of method calls on the public API do not maintain a borrow
+     * after they finish executing. This was previously enforced by not having any batch
+     * append APIs, but they're needed for RecordContainer. Calling borrow again while still
+     * holding the first would trigger a panic, as would holding onto the borrow after the public
+     * API method is finished
+     */
+    fn borrow<F>(&self, op: F)
+    where
+        F: FnOnce(&mut BorrowedWengertList<T>),
+    {
+        use std::ops::DerefMut;
+        let mut borrow = self.operations.borrow_mut();
+        op(&mut BorrowedWengertList::new(borrow.deref_mut()));
+    }
+}
+
+/**
+ * Any Wengert list of a Cloneable type implements clone
+ */
+impl<T: Clone + Primitive> Clone for WengertList<T> {
+    fn clone(&self) -> Self {
+        WengertList {
+            operations: RefCell::new(self.operations.borrow().clone()),
+        }
+    }
+}
+
+/**
+ * Methods for appending Operations after borrowing the Wengert list.
+ */
+impl<'a, T: Numeric + Primitive> BorrowedWengertList<'a, T> {
+    fn new(operations: &mut Vec<Operation<T>>) -> BorrowedWengertList<T> {
+        BorrowedWengertList { operations }
+    }
+
+    /**
+     * Adds a value to the list which does not have any parent values.
+     */
+    fn append_nullary(&mut self) -> Index {
         // insert into end of list
-        let index = operations.len();
-        operations.push(Operation {
+        let index = self.operations.len();
+        self.operations.push(Operation {
+            // this index of the child is used for both indexes as these
+            // won't be needed but will always be valid (ie point to a
+            // real entry on the list)
+            left_parent: index,
+            right_parent: index,
+            // for the parents 0 is used to zero out these calculations
+            // as there are no parents
+            left_derivative: T::zero(),
+            right_derivative: T::zero(),
+        });
+        index
+    }
+
+    /**
+     * Adds a value to the list which has one parent.
+     *
+     * For an output w_N which depends on one parent w_N-1
+     * the derivative cached here is δw_N / δw_N-1
+     *
+     * For example, if z = sin(x), then δz/δx = cos(x)
+     */
+    fn append_unary(&mut self, parent: Index, derivative: T) -> Index {
+        // insert into end of list
+        let index = self.operations.len();
+        self.operations.push(Operation {
             left_parent: parent,
             // this index of the child is used as this index won't be needed
             // but will always be valid (ie points to a real entry on the list)
@@ -834,33 +920,21 @@ impl<T: Numeric + Primitive> WengertList<T> {
      * For example, if z = y * x, then δz/δy = x and δz/δ/x = y
      */
     fn append_binary(
-        &self,
+        &mut self,
         left_parent: Index,
         left_derivative: T,
         right_parent: Index,
         right_derivative: T,
     ) -> Index {
-        let mut operations = self.operations.borrow_mut();
         // insert into end of list
-        let index = operations.len();
-        operations.push(Operation {
+        let index = self.operations.len();
+        self.operations.push(Operation {
             left_parent,
             right_parent,
             left_derivative,
             right_derivative,
         });
         index
-    }
-}
-
-/**
- * Any Wengert list of a Cloneable type implements clone
- */
-impl<T: Clone + Primitive> Clone for WengertList<T> {
-    fn clone(&self) -> Self {
-        WengertList {
-            operations: RefCell::new(self.operations.borrow().clone()),
-        }
     }
 }
 
