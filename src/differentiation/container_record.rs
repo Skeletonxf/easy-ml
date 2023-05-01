@@ -2,8 +2,11 @@
 use crate::numeric::{Numeric, NumericRef};
 use crate::differentiation::{Primitive, Index, WengertList};
 use crate::tensors::Tensor;
-use crate::tensors::views::{TensorView, TensorRef};
-use crate::matrices::views::{MatrixView, MatrixRef, NoInteriorMutability};
+use crate::tensors::views::TensorMut;
+use crate::tensors::indexing::TensorReferenceMutIterator;
+use crate::matrices::Matrix;
+use crate::matrices::iterators::RowMajorReferenceMutIterator;
+use crate::matrices::views::{MatrixMut, NoInteriorMutability};
 
 /**
  * A pluralisation of [Record](crate::differentiation::Record) that groups together a
@@ -28,12 +31,12 @@ pub struct RecordContainer<'a, T: Primitive, S, const D: usize> {
 /**
  * Alias for succinctly refering to RecordContainers backed by a matrix.
  */
-pub type RecordMatrix<'a, T, S> = RecordContainer<'a, T, MatrixView<T, S>, 2>;
+pub type RecordMatrix<'a, T> = RecordContainer<'a, T, Matrix<T>, 2>;
 
 /**
  * Alias for succinctly refering to RecordContainers backed by a tensor.
  */
-pub type RecordTensor<'a, T, S, const D: usize> = RecordContainer<'a, T, TensorView<T, S, D>, D>;
+pub type RecordTensor<'a, T, const D: usize> = RecordContainer<'a, T, Tensor<T, D>, D>;
 
 fn calculate_incrementing_indexes(starting_index: usize, total: usize) -> Vec<Index> {
     let mut indexes = vec![0; total];
@@ -43,10 +46,9 @@ fn calculate_incrementing_indexes(starting_index: usize, total: usize) -> Vec<In
     indexes
 }
 
-impl<'a, T, S, const D: usize> RecordTensor<'a, T, S, D>
+impl<'a, T, const D: usize> RecordTensor<'a, T, D>
 where
     T: Numeric + Primitive,
-    S: TensorRef<T, D>,
 {
     /**
      * Creates multiple untracked Records which have no backing WengertList.
@@ -59,10 +61,20 @@ where
      * instead the computation graph can be conceived as `Y[i,j]` nodes each with a single
      * parent node of `X[i,j]` and the unary operation of `+4`.
      */
-    pub fn constants(c: S) -> Self {
+    pub fn constants<S>(mut c: S) -> Self
+    where
+        S: TensorMut<T, D>,
+    {
+        let total = crate::tensors::dimensions::elements(&c.view_shape());
         RecordContainer {
-            indexes: vec![0; RecordContainer::total(&c)],
-            numbers: TensorView::from(c),
+            indexes: vec![0; total],
+            numbers: Tensor::from(
+                c.view_shape(),
+                // FIXME: Should generalise this as an owned TensorOwnedIterator
+                TensorReferenceMutIterator::from(&mut c)
+                    .map(|x: &mut T| std::mem::replace(x, T::zero()))
+                    .collect()
+            ),
             history: None,
         }
     }
@@ -86,11 +98,21 @@ where
      * }; // list no longer in scope
      * ```
      */
-    pub fn variables(x: S, history: &'a WengertList<T>) -> Self {
-        let total = RecordContainer::total(&x);
+    // TODO: Maybe swap parameter order here?
+    pub fn variables<S>(mut x: S, history: &'a WengertList<T>) -> Self
+    where
+        S: TensorMut<T, D>,
+    {
+        let total = crate::tensors::dimensions::elements(&x.view_shape());
         let starting_index = history.append_nullary_repeating(total);
         RecordContainer {
-            numbers: TensorView::from(x),
+            numbers: Tensor::from(
+                x.view_shape(),
+                // FIXME: Should generalise this as an owned TensorOwnedIterator
+                TensorReferenceMutIterator::from(&mut x)
+                    .map(|x: &mut T| std::mem::replace(x, T::zero()))
+                    .collect()
+            ),
             history: Some(history),
             indexes: calculate_incrementing_indexes(starting_index, total),
         }
@@ -105,11 +127,7 @@ where
      * see also [dimensions::elements](crate::tensors::dimensions::elements)
      */
     pub fn elements(&self) -> usize {
-        RecordContainer::total(self.numbers.source_ref())
-    }
-
-    fn total(numbers: &S) -> usize {
-        crate::tensors::dimensions::elements(&numbers.view_shape())
+        crate::tensors::dimensions::elements(&self.numbers.shape())
     }
 
     /**
@@ -138,10 +156,9 @@ where
 }
 
 
-impl<'a, T, S> RecordMatrix<'a, T, S>
+impl<'a, T> RecordMatrix<'a, T>
 where
     T: Numeric + Primitive,
-    S: MatrixRef<T> + NoInteriorMutability,
 {
     /**
      * Creates multiple untracked Records which have no backing WengertList.
@@ -154,10 +171,19 @@ where
      * instead the computation graph can be conceived as `Y[i,j]` nodes each with a single
      * parent node of `X[i,j]` and the unary operation of `+4`.
      */
-    pub fn constants(c: S) -> Self {
+    pub fn constants<S>(mut c: S) -> Self
+    where
+        S: MatrixMut<T> + NoInteriorMutability,
+    {
         RecordContainer {
-            indexes: vec![0; RecordContainer::size(&c)],
-            numbers: MatrixView::from(c),
+            indexes: vec![0; c.view_rows() * c.view_columns()],
+            numbers: Matrix::from_flat_row_major(
+                (c.view_rows(), c.view_columns()),
+                // FIXME: Should generalise this as an owned RowMajorOwnedIterator
+                RowMajorReferenceMutIterator::from(&mut c)
+                    .map(|x: &mut T| std::mem::replace(x, T::zero()))
+                    .collect()
+            ),
             history: None,
         }
     }
@@ -181,11 +207,20 @@ where
      * }; // list no longer in scope
      * ```
      */
-    pub fn variables(x: S, history: &'a WengertList<T>) -> Self {
-        let total = RecordContainer::size(&x);
+    pub fn variables<S>(mut x: S, history: &'a WengertList<T>) -> Self
+    where
+        S: MatrixMut<T> + NoInteriorMutability,
+    {
+        let total = x.view_rows() * x.view_columns();
         let starting_index = history.append_nullary_repeating(total);
         RecordContainer {
-            numbers: MatrixView::from(x),
+            numbers: Matrix::from_flat_row_major(
+                (x.view_rows(), x.view_columns()),
+                // FIXME: Should generalise this as an owned RowMajorOwnedIterator
+                RowMajorReferenceMutIterator::from(&mut x)
+                    .map(|x: &mut T| std::mem::replace(x, T::zero()))
+                    .collect()
+            ),
             history: Some(history),
             indexes: calculate_incrementing_indexes(starting_index, total),
         }
@@ -198,11 +233,7 @@ where
      * and so on.
      */
     pub fn elements(&self) -> usize {
-        RecordContainer::size(self.numbers.source_ref())
-    }
-
-    fn size(numbers: &S) -> usize {
-        numbers.view_rows() * numbers.view_columns()
+        self.numbers.rows() * self.numbers.columns()
     }
 
     /**
@@ -230,11 +261,10 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> RecordTensor<'a, T, S, D>
+impl<'a, T, const D: usize> RecordTensor<'a, T, D>
 where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
-    S: TensorRef<T, D>,
 {
     /**
      * Creates a new RecordContainer from a reference to an existing RecordContainer by applying
@@ -268,7 +298,7 @@ where
         &self,
         fx: impl Fn(T) -> T,
         dfx_dx: impl Fn(T) -> T
-    ) -> RecordTensor<'a, T, Tensor<T, D>, D> {
+    ) -> RecordTensor<'a, T, D> {
         match self.history {
             None => RecordTensor::constants(self.numbers.map(fx)),
             Some(history) => {
@@ -292,12 +322,8 @@ where
                     }
                 }); // drop borrow on history
                 RecordContainer {
-                    // TODO: Perhaps it would be a lot better to just store Tensor/Matrix and
-                    // clone on creating from a TensorRef/MatrixRef, might be a lot of cases where
-                    // we don't need to revalidate shapes but TensorView/MatrixView is too generic
-                    // to take advantage of that. Also could cut on monomorphisation bloat a lot
-                    // if most methods aren't generic over TensorRef/MatrixRef types.
-                    numbers: TensorView::from(Tensor::from(self.numbers.shape(), ys)),
+                    // TODO: Consider using direct_from here to avoid recalculating the strides/shape
+                    numbers: Tensor::from(self.numbers.shape(), ys),
                     history: Some(history),
                     indexes,
                 }
