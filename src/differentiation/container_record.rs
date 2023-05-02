@@ -261,6 +261,34 @@ where
     }
 }
 
+fn unary<'a, T, I>(
+    total: usize,
+    history: &WengertList<T>,
+    records: I,
+    fx: impl Fn(T) -> T,
+    dfx_dx: impl Fn(T) -> T
+) -> (Vec<usize>, Vec<T>)
+where
+    I: Iterator<Item = (T, &'a Index)>,
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+{
+    let mut indexes = vec![0; total];
+    let mut ys = vec![T::zero(); total];
+    history.borrow(|history| {
+        // shadow the name so we can't accidentally try to use history while holding
+        // the borrow
+        // use enumerate not with_index because we need the 1D index for indexing
+        // indexes
+        for (i, (x, &parent)) in records.enumerate() {
+            ys[i] = fx(x.clone());
+            let derivative = dfx_dx(x);
+            indexes[i] = history.append_unary(parent, derivative);
+        }
+    }); // drop borrow on history
+    (indexes, ys)
+}
+
 impl<'a, T, const D: usize> RecordTensor<'a, T, D>
 where
     T: Numeric + Primitive,
@@ -308,22 +336,11 @@ where
                     self.indexes.len(),
                     "Unexpected illegal state, number of elements should always match number of indexes"
                 );
-                let mut indexes = vec![0; total];
-                let mut ys = vec![T::zero(); total];
-                history.borrow(|history| {
-                    // shadow the name so we can't accidentally try to use history while holding
-                    // the borrow
-                    // use enumerate not with_index because we need the 1D index for indexing
-                    // self.indexes
-                    for (i, (x, &parent)) in (self.numbers.iter().zip(&self.indexes)).enumerate() {
-                        ys[i] = fx(x.clone());
-                        let derivative = dfx_dx(x);
-                        indexes[i] = history.append_unary(parent, derivative);
-                    }
-                }); // drop borrow on history
+                let (indexes, ys) = unary::<T, _>(
+                    total, history, self.numbers.iter().zip(&self.indexes), fx, dfx_dx
+                );
                 RecordContainer {
-                    // TODO: Consider using direct_from here to avoid recalculating the strides/shape
-                    numbers: Tensor::from(self.numbers.shape(), ys),
+                    numbers: self.numbers.new_with_same_shape(ys),
                     history: Some(history),
                     indexes,
                 }
@@ -331,7 +348,6 @@ where
         }
     }
 }
-
 
 impl<'a, T> RecordMatrix<'a, T>
 where
@@ -377,21 +393,10 @@ where
                     self.indexes.len(),
                     "Unexpected illegal state, number of elements should always match number of indexes"
                 );
-                let mut indexes = vec![0; total];
-                let mut ys = vec![T::zero(); total];
-                history.borrow(|history| {
-                    // shadow the name so we can't accidentally try to use history while holding
-                    // the borrow
-                    // use enumerate not with_index because we need the 1D index for indexing
-                    // self.indexes
-                    for (i, (x, &parent)) in (self.numbers.row_major_iter().zip(&self.indexes)).enumerate() {
-                        ys[i] = fx(x.clone());
-                        let derivative = dfx_dx(x);
-                        indexes[i] = history.append_unary(parent, derivative);
-                    }
-                }); // drop borrow on history
+                let (indexes, ys) = unary::<T, _>(
+                    total, history, self.numbers.row_major_iter().zip(&self.indexes), fx, dfx_dx
+                );
                 RecordContainer {
-                    // TODO: Consider using direct_from here to avoid recalculating the strides/shape
                     numbers: Matrix::from_flat_row_major(self.numbers.size(), ys),
                     history: Some(history),
                     indexes,

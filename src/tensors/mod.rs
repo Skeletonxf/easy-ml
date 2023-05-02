@@ -374,8 +374,8 @@ impl<T, const D: usize> Tensor<T, D> {
         })
     }
 
-    // Unverified constructor for interal use when we know the dimensions/data/strides are
-    // unchanged and don't need reverification
+    /// Unverified constructor for interal use when we know the dimensions/data/strides are
+    /// unchanged and don't need reverification
     pub(crate) fn direct_from(
         data: Vec<T>,
         shape: [(Dimension, usize); D],
@@ -385,6 +385,19 @@ impl<T, const D: usize> Tensor<T, D> {
             data,
             shape,
             strides,
+        }
+    }
+
+    /// Unverified constructor for interal use when we know the dimensions/data/strides are
+    /// the same as the existing instance and don't need reverification
+    pub(crate) fn new_with_same_shape(
+        &self,
+        data: Vec<T>,
+    ) -> Self {
+        Tensor {
+            data,
+            shape: self.shape,
+            strides: self.strides,
         }
     }
 }
