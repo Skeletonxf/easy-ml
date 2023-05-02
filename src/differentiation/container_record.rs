@@ -331,3 +331,72 @@ where
         }
     }
 }
+
+
+impl<'a, T> RecordMatrix<'a, T>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+{
+    /**
+     * Creates a new RecordContainer from a reference to an existing RecordContainer by applying
+     * some unary function from `T` to `T` to every element in the container.
+     *
+     * To compute the new records, the unary function of some input x to some
+     * output y is needed along with its derivative with respect to its input x.
+     *
+     * For example, tanh is a commonly used activation function, but the Real trait
+     * does not include this operation and Record has no operations for it specifically.
+     * However, you can use this function to compute the tanh for a record container like so:
+     *
+     * ```
+     * use easy_ml::differentiation::{RecordMatrix, WengertList};
+     * use easy_ml::matrices::Matrix;
+     * let list = WengertList::new();
+     * let X = RecordMatrix::variables(
+     *     Matrix::from_fn((2, 2), |(r, c)| 0.15 * ((1 + r + c) as f32)),
+     *     &list
+     * );
+     * // the derivative of tanh(x) is sech(x) * sech(x) which is equivalent to
+     * // 1 / (cosh(x) * cosh(x))
+     * let Y = X.unary(|x| x.tanh(), |x| 1.0 / (x.cosh() * x.cosh()));
+     * // TODO Inspecting derivatives
+     * ```
+     */
+    pub fn unary(
+        &self,
+        fx: impl Fn(T) -> T,
+        dfx_dx: impl Fn(T) -> T
+    ) -> RecordMatrix<'a, T> {
+        match self.history {
+            None => RecordMatrix::constants(self.numbers.map(fx)),
+            Some(history) => {
+                let total = self.elements();
+                assert_eq!(
+                    total,
+                    self.indexes.len(),
+                    "Unexpected illegal state, number of elements should always match number of indexes"
+                );
+                let mut indexes = vec![0; total];
+                let mut ys = vec![T::zero(); total];
+                history.borrow(|history| {
+                    // shadow the name so we can't accidentally try to use history while holding
+                    // the borrow
+                    // use enumerate not with_index because we need the 1D index for indexing
+                    // self.indexes
+                    for (i, (x, &parent)) in (self.numbers.row_major_iter().zip(&self.indexes)).enumerate() {
+                        ys[i] = fx(x.clone());
+                        let derivative = dfx_dx(x);
+                        indexes[i] = history.append_unary(parent, derivative);
+                    }
+                }); // drop borrow on history
+                RecordContainer {
+                    // TODO: Consider using direct_from here to avoid recalculating the strides/shape
+                    numbers: Matrix::from_flat_row_major(self.numbers.size(), ys),
+                    history: Some(history),
+                    indexes,
+                }
+            },
+        }
+    }
+}
