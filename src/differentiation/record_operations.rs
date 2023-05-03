@@ -34,7 +34,7 @@
  * you have to import the trait as well as have a type that implements it!
  */
 
-use crate::differentiation::{Primitive, Record};
+use crate::differentiation::{Primitive, Record, WengertList};
 use crate::numeric::extra::{Cos, Exp, Ln, Pi, Pow, Real, RealRef, Sin, Sqrt};
 use crate::numeric::{FromUsize, Numeric, NumericRef, ZeroOne};
 use std::cmp::Ordering;
@@ -102,8 +102,13 @@ pub(crate) fn same_list<'a, 'b, T: Primitive>(a: &Record<'a, T>, b: &Record<'b, 
         (None, None) => true,
         (Some(_), None) => true,
         (None, Some(_)) => true,
-        (Some(list_a), Some(list_b)) => std::ptr::eq(list_a, list_b),
+        (Some(list_a), Some(list_b)) => same_lists(list_a, list_b),
     }
+}
+
+/// Compares two WengertList references directly.
+pub(crate) fn same_lists<T: Primitive>(list_a: &WengertList<T>, list_b: &WengertList<T>) -> bool {
+    std::ptr::eq(list_a, list_b)
 }
 
 /**

@@ -1,6 +1,7 @@
 //use crate::differentiation::Record;
 use crate::numeric::{Numeric, NumericRef};
 use crate::differentiation::{Primitive, Index, WengertList};
+use crate::differentiation::record_operations;
 use crate::tensors::Tensor;
 use crate::tensors::views::TensorMut;
 use crate::tensors::indexing::TensorReferenceMutIterator;
@@ -261,6 +262,8 @@ where
     }
 }
 
+/// Returns the vec of indexes and vec of ys for Y = unary(X), not checking but assuming that the
+/// length of the iterator matches the total.
 fn unary<'a, T, I>(
     total: usize,
     history: &WengertList<T>,
@@ -287,6 +290,103 @@ where
         }
     }); // drop borrow on history
     (indexes, ys)
+}
+
+/// Returns the vec of indexes and vec of zs for Z = binary(X, Y), not checking but assuming that
+/// the length of the iterators match the total. Also assumes both inputs have the same shape
+fn binary_both_history<'a, T, I>(
+    total: usize,
+    history: &WengertList<T>,
+    x_records: I,
+    y_records: I,
+    fxy: impl Fn(T, T) -> T,
+    dfxy_dx: impl Fn(T, T) -> T,
+    dfxy_dy: impl Fn(T, T) -> T,
+) -> (Vec<usize>, Vec<T>)
+where
+    I: Iterator<Item = (T, &'a Index)>,
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+{
+    let mut indexes = vec![0; total];
+    let mut zs = vec![T::zero(); total];
+    history.borrow(|history| {
+        // shadow the name so we can't accidentally try to use history while holding
+        // the borrow
+        // use enumerate not with_index because we need the 1D index for indexing
+        // indexes
+        for (i, ((x, &parent1), (y, &parent2))) in (x_records.zip(y_records)).enumerate() {
+            zs[i] = fxy(x.clone(), y.clone());
+            let derivative1 = dfxy_dx(x.clone(), y.clone());
+            let derivative2 = dfxy_dy(x, y);
+            indexes[i] = history.append_binary(parent1, derivative1, parent2, derivative2);
+        }
+    }); // drop borrow on history
+    (indexes, zs)
+}
+
+/// Returns the vec of indexes and vec of zs for Z = binary(X, Y), as with binary_both_history,
+/// but only tracking the derivatives for X, not Y.
+fn binary_x_history<'a, T, I>(
+    total: usize,
+    history: &WengertList<T>,
+    x_records: I,
+    y_records: I,
+    fxy: impl Fn(T, T) -> T,
+    dfxy_dx: impl Fn(T, T) -> T,
+) -> (Vec<usize>, Vec<T>)
+where
+    I: Iterator<Item = (T, &'a Index)>,
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+{
+    let mut indexes = vec![0; total];
+    let mut zs = vec![T::zero(); total];
+    history.borrow(|history| {
+        // shadow the name so we can't accidentally try to use history while holding
+        // the borrow
+        // use enumerate not with_index because we need the 1D index for indexing
+        // indexes
+        for (i, ((x, &parent1), (y, _))) in (x_records.zip(y_records)).enumerate() {
+            zs[i] = fxy(x.clone(), y.clone());
+            // if rhs didn't have a history, don't track that derivative
+            let derivative1 = dfxy_dx(x, y);
+            indexes[i] = history.append_unary(parent1, derivative1);
+        }
+    }); // drop borrow on history
+    (indexes, zs)
+}
+
+/// Returns the vec of indexes and vec of zs for Z = binary(X, Y), as with binary_both_history,
+/// but only tracking the derivatives for Y, not X.
+fn binary_y_history<'a, T, I>(
+    total: usize,
+    history: &WengertList<T>,
+    x_records: I,
+    y_records: I,
+    fxy: impl Fn(T, T) -> T,
+    dfxy_dy: impl Fn(T, T) -> T,
+) -> (Vec<usize>, Vec<T>)
+where
+    I: Iterator<Item = (T, &'a Index)>,
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+{
+    let mut indexes = vec![0; total];
+    let mut zs = vec![T::zero(); total];
+    history.borrow(|history| {
+        // shadow the name so we can't accidentally try to use history while holding
+        // the borrow
+        // use enumerate not with_index because we need the 1D index for indexing
+        // indexes
+        for (i, ((x, _), (y, &parent2))) in (x_records.zip(y_records)).enumerate() {
+            zs[i] = fxy(x.clone(), y.clone());
+            // if self didn't have a history, don't track that derivative
+            let derivative2 = dfxy_dy(x, y);
+            indexes[i] = history.append_unary(parent2, derivative2);
+        }
+    }); // drop borrow on history
+    (indexes, zs)
 }
 
 impl<'a, T, const D: usize> RecordTensor<'a, T, D>
@@ -322,6 +422,7 @@ where
      * // TODO Inspecting derivatives
      * ```
      */
+    #[track_caller]
     pub fn unary(
         &self,
         fx: impl Fn(T) -> T,
@@ -341,6 +442,136 @@ where
                 );
                 RecordContainer {
                     numbers: self.numbers.new_with_same_shape(ys),
+                    history: Some(history),
+                    indexes,
+                }
+            },
+        }
+    }
+
+    /**
+     * Creates a new RecordContainer from two RecordContainers by applying
+     * some binary function from `T` to `T` to every element pair in the containers. Both
+     * containers must have the same shape.
+     *
+     * To compute the new records, the binary function of some inputs x and y to some
+     * output z is needed along with its derivative with respect to its first input x and
+     * its derivative with respect to its second input y.
+     *
+     * For example, atan2 takes two arguments, but the Real trait
+     * does not include this operation and Record has no operations for it specifically.
+     * However, you can use this function to compute the atan2 for two record containers like so:
+     *
+     * ```
+     * use easy_ml::differentiation::{RecordTensor, WengertList};
+     * use easy_ml::tensors::Tensor;
+     * let list = WengertList::new();
+     * let X = RecordTensor::variables(
+     *     Tensor::from_fn(
+     *         [("rows", 2), ("columns", 2)],
+     *         |[r, c]| ((1 + r + c) as f32)
+     *     ),
+     *     &list
+     * );
+     * let Y = RecordTensor::variables(
+     *     Tensor::from_fn(
+     *         [("rows", 2), ("columns", 2)],
+     *         |[r, c]| ((1 + r + c) as f32)
+     *     ),
+     *     &list
+     * );
+     * // the derivative of atan2 with respect to x is y/(x*x + y*y)
+     * // https://www.wolframalpha.com/input/?i=d%28atan2%28x%2Cy%29%29%2Fdx
+     * // the derivative of atan2 with respect to y is -x/(x*x + y*y)
+     * // https://www.wolframalpha.com/input/?i=d%28atan2%28x%2Cy%29%29%2Fdy
+     * let Z = X.binary(&Y,
+     *     |x, y| x.atan2(y),
+     *     |x, y| y/((x*x) + (y*y)),
+     *     |x, y| -x/((x*x) + (y*y))
+     * );
+     * // TODO Inspecting derivatives
+     * ```
+     */
+    #[track_caller]
+    pub fn binary(
+        &self,
+        rhs: &RecordTensor<'a, T, D>,
+        fxy: impl Fn(T, T) -> T,
+        dfxy_dx: impl Fn(T, T) -> T,
+        dfxy_dy: impl Fn(T, T) -> T,
+    ) -> RecordTensor<'a, T, D> {
+        // FIXME: Relax these constraints to the same shape lengths, names don't really
+        // need to match
+        assert_eq!(
+            self.numbers.shape(),
+            rhs.numbers.shape(),
+            "Record containers must have the same shape for a binary operation"
+        );
+        let total = self.elements();
+        assert_eq!(
+            total,
+            self.indexes.len(),
+            "Unexpected illegal state, number of elements should always match number of indexes"
+        );
+        assert_eq!(
+            total,
+            rhs.elements(),
+            "Unexpected illegal state, number of elements should always match number of indexes"
+        );
+        assert_eq!(
+            total,
+            rhs.indexes.len(),
+            "Unexpected illegal state, number of elements should always match number of indexes"
+        );
+        match (self.history, rhs.history) {
+            // FIXME: Relax these constraints to the same shape lengths
+            (None, None) => RecordTensor::constants(self.numbers.elementwise(&rhs.numbers, fxy)),
+            (Some(history), None) => {
+                let (indexes, zs) = binary_x_history::<T, _>(
+                    total,
+                    history,
+                    self.numbers.iter().zip(&self.indexes),
+                    rhs.numbers.iter().zip(&rhs.indexes),
+                    fxy,
+                    dfxy_dx
+                );
+                RecordContainer {
+                    numbers: self.numbers.new_with_same_shape(zs),
+                    history: Some(history),
+                    indexes,
+                }
+            },
+            (None, Some(history)) => {
+                let (indexes, zs) = binary_y_history::<T, _>(
+                    total,
+                    history,
+                    self.numbers.iter().zip(&self.indexes),
+                    rhs.numbers.iter().zip(&rhs.indexes),
+                    fxy,
+                    dfxy_dy
+                );
+                RecordContainer {
+                    numbers: self.numbers.new_with_same_shape(zs),
+                    history: Some(history),
+                    indexes,
+                }
+            },
+            (Some(history), Some(h)) => {
+                assert!(
+                    record_operations::same_lists(history, h),
+                    "Record containers must be using the same WengertList"
+                );
+                let (indexes, zs) = binary_both_history::<T, _>(
+                    total,
+                    history,
+                    self.numbers.iter().zip(&self.indexes),
+                    rhs.numbers.iter().zip(&rhs.indexes),
+                    fxy,
+                    dfxy_dx,
+                    dfxy_dy
+                );
+                RecordContainer {
+                    numbers: self.numbers.new_with_same_shape(zs),
                     history: Some(history),
                     indexes,
                 }
@@ -379,6 +610,7 @@ where
      * // TODO Inspecting derivatives
      * ```
      */
+    #[track_caller]
     pub fn unary(
         &self,
         fx: impl Fn(T) -> T,
