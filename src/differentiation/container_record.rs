@@ -491,6 +491,11 @@ where
      * );
      * // TODO Inspecting derivatives
      * ```
+     *
+     * # Panics
+     *
+     * - If both record containers have a WengertList that are different to each other
+     * - If the record containers have different shapes
      */
     #[track_caller]
     pub fn binary(
@@ -500,13 +505,17 @@ where
         dfxy_dx: impl Fn(T, T) -> T,
         dfxy_dy: impl Fn(T, T) -> T,
     ) -> RecordTensor<'a, T, D> {
-        // FIXME: Relax these constraints to the same shape lengths, names don't really
-        // need to match
-        assert_eq!(
-            self.numbers.shape(),
-            rhs.numbers.shape(),
-            "Record containers must have the same shape for a binary operation"
-        );
+        {
+            let left_shape = self.numbers.shape();
+            let right_shape = rhs.numbers.shape();
+            if left_shape != right_shape {
+                panic!(
+                    "Record containers must have the same shape for a binary operation: (left: {:?}, right: {:?})",
+                    left_shape,
+                    right_shape
+                );
+            }
+        }
         let total = self.elements();
         assert_eq!(
             total,
@@ -524,7 +533,6 @@ where
             "Unexpected illegal state, number of elements should always match number of indexes"
         );
         match (self.history, rhs.history) {
-            // FIXME: Relax these constraints to the same shape lengths
             (None, None) => RecordTensor::constants(self.numbers.elementwise(&rhs.numbers, fxy)),
             (Some(history), None) => {
                 let (indexes, zs) = binary_x_history::<T, _>(
