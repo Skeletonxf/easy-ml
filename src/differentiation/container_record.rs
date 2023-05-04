@@ -4,7 +4,7 @@ use crate::differentiation::{Primitive, Index, WengertList};
 use crate::differentiation::record_operations;
 use crate::tensors::Tensor;
 use crate::tensors::views::TensorMut;
-use crate::tensors::indexing::TensorReferenceMutIterator;
+use crate::tensors::indexing::TensorOwnedIterator;
 use crate::matrices::Matrix;
 use crate::matrices::iterators::RowMajorReferenceMutIterator;
 use crate::matrices::views::{MatrixMut, NoInteriorMutability};
@@ -62,7 +62,7 @@ where
      * instead the computation graph can be conceived as `Y[i,j]` nodes each with a single
      * parent node of `X[i,j]` and the unary operation of `+4`.
      */
-    pub fn constants<S>(mut c: S) -> Self
+    pub fn constants<S>(c: S) -> Self
     where
         S: TensorMut<T, D>,
     {
@@ -71,10 +71,7 @@ where
             indexes: vec![0; total],
             numbers: Tensor::from(
                 c.view_shape(),
-                // FIXME: Should generalise this as an owned TensorOwnedIterator
-                TensorReferenceMutIterator::from(&mut c)
-                    .map(|x: &mut T| std::mem::replace(x, T::zero()))
-                    .collect()
+                TensorOwnedIterator::from_numeric(c).collect()
             ),
             history: None,
         }
@@ -100,7 +97,7 @@ where
      * ```
      */
     // TODO: Maybe swap parameter order here?
-    pub fn variables<S>(mut x: S, history: &'a WengertList<T>) -> Self
+    pub fn variables<S>(x: S, history: &'a WengertList<T>) -> Self
     where
         S: TensorMut<T, D>,
     {
@@ -109,10 +106,7 @@ where
         RecordContainer {
             numbers: Tensor::from(
                 x.view_shape(),
-                // FIXME: Should generalise this as an owned TensorOwnedIterator
-                TensorReferenceMutIterator::from(&mut x)
-                    .map(|x: &mut T| std::mem::replace(x, T::zero()))
-                    .collect()
+                TensorOwnedIterator::from_numeric(x).collect()
             ),
             history: Some(history),
             indexes: calculate_incrementing_indexes(starting_index, total),
