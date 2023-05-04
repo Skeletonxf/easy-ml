@@ -958,6 +958,117 @@ where
 }
 
 /**
+ * An iterator over all values in an owned tensor.
+ *
+ * This iterator does not clone the values, it returns the actual values stored in the tensor.
+ * There is no such method to return `T` by value from a [TensorRef](TensorRef)/TensorMut, to do
+ * this it [replaces](std::mem::replace) the values with dummy values. Hence it can only be
+ * created for types that implement [Default](Default) or [ZeroOne](crate::numeric::ZeroOne)
+ * from [Numeric](crate::numeric) which provide a means to create dummy values.
+ *
+ * First the all 0 index is iterated, then each iteration increments the rightmost index.
+ * For [Tensor](Tensor) or [TensorRef](TensorRef)s which do not reorder the underlying Tensor
+ * this will take a single step in memory on each iteration, akin to iterating through the
+ * flattened data of the tensor.
+ *
+ * If the TensorRef reorders the tensor data (e.g. [TensorAccess](TensorAccess)) this iterator
+ * will still iterate the rightmost index allowing iteration through dimensions in a different
+ * order to how they are stored, but no longer taking a single step in memory on each
+ * iteration (which may be less cache friendly for the CPU).
+ *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ *
+ * #[derive(Debug, Default, Eq, PartialEq)]
+ * struct NoClone(i32);
+ *
+ * let tensor = Tensor::from([("a", 3)], vec![ NoClone(1), NoClone(2), NoClone(3) ]);
+ * let values = tensor.iter_owned(); // will use T::default() for dummy values
+ * assert_eq!(vec![ NoClone(1), NoClone(2), NoClone(3) ], values.collect::<Vec<NoClone>>());
+ * ```
+ */
+#[derive(Debug)]
+pub struct TensorOwnedIterator<T, S, const D: usize> {
+    shape_iterator: ShapeIterator<D>,
+    source: S,
+    producer: fn() -> T,
+}
+
+impl<T, S, const D: usize> TensorOwnedIterator<T, S, D>
+where
+    S: TensorMut<T, D>,
+{
+    /**
+     * Creates the TensorOwnedIterator from a source where the default values will be provided
+     * by [Default::default](Default::default). This constructor is also used by the convenience
+     * methods on [Tensor::iter_owned](Tensor::iter_owned) and
+     * [TensorView::iter_owned](crate::tensors::views::TensorView::iter_owned).
+     */
+    pub fn from(source: S) -> TensorOwnedIterator<T, S, D>
+    where
+        T: Default,
+    {
+        TensorOwnedIterator {
+            shape_iterator: ShapeIterator::from(source.view_shape()),
+            source,
+            producer: || T::default(),
+        }
+    }
+
+    /**
+     * Creates the TensorOwnedIterator from a source where the default values will be provided
+     * by [ZeroOne::zero](crate::numeric::ZeroOne::zero).
+     */
+    pub fn from_numeric(source: S) -> TensorOwnedIterator<T, S, D>
+    where
+        T: crate::numeric::ZeroOne,
+    {
+        TensorOwnedIterator {
+            shape_iterator: ShapeIterator::from(source.view_shape()),
+            source,
+            producer: || T::zero(),
+        }
+    }
+
+    /**
+     * Constructs an iterator which also yields the indexes of each element in
+     * this iterator.
+     */
+    pub fn with_index(self) -> WithIndex<Self> {
+        WithIndex { iterator: self }
+    }
+}
+
+impl<T, S, const D: usize> Iterator for TensorOwnedIterator<T, S, D>
+where
+    S: TensorMut<T, D>,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.shape_iterator.next().map(|indexes| {
+            let producer = self.producer;
+            let dummy = producer();
+            // TODO: Can use unchecked here
+            let value = std::mem::replace(self.source.get_reference_mut(indexes).unwrap(), dummy);
+            value
+        })
+    }
+}
+
+impl<T, S, const D: usize> Iterator for WithIndex<TensorOwnedIterator<T, S, D>>
+where
+    S: TensorMut<T, D>,
+{
+    type Item = ([usize; D], T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let index = self.iterator.shape_iterator.indexes;
+        self.iterator.next().map(|x| (index, x))
+    }
+}
+
+/**
  * A TensorTranspose makes the data in the tensor it is created from appear to be in a different
  * order, swapping the lengths of each named dimension to match the new order but leaving the
  * dimension name order unchanged.

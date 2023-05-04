@@ -10,7 +10,7 @@ use crate::numeric::{Numeric, NumericRef};
 use crate::numeric::extra::{Real, RealRef};
 use crate::tensors::indexing::{
     ShapeIterator, TensorAccess, TensorIterator, TensorReferenceIterator,
-    TensorReferenceMutIterator, TensorTranspose,
+    TensorReferenceMutIterator, TensorTranspose, TensorOwnedIterator,
 };
 use crate::tensors::views::{
     DataLayout, IndexRange, IndexRangeValidationError, TensorExpansion, TensorIndex, TensorMask,
@@ -646,6 +646,16 @@ impl<T, const D: usize> Tensor<T, D> {
      */
     pub fn iter_reference_mut(&mut self) -> TensorReferenceMutIterator<T, Tensor<T, D>, D> {
         TensorReferenceMutIterator::from(self)
+    }
+
+    /**
+     * Creates an iterator over the values in this Tensor.
+     */
+    pub fn iter_owned(self) -> TensorOwnedIterator<T, Tensor<T, D>, D>
+    where
+        T: Default,
+    {
+        TensorOwnedIterator::from(self)
     }
 
     // Non public index order reference iterator since we don't want to expose our implementation

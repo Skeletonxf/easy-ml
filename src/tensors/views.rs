@@ -17,7 +17,7 @@ use crate::linear_algebra;
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::{
     TensorAccess, TensorIterator, TensorReferenceIterator, TensorReferenceMutIterator,
-    TensorTranspose,
+    TensorTranspose, TensorOwnedIterator,
 };
 use crate::tensors::{Dimension, Tensor};
 
@@ -653,6 +653,16 @@ where
      */
     pub fn iter_reference_mut(&mut self) -> TensorReferenceMutIterator<T, S, D> {
         TensorReferenceMutIterator::from(&mut self.source)
+    }
+
+    /**
+     * Creates an iterator over the values in this TensorView.
+     */
+    pub fn iter_owned(self) -> TensorOwnedIterator<T, S, D>
+    where
+        T: Default,
+    {
+        TensorOwnedIterator::from(self.source())
     }
 }
 
