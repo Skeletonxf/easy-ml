@@ -791,4 +791,17 @@ Data Layout = Linear(["a", "b", "c"])"#,
             ])
         );
     }
+
+    #[test]
+    fn test_owned_iterator_of_mut_source() {
+        use easy_ml::tensors::indexing::TensorOwnedIterator;
+        let mut tensor = Tensor::from_fn([("x", 2), ("y", 2)], |[x, y]| x + y);
+        let mut_tensor = &mut tensor;
+        let owned_iter = TensorOwnedIterator::from(mut_tensor);
+        let drained = owned_iter.collect::<Vec<_>>();
+        assert_eq!(drained, vec![ 0, 1, 1, 2 ]);
+        // original tensor is now drained of its values so should be set to 0 as that's the
+        // default value substituted.
+        assert_eq!(tensor, Tensor::empty([("x", 2), ("y", 2)], 0));
+    }
 }
