@@ -759,7 +759,23 @@ where
             .next()
             .map(|indexes| self.source.get_reference(indexes).unwrap().clone()) // TODO: Can use unchecked here
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.shape_iterator.size_hint()
+    }
 }
+
+impl<'a, T, S, const D: usize> FusedIterator for TensorIterator<'a, T, S, D>
+where
+    T: Clone,
+    S: TensorRef<T, D>,
+{}
+
+impl<'a, T, S, const D: usize> ExactSizeIterator for TensorIterator<'a, T, S, D>
+where
+    T: Clone,
+    S: TensorRef<T, D>,
+{}
 
 impl<'a, T, S, const D: usize> Iterator for WithIndex<TensorIterator<'a, T, S, D>>
 where
@@ -772,7 +788,23 @@ where
         let index = self.iterator.shape_iterator.indexes;
         self.iterator.next().map(|x| (index, x))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iterator.size_hint()
+    }
 }
+
+impl<'a, T, S, const D: usize> FusedIterator for WithIndex<TensorIterator<'a, T, S, D>>
+where
+    T: Clone,
+    S: TensorRef<T, D>,
+{}
+
+impl<'a, T, S, const D: usize> ExactSizeIterator for WithIndex<TensorIterator<'a, T, S, D>>
+where
+    T: Clone,
+    S: TensorRef<T, D>,
+{}
 
 /**
  * An iterator over references to all values in a tensor.
@@ -891,7 +923,21 @@ where
             .next()
             .map(|indexes| self.source.get_reference(indexes).unwrap()) // TODO: Can use unchecked here
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.shape_iterator.size_hint()
+    }
 }
+
+impl<'a, T, S, const D: usize> FusedIterator for TensorReferenceIterator<'a, T, S, D>
+where
+    S: TensorRef<T, D>,
+{}
+
+impl<'a, T, S, const D: usize> ExactSizeIterator for TensorReferenceIterator<'a, T, S, D>
+where
+    S: TensorRef<T, D>,
+{}
 
 impl<'a, T, S, const D: usize> Iterator for WithIndex<TensorReferenceIterator<'a, T, S, D>>
 where
@@ -903,7 +949,21 @@ where
         let index = self.iterator.shape_iterator.indexes;
         self.iterator.next().map(|x| (index, x))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iterator.size_hint()
+    }
 }
+
+impl<'a, T, S, const D: usize> FusedIterator for WithIndex<TensorReferenceIterator<'a, T, S, D>>
+where
+    S: TensorRef<T, D>,
+{}
+
+impl<'a, T, S, const D: usize> ExactSizeIterator for WithIndex<TensorReferenceIterator<'a, T, S, D>>
+where
+    S: TensorRef<T, D>,
+{}
 
 /**
  * An iterator over mutable references to all values in a tensor.
@@ -979,7 +1039,21 @@ where
             }
         })
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.shape_iterator.size_hint()
+    }
 }
+
+impl<'a, T, S, const D: usize> FusedIterator for TensorReferenceMutIterator<'a, T, S, D>
+where
+    S: TensorMut<T, D>,
+{}
+
+impl<'a, T, S, const D: usize> ExactSizeIterator for TensorReferenceMutIterator<'a, T, S, D>
+where
+    S: TensorMut<T, D>,
+{}
 
 impl<'a, T, S, const D: usize> Iterator for WithIndex<TensorReferenceMutIterator<'a, T, S, D>>
 where
@@ -991,7 +1065,21 @@ where
         let index = self.iterator.shape_iterator.indexes;
         self.iterator.next().map(|x| (index, x))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iterator.size_hint()
+    }
 }
+
+impl<'a, T, S, const D: usize> FusedIterator for WithIndex<TensorReferenceMutIterator<'a, T, S, D>>
+where
+    S: TensorMut<T, D>,
+{}
+
+impl<'a, T, S, const D: usize> ExactSizeIterator for WithIndex<TensorReferenceMutIterator<'a, T, S, D>>
+where
+    S: TensorMut<T, D>,
+{}
 
 /**
  * An iterator over all values in an owned tensor.
@@ -1090,7 +1178,21 @@ where
             value
         })
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.shape_iterator.size_hint()
+    }
 }
+
+impl<T, S, const D: usize> FusedIterator for TensorOwnedIterator<T, S, D>
+where
+    S: TensorMut<T, D>,
+{}
+
+impl<T, S, const D: usize> ExactSizeIterator for TensorOwnedIterator<T, S, D>
+where
+    S: TensorMut<T, D>,
+{}
 
 impl<T, S, const D: usize> Iterator for WithIndex<TensorOwnedIterator<T, S, D>>
 where
@@ -1102,7 +1204,21 @@ where
         let index = self.iterator.shape_iterator.indexes;
         self.iterator.next().map(|x| (index, x))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iterator.size_hint()
+    }
 }
+
+impl<T, S, const D: usize> FusedIterator for WithIndex<TensorOwnedIterator<T, S, D>>
+where
+    S: TensorMut<T, D>,
+{}
+
+impl<T, S, const D: usize> ExactSizeIterator for WithIndex<TensorOwnedIterator<T, S, D>>
+where
+    S: TensorMut<T, D>,
+{}
 
 /**
  * A TensorTranspose makes the data in the tensor it is created from appear to be in a different
