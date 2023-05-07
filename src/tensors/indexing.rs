@@ -34,10 +34,12 @@
  * the dimensions are stored as.
  */
 
+use crate::tensors::dimensions;
 use crate::tensors::dimensions::DimensionMappings;
 use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
 use crate::tensors::{Dimension, Tensor};
 
+use std::iter::{ExactSizeIterator, FusedIterator};
 use std::error::Error;
 use std::fmt;
 use std::marker::PhantomData;
@@ -566,7 +568,17 @@ impl<const D: usize> Iterator for ShapeIterator<D> {
     fn next(&mut self) -> Option<Self::Item> {
         iter(&mut self.finished, &mut self.indexes, &self.shape)
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        size_hint(self.finished, &self.indexes, &self.shape)
+    }
 }
+
+// Once we hit the end we mark ourselves as finished so we're always Fused.
+impl<const D: usize> FusedIterator for ShapeIterator<D> {}
+// We can always calculate the exact number of steps remaining because the shape and indexes are
+// private fields that are only mutated by `next` to count up.
+impl<const D: usize> ExactSizeIterator for ShapeIterator<D> {}
 
 /// Common index order iterator logic
 fn iter<const D: usize>(
@@ -602,6 +614,30 @@ fn iter<const D: usize>(
     }
 
     value
+}
+
+/// Common size hint logic
+fn size_hint<const D: usize>(
+    finished: bool,
+    indexes: &[usize; D],
+    shape: &[(Dimension, usize); D],
+) -> (usize, Option<usize>) {
+    if finished {
+        return (0, Some(0));
+    }
+
+    let remaining = if D > 0 {
+        let total = dimensions::elements(shape);
+        let strides = crate::tensors::compute_strides(shape);
+        let seen = crate::tensors::get_index_direct_unchecked(indexes, &strides);
+        total - seen
+    } else {
+        1
+        // If D == 0 and we're not finished we've not returned the sole index yet so there's
+        // exactly 1 left
+    };
+
+    (remaining, Some(remaining))
 }
 
 /**

@@ -532,7 +532,7 @@ fn compute_strides<const D: usize>(shape: &[(Dimension, usize); D]) -> [usize; D
     std::array::from_fn(|d| shape.iter().skip(d + 1).map(|d| d.1).product())
 }
 
-// returns the 1 dimensional index to use to get the requested index into some tensor
+/// returns the 1 dimensional index to use to get the requested index into some tensor
 #[inline]
 fn get_index_direct<const D: usize>(
     // indexes to use
@@ -551,6 +551,23 @@ fn get_index_direct<const D: usize>(
         index += n * strides[d];
     }
     Some(index)
+}
+
+/// returns the 1 dimensional index to use to get the requested index into some tensor, without
+/// checking the indexes are within bounds for the shape.
+#[inline]
+fn get_index_direct_unchecked<const D: usize>(
+    // indexes to use
+    indexes: &[usize; D],
+    // strides for indexing into the tensor
+    strides: &[usize; D],
+) -> usize {
+    let mut index = 0;
+    for d in 0..D {
+        let n = indexes[d];
+        index += n * strides[d];
+    }
+    index
 }
 
 impl<T, const D: usize> Tensor<T, D> {
