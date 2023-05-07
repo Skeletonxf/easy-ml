@@ -551,6 +551,28 @@ impl<T> Matrix<T> {
     }
 
     /**
+     * Creates a column major iterator over all values in this matrix,
+     * proceeding through each column in order.
+     */
+    pub fn column_major_owned_iter(self) -> ColumnMajorOwnedIterator<T>
+    where
+        T: Default,
+    {
+        ColumnMajorOwnedIterator::new(self)
+    }
+
+    /**
+     * Creates a row major iterator over all values in this matrix,
+     * proceeding through each row in order.
+     */
+    pub fn row_major_owned_iter(self) -> RowMajorOwnedIterator<T>
+    where
+        T: Default,
+    {
+        RowMajorOwnedIterator::new(self)
+    }
+
+    /**
      * Returns an iterator over references to the main diagonal in this matrix.
      */
     pub fn diagonal_reference_iter(&self) -> DiagonalReferenceIterator<T> {

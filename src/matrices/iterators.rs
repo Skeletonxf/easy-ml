@@ -3,8 +3,8 @@
  *
  * - Over a row: Row[(Reference)](RowReferenceIterator)[(Mut)](RowReferenceMutIterator)[Iterator](RowIterator)
  * - Over a column: Column[(Reference)](ColumnReferenceIterator)[(Mut)](ColumnReferenceMutIterator)[Iterator](ColumnIterator)
- * - Over all data in row major order: RowMajor[(Reference)](RowMajorReferenceIterator)[(Mut)](RowMajorReferenceMutIterator)[Iterator](RowMajorIterator)
- * - Over all data in column major order: ColumnMajor[(Reference)](ColumnMajorReferenceIterator)[(Mut)](ColumnMajorReferenceMutIterator)[Iterator](ColumnMajorIterator)
+ * - Over all data in row major order: RowMajor[(Reference)](RowMajorReferenceIterator)[(Mut)](RowMajorReferenceMutIterator)[(Owned)](RowMajorOwnedIterator)[Iterator](RowMajorIterator)
+ * - Over all data in column major order: ColumnMajor[(Reference)](ColumnMajorReferenceIterator)[(Mut)](ColumnMajorReferenceMutIterator)[(Owned)](ColumnMajorOwnedIterator)[Iterator](ColumnMajorIterator)
  * - Over the main diagonal: Diagonal[(Reference)](DiagonalReferenceIterator)[(Mut)](DiagonalReferenceMutIterator)[Iterator](DiagonalIterator)
  *
  * # Examples
@@ -1352,6 +1352,325 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {}
 #[rustfmt::skip]
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {}
+
+/**
+ * A column major iterator over all values in a matrix.
+ *
+ * This iterator does not clone the values, it returns the actual values stored in the matrix.
+ * There is no such method to return `T` by value from a [MatrixRef](MatrixRef)/MatrixMut, to do
+ * this it [replaces](std::mem::replace) the values with dummy values. Hence it can only be
+ * created for types that implement [Default](Default) or [ZeroOne](crate::numeric::ZeroOne)
+ * from [Numeric](crate::numeric) which provide a means to create dummy values.
+ *
+ * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
+ * ```ignore
+ * [
+ *   1, 2
+ *   3, 4
+ * ]
+ * ```
+ * The elements will be iterated through as 1, 3, 2, 4
+ *
+ * ```
+ * use easy_ml::matrices::Matrix;
+ *
+ * #[derive(Debug, Default, Eq, PartialEq)]
+ * struct NoClone(i32);
+ *
+ * let matrix = Matrix::from(vec![
+ *     vec![ NoClone(1), NoClone(2) ],
+ *     vec![ NoClone(3), NoClone(4) ]
+ * ]);
+ * let values = matrix.column_major_owned_iter(); // will use T::default() for dummy values
+ * assert_eq!(vec![ NoClone(1), NoClone(3), NoClone(2), NoClone(4) ], values.collect::<Vec<NoClone>>());
+ * ```
+ */
+#[derive(Debug)]
+#[rustfmt::skip]
+pub struct ColumnMajorOwnedIterator<T, S: MatrixMut<T> + NoInteriorMutability = Matrix<T>> {
+    matrix: S,
+    column_counter: Column,
+    columns: Column,
+    row_counter: Row,
+    rows: Row,
+    finished: bool,
+    producer: fn() -> T,
+}
+
+impl<T> ColumnMajorOwnedIterator<T> {
+    /**
+     * Constructs a column major iterator over this matrix.
+     */
+    pub fn new(matrix: Matrix<T>) -> ColumnMajorOwnedIterator<T>
+    where
+        T: Default,
+    {
+        ColumnMajorOwnedIterator::from(matrix)
+    }
+}
+
+impl<T, S: MatrixMut<T> + NoInteriorMutability> ColumnMajorOwnedIterator<T, S> {
+    /**
+     * Constructs a column major iterator over this source.
+     */
+    pub fn from(source: S) -> ColumnMajorOwnedIterator<T, S>
+    where
+        T: Default,
+    {
+        ColumnMajorOwnedIterator {
+            column_counter: 0,
+            columns: source.view_columns(),
+            row_counter: 0,
+            rows: source.view_rows(),
+            finished: !source.index_is_valid(0, 0),
+            matrix: source,
+            producer: || T::default(),
+        }
+    }
+
+    /**
+     * Constructs a column major iterator over this source.
+     */
+    pub fn from_numeric(source: S) -> ColumnMajorOwnedIterator<T, S>
+    where
+        T: crate::numeric::ZeroOne,
+    {
+        ColumnMajorOwnedIterator {
+            column_counter: 0,
+            columns: source.view_columns(),
+            row_counter: 0,
+            rows: source.view_rows(),
+            finished: !source.index_is_valid(0, 0),
+            matrix: source,
+            producer: || T::zero(),
+        }
+    }
+
+    /**
+     * Constructs an iterator which also yields the row and column index of each element in
+     * this iterator.
+     */
+    pub fn with_index(self) -> WithIndex<Self> {
+        WithIndex { iterator: self }
+    }
+}
+
+impl<T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnMajorOwnedIterator<T, S>
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        column_major_iter(
+            &mut self.finished,
+            self.rows,
+            self.columns,
+            &mut self.row_counter,
+            &mut self.column_counter,
+        )
+        .map(|(row, column)| unsafe {
+            // Safety: We checked on creation that 0,0 is in range, and after getting
+            // our next value we check if we hit the end of the matrix and will avoid
+            // calling this on our next loop if we finished. Since the view size may not
+            // change due to NoInteriorMutability and our exclusive reference this read
+            // is in bounds.
+            // *We also require the source matrix to be NoInteriorMutability to additionally
+            // make illegal any edge cases where some extremely exotic matrix rotates its data
+            // inside the buffer around though a shared reference while we were iterating that
+            // could otherwise make our cursor read the same data twice.
+            let producer = self.producer;
+            let dummy = producer();
+            let value = std::mem::replace(self.matrix.get_reference_unchecked_mut(row, column), dummy);
+            value
+        })
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        column_major_size_hint(
+            self.rows,
+            self.columns,
+            self.row_counter,
+            self.column_counter,
+        )
+    }
+}
+#[rustfmt::skip]
+impl<T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for ColumnMajorOwnedIterator<T, S> {}
+#[rustfmt::skip]
+impl<T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for ColumnMajorOwnedIterator<T, S> {}
+
+impl<T, S: MatrixMut<T> + NoInteriorMutability> Iterator
+    for WithIndex<ColumnMajorOwnedIterator<T, S>>
+{
+    type Item = ((Row, Column), T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (row, column) = (self.iterator.row_counter, self.iterator.column_counter);
+        self.iterator.next().map(|x| ((row, column), x))
+    }
+}
+#[rustfmt::skip]
+impl<T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for WithIndex<ColumnMajorOwnedIterator<T, S>> {}
+#[rustfmt::skip]
+impl<T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for WithIndex<ColumnMajorOwnedIterator<T, S>> {}
+
+/**
+ * A row major iterator over all values in a matrix.
+ *
+ * This iterator does not clone the values, it returns the actual values stored in the matrix.
+ * There is no such method to return `T` by value from a [MatrixRef](MatrixRef)/MatrixMut, to do
+ * this it [replaces](std::mem::replace) the values with dummy values. Hence it can only be
+ * created for types that implement [Default](Default) or [ZeroOne](crate::numeric::ZeroOne)
+ * from [Numeric](crate::numeric) which provide a means to create dummy values.
+ *
+ * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
+ * ```ignore
+ * [
+ *   1, 2
+ *   3, 4
+ * ]
+ * ```
+ * The elements will be iterated through as 1, 2, 3, 4
+ *
+ * ```
+ * use easy_ml::matrices::Matrix;
+ *
+ * #[derive(Debug, Default, Eq, PartialEq)]
+ * struct NoClone(i32);
+ *
+ * let matrix = Matrix::from(vec![
+ *     vec![ NoClone(1), NoClone(2) ],
+ *     vec![ NoClone(3), NoClone(4) ]
+ * ]);
+ * let values = matrix.row_major_owned_iter(); // will use T::default() for dummy values
+ * assert_eq!(vec![ NoClone(1), NoClone(2), NoClone(3), NoClone(4) ], values.collect::<Vec<NoClone>>());
+ * ```
+ */
+#[derive(Debug)]
+pub struct RowMajorOwnedIterator<T, S: MatrixMut<T> + NoInteriorMutability = Matrix<T>> {
+    matrix: S,
+    column_counter: Column,
+    columns: Column,
+    row_counter: Row,
+    rows: Row,
+    finished: bool,
+    producer: fn() -> T,
+}
+
+impl<T> RowMajorOwnedIterator<T> {
+    /**
+     * Constructs a row major iterator over this matrix.
+     */
+    pub fn new(matrix: Matrix<T>) -> RowMajorOwnedIterator<T>
+    where
+        T: Default,
+    {
+        RowMajorOwnedIterator::from(matrix)
+    }
+}
+
+impl<T, S: MatrixMut<T> + NoInteriorMutability> RowMajorOwnedIterator<T, S> {
+    /**
+     * Constructs a row major iterator over this source.
+     */
+    pub fn from(source: S) -> RowMajorOwnedIterator<T, S>
+    where
+        T: Default,
+    {
+        RowMajorOwnedIterator {
+            column_counter: 0,
+            columns: source.view_columns(),
+            row_counter: 0,
+            rows: source.view_rows(),
+            finished: !source.index_is_valid(0, 0),
+            matrix: source,
+            producer: || T::default(),
+        }
+    }
+
+    /**
+     * Constructs a row major iterator over this source.
+     */
+    pub fn from_numeric(source: S) -> RowMajorOwnedIterator<T, S>
+    where
+        T: crate::numeric::ZeroOne,
+    {
+        RowMajorOwnedIterator {
+            column_counter: 0,
+            columns: source.view_columns(),
+            row_counter: 0,
+            rows: source.view_rows(),
+            finished: !source.index_is_valid(0, 0),
+            matrix: source,
+            producer: || T::zero(),
+        }
+    }
+
+    /**
+     * Constructs an iterator which also yields the row and column index of each element in
+     * this iterator.
+     */
+    pub fn with_index(self) -> WithIndex<Self> {
+        WithIndex { iterator: self }
+    }
+}
+
+impl<T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowMajorOwnedIterator<T, S>
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        row_major_iter(
+            &mut self.finished,
+            self.rows,
+            self.columns,
+            &mut self.row_counter,
+            &mut self.column_counter,
+        )
+        .map(|(row, column)| unsafe {
+            // Safety: We checked on creation that 0,0 is in range, and after getting
+            // our next value we check if we hit the end of the matrix and will avoid
+            // calling this on our next loop if we finished. Since the view size may not
+            // change due to NoInteriorMutability and our exclusive reference this read
+            // is in bounds.
+            // *We also require the source matrix to be NoInteriorMutability to additionally
+            // make illegal any edge cases where some extremely exotic matrix rotates its data
+            // inside the buffer around through a shared reference while we were iterating that
+            // could otherwise make our cursor read the same data twice.
+            let producer = self.producer;
+            let dummy = producer();
+            let value = std::mem::replace(self.matrix.get_reference_unchecked_mut(row, column), dummy);
+            value
+        })
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        row_major_size_hint(
+            self.rows,
+            self.columns,
+            self.row_counter,
+            self.column_counter,
+        )
+    }
+}
+#[rustfmt::skip]
+impl<T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for RowMajorOwnedIterator<T, S> {}
+#[rustfmt::skip]
+impl<T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for RowMajorOwnedIterator<T, S> {}
+
+impl<T, S: MatrixMut<T> + NoInteriorMutability> Iterator
+    for WithIndex<RowMajorOwnedIterator<T, S>>
+{
+    type Item = ((Row, Column), T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (row, column) = (self.iterator.row_counter, self.iterator.column_counter);
+        self.iterator.next().map(|x| ((row, column), x))
+    }
+}
+#[rustfmt::skip]
+impl<T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for WithIndex<RowMajorOwnedIterator<T, S>> {}
+#[rustfmt::skip]
+impl<T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for WithIndex<RowMajorOwnedIterator<T, S>> {}
 
 /**
  * An iterator over mutable references to the main diagonal in a matrix.
