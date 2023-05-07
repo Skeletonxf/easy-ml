@@ -1,5 +1,16 @@
 # Changelog
 
+## Version 1.10
+
+Version 1.10 will include a bugfix for the `WithIndex` matrix row/column major
+iterators not delegating to their base iterator exact size implementation.
+Calling the `len()` methods on earlier versions will panic as the standard
+library `len()` implementation for `ExactSizeIterator` checks the
+invariant that the affected `WithIndex` iterators accidentally did not uphold.
+The `len()` methods on the base iterators prior wrapping them in `WithIndex`
+was correct and can be used to get the exact length if needed on earlier
+versions of Easy ML.
+
 ## Version 1.9
 
 Release of named Tensor APIs, and extended linear algebra support. Fixed serde
