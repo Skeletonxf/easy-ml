@@ -90,14 +90,13 @@ where
      * let record = {
      *     let list = WengertList::new();
      *     RecordTensor::variables(
-     *         Tensor::from([("r", 2), ("c", 2)], vec![ 1.0, 2.0, 3.0, 4.0 ]),
-     *         &list
+     *         &list,
+     *         Tensor::from([("r", 2), ("c", 2)], vec![ 1.0, 2.0, 3.0, 4.0 ])
      *     )
      * }; // list no longer in scope
      * ```
      */
-    // TODO: Maybe swap parameter order here?
-    pub fn variables<S>(x: S, history: &'a WengertList<T>) -> Self
+    pub fn variables<S>(history: &'a WengertList<T>, x: S) -> Self
     where
         S: TensorMut<T, D>,
     {
@@ -193,13 +192,13 @@ where
      * let record = {
      *     let list = WengertList::new();
      *     RecordMatrix::variables(
-     *         Matrix::from(vec![vec![1.0, 2.0], vec![3.0, 4.0]]),
-     *         &list
+     *         &list,
+     *         Matrix::from(vec![vec![1.0, 2.0], vec![3.0, 4.0]])
      *     )
      * }; // list no longer in scope
      * ```
      */
-    pub fn variables<S>(x: S, history: &'a WengertList<T>) -> Self
+    pub fn variables<S>(history: &'a WengertList<T>, x: S) -> Self
     where
         S: MatrixMut<T> + NoInteriorMutability,
     {
@@ -398,11 +397,11 @@ where
      * use easy_ml::tensors::Tensor;
      * let list = WengertList::new();
      * let X = RecordTensor::variables(
+     *     &list,
      *     Tensor::from_fn(
      *         [("rows", 2), ("columns", 2)],
      *         |[r, c]| 0.15 * ((1 + r + c) as f32)
-     *     ),
-     *     &list
+     *     )
      * );
      * // the derivative of tanh(x) is sech(x) * sech(x) which is equivalent to
      * // 1 / (cosh(x) * cosh(x))
@@ -455,18 +454,18 @@ where
      * use easy_ml::tensors::Tensor;
      * let list = WengertList::new();
      * let X = RecordTensor::variables(
+     *     &list,
      *     Tensor::from_fn(
      *         [("rows", 2), ("columns", 2)],
      *         |[r, c]| ((1 + r + c) as f32)
-     *     ),
-     *     &list
+     *     )
      * );
      * let Y = RecordTensor::variables(
+     *     &list,
      *     Tensor::from_fn(
      *         [("rows", 2), ("columns", 2)],
      *         |[r, c]| ((1 + r + c) as f32)
-     *     ),
-     *     &list
+     *     )
      * );
      * // the derivative of atan2 with respect to x is y/(x*x + y*y)
      * // https://www.wolframalpha.com/input/?i=d%28atan2%28x%2Cy%29%29%2Fdx
@@ -597,8 +596,8 @@ where
      * use easy_ml::matrices::Matrix;
      * let list = WengertList::new();
      * let X = RecordMatrix::variables(
-     *     Matrix::from_fn((2, 2), |(r, c)| 0.15 * ((1 + r + c) as f32)),
-     *     &list
+     *     &list,
+     *     Matrix::from_fn((2, 2), |(r, c)| 0.15 * ((1 + r + c) as f32))
      * );
      * // the derivative of tanh(x) is sech(x) * sech(x) which is equivalent to
      * // 1 / (cosh(x) * cosh(x))
