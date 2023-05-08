@@ -6,7 +6,7 @@ use crate::tensors::Tensor;
 use crate::tensors::views::TensorMut;
 use crate::tensors::indexing::TensorOwnedIterator;
 use crate::matrices::Matrix;
-use crate::matrices::iterators::RowMajorReferenceMutIterator;
+use crate::matrices::iterators::RowMajorOwnedIterator;
 use crate::matrices::views::{MatrixMut, NoInteriorMutability};
 
 /**
@@ -166,7 +166,7 @@ where
      * instead the computation graph can be conceived as `Y[i,j]` nodes each with a single
      * parent node of `X[i,j]` and the unary operation of `+4`.
      */
-    pub fn constants<S>(mut c: S) -> Self
+    pub fn constants<S>(c: S) -> Self
     where
         S: MatrixMut<T> + NoInteriorMutability,
     {
@@ -174,10 +174,7 @@ where
             indexes: vec![0; c.view_rows() * c.view_columns()],
             numbers: Matrix::from_flat_row_major(
                 (c.view_rows(), c.view_columns()),
-                // FIXME: Should generalise this as an owned RowMajorOwnedIterator
-                RowMajorReferenceMutIterator::from(&mut c)
-                    .map(|x: &mut T| std::mem::replace(x, T::zero()))
-                    .collect()
+                RowMajorOwnedIterator::from_numeric(c).collect()
             ),
             history: None,
         }
@@ -202,7 +199,7 @@ where
      * }; // list no longer in scope
      * ```
      */
-    pub fn variables<S>(mut x: S, history: &'a WengertList<T>) -> Self
+    pub fn variables<S>(x: S, history: &'a WengertList<T>) -> Self
     where
         S: MatrixMut<T> + NoInteriorMutability,
     {
@@ -211,10 +208,7 @@ where
         RecordContainer {
             numbers: Matrix::from_flat_row_major(
                 (x.view_rows(), x.view_columns()),
-                // FIXME: Should generalise this as an owned RowMajorOwnedIterator
-                RowMajorReferenceMutIterator::from(&mut x)
-                    .map(|x: &mut T| std::mem::replace(x, T::zero()))
-                    .collect()
+                RowMajorOwnedIterator::from_numeric(x).collect()
             ),
             history: Some(history),
             indexes: calculate_incrementing_indexes(starting_index, total),
