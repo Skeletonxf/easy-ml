@@ -755,9 +755,13 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
+        // Safety: ShapeIterator only iterates over the correct indexes into our tensor's shape as
+        // defined by TensorRef. Since TensorRef promises no interior mutability and we hold an
+        // immutable reference to our tensor source, it can't be resized which ensures
+        // ShapeIterator can always yield valid indexes for our iteration.
         self.shape_iterator
             .next()
-            .map(|indexes| self.source.get_reference(indexes).unwrap().clone()) // TODO: Can use unchecked here
+            .map(|indexes| unsafe { self.source.get_reference_unchecked(indexes) }.clone())
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -919,9 +923,13 @@ where
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
+        // Safety: ShapeIterator only iterates over the correct indexes into our tensor's shape as
+        // defined by TensorRef. Since TensorRef promises no interior mutability and we hold an
+        // immutable reference to our tensor source, it can't be resized which ensures
+        // ShapeIterator can always yield valid indexes for our iteration.
         self.shape_iterator
             .next()
-            .map(|indexes| self.source.get_reference(indexes).unwrap()) // TODO: Can use unchecked here
+            .map(|indexes| unsafe { self.source.get_reference_unchecked(indexes) })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -1034,8 +1042,12 @@ where
                 // but since we will always increment the counter on every call to next()
                 // and stop when we reach the end no references will overlap.
                 // The compiler doesn't know this, so transmute the lifetime for it.
-                std::mem::transmute(self.source.get_reference_mut(indexes).unwrap())
-                // TODO: Can use unchecked here
+                // Safety: ShapeIterator only iterates over the correct indexes into our
+                // tensor's shape as defined by TensorRef. Since TensorRef promises no interior
+                // mutability and we hold an exclusive reference to our tensor source, it can't
+                // be resized (except by us - and we don't) which ensures ShapeIterator can always
+                // yield valid indexes for our iteration.
+                std::mem::transmute(self.source.get_reference_unchecked_mut(indexes))
             }
         })
     }
@@ -1173,8 +1185,15 @@ where
         self.shape_iterator.next().map(|indexes| {
             let producer = self.producer;
             let dummy = producer();
-            // TODO: Can use unchecked here
-            let value = std::mem::replace(self.source.get_reference_mut(indexes).unwrap(), dummy);
+            // Safety: ShapeIterator only iterates over the correct indexes into our
+            // tensor's shape as defined by TensorRef. Since TensorRef promises no interior
+            // mutability and we hold our tensor source by value, it can't be resized (except by
+            // us - and we don't) which ensures ShapeIterator can always yield valid indexes for
+            // our iteration.
+            let value = std::mem::replace(
+                unsafe { self.source.get_reference_unchecked_mut(indexes) },
+                dummy
+            );
             value
         })
     }
