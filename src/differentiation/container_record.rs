@@ -631,4 +631,145 @@ where
             },
         }
     }
+
+    /**
+     * Creates a new RecordContainer from two RecordContainers by applying
+     * some binary function from `T` to `T` to every element pair in the containers. Both
+     * containers must have the same shape.
+     *
+     * To compute the new records, the binary function of some inputs x and y to some
+     * output z is needed along with its derivative with respect to its first input x and
+     * its derivative with respect to its second input y.
+     *
+     * For example, atan2 takes two arguments, but the Real trait
+     * does not include this operation and Record has no operations for it specifically.
+     * However, you can use this function to compute the atan2 for two record containers like so:
+     *
+     * ```
+     * use easy_ml::differentiation::{RecordMatrix, WengertList};
+     * use easy_ml::matrices::Matrix;
+     * let list = WengertList::new();
+     * let X = RecordMatrix::variables(
+     *     &list,
+     *     Matrix::from_fn((2, 2), |(r, c)| ((1 + r + c) as f32))
+     * );
+     * let Y = RecordMatrix::variables(
+     *     &list,
+     *     Matrix::from_fn((2, 2), |(r, c)| ((1 + r + c) as f32))
+     * );
+     * // the derivative of atan2 with respect to x is y/(x*x + y*y)
+     * // https://www.wolframalpha.com/input/?i=d%28atan2%28x%2Cy%29%29%2Fdx
+     * // the derivative of atan2 with respect to y is -x/(x*x + y*y)
+     * // https://www.wolframalpha.com/input/?i=d%28atan2%28x%2Cy%29%29%2Fdy
+     * let Z = X.binary(&Y,
+     *     |x, y| x.atan2(y),
+     *     |x, y| y/((x*x) + (y*y)),
+     *     |x, y| -x/((x*x) + (y*y))
+     * );
+     * // TODO Inspecting derivatives
+     * ```
+     *
+     * # Panics
+     *
+     * - If both record containers have a WengertList that are different to each other
+     * - If the record containers have different shapes
+     */
+    #[track_caller]
+    pub fn binary(
+        &self,
+        rhs: &RecordMatrix<'a, T>,
+        fxy: impl Fn(T, T) -> T,
+        dfxy_dx: impl Fn(T, T) -> T,
+        dfxy_dy: impl Fn(T, T) -> T,
+    ) -> RecordMatrix<'a, T> {
+        let shape = {
+            let left_shape = self.numbers.size();
+            let right_shape = rhs.numbers.size();
+            if left_shape != right_shape {
+                panic!(
+                    "Record containers must have the same size for a binary operation: (left: {:?}, right: {:?})",
+                    left_shape,
+                    right_shape
+                );
+            }
+            left_shape
+        };
+        let total = self.elements();
+        assert_eq!(
+            total,
+            self.indexes.len(),
+            "Unexpected illegal state, number of elements should always match number of indexes"
+        );
+        assert_eq!(
+            total,
+            rhs.elements(),
+            "Unexpected illegal state, number of elements should always match number of indexes"
+        );
+        assert_eq!(
+            total,
+            rhs.indexes.len(),
+            "Unexpected illegal state, number of elements should always match number of indexes"
+        );
+        match (self.history, rhs.history) {
+            (None, None) => RecordMatrix::constants(
+                Matrix::from_flat_row_major(
+                    shape,
+                    self.numbers.row_major_iter()
+                        .zip(rhs.numbers.row_major_iter())
+                        .map(|(x, y)| fxy(x, y))
+                        .collect()
+                )
+            ),
+            (Some(history), None) => {
+                let (indexes, zs) = binary_x_history::<T, _>(
+                    total,
+                    history,
+                    self.numbers.row_major_iter().zip(&self.indexes),
+                    rhs.numbers.row_major_iter().zip(&rhs.indexes),
+                    fxy,
+                    dfxy_dx
+                );
+                RecordContainer {
+                    numbers: Matrix::from_flat_row_major(shape, zs),
+                    history: Some(history),
+                    indexes,
+                }
+            },
+            (None, Some(history)) => {
+                let (indexes, zs) = binary_y_history::<T, _>(
+                    total,
+                    history,
+                    self.numbers.row_major_iter().zip(&self.indexes),
+                    rhs.numbers.row_major_iter().zip(&rhs.indexes),
+                    fxy,
+                    dfxy_dy
+                );
+                RecordContainer {
+                    numbers: Matrix::from_flat_row_major(shape, zs),
+                    history: Some(history),
+                    indexes,
+                }
+            },
+            (Some(history), Some(h)) => {
+                assert!(
+                    record_operations::same_lists(history, h),
+                    "Record containers must be using the same WengertList"
+                );
+                let (indexes, zs) = binary_both_history::<T, _>(
+                    total,
+                    history,
+                    self.numbers.row_major_iter().zip(&self.indexes),
+                    rhs.numbers.row_major_iter().zip(&rhs.indexes),
+                    fxy,
+                    dfxy_dx,
+                    dfxy_dy
+                );
+                RecordContainer {
+                    numbers: Matrix::from_flat_row_major(shape, zs),
+                    history: Some(history),
+                    indexes,
+                }
+            },
+        }
+    }
 }
