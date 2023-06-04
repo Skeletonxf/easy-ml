@@ -9,6 +9,8 @@ use crate::matrices::Matrix;
 use crate::matrices::iterators::RowMajorOwnedIterator;
 use crate::matrices::views::{MatrixMut, NoInteriorMutability};
 
+mod container_operations;
+
 /**
  * A pluralisation of [Record](crate::differentiation::Record) that groups together a
  * **s**ource of numbers instead of storing one number of type T individually.
