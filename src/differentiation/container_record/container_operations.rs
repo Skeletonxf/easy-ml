@@ -125,10 +125,12 @@ where
         are_same_list(lhs.history, rhs.history),
         "Record containers must be using the same WengertList"
     );
-    unimplemented!()
-    // TODO: binary_assign helper methods
-    // TODO: Also op_assign methods for Tensor/Matrix/TensorView/MatrixView
-    // TODO: And use them in the operation impls for +, -, ect
+    lhs.binary_left_assign(
+        rhs,
+        |x, y| x + y,
+        |_x, _y| T::one(), // δ(lhs + rhs) / lhs = 1
+        |_x, _y| T::one() // δ(lhs + rhs) / rhs = 1
+    )
 }
 
 #[track_caller]
@@ -162,7 +164,7 @@ where
     for<'t> &'t T: NumericRef<T>,
 {
     record_tensor_add_assign::<T, D>(&mut lhs, &rhs);
-    unimplemented!()
+    lhs
 }
 
 #[track_caller]
@@ -175,7 +177,7 @@ where
     for<'t> &'t T: NumericRef<T>,
 {
     record_tensor_add_assign::<T, D>(&mut lhs, rhs);
-    unimplemented!()
+    lhs
 }
 
 #[track_caller]
@@ -188,7 +190,7 @@ where
     for<'t> &'t T: NumericRef<T>,
 {
     record_tensor_add_assign::<T, D>(&mut rhs, lhs);
-    unimplemented!()
+    rhs
 }
 
 record_tensor_operator_impl_value_value!(impl Add for RecordTensor { fn add } record_tensor_add_value_value);

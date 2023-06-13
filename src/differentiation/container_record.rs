@@ -575,6 +575,141 @@ where
             },
         }
     }
+
+    /**
+     * Overwrites the left hand side of a RecordContainer with the result of applying
+     * some binary function from `T` to `T` to every element pair in the containers. Both
+     * containers must have the same shape.
+     * To compute the new records, the binary function of some inputs x and y to some
+     * output z is needed along with its derivative with respect to its first input x and
+     * its derivative with respect to its second input y.
+     *
+     * # Panics
+     *
+     * - If both record containers have a WengertList that are different to each other
+     * - If the record containers have different shapes
+     */
+    #[track_caller]
+    // TODO: rhs version for subtraction/division where order matters
+    pub fn binary_left_assign(
+        &mut self,
+        rhs: &RecordTensor<'a, T, D>,
+        fxy: impl Fn(T, T) -> T,
+        dfxy_dx: impl Fn(T, T) -> T,
+        dfxy_dy: impl Fn(T, T) -> T,
+    ) {
+        {
+            let left_shape = self.numbers.shape();
+            let right_shape = rhs.numbers.shape();
+            if left_shape != right_shape {
+                panic!(
+                    "Record containers must have the same shape for a binary operation: (left: {:?}, right: {:?})",
+                    left_shape,
+                    right_shape
+                );
+            }
+        }
+        let total = self.elements();
+        assert_eq!(
+            total,
+            self.indexes.len(),
+            "Unexpected illegal state, number of elements should always match number of indexes"
+        );
+        assert_eq!(
+            total,
+            rhs.elements(),
+            "Unexpected illegal state, number of elements should always match number of indexes"
+        );
+        assert_eq!(
+            total,
+            rhs.indexes.len(),
+            "Unexpected illegal state, number of elements should always match number of indexes"
+        );
+        match (self.history, rhs.history) {
+            (None, None) => {
+                for (x, y) in self.numbers.iter_reference_mut().zip(rhs.numbers.iter()) {
+                    *x = fxy(x.clone(), y);
+                }
+            },
+            (Some(history), None) => {
+                let (indexes, zs) = binary_x_history::<T, _>(
+                    total,
+                    history,
+                    self.numbers.iter().zip(&self.indexes),
+                    rhs.numbers.iter().zip(&rhs.indexes),
+                    fxy,
+                    dfxy_dx
+                );
+                for (element, result) in self.numbers.iter_reference_mut().zip(zs) {
+                    *element = result;
+                }
+                self.history = Some(history);
+                self.indexes = indexes;
+            },
+            (None, Some(history)) => {
+                let (indexes, zs) = binary_y_history::<T, _>(
+                    total,
+                    history,
+                    self.numbers.iter().zip(&self.indexes),
+                    rhs.numbers.iter().zip(&rhs.indexes),
+                    fxy,
+                    dfxy_dy
+                );
+                for (element, result) in self.numbers.iter_reference_mut().zip(zs) {
+                    *element = result;
+                }
+                self.history = Some(history);
+                self.indexes = indexes;
+            },
+            (Some(history), Some(h)) => {
+                assert!(
+                    record_operations::same_lists(history, h),
+                    "Record containers must be using the same WengertList"
+                );
+                let (indexes, zs) = binary_both_history::<T, _>(
+                    total,
+                    history,
+                    self.numbers.iter().zip(&self.indexes),
+                    rhs.numbers.iter().zip(&rhs.indexes),
+                    fxy,
+                    dfxy_dx,
+                    dfxy_dy
+                );
+                for (element, result) in self.numbers.iter_reference_mut().zip(zs) {
+                    *element = result;
+                }
+                self.history = Some(history);
+                self.indexes = indexes;
+            },
+        }
+    }
+
+    /**
+     * Overwrites the right hand side of a RecordContainer with the result of applying
+     * some binary function from `T` to `T` to every element pair in the containers. Both
+     * containers must have the same shape.
+     * To compute the new records, the binary function of some inputs x and y to some
+     * output z is needed along with its derivative with respect to its first input x and
+     * its derivative with respect to its second input y.
+     *
+     * # Panics
+     *
+     * - If both record containers have a WengertList that are different to each other
+     * - If the record containers have different shapes
+     */
+    pub fn binary_right_assign(
+        &self,
+        rhs: &mut RecordTensor<'a, T, D>,
+        fxy: impl Fn(T, T) -> T,
+        dfxy_dx: impl Fn(T, T) -> T,
+        dfxy_dy: impl Fn(T, T) -> T,
+    ) {
+        // x is lhs, y is rhs, so calling binary_left_assign on the rhs container
+        // means we need to swap all the arguments
+        // TODO: Unit test this a lot to sanity check we do need to also swap dfxy_dy and dfxy_dx
+        // here
+        rhs.binary_left_assign(self, |y, x| fxy(x, y), |y, x| dfxy_dy(x, y), |y, x| dfxy_dx(x, y))
+    }
 }
 
 impl<'a, T> RecordMatrix<'a, T>
