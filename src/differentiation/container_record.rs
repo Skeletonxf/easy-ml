@@ -417,15 +417,15 @@ where
         fx: impl Fn(T) -> T,
         dfx_dx: impl Fn(T) -> T
     ) -> RecordTensor<'a, T, D> {
+        let total = self.elements();
+        assert_eq!(
+            total,
+            self.indexes.len(),
+            "Unexpected illegal state, number of elements should always match number of indexes"
+        );
         match self.history {
             None => RecordTensor::constants(self.numbers.map(fx)),
             Some(history) => {
-                let total = self.elements();
-                assert_eq!(
-                    total,
-                    self.indexes.len(),
-                    "Unexpected illegal state, number of elements should always match number of indexes"
-                );
                 let (indexes, ys) = unary::<T, _>(
                     total, history, self.numbers.iter().zip(&self.indexes), fx, dfx_dx
                 );
@@ -434,6 +434,40 @@ where
                     history: Some(history),
                     indexes,
                 }
+            },
+        }
+    }
+
+    /**
+     * Overwrites a RecordContainer by applying
+     * some unary function from `T` to `T` to every element in the container.
+     *
+     * To compute the new records, the unary function of some input x to some
+     * output y is needed along with its derivative with respect to its input x.
+     */
+    #[track_caller]
+    pub fn unary_assign(
+        &mut self,
+        fx: impl Fn(T) -> T,
+        dfx_dx: impl Fn(T) -> T
+    ) {
+        let total = self.elements();
+        assert_eq!(
+            total,
+            self.indexes.len(),
+            "Unexpected illegal state, number of elements should always match number of indexes"
+        );
+        match self.history {
+            None => self.numbers.map_mut(fx),
+            Some(history) => {
+                let (indexes, ys) = unary::<T, _>(
+                    total, history, self.numbers.iter().zip(&self.indexes), fx, dfx_dx
+                );
+                for (element, result) in self.numbers.iter_reference_mut().zip(ys) {
+                    *element = result;
+                }
+                self.history = Some(history);
+                self.indexes = indexes;
             },
         }
     }
@@ -697,6 +731,7 @@ where
      * - If both record containers have a WengertList that are different to each other
      * - If the record containers have different shapes
      */
+    #[track_caller]
     pub fn binary_right_assign(
         &self,
         rhs: &mut RecordTensor<'a, T, D>,
@@ -748,15 +783,15 @@ where
         fx: impl Fn(T) -> T,
         dfx_dx: impl Fn(T) -> T
     ) -> RecordMatrix<'a, T> {
+        let total = self.elements();
+        assert_eq!(
+            total,
+            self.indexes.len(),
+            "Unexpected illegal state, number of elements should always match number of indexes"
+        );
         match self.history {
             None => RecordMatrix::constants(self.numbers.map(fx)),
             Some(history) => {
-                let total = self.elements();
-                assert_eq!(
-                    total,
-                    self.indexes.len(),
-                    "Unexpected illegal state, number of elements should always match number of indexes"
-                );
                 let (indexes, ys) = unary::<T, _>(
                     total, history, self.numbers.row_major_iter().zip(&self.indexes), fx, dfx_dx
                 );
