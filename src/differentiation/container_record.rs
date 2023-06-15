@@ -624,7 +624,6 @@ where
      * - If the record containers have different shapes
      */
     #[track_caller]
-    // TODO: rhs version for subtraction/division where order matters
     pub fn binary_left_assign(
         &mut self,
         rhs: &RecordTensor<'a, T, D>,
@@ -745,6 +744,55 @@ where
         // here
         rhs.binary_left_assign(self, |y, x| fxy(x, y), |y, x| dfxy_dy(x, y), |y, x| dfxy_dx(x, y))
     }
+
+    /**
+     * A convenience helper function which takes the RecordContainer value and
+     * calls [unary_assign](RecordContainer::unary_assign()) on it, returning
+     * the record container which now contains the result of the operation.
+     */
+    #[track_caller]
+    pub fn do_unary_assign(
+        mut self,
+        fx: impl Fn(T) -> T,
+        dfx_dx: impl Fn(T) -> T
+    ) -> RecordTensor<'a, T, D> {
+        self.unary_assign(fx, dfx_dx);
+        self
+    }
+
+    /**
+     * A convenience helper function which takes the left hand side by value and
+     * calls [binary_left_assign](RecordContainer::binary_left_assign()) on it, returning
+     * the left hand side which now contains the result of the operation.
+     */
+    #[track_caller]
+    pub fn do_binary_left_assign(
+        mut self,
+        rhs: &RecordTensor<'a, T, D>,
+        fxy: impl Fn(T, T) -> T,
+        dfxy_dx: impl Fn(T, T) -> T,
+        dfxy_dy: impl Fn(T, T) -> T,
+    ) -> RecordTensor<'a, T, D> {
+        self.binary_left_assign(rhs, fxy, dfxy_dx, dfxy_dy);
+        self
+    }
+
+    /**
+     * A convenience helper function which takes the right hand side by value and
+     * calls [binary_right_assign](RecordContainer::binary_right_assign()) on it, returning
+     * the right hand side which now contains the result of the operation.
+     */
+    #[track_caller]
+     pub fn do_binary_right_assign(
+         &self,
+         mut rhs: RecordTensor<'a, T, D>,
+         fxy: impl Fn(T, T) -> T,
+         dfxy_dx: impl Fn(T, T) -> T,
+         dfxy_dy: impl Fn(T, T) -> T,
+     ) -> RecordTensor<'a, T, D> {
+         self.binary_right_assign(&mut rhs, fxy, dfxy_dx, dfxy_dy);
+         rhs
+     }
 }
 
 impl<'a, T> RecordMatrix<'a, T>
