@@ -19,11 +19,13 @@ pub use traits::*;
  *
  * See [TensorRef](TensorRef).
  */
-pub unsafe trait TensorlikeRef<'a, T, const D: usize, Ref = &'a T> {
+pub unsafe trait TensorlikeRef<T, const D: usize> {
+    type Ref<'a> where Self: 'a, T: 'a;
+
     /**
      * Gets a value at the index if the index is in range. Otherwise returns None.
      */
-    fn get_value(&'a self, indexes: [usize; D]) -> Option<Ref>;
+    fn get_value<'a>(&'a self, indexes: [usize; D]) -> Option<Self::Ref<'a>>;
 
     /**
      * The shape this container has. See [dimensions](crate::tensors::dimensions) for an overview.
@@ -44,7 +46,7 @@ pub unsafe trait TensorlikeRef<'a, T, const D: usize, Ref = &'a T> {
      * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [TensorRef]: TensorRef
      */
-    unsafe fn get_value_unchecked(&'a self, indexes: [usize; D]) -> Ref;
+    unsafe fn get_value_unchecked<'a>(&'a self, indexes: [usize; D]) -> Self::Ref<'a>;
 
     /**
      * The way the data in this container is laid out in memory. In particular,
@@ -67,12 +69,14 @@ pub unsafe trait TensorlikeRef<'a, T, const D: usize, Ref = &'a T> {
  *
  * See [TensorValue](TensorValue).
  */
-pub unsafe trait TensorlikeMut<'a, T, const D: usize, Ref = &'a T, Mut = &'a mut T>: TensorlikeRef<'a, T, D, Ref> {
+pub unsafe trait TensorlikeMut<T, const D: usize>: TensorlikeRef<T, D> {
+    type Mut<'a> where Self: 'a, T: 'a;
+
     /**
      * Gets a mutable version of the value at the index, if the index is in range. Otherwise
      * returns None.
      */
-    fn get_value_mut(&'a mut self, indexes: [usize; D]) -> Option<Mut>;
+    fn get_value_mut<'a>(&'a mut self, indexes: [usize; D]) -> Option<Self::Mut<'a>>;
 
     /**
      * Gets a mutable version of the value at the index without doing any bounds checking.
@@ -86,5 +90,5 @@ pub unsafe trait TensorlikeMut<'a, T, const D: usize, Ref = &'a T, Mut = &'a mut
      * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [TensorRef]: TensorRef
      */
-    unsafe fn get_value_unchecked_mut(&'a mut self, indexes: [usize; D]) -> Mut;
+    unsafe fn get_value_unchecked_mut<'a>(&'a mut self, indexes: [usize; D]) -> Self::Mut<'a>;
 }
