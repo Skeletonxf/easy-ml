@@ -21,20 +21,20 @@ mod container_record_tests {
         let subtraction_dx = |_x, _y| 1.0;
         // δ(lhs - rhs) / rhs = -1
         let subtraction_dy = |_x, _y| -1.0;
-        let x_minus_y = x
+        let _x_minus_y = x
             .binary(&y, subtraction, subtraction_dx, subtraction_dy);
-        let also_x_minus_y = x
+        let _also_x_minus_y = x
             .clone()
             .do_binary_left_assign(&y, subtraction, subtraction_dx, subtraction_dy);
-        let also_also_x_minus_y = x
+        let _also_also_x_minus_y = x
             .do_binary_right_assign(y.clone(), subtraction, subtraction_dx, subtraction_dy);
 
-        let y_minus_x = y
+        let _y_minus_x = y
             .binary(&x, subtraction, subtraction_dx, subtraction_dy);
-        let also_y_minus_x = y
+        let _also_y_minus_x = y
             .clone()
             .do_binary_left_assign(&x, subtraction, subtraction_dx, subtraction_dy);
-        let also_also_y_minus_x = y
+        let _also_also_y_minus_x = y
             .do_binary_right_assign(x.clone(), subtraction, subtraction_dx, subtraction_dy);
 
         // TODO: Inspecting derivatives of RecordTensor

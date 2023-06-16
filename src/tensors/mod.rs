@@ -28,6 +28,8 @@ mod display;
 pub mod indexing;
 pub mod operations;
 pub mod views;
+pub mod container;
+
 #[cfg(feature = "serde")]
 pub use serde_impls::TensorDeserialize;
 
