@@ -13,33 +13,36 @@ mod container_operations;
 
 /**
  * A pluralisation of [Record](crate::differentiation::Record) that groups together a
- * **s**ource of numbers instead of storing one number of type T individually.
+ * **s**ource of numbers of type T and stores the WengertList only once.
  *
  * Typically you would refer to one of the type aliases to disambiguate the type of `S` and
  * use more succinct generics: [RecordMatrix](RecordMatrix), [RecordTensor](RecordTensor).
  */
 #[derive(Debug)]
 pub struct RecordContainer<'a, T: Primitive, S, const D: usize> {
+    // Opted to store the indexes alongside each number (T, Index) for a number of reasons, the
+    // main factor being it makes implementing TensorRef feasible so can utilise the range of
+    // existing APIs for Tensor manipulation. It's theoretically possible to only store the first
+    // index and calculate the rest, since most of the time all indexes are ascending entries in
+    // the WengertList but this would also massively complicate the implementation, especially for
+    // handling non row-major operations such as matrix multiplication. It's also not super clear
+    // that this would be more efficient because it turns reads into more arithmetic rather
+    // than avoiding any work. Just lifting the WengertList out of the tensor should have
+    // meaningful improvements to cache line efficiency, and failing that still disallows
+    // very questionable states from existing.
     numbers: S,
     history: Option<&'a WengertList<T>>,
-    // it should be possible to store only the first index, most operations will create all the
-    // entries on the Wengert list contiguously. Only matrix multiplication is problematic.
-    // We can contiguise arbitrary entries by adding 0 to all of them, however this will
-    // complicate the implementation somewhat and require additional additions/multiplications in
-    // favor of less memory usage so I'm not going to do this for the first iteration as I'm
-    // not confident it would improve performance.
-    indexes: Vec<Index>,
 }
 
 /**
  * Alias for succinctly refering to RecordContainers backed by a matrix.
  */
-pub type RecordMatrix<'a, T> = RecordContainer<'a, T, Matrix<T>, 2>;
+pub type RecordMatrix<'a, T> = RecordContainer<'a, T, Matrix<(T, Index)>, 2>;
 
 /**
  * Alias for succinctly refering to RecordContainers backed by a tensor.
  */
-pub type RecordTensor<'a, T, const D: usize> = RecordContainer<'a, T, Tensor<T, D>, D>;
+pub type RecordTensor<'a, T, const D: usize> = RecordContainer<'a, T, Tensor<(T, Index), D>, D>;
 
 fn calculate_incrementing_indexes(starting_index: usize, total: usize) -> Vec<Index> {
     let mut indexes = vec![0; total];
@@ -68,12 +71,10 @@ where
     where
         S: TensorMut<T, D>,
     {
-        let total = crate::tensors::dimensions::elements(&c.view_shape());
         RecordContainer {
-            indexes: vec![0; total],
             numbers: Tensor::from(
                 c.view_shape(),
-                TensorOwnedIterator::from_numeric(c).collect()
+                TensorOwnedIterator::from_numeric(c).map(|x| (x, 0)).collect()
             ),
             history: None,
         }
@@ -107,10 +108,11 @@ where
         RecordContainer {
             numbers: Tensor::from(
                 x.view_shape(),
-                TensorOwnedIterator::from_numeric(x).collect()
+                TensorOwnedIterator::from_numeric(x)
+                    .zip(calculate_incrementing_indexes(starting_index, total))
+                    .collect()
             ),
             history: Some(history),
-            indexes: calculate_incrementing_indexes(starting_index, total),
         }
     }
 
@@ -133,10 +135,16 @@ where
     pub fn reset(&mut self) {
         match self.history {
             None => (), // noop
-            Some(history) => self.indexes = {
+            Some(history) => {
                 let total = self.elements();
                 let starting_index = history.append_nullary_repeating(total);
-                calculate_incrementing_indexes(starting_index, total)
+                for (x, i) in self.numbers
+                    .iter_reference_mut()
+                    .zip(calculate_incrementing_indexes(starting_index, total))
+                {
+                    let (_, ref mut old_index) = x;
+                    *old_index = i;
+                }
             },
         };
     }
@@ -172,10 +180,9 @@ where
         S: MatrixMut<T> + NoInteriorMutability,
     {
         RecordContainer {
-            indexes: vec![0; c.view_rows() * c.view_columns()],
             numbers: Matrix::from_flat_row_major(
                 (c.view_rows(), c.view_columns()),
-                RowMajorOwnedIterator::from_numeric(c).collect()
+                RowMajorOwnedIterator::from_numeric(c).map(|x| (x, 0)).collect()
             ),
             history: None,
         }
@@ -209,10 +216,11 @@ where
         RecordContainer {
             numbers: Matrix::from_flat_row_major(
                 (x.view_rows(), x.view_columns()),
-                RowMajorOwnedIterator::from_numeric(x).collect()
+                RowMajorOwnedIterator::from_numeric(x)
+                    .zip(calculate_incrementing_indexes(starting_index, total))
+                    .collect()
             ),
             history: Some(history),
-            indexes: calculate_incrementing_indexes(starting_index, total),
         }
     }
 
@@ -233,10 +241,16 @@ where
     pub fn reset(&mut self) {
         match self.history {
             None => (), // noop
-            Some(history) => self.indexes = {
+            Some(history) => {
                 let total = self.elements();
                 let starting_index = history.append_nullary_repeating(total);
-                calculate_incrementing_indexes(starting_index, total)
+                for (x, i) in self.numbers
+                    .row_major_reference_mut_iter()
+                    .zip(calculate_incrementing_indexes(starting_index, total))
+                {
+                    let (_, ref mut old_index) = x;
+                    *old_index = i;
+                }
             },
         };
     }
@@ -259,26 +273,26 @@ fn unary<'a, T, I>(
     records: I,
     fx: impl Fn(T) -> T,
     dfx_dx: impl Fn(T) -> T
-) -> (Vec<usize>, Vec<T>)
+) -> Vec<(T, usize)>
 where
-    I: Iterator<Item = (T, &'a Index)>,
+    I: Iterator<Item = (T, Index)>,
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
 {
-    let mut indexes = vec![0; total];
-    let mut ys = vec![T::zero(); total];
+    let mut ys = vec![(T::zero(), 0); total];
     history.borrow(|history| {
         // shadow the name so we can't accidentally try to use history while holding
         // the borrow
         // use enumerate not with_index because we need the 1D index for indexing
         // indexes
-        for (i, (x, &parent)) in records.enumerate() {
-            ys[i] = fx(x.clone());
+        for (i, (x, parent)) in records.enumerate() {
+            let y = fx(x.clone());
             let derivative = dfx_dx(x);
-            indexes[i] = history.append_unary(parent, derivative);
+            let new_index = history.append_unary(parent, derivative);
+            ys[i] = (y, new_index)
         }
     }); // drop borrow on history
-    (indexes, ys)
+    ys
 }
 
 /// Returns the vec of indexes and vec of zs for Z = binary(X, Y), not checking but assuming that
@@ -291,27 +305,27 @@ fn binary_both_history<'a, T, I>(
     fxy: impl Fn(T, T) -> T,
     dfxy_dx: impl Fn(T, T) -> T,
     dfxy_dy: impl Fn(T, T) -> T,
-) -> (Vec<usize>, Vec<T>)
+) -> Vec<(T, usize)>
 where
-    I: Iterator<Item = (T, &'a Index)>,
+    I: Iterator<Item = (T, Index)>,
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
 {
-    let mut indexes = vec![0; total];
-    let mut zs = vec![T::zero(); total];
+    let mut zs = vec![(T::zero(), 0); total];
     history.borrow(|history| {
         // shadow the name so we can't accidentally try to use history while holding
         // the borrow
         // use enumerate not with_index because we need the 1D index for indexing
         // indexes
-        for (i, ((x, &parent1), (y, &parent2))) in (x_records.zip(y_records)).enumerate() {
-            zs[i] = fxy(x.clone(), y.clone());
+        for (i, ((x, parent1), (y, parent2))) in (x_records.zip(y_records)).enumerate() {
+            let z = fxy(x.clone(), y.clone());
             let derivative1 = dfxy_dx(x.clone(), y.clone());
             let derivative2 = dfxy_dy(x, y);
-            indexes[i] = history.append_binary(parent1, derivative1, parent2, derivative2);
+            let new_index = history.append_binary(parent1, derivative1, parent2, derivative2);
+            zs[i] = (z, new_index);
         }
     }); // drop borrow on history
-    (indexes, zs)
+    zs
 }
 
 /// Returns the vec of indexes and vec of zs for Z = binary(X, Y), as with binary_both_history,
@@ -323,27 +337,27 @@ fn binary_x_history<'a, T, I>(
     y_records: I,
     fxy: impl Fn(T, T) -> T,
     dfxy_dx: impl Fn(T, T) -> T,
-) -> (Vec<usize>, Vec<T>)
+) -> Vec<(T, usize)>
 where
-    I: Iterator<Item = (T, &'a Index)>,
+    I: Iterator<Item = (T, Index)>,
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
 {
-    let mut indexes = vec![0; total];
-    let mut zs = vec![T::zero(); total];
+    let mut zs = vec![(T::zero(), 0); total];
     history.borrow(|history| {
         // shadow the name so we can't accidentally try to use history while holding
         // the borrow
         // use enumerate not with_index because we need the 1D index for indexing
         // indexes
-        for (i, ((x, &parent1), (y, _))) in (x_records.zip(y_records)).enumerate() {
-            zs[i] = fxy(x.clone(), y.clone());
+        for (i, ((x, parent1), (y, _))) in (x_records.zip(y_records)).enumerate() {
+            let z = fxy(x.clone(), y.clone());
             // if rhs didn't have a history, don't track that derivative
             let derivative1 = dfxy_dx(x, y);
-            indexes[i] = history.append_unary(parent1, derivative1);
+            let new_index = history.append_unary(parent1, derivative1);
+            zs[i] = (z, new_index);
         }
     }); // drop borrow on history
-    (indexes, zs)
+    zs
 }
 
 /// Returns the vec of indexes and vec of zs for Z = binary(X, Y), as with binary_both_history,
@@ -355,27 +369,27 @@ fn binary_y_history<'a, T, I>(
     y_records: I,
     fxy: impl Fn(T, T) -> T,
     dfxy_dy: impl Fn(T, T) -> T,
-) -> (Vec<usize>, Vec<T>)
+) -> Vec<(T, usize)>
 where
-    I: Iterator<Item = (T, &'a Index)>,
+    I: Iterator<Item = (T, Index)>,
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
 {
-    let mut indexes = vec![0; total];
-    let mut zs = vec![T::zero(); total];
+    let mut zs = vec![(T::zero(), 0); total];
     history.borrow(|history| {
         // shadow the name so we can't accidentally try to use history while holding
         // the borrow
         // use enumerate not with_index because we need the 1D index for indexing
         // indexes
-        for (i, ((x, _), (y, &parent2))) in (x_records.zip(y_records)).enumerate() {
-            zs[i] = fxy(x.clone(), y.clone());
+        for (i, ((x, _), (y, parent2))) in (x_records.zip(y_records)).enumerate() {
+            let z = fxy(x.clone(), y.clone());
             // if self didn't have a history, don't track that derivative
             let derivative2 = dfxy_dy(x, y);
-            indexes[i] = history.append_unary(parent2, derivative2);
+            let new_index = history.append_unary(parent2, derivative2);
+            zs[i] = (z, new_index);
         }
     }); // drop borrow on history
-    (indexes, zs)
+    zs
 }
 
 impl<'a, T, const D: usize> RecordTensor<'a, T, D>
@@ -418,21 +432,15 @@ where
         dfx_dx: impl Fn(T) -> T
     ) -> RecordTensor<'a, T, D> {
         let total = self.elements();
-        assert_eq!(
-            total,
-            self.indexes.len(),
-            "Unexpected illegal state, number of elements should always match number of indexes"
-        );
         match self.history {
-            None => RecordTensor::constants(self.numbers.map(fx)),
+            None => RecordTensor::constants(self.numbers.map(|(x, _)| fx(x))),
             Some(history) => {
-                let (indexes, ys) = unary::<T, _>(
-                    total, history, self.numbers.iter().zip(&self.indexes), fx, dfx_dx
+                let ys = unary::<T, _>(
+                    total, history, self.numbers.iter(), fx, dfx_dx
                 );
                 RecordContainer {
                     numbers: self.numbers.new_with_same_shape(ys),
                     history: Some(history),
-                    indexes,
                 }
             },
         }
@@ -452,22 +460,16 @@ where
         dfx_dx: impl Fn(T) -> T
     ) {
         let total = self.elements();
-        assert_eq!(
-            total,
-            self.indexes.len(),
-            "Unexpected illegal state, number of elements should always match number of indexes"
-        );
         match self.history {
-            None => self.numbers.map_mut(fx),
+            None => self.numbers.map_mut(|(x, i)| (fx(x), i)),
             Some(history) => {
-                let (indexes, ys) = unary::<T, _>(
-                    total, history, self.numbers.iter().zip(&self.indexes), fx, dfx_dx
+                let ys = unary::<T, _>(
+                    total, history, self.numbers.iter(), fx, dfx_dx
                 );
                 for (element, result) in self.numbers.iter_reference_mut().zip(ys) {
                     *element = result;
                 }
                 self.history = Some(history);
-                self.indexes = indexes;
             },
         }
     }
@@ -540,51 +542,42 @@ where
             }
         }
         let total = self.elements();
-        assert_eq!(
-            total,
-            self.indexes.len(),
-            "Unexpected illegal state, number of elements should always match number of indexes"
-        );
-        assert_eq!(
-            total,
-            rhs.elements(),
-            "Unexpected illegal state, number of elements should always match number of indexes"
-        );
-        assert_eq!(
-            total,
-            rhs.indexes.len(),
-            "Unexpected illegal state, number of elements should always match number of indexes"
-        );
         match (self.history, rhs.history) {
-            (None, None) => RecordTensor::constants(self.numbers.elementwise(&rhs.numbers, fxy)),
+            (None, None) => RecordTensor::constants(
+                // use direct_from here maybe?
+                Tensor::from(
+                    self.numbers.shape(),
+                    self.numbers.iter()
+                        .zip(rhs.numbers.iter()).map(|((x, _), (y, _))| fxy(x, y))
+                        .collect()
+                )
+            ),
             (Some(history), None) => {
-                let (indexes, zs) = binary_x_history::<T, _>(
+                let zs = binary_x_history::<T, _>(
                     total,
                     history,
-                    self.numbers.iter().zip(&self.indexes),
-                    rhs.numbers.iter().zip(&rhs.indexes),
+                    self.numbers.iter(),
+                    rhs.numbers.iter(),
                     fxy,
                     dfxy_dx
                 );
                 RecordContainer {
                     numbers: self.numbers.new_with_same_shape(zs),
                     history: Some(history),
-                    indexes,
                 }
             },
             (None, Some(history)) => {
-                let (indexes, zs) = binary_y_history::<T, _>(
+                let zs = binary_y_history::<T, _>(
                     total,
                     history,
-                    self.numbers.iter().zip(&self.indexes),
-                    rhs.numbers.iter().zip(&rhs.indexes),
+                    self.numbers.iter(),
+                    rhs.numbers.iter(),
                     fxy,
                     dfxy_dy
                 );
                 RecordContainer {
                     numbers: self.numbers.new_with_same_shape(zs),
                     history: Some(history),
-                    indexes,
                 }
             },
             (Some(history), Some(h)) => {
@@ -592,11 +585,11 @@ where
                     record_operations::same_lists(history, h),
                     "Record containers must be using the same WengertList"
                 );
-                let (indexes, zs) = binary_both_history::<T, _>(
+                let zs = binary_both_history::<T, _>(
                     total,
                     history,
-                    self.numbers.iter().zip(&self.indexes),
-                    rhs.numbers.iter().zip(&rhs.indexes),
+                    self.numbers.iter(),
+                    rhs.numbers.iter(),
                     fxy,
                     dfxy_dx,
                     dfxy_dy
@@ -604,7 +597,6 @@ where
                 RecordContainer {
                     numbers: self.numbers.new_with_same_shape(zs),
                     history: Some(history),
-                    indexes,
                 }
             },
         }
@@ -643,33 +635,20 @@ where
             }
         }
         let total = self.elements();
-        assert_eq!(
-            total,
-            self.indexes.len(),
-            "Unexpected illegal state, number of elements should always match number of indexes"
-        );
-        assert_eq!(
-            total,
-            rhs.elements(),
-            "Unexpected illegal state, number of elements should always match number of indexes"
-        );
-        assert_eq!(
-            total,
-            rhs.indexes.len(),
-            "Unexpected illegal state, number of elements should always match number of indexes"
-        );
         match (self.history, rhs.history) {
             (None, None) => {
                 for (x, y) in self.numbers.iter_reference_mut().zip(rhs.numbers.iter()) {
-                    *x = fxy(x.clone(), y);
+                    let (left, _) = x;
+                    let (right, _) = y;
+                    *x = (fxy(left.clone(), right), 0);
                 }
             },
             (Some(history), None) => {
-                let (indexes, zs) = binary_x_history::<T, _>(
+                let zs = binary_x_history::<T, _>(
                     total,
                     history,
-                    self.numbers.iter().zip(&self.indexes),
-                    rhs.numbers.iter().zip(&rhs.indexes),
+                    self.numbers.iter(),
+                    rhs.numbers.iter(),
                     fxy,
                     dfxy_dx
                 );
@@ -677,14 +656,13 @@ where
                     *element = result;
                 }
                 self.history = Some(history);
-                self.indexes = indexes;
             },
             (None, Some(history)) => {
-                let (indexes, zs) = binary_y_history::<T, _>(
+                let zs = binary_y_history::<T, _>(
                     total,
                     history,
-                    self.numbers.iter().zip(&self.indexes),
-                    rhs.numbers.iter().zip(&rhs.indexes),
+                    self.numbers.iter(),
+                    rhs.numbers.iter(),
                     fxy,
                     dfxy_dy
                 );
@@ -692,18 +670,17 @@ where
                     *element = result;
                 }
                 self.history = Some(history);
-                self.indexes = indexes;
             },
             (Some(history), Some(h)) => {
                 assert!(
                     record_operations::same_lists(history, h),
                     "Record containers must be using the same WengertList"
                 );
-                let (indexes, zs) = binary_both_history::<T, _>(
+                let zs = binary_both_history::<T, _>(
                     total,
                     history,
-                    self.numbers.iter().zip(&self.indexes),
-                    rhs.numbers.iter().zip(&rhs.indexes),
+                    self.numbers.iter(),
+                    rhs.numbers.iter(),
                     fxy,
                     dfxy_dx,
                     dfxy_dy
@@ -712,7 +689,6 @@ where
                     *element = result;
                 }
                 self.history = Some(history);
-                self.indexes = indexes;
             },
         }
     }
@@ -832,21 +808,15 @@ where
         dfx_dx: impl Fn(T) -> T
     ) -> RecordMatrix<'a, T> {
         let total = self.elements();
-        assert_eq!(
-            total,
-            self.indexes.len(),
-            "Unexpected illegal state, number of elements should always match number of indexes"
-        );
         match self.history {
-            None => RecordMatrix::constants(self.numbers.map(fx)),
+            None => RecordMatrix::constants(self.numbers.map(|(x, _)| fx(x))),
             Some(history) => {
-                let (indexes, ys) = unary::<T, _>(
-                    total, history, self.numbers.row_major_iter().zip(&self.indexes), fx, dfx_dx
+                let ys = unary::<T, _>(
+                    total, history, self.numbers.row_major_iter(), fx, dfx_dx
                 );
                 RecordContainer {
                     numbers: Matrix::from_flat_row_major(self.numbers.size(), ys),
                     history: Some(history),
-                    indexes,
                 }
             },
         }
@@ -915,59 +885,42 @@ where
             left_shape
         };
         let total = self.elements();
-        assert_eq!(
-            total,
-            self.indexes.len(),
-            "Unexpected illegal state, number of elements should always match number of indexes"
-        );
-        assert_eq!(
-            total,
-            rhs.elements(),
-            "Unexpected illegal state, number of elements should always match number of indexes"
-        );
-        assert_eq!(
-            total,
-            rhs.indexes.len(),
-            "Unexpected illegal state, number of elements should always match number of indexes"
-        );
         match (self.history, rhs.history) {
             (None, None) => RecordMatrix::constants(
                 Matrix::from_flat_row_major(
                     shape,
                     self.numbers.row_major_iter()
                         .zip(rhs.numbers.row_major_iter())
-                        .map(|(x, y)| fxy(x, y))
+                        .map(|((x, _), (y, _))| fxy(x, y))
                         .collect()
                 )
             ),
             (Some(history), None) => {
-                let (indexes, zs) = binary_x_history::<T, _>(
+                let zs = binary_x_history::<T, _>(
                     total,
                     history,
-                    self.numbers.row_major_iter().zip(&self.indexes),
-                    rhs.numbers.row_major_iter().zip(&rhs.indexes),
+                    self.numbers.row_major_iter(),
+                    rhs.numbers.row_major_iter(),
                     fxy,
                     dfxy_dx
                 );
                 RecordContainer {
                     numbers: Matrix::from_flat_row_major(shape, zs),
                     history: Some(history),
-                    indexes,
                 }
             },
             (None, Some(history)) => {
-                let (indexes, zs) = binary_y_history::<T, _>(
+                let zs = binary_y_history::<T, _>(
                     total,
                     history,
-                    self.numbers.row_major_iter().zip(&self.indexes),
-                    rhs.numbers.row_major_iter().zip(&rhs.indexes),
+                    self.numbers.row_major_iter(),
+                    rhs.numbers.row_major_iter(),
                     fxy,
                     dfxy_dy
                 );
                 RecordContainer {
                     numbers: Matrix::from_flat_row_major(shape, zs),
                     history: Some(history),
-                    indexes,
                 }
             },
             (Some(history), Some(h)) => {
@@ -975,11 +928,11 @@ where
                     record_operations::same_lists(history, h),
                     "Record containers must be using the same WengertList"
                 );
-                let (indexes, zs) = binary_both_history::<T, _>(
+                let zs = binary_both_history::<T, _>(
                     total,
                     history,
-                    self.numbers.row_major_iter().zip(&self.indexes),
-                    rhs.numbers.row_major_iter().zip(&rhs.indexes),
+                    self.numbers.row_major_iter(),
+                    rhs.numbers.row_major_iter(),
                     fxy,
                     dfxy_dx,
                     dfxy_dy
@@ -987,7 +940,6 @@ where
                 RecordContainer {
                     numbers: Matrix::from_flat_row_major(shape, zs),
                     history: Some(history),
-                    indexes,
                 }
             },
         }

@@ -31,7 +31,6 @@ where
         RecordContainer {
             numbers: self.numbers.clone(),
             history: self.history,
-            indexes: self.indexes.clone(),
         }
     }
 }
