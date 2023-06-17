@@ -248,6 +248,7 @@ pub unsafe trait TensorMut<T, const D: usize>: TensorRef<T, D> {
  * TensorView closely mirrors the API of Tensor.
  * Methods that create a new tensor do not return a TensorView, they return a Tensor.
  */
+#[derive(Clone)]
 pub struct TensorView<T, S, const D: usize> {
     source: S,
     _type: PhantomData<T>,
