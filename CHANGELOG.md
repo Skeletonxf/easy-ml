@@ -11,6 +11,11 @@ The `len()` methods on the base iterators prior wrapping them in `WithIndex`
 was correct and can be used to get the exact length if needed on earlier
 versions of Easy ML.
 
+Version 1.10 will include a fix for `TensorView` not implementing `Clone` where
+applicable. On earlier versions `map` with a no-op closure can be used as a
+partial workaround to return a `Tensor` with cloned data, which if needed could
+be converted back to a `TensorView` with `from`.
+
 ## Version 1.9
 
 Release of named Tensor APIs, and extended linear algebra support. Fixed serde
