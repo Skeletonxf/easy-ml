@@ -3,11 +3,11 @@ use crate::numeric::{Numeric, NumericRef};
 use crate::differentiation::{Primitive, Index, WengertList};
 use crate::differentiation::record_operations;
 use crate::tensors::{Tensor, Dimension};
-use crate::tensors::views::{TensorRef, TensorMut, DataLayout};
+use crate::tensors::views::{TensorRef, TensorMut, TensorView, DataLayout};
 use crate::tensors::indexing::TensorOwnedIterator;
 use crate::matrices::Matrix;
 use crate::matrices::iterators::RowMajorOwnedIterator;
-use crate::matrices::views::{MatrixMut, NoInteriorMutability};
+use crate::matrices::views::{MatrixView, MatrixRef, MatrixMut, NoInteriorMutability};
 
 mod container_operations;
 
@@ -37,12 +37,17 @@ pub struct RecordContainer<'a, T: Primitive, S, const D: usize> {
 /**
  * Alias for succinctly refering to RecordContainers backed by a matrix.
  */
-pub type RecordMatrix<'a, T> = RecordContainer<'a, T, Matrix<(T, Index)>, 2>;
+pub type RecordMatrix<'a, T, S> = RecordContainer<'a, T, MatrixView<(T, Index), S>, 2>;
 
 /**
  * Alias for succinctly refering to RecordContainers backed by a tensor.
  */
 pub type RecordTensor<'a, T, const D: usize> = RecordContainer<'a, T, Tensor<(T, Index), D>, D>;
+
+// TODO: Kinda should just be generic over any source of a TensorRef type, that keeps maximum
+// compatibility with TensorRef manipulations as it'll be no work to wrap a manipulated tensor view
+// back to a RecordContainer
+type RecordTensor2<'a, T, S, const D: usize> = RecordContainer<'a, T, TensorView<(T, Index), S, D>, D>;
 
 fn calculate_incrementing_indexes(starting_index: usize, total: usize) -> Vec<Index> {
     let mut indexes = vec![0; total];
@@ -159,8 +164,7 @@ where
     }
 }
 
-
-impl<'a, T> RecordMatrix<'a, T>
+impl<'a, T> RecordMatrix<'a, T, Matrix<(T, Index)>>
 where
     T: Numeric + Primitive,
 {
@@ -180,10 +184,10 @@ where
         S: MatrixMut<T> + NoInteriorMutability,
     {
         RecordContainer {
-            numbers: Matrix::from_flat_row_major(
+            numbers: MatrixView::from(Matrix::from_flat_row_major(
                 (c.view_rows(), c.view_columns()),
                 RowMajorOwnedIterator::from_numeric(c).map(|x| (x, 0)).collect()
-            ),
+            )),
             history: None,
         }
     }
@@ -214,16 +218,22 @@ where
         let total = x.view_rows() * x.view_columns();
         let starting_index = history.append_nullary_repeating(total);
         RecordContainer {
-            numbers: Matrix::from_flat_row_major(
+            numbers: MatrixView::from(Matrix::from_flat_row_major(
                 (x.view_rows(), x.view_columns()),
                 RowMajorOwnedIterator::from_numeric(x)
                     .zip(calculate_incrementing_indexes(starting_index, total))
                     .collect()
-            ),
+            )),
             history: Some(history),
         }
     }
+}
 
+impl<'a, T, S> RecordMatrix<'a, T, S>
+where
+    T: Numeric + Primitive,
+    S: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
     /**
      * Returns the number of elements stored by this container's source.
      *
@@ -233,7 +243,13 @@ where
     pub fn elements(&self) -> usize {
         self.numbers.rows() * self.numbers.columns()
     }
+}
 
+impl<'a, T, S> RecordMatrix<'a, T, S>
+where
+    T: Numeric + Primitive,
+    S: MatrixMut<(T, Index)> + NoInteriorMutability,
+{
     /**
      * Resets all of the records to place them back on the WengertList, for use
      * in performing another derivation after clearing the WengertList.
@@ -309,17 +325,18 @@ where
 
 /// Returns the vec of indexes and vec of zs for Z = binary(X, Y), not checking but assuming that
 /// the length of the iterators match the total. Also assumes both inputs have the same shape
-fn binary_both_history<'a, T, I>(
+fn binary_both_history<'a, T, I1, I2>(
     total: usize,
     history: &WengertList<T>,
-    x_records: I,
-    y_records: I,
+    x_records: I1,
+    y_records: I2,
     fxy: impl Fn(T, T) -> T,
     dfxy_dx: impl Fn(T, T) -> T,
     dfxy_dy: impl Fn(T, T) -> T,
 ) -> Vec<(T, usize)>
 where
-    I: Iterator<Item = (T, Index)>,
+    I1: Iterator<Item = (T, Index)>,
+    I2: Iterator<Item = (T, Index)>,
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
 {
@@ -342,16 +359,17 @@ where
 
 /// Returns the vec of indexes and vec of zs for Z = binary(X, Y), as with binary_both_history,
 /// but only tracking the derivatives for X, not Y.
-fn binary_x_history<'a, T, I>(
+fn binary_x_history<'a, T, I1, I2>(
     total: usize,
     history: &WengertList<T>,
-    x_records: I,
-    y_records: I,
+    x_records: I1,
+    y_records: I2,
     fxy: impl Fn(T, T) -> T,
     dfxy_dx: impl Fn(T, T) -> T,
 ) -> Vec<(T, usize)>
 where
-    I: Iterator<Item = (T, Index)>,
+    I1: Iterator<Item = (T, Index)>,
+    I2: Iterator<Item = (T, Index)>,
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
 {
@@ -374,16 +392,17 @@ where
 
 /// Returns the vec of indexes and vec of zs for Z = binary(X, Y), as with binary_both_history,
 /// but only tracking the derivatives for Y, not X.
-fn binary_y_history<'a, T, I>(
+fn binary_y_history<'a, T, I1, I2>(
     total: usize,
     history: &WengertList<T>,
-    x_records: I,
-    y_records: I,
+    x_records: I1,
+    y_records: I2,
     fxy: impl Fn(T, T) -> T,
     dfxy_dy: impl Fn(T, T) -> T,
 ) -> Vec<(T, usize)>
 where
-    I: Iterator<Item = (T, Index)>,
+    I1: Iterator<Item = (T, Index)>,
+    I2: Iterator<Item = (T, Index)>,
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
 {
@@ -565,7 +584,7 @@ where
                 )
             ),
             (Some(history), None) => {
-                let zs = binary_x_history::<T, _>(
+                let zs = binary_x_history::<T, _, _>(
                     total,
                     history,
                     self.numbers.iter(),
@@ -579,7 +598,7 @@ where
                 }
             },
             (None, Some(history)) => {
-                let zs = binary_y_history::<T, _>(
+                let zs = binary_y_history::<T, _, _>(
                     total,
                     history,
                     self.numbers.iter(),
@@ -597,7 +616,7 @@ where
                     record_operations::same_lists(history, h),
                     "Record containers must be using the same WengertList"
                 );
-                let zs = binary_both_history::<T, _>(
+                let zs = binary_both_history::<T, _, _>(
                     total,
                     history,
                     self.numbers.iter(),
@@ -656,7 +675,7 @@ where
                 }
             },
             (Some(history), None) => {
-                let zs = binary_x_history::<T, _>(
+                let zs = binary_x_history::<T, _, _>(
                     total,
                     history,
                     self.numbers.iter(),
@@ -670,7 +689,7 @@ where
                 self.history = Some(history);
             },
             (None, Some(history)) => {
-                let zs = binary_y_history::<T, _>(
+                let zs = binary_y_history::<T, _, _>(
                     total,
                     history,
                     self.numbers.iter(),
@@ -688,7 +707,7 @@ where
                     record_operations::same_lists(history, h),
                     "Record containers must be using the same WengertList"
                 );
-                let zs = binary_both_history::<T, _>(
+                let zs = binary_both_history::<T, _, _>(
                     total,
                     history,
                     self.numbers.iter(),
@@ -783,10 +802,11 @@ where
      }
 }
 
-impl<'a, T> RecordMatrix<'a, T>
+impl<'a, T, S> RecordMatrix<'a, T, S>
 where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
+    S: MatrixRef<(T, Index)> + NoInteriorMutability,
 {
     /**
      * Creates a new RecordContainer from a reference to an existing RecordContainer by applying
@@ -818,7 +838,7 @@ where
         &self,
         fx: impl Fn(T) -> T,
         dfx_dx: impl Fn(T) -> T
-    ) -> RecordMatrix<'a, T> {
+    ) -> RecordMatrix<'a, T, Matrix<(T, Index)>> {
         let total = self.elements();
         match self.history {
             None => RecordMatrix::constants(self.numbers.map(|(x, _)| fx(x))),
@@ -827,7 +847,7 @@ where
                     total, history, self.numbers.row_major_iter(), fx, dfx_dx
                 );
                 RecordContainer {
-                    numbers: Matrix::from_flat_row_major(self.numbers.size(), ys),
+                    numbers: MatrixView::from(Matrix::from_flat_row_major(self.numbers.size(), ys)),
                     history: Some(history),
                 }
             },
@@ -877,13 +897,16 @@ where
      * - If the record containers have different shapes
      */
     #[track_caller]
-    pub fn binary(
+    pub fn binary<S2>(
         &self,
-        rhs: &RecordMatrix<'a, T>,
+        rhs: &RecordMatrix<'a, T, S2>,
         fxy: impl Fn(T, T) -> T,
         dfxy_dx: impl Fn(T, T) -> T,
         dfxy_dy: impl Fn(T, T) -> T,
-    ) -> RecordMatrix<'a, T> {
+    ) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+    where
+        S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+    {
         let shape = {
             let left_shape = self.numbers.size();
             let right_shape = rhs.numbers.size();
@@ -908,7 +931,7 @@ where
                 )
             ),
             (Some(history), None) => {
-                let zs = binary_x_history::<T, _>(
+                let zs = binary_x_history::<T, _, _>(
                     total,
                     history,
                     self.numbers.row_major_iter(),
@@ -917,12 +940,12 @@ where
                     dfxy_dx
                 );
                 RecordContainer {
-                    numbers: Matrix::from_flat_row_major(shape, zs),
+                    numbers: MatrixView::from(Matrix::from_flat_row_major(shape, zs)),
                     history: Some(history),
                 }
             },
             (None, Some(history)) => {
-                let zs = binary_y_history::<T, _>(
+                let zs = binary_y_history::<T, _, _>(
                     total,
                     history,
                     self.numbers.row_major_iter(),
@@ -931,7 +954,7 @@ where
                     dfxy_dy
                 );
                 RecordContainer {
-                    numbers: Matrix::from_flat_row_major(shape, zs),
+                    numbers: MatrixView::from(Matrix::from_flat_row_major(shape, zs)),
                     history: Some(history),
                 }
             },
@@ -940,7 +963,7 @@ where
                     record_operations::same_lists(history, h),
                     "Record containers must be using the same WengertList"
                 );
-                let zs = binary_both_history::<T, _>(
+                let zs = binary_both_history::<T, _, _>(
                     total,
                     history,
                     self.numbers.row_major_iter(),
@@ -950,12 +973,21 @@ where
                     dfxy_dy
                 );
                 RecordContainer {
-                    numbers: Matrix::from_flat_row_major(shape, zs),
+                    numbers: MatrixView::from(Matrix::from_flat_row_major(shape, zs)),
                     history: Some(history),
                 }
             },
         }
     }
+}
+
+impl<'a, T, S> RecordMatrix<'a, T, S>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S: MatrixMut<(T, Index)> + NoInteriorMutability,
+{
+    // assign variants
 }
 
 // # Safety
