@@ -265,6 +265,18 @@ where
     }
 }
 
+impl<'a, T, S, const D: usize> RecordContainer<'a, T, S, D>
+where
+    T: Primitive
+{
+    /**
+     * Gets the WengertList these records are backed by if variables, and [None](None) if constants.
+     */
+    pub fn history(&self) -> Option<&'a WengertList<T>> {
+        self.history
+    }
+}
+
 /// Returns the vec of indexes and vec of ys for Y = unary(X), not checking but assuming that the
 /// length of the iterator matches the total.
 fn unary<'a, T, I>(

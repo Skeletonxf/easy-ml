@@ -393,7 +393,10 @@ where
 
 use std::cell::RefCell;
 
-type Index = usize;
+/**
+ * WengertLists are indexed with [`usize`](usize).
+ */
+pub type Index = usize;
 
 /**
  * A list of operations performed in a forward pass of a dynamic computational graph,
@@ -660,6 +663,13 @@ impl<'a, T: Numeric + Primitive> Record<'a, T> {
     pub fn do_reset(mut x: Record<T>) -> Record<T> {
         x.reset();
         x
+    }
+
+    /**
+     * Gets the WengertList this Record is backed by if a variable, and [None](None) if a constant.
+     */
+    pub fn history(&self) -> Option<&'a WengertList<T>> {
+        self.history
     }
 }
 
