@@ -2,8 +2,8 @@
 use crate::numeric::{Numeric, NumericRef};
 use crate::differentiation::{Primitive, Index, WengertList};
 use crate::differentiation::record_operations;
-use crate::tensors::Tensor;
-use crate::tensors::views::TensorMut;
+use crate::tensors::{Tensor, Dimension};
+use crate::tensors::views::{TensorRef, TensorMut, DataLayout};
 use crate::tensors::indexing::TensorOwnedIterator;
 use crate::matrices::Matrix;
 use crate::matrices::iterators::RowMajorOwnedIterator;
@@ -955,5 +955,57 @@ where
                 }
             },
         }
+    }
+}
+
+// # Safety
+//
+// Our inner `numbers` tensor has to implement TensorRef correctly so by delegating to it
+// without changing any indexes or introducing interior mutability, we implement TensorRef
+// correctly as well.
+/**
+ * RecordTensor implements TensorRef, returning references to the tuples of `T` and
+ * [`Index`](Index).
+ */
+unsafe impl<'a, T, const D: usize> TensorRef<(T, Index), D> for RecordTensor<'a, T, D>
+where
+    T: Primitive
+{
+    fn get_reference(&self, indexes: [usize; D]) -> Option<&(T, Index)> {
+        self.numbers.get_reference(indexes)
+    }
+
+    fn view_shape(&self) -> [(Dimension, usize); D] {
+        self.numbers.view_shape()
+    }
+
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &(T, Index) {
+        self.numbers.get_reference_unchecked(indexes)
+    }
+
+    fn data_layout(&self) -> DataLayout<D> {
+        self.numbers.data_layout()
+    }
+}
+
+// # Safety
+//
+// Our inner `numbers` tensor has to implement TensorMut correctly so by delegating to it
+// without changing any indexes or introducing interior mutability, we implement TensorMut
+// correctly as well.
+/**
+ * RecordTensor implements TensorMut, returning mutable references to the tuples of `T` and
+ * [`Index`](Index).
+ */
+unsafe impl<'a, T, const D: usize> TensorMut<(T, Index), D> for RecordTensor<'a, T, D>
+where
+    T: Primitive
+{
+    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut (T, Index)> {
+        self.numbers.get_reference_mut(indexes)
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut (T, Index) {
+        self.numbers.get_reference_unchecked_mut(indexes)
     }
 }
