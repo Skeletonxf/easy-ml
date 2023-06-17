@@ -391,6 +391,7 @@ impl<T, const D: usize> Tensor<T, D> {
 
     /// Unverified constructor for interal use when we know the dimensions/data/strides are
     /// the same as the existing instance and don't need reverification
+    #[allow(dead_code)] // pretty sure something else will want this in the future
     pub(crate) fn new_with_same_shape(
         &self,
         data: Vec<T>,
@@ -529,7 +530,7 @@ impl<T> From<Tensor<T, 2>> for crate::matrices::Matrix<T> {
     }
 }
 
-fn compute_strides<const D: usize>(shape: &[(Dimension, usize); D]) -> [usize; D] {
+pub(crate) fn compute_strides<const D: usize>(shape: &[(Dimension, usize); D]) -> [usize; D] {
     std::array::from_fn(|d| shape.iter().skip(d + 1).map(|d| d.1).product())
 }
 

@@ -643,6 +643,21 @@ where
     ) -> TensorView<T, TensorTranspose<T, &S, D>, D> {
         TensorView::from(TensorTranspose::from(&self.source, dimensions))
     }
+
+    /// Unverified constructor for interal use when we know the dimensions/data/strides are
+    /// the same as the existing instance and don't need reverification
+    pub(crate) fn new_with_same_shape(
+        &self,
+        data: Vec<T>,
+    ) -> TensorView<T, Tensor<T, D>, D> {
+        let shape = self.shape();
+        let strides = crate::tensors::compute_strides(&shape);
+        TensorView::from(Tensor {
+            data,
+            shape,
+            strides,
+        })
+    }
 }
 
 impl<T, S, const D: usize> TensorView<T, S, D>

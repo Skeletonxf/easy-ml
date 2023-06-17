@@ -1,5 +1,7 @@
 use crate::numeric::{Numeric, NumericRef};
-use crate::differentiation::Primitive;
+use crate::tensors::Tensor;
+use crate::tensors::views::TensorRef;
+use crate::differentiation::{Primitive, Index};
 use crate::differentiation::record_operations::are_same_list;
 use crate::differentiation::{RecordContainer, RecordTensor};
 
@@ -40,15 +42,17 @@ macro_rules! record_tensor_operator_impl_value_value {
         /**
          * Operation for two record tensors of the same type.
          */
-        impl<'a, T, const D: usize> $op for RecordTensor<'a, T, D>
+        impl<'a, T, S1, S2, const D: usize> $op<RecordTensor<'a, T, S2, D>> for RecordTensor<'a, T, S1, D>
         where
             T: Numeric + Primitive,
             for<'t> &'t T: NumericRef<T>,
+            S1: TensorRef<(T, Index), D>,
+            S2: TensorRef<(T, Index), D>,
         {
-            type Output = RecordTensor<'a, T, D>;
+            type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
             #[track_caller]
-            fn $method(self, rhs: RecordTensor<'a, T, D>) -> Self::Output {
-                $implementation::<T, D>(self, rhs)
+            fn $method(self, rhs: RecordTensor<'a, T, S2, D>) -> Self::Output {
+                $implementation::<T, S1, S2, D>(self, rhs)
             }
         }
     };
@@ -59,15 +63,17 @@ macro_rules! record_tensor_operator_impl_value_reference {
         /**
          * Operation for two record tensors with the right referenced.
          */
-        impl<'a, T, const D: usize> $op<&RecordTensor<'a, T, D>> for RecordTensor<'a, T, D>
+        impl<'a, T, S1, S2, const D: usize> $op<&RecordTensor<'a, T, S2, D>> for RecordTensor<'a, T, S1, D>
         where
             T: Numeric + Primitive,
             for<'t> &'t T: NumericRef<T>,
+            S1: TensorRef<(T, Index), D>,
+            S2: TensorRef<(T, Index), D>,
         {
-            type Output = RecordTensor<'a, T, D>;
+            type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
             #[track_caller]
-            fn $method(self, rhs: &RecordTensor<'a, T, D>) -> Self::Output {
-                $implementation::<T, D>(self, rhs)
+            fn $method(self, rhs: &RecordTensor<'a, T, S2, D>) -> Self::Output {
+                $implementation::<T, S1, S2, D>(self, rhs)
             }
         }
     };
@@ -78,15 +84,17 @@ macro_rules! record_tensor_operator_impl_reference_value {
         /**
          * Operation for two record tensors with the left referenced.
          */
-        impl<'a, T, const D: usize> $op<RecordTensor<'a, T, D>> for &RecordTensor<'a, T, D>
+        impl<'a, T, S1, S2, const D: usize> $op<RecordTensor<'a, T, S2, D>> for &RecordTensor<'a, T, S1, D>
         where
             T: Numeric + Primitive,
             for<'t> &'t T: NumericRef<T>,
+            S1: TensorRef<(T, Index), D>,
+            S2: TensorRef<(T, Index), D>,
         {
-            type Output = RecordTensor<'a, T, D>;
+            type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
             #[track_caller]
-            fn $method(self, rhs: RecordTensor<'a, T, D>) -> Self::Output {
-                $implementation::<T, D>(self, rhs)
+            fn $method(self, rhs: RecordTensor<'a, T, S2, D>) -> Self::Output {
+                $implementation::<T, S1, S2, D>(self, rhs)
             }
         }
     };
@@ -97,49 +105,38 @@ macro_rules! record_tensor_operator_impl_reference_reference {
         /**
          * Operation for two record tensors with both referenced.
          */
-        impl<'a, T, const D: usize> $op for &RecordTensor<'a, T, D>
+        impl<'a, T, S1, S2, const D: usize> $op<&RecordTensor<'a, T, S2, D>> for &RecordTensor<'a, T, S1, D>
         where
             T: Numeric + Primitive,
             for<'t> &'t T: NumericRef<T>,
+            S1: TensorRef<(T, Index), D>,
+            S2: TensorRef<(T, Index), D>,
         {
-            type Output = RecordTensor<'a, T, D>;
+            type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
             #[track_caller]
-            fn $method(self, rhs: &RecordTensor<'a, T, D>) -> Self::Output {
-                $implementation::<T, D>(self, rhs)
+            fn $method(self, rhs: &RecordTensor<'a, T, S2, D>) -> Self::Output {
+                $implementation::<T, S1, S2, D>(self, rhs)
             }
         }
     };
 }
 
+// We can write an add_assign variant which uses binary_left_assign instead, however
+// we'd assign to a RecordTensor generic over S1, which is not always Tensor. Using Box::downcast
+// almost solves this, but we can't make our inputs 'static (in fact they almost never would be).
+// TODO: In a future version worth looking at adding a method to TensorRef/TensorView which allows
+// for casing over the implementation type actually being a Tensor, and possibly generalise from
+// Tensor to switching against a generic associated type that is the desired 'output'/'base' type.
 #[track_caller]
-fn record_tensor_add_assign<'a, T, const D: usize>(
-    lhs: &mut RecordTensor<'a, T, D>,
-    rhs: &RecordTensor<'a, T, D>
-)
+fn record_tensor_add_allocate<'a, T, S1, S2, const D: usize>(
+    lhs: &RecordTensor<'a, T, S1, D>,
+    rhs: &RecordTensor<'a, T, S2, D>
+) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
-{
-    assert!(
-        are_same_list(lhs.history, rhs.history),
-        "Record containers must be using the same WengertList"
-    );
-    lhs.binary_left_assign(
-        rhs,
-        |x, y| x + y,
-        |_x, _y| T::one(), // δ(lhs + rhs) / lhs = 1
-        |_x, _y| T::one() // δ(lhs + rhs) / rhs = 1
-    )
-}
-
-#[track_caller]
-fn record_tensor_add_allocate<'a, T, const D: usize>(
-    lhs: &RecordTensor<'a, T, D>,
-    rhs: &RecordTensor<'a, T, D>
-) -> RecordTensor<'a, T, D>
-where
-    T: Numeric + Primitive,
-    for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), D>,
+    S2: TensorRef<(T, Index), D>,
 {
     assert!(
         are_same_list(lhs.history, rhs.history),
@@ -154,42 +151,45 @@ where
 }
 
 #[track_caller]
-fn record_tensor_add_value_value<'a, T, const D: usize>(
-    mut lhs: RecordTensor<'a, T, D>,
-    rhs: RecordTensor<'a, T, D>
-) -> RecordTensor<'a, T, D>
+fn record_tensor_add_value_value<'a, T, S1, S2, const D: usize>(
+    lhs: RecordTensor<'a, T, S1, D>,
+    rhs: RecordTensor<'a, T, S2, D>
+) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), D>,
+    S2: TensorRef<(T, Index), D>,
 {
-    record_tensor_add_assign::<T, D>(&mut lhs, &rhs);
-    lhs
+    record_tensor_add_allocate::<T, S1, S2, D>(&lhs, &rhs)
 }
 
 #[track_caller]
-fn record_tensor_add_value_reference<'a, T, const D: usize>(
-    mut lhs: RecordTensor<'a, T, D>,
-    rhs: &RecordTensor<'a, T, D>
-) -> RecordTensor<'a, T, D>
+fn record_tensor_add_value_reference<'a, T, S1, S2, const D: usize>(
+    lhs: RecordTensor<'a, T, S1, D>,
+    rhs: &RecordTensor<'a, T, S2, D>
+) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), D>,
+    S2: TensorRef<(T, Index), D>,
 {
-    record_tensor_add_assign::<T, D>(&mut lhs, rhs);
-    lhs
+    record_tensor_add_allocate::<T, S1, S2, D>(&lhs, rhs)
 }
 
 #[track_caller]
-fn record_tensor_add_reference_value<'a, T, const D: usize>(
-    lhs: &RecordTensor<'a, T, D>,
-    mut rhs: RecordTensor<'a, T, D>
-) -> RecordTensor<'a, T, D>
+fn record_tensor_add_reference_value<'a, T, S1, S2, const D: usize>(
+    lhs: &RecordTensor<'a, T, S1, D>,
+    rhs: RecordTensor<'a, T, S2, D>
+) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), D>,
+    S2: TensorRef<(T, Index), D>,
 {
-    record_tensor_add_assign::<T, D>(&mut rhs, lhs);
-    rhs
+    record_tensor_add_allocate::<T, S1, S2, D>(lhs, &rhs)
 }
 
 record_tensor_operator_impl_value_value!(impl Add for RecordTensor { fn add } record_tensor_add_value_value);

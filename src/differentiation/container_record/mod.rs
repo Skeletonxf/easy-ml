@@ -42,12 +42,7 @@ pub type RecordMatrix<'a, T, S> = RecordContainer<'a, T, MatrixView<(T, Index), 
 /**
  * Alias for succinctly refering to RecordContainers backed by a tensor.
  */
-pub type RecordTensor<'a, T, const D: usize> = RecordContainer<'a, T, Tensor<(T, Index), D>, D>;
-
-// TODO: Kinda should just be generic over any source of a TensorRef type, that keeps maximum
-// compatibility with TensorRef manipulations as it'll be no work to wrap a manipulated tensor view
-// back to a RecordContainer
-type RecordTensor2<'a, T, S, const D: usize> = RecordContainer<'a, T, TensorView<(T, Index), S, D>, D>;
+pub type RecordTensor<'a, T, S, const D: usize> = RecordContainer<'a, T, TensorView<(T, Index), S, D>, D>;
 
 fn calculate_incrementing_indexes(starting_index: usize, total: usize) -> Vec<Index> {
     let mut indexes = vec![0; total];
@@ -57,7 +52,7 @@ fn calculate_incrementing_indexes(starting_index: usize, total: usize) -> Vec<In
     indexes
 }
 
-impl<'a, T, const D: usize> RecordTensor<'a, T, D>
+impl<'a, T, const D: usize> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
 {
@@ -77,10 +72,10 @@ where
         S: TensorMut<T, D>,
     {
         RecordContainer {
-            numbers: Tensor::from(
+            numbers: TensorView::from(Tensor::from(
                 c.view_shape(),
                 TensorOwnedIterator::from_numeric(c).map(|x| (x, 0)).collect()
-            ),
+            )),
             history: None,
         }
     }
@@ -111,16 +106,22 @@ where
         let total = crate::tensors::dimensions::elements(&x.view_shape());
         let starting_index = history.append_nullary_repeating(total);
         RecordContainer {
-            numbers: Tensor::from(
+            numbers: TensorView::from(Tensor::from(
                 x.view_shape(),
                 TensorOwnedIterator::from_numeric(x)
                     .zip(calculate_incrementing_indexes(starting_index, total))
                     .collect()
-            ),
+            )),
             history: Some(history),
         }
     }
+}
 
+impl<'a, T, S, const D: usize> RecordTensor<'a, T, S, D>
+where
+    T: Numeric + Primitive,
+    S: TensorRef<(T, Index), D>,
+{
     /**
      * Returns the number of elements stored by this container's source.
      *
@@ -132,7 +133,13 @@ where
     pub fn elements(&self) -> usize {
         crate::tensors::dimensions::elements(&self.numbers.shape())
     }
+}
 
+impl<'a, T, S, const D: usize> RecordTensor<'a, T, S, D>
+where
+    T: Numeric + Primitive,
+    S: TensorMut<(T, Index), D>,
+{
     /**
      * Resets all of the records to place them back on the WengertList, for use
      * in performing another derivation after clearing the WengertList.
@@ -423,10 +430,11 @@ where
     zs
 }
 
-impl<'a, T, const D: usize> RecordTensor<'a, T, D>
+impl<'a, T, S, const D: usize> RecordTensor<'a, T, S, D>
 where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
+    S: TensorRef<(T, Index), D>,
 {
     /**
      * Creates a new RecordContainer from a reference to an existing RecordContainer by applying
@@ -461,7 +469,7 @@ where
         &self,
         fx: impl Fn(T) -> T,
         dfx_dx: impl Fn(T) -> T
-    ) -> RecordTensor<'a, T, D> {
+    ) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D> {
         let total = self.elements();
         match self.history {
             None => RecordTensor::constants(self.numbers.map(|(x, _)| fx(x))),
@@ -473,34 +481,6 @@ where
                     numbers: self.numbers.new_with_same_shape(ys),
                     history: Some(history),
                 }
-            },
-        }
-    }
-
-    /**
-     * Overwrites a RecordContainer by applying
-     * some unary function from `T` to `T` to every element in the container.
-     *
-     * To compute the new records, the unary function of some input x to some
-     * output y is needed along with its derivative with respect to its input x.
-     */
-    #[track_caller]
-    pub fn unary_assign(
-        &mut self,
-        fx: impl Fn(T) -> T,
-        dfx_dx: impl Fn(T) -> T
-    ) {
-        let total = self.elements();
-        match self.history {
-            None => self.numbers.map_mut(|(x, i)| (fx(x), i)),
-            Some(history) => {
-                let ys = unary::<T, _>(
-                    total, history, self.numbers.iter(), fx, dfx_dx
-                );
-                for (element, result) in self.numbers.iter_reference_mut().zip(ys) {
-                    *element = result;
-                }
-                self.history = Some(history);
             },
         }
     }
@@ -554,13 +534,16 @@ where
      * - If the record containers have different shapes
      */
     #[track_caller]
-    pub fn binary(
+    pub fn binary<S2>(
         &self,
-        rhs: &RecordTensor<'a, T, D>,
+        rhs: &RecordTensor<'a, T, S2, D>,
         fxy: impl Fn(T, T) -> T,
         dfxy_dx: impl Fn(T, T) -> T,
         dfxy_dy: impl Fn(T, T) -> T,
-    ) -> RecordTensor<'a, T, D> {
+    ) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+    where
+        S2: TensorRef<(T, Index), D>,
+    {
         {
             let left_shape = self.numbers.shape();
             let right_shape = rhs.numbers.shape();
@@ -632,6 +615,41 @@ where
             },
         }
     }
+}
+
+impl<'a, T, S, const D: usize> RecordTensor<'a, T, S, D>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S: TensorMut<(T, Index), D>,
+{
+    /**
+     * Overwrites a RecordContainer by applying
+     * some unary function from `T` to `T` to every element in the container.
+     *
+     * To compute the new records, the unary function of some input x to some
+     * output y is needed along with its derivative with respect to its input x.
+     */
+    #[track_caller]
+    pub fn unary_assign(
+        &mut self,
+        fx: impl Fn(T) -> T,
+        dfx_dx: impl Fn(T) -> T
+    ) {
+        let total = self.elements();
+        match self.history {
+            None => self.numbers.map_mut(|(x, i)| (fx(x), i)),
+            Some(history) => {
+                let ys = unary::<T, _>(
+                    total, history, self.numbers.iter(), fx, dfx_dx
+                );
+                for (element, result) in self.numbers.iter_reference_mut().zip(ys) {
+                    *element = result;
+                }
+                self.history = Some(history);
+            },
+        }
+    }
 
     /**
      * Overwrites the left hand side of a RecordContainer with the result of applying
@@ -647,13 +665,16 @@ where
      * - If the record containers have different shapes
      */
     #[track_caller]
-    pub fn binary_left_assign(
+    pub fn binary_left_assign<S2>(
         &mut self,
-        rhs: &RecordTensor<'a, T, D>,
+        rhs: &RecordTensor<'a, T, S2, D>,
         fxy: impl Fn(T, T) -> T,
         dfxy_dx: impl Fn(T, T) -> T,
         dfxy_dy: impl Fn(T, T) -> T,
-    ) {
+    )
+    where
+        S2: TensorRef<(T, Index), D>,
+    {
         {
             let left_shape = self.numbers.shape();
             let right_shape = rhs.numbers.shape();
@@ -725,6 +746,48 @@ where
     }
 
     /**
+     * A convenience helper function which takes the RecordContainer value and
+     * calls [unary_assign](RecordContainer::unary_assign()) on it, returning
+     * the record container which now contains the result of the operation.
+     */
+    #[track_caller]
+    pub fn do_unary_assign(
+        mut self,
+        fx: impl Fn(T) -> T,
+        dfx_dx: impl Fn(T) -> T
+    ) -> Self {
+        self.unary_assign(fx, dfx_dx);
+        self
+    }
+
+    /**
+     * A convenience helper function which takes the left hand side by value and
+     * calls [binary_left_assign](RecordContainer::binary_left_assign()) on it, returning
+     * the left hand side which now contains the result of the operation.
+     */
+    #[track_caller]
+    pub fn do_binary_left_assign<S2>(
+        mut self,
+        rhs: &RecordTensor<'a, T, S2, D>,
+        fxy: impl Fn(T, T) -> T,
+        dfxy_dx: impl Fn(T, T) -> T,
+        dfxy_dy: impl Fn(T, T) -> T,
+    ) -> Self
+    where
+        S2: TensorRef<(T, Index), D>,
+    {
+        self.binary_left_assign(rhs, fxy, dfxy_dx, dfxy_dy);
+        self
+    }
+}
+
+impl<'a, T, S, const D: usize> RecordTensor<'a, T, S, D>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S: TensorRef<(T, Index), D>,
+{
+    /**
      * Overwrites the right hand side of a RecordContainer with the result of applying
      * some binary function from `T` to `T` to every element pair in the containers. Both
      * containers must have the same shape.
@@ -738,13 +801,16 @@ where
      * - If the record containers have different shapes
      */
     #[track_caller]
-    pub fn binary_right_assign(
+    pub fn binary_right_assign<S2>(
         &self,
-        rhs: &mut RecordTensor<'a, T, D>,
+        rhs: &mut RecordTensor<'a, T, S2, D>,
         fxy: impl Fn(T, T) -> T,
         dfxy_dx: impl Fn(T, T) -> T,
         dfxy_dy: impl Fn(T, T) -> T,
-    ) {
+    )
+    where
+        S2: TensorMut<(T, Index), D>,
+    {
         // x is lhs, y is rhs, so calling binary_left_assign on the rhs container
         // means we need to swap all the arguments
         // TODO: Unit test this a lot to sanity check we do need to also swap dfxy_dy and dfxy_dx
@@ -753,50 +819,21 @@ where
     }
 
     /**
-     * A convenience helper function which takes the RecordContainer value and
-     * calls [unary_assign](RecordContainer::unary_assign()) on it, returning
-     * the record container which now contains the result of the operation.
-     */
-    #[track_caller]
-    pub fn do_unary_assign(
-        mut self,
-        fx: impl Fn(T) -> T,
-        dfx_dx: impl Fn(T) -> T
-    ) -> RecordTensor<'a, T, D> {
-        self.unary_assign(fx, dfx_dx);
-        self
-    }
-
-    /**
-     * A convenience helper function which takes the left hand side by value and
-     * calls [binary_left_assign](RecordContainer::binary_left_assign()) on it, returning
-     * the left hand side which now contains the result of the operation.
-     */
-    #[track_caller]
-    pub fn do_binary_left_assign(
-        mut self,
-        rhs: &RecordTensor<'a, T, D>,
-        fxy: impl Fn(T, T) -> T,
-        dfxy_dx: impl Fn(T, T) -> T,
-        dfxy_dy: impl Fn(T, T) -> T,
-    ) -> RecordTensor<'a, T, D> {
-        self.binary_left_assign(rhs, fxy, dfxy_dx, dfxy_dy);
-        self
-    }
-
-    /**
      * A convenience helper function which takes the right hand side by value and
      * calls [binary_right_assign](RecordContainer::binary_right_assign()) on it, returning
      * the right hand side which now contains the result of the operation.
      */
     #[track_caller]
-     pub fn do_binary_right_assign(
+     pub fn do_binary_right_assign<S2>(
          &self,
-         mut rhs: RecordTensor<'a, T, D>,
+         mut rhs: RecordTensor<'a, T, S2, D>,
          fxy: impl Fn(T, T) -> T,
          dfxy_dx: impl Fn(T, T) -> T,
          dfxy_dy: impl Fn(T, T) -> T,
-     ) -> RecordTensor<'a, T, D> {
+     ) -> RecordTensor<'a, T, S2, D>
+     where
+         S2: TensorMut<(T, Index), D>,
+     {
          self.binary_right_assign(&mut rhs, fxy, dfxy_dx, dfxy_dy);
          rhs
      }
@@ -996,27 +1033,28 @@ where
 // without changing any indexes or introducing interior mutability, we implement TensorRef
 // correctly as well.
 /**
- * RecordTensor implements TensorRef, returning references to the tuples of `T` and
- * [`Index`](Index).
+ * RecordTensor implements TensorRef when the source does, returning references to the tuples
+ * of `T` and [`Index`](Index).
  */
-unsafe impl<'a, T, const D: usize> TensorRef<(T, Index), D> for RecordTensor<'a, T, D>
+unsafe impl<'a, T, S, const D: usize> TensorRef<(T, Index), D> for RecordTensor<'a, T, S, D>
 where
-    T: Primitive
+    T: Primitive,
+    S: TensorRef<(T, Index), D>,
 {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&(T, Index)> {
-        self.numbers.get_reference(indexes)
+        self.numbers.source_ref().get_reference(indexes)
     }
 
     fn view_shape(&self) -> [(Dimension, usize); D] {
-        self.numbers.view_shape()
+        self.numbers.source_ref().view_shape()
     }
 
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &(T, Index) {
-        self.numbers.get_reference_unchecked(indexes)
+        self.numbers.source_ref().get_reference_unchecked(indexes)
     }
 
     fn data_layout(&self) -> DataLayout<D> {
-        self.numbers.data_layout()
+        self.numbers.source_ref().data_layout()
     }
 }
 
@@ -1026,18 +1064,19 @@ where
 // without changing any indexes or introducing interior mutability, we implement TensorMut
 // correctly as well.
 /**
- * RecordTensor implements TensorMut, returning mutable references to the tuples of `T` and
- * [`Index`](Index).
+ * RecordTensor implements TensorMut when the source does, returning mutable references to the
+ * tuples of `T` and [`Index`](Index).
  */
-unsafe impl<'a, T, const D: usize> TensorMut<(T, Index), D> for RecordTensor<'a, T, D>
+unsafe impl<'a, T, S, const D: usize> TensorMut<(T, Index), D> for RecordTensor<'a, T, S, D>
 where
-    T: Primitive
+    T: Primitive,
+    S: TensorMut<(T, Index), D>,
 {
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut (T, Index)> {
-        self.numbers.get_reference_mut(indexes)
+        self.numbers.source_ref_mut().get_reference_mut(indexes)
     }
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut (T, Index) {
-        self.numbers.get_reference_unchecked_mut(indexes)
+        self.numbers.source_ref_mut().get_reference_unchecked_mut(indexes)
     }
 }
