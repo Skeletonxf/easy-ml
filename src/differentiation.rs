@@ -692,8 +692,25 @@ where
      */
     #[track_caller]
     pub fn derivatives(&self) -> Derivatives<T> {
-        let history = match self.history {
+        match self.try_derivatives() {
             None => panic!("Record has no WengertList to find derivatives from"),
+            Some(d) => d,
+        }
+    }
+
+    /**
+     * Performs a backward pass up this record's WengertList from this
+     * record as the output, computing all the derivatives for the inputs
+     * involving this output.
+     *
+     * If this record has no WengertList, ie it's a constant, None is returned instead.
+     *
+     * If you have N inputs x<sub>1</sub> to x<sub>N</sub>, and this output is y,
+     * then this computes all the derivatives δy/δx<sub>i</sub> for i = 1 to N.
+     */
+    pub fn try_derivatives(&self) -> Option<Derivatives<T>> {
+        let history = match self.history {
+            None => return None,
             Some(h) => h,
         };
         let operations = history.operations.borrow();
@@ -718,7 +735,7 @@ where
                 + derivative * operation.right_derivative;
         }
 
-        Derivatives { derivatives }
+        Some(Derivatives { derivatives })
     }
 }
 

@@ -1,6 +1,6 @@
-//use crate::differentiation::Record;
+use crate::differentiation::Record;
 use crate::numeric::{Numeric, NumericRef};
-use crate::differentiation::{Primitive, Index, WengertList};
+use crate::differentiation::{Primitive, Index, Derivatives, WengertList};
 use crate::differentiation::record_operations;
 use crate::tensors::{Tensor, Dimension};
 use crate::tensors::views::{TensorRef, TensorMut, TensorView, DataLayout};
@@ -132,6 +132,13 @@ where
      */
     pub fn elements(&self) -> usize {
         crate::tensors::dimensions::elements(&self.numbers.shape())
+    }
+
+    /**
+     * The shape of this container's source.
+     */
+    pub fn shape(&self) -> [(Dimension, usize); D] {
+        self.numbers.shape()
     }
 }
 
@@ -615,6 +622,61 @@ where
             },
         }
     }
+
+    /**
+     * For the record at the index, peforms a backward pass up its WengertList from it
+     * as the output, computing all the derivatives for the inputs involving this output.
+     *
+     * If the index is invalid or this container has no backing WengertList, ie was created
+     * as constants, then None is returned instead.
+     *
+     * If you have N inputs x<sub>1</sub> to x<sub>N</sub>, and this output is y,
+     * then this computes all the derivatives δy/δx<sub>i</sub> for i = 1 to N.
+     */
+    pub fn derivatives_for(&self, indexes: [usize; D]) -> Option<Derivatives<T>> {
+        let (number, index) = match self.get_reference(indexes).map(|(x, i)| (x.clone(), *i)) {
+            Some(tuple) => tuple,
+            None => return None,
+        };
+        // The nature of reverse autodiff is that we expect to only have a few outputs from
+        // which we calculate all the derivatives we care about. Therefore just call Record and
+        // reuse the implementation instead of trying to do anything clever like calculate all
+        // derivatives for every number in this container.
+        Record {
+            number,
+            history: self.history,
+            index,
+        }.try_derivatives()
+    }
+}
+
+impl<T: Clone + Primitive> Derivatives<T> {
+    /**
+     * Queries the derivative at the provided index into the record tensor as input.
+     *
+     * If you construct a Derivatives object for some output y,
+     * and call .at_index(i, &xs) on it for some input container xs and index i, this
+     * returns dy/dx where x = xs\[i\].
+     *
+     * If the index is invalid, returns None instead.
+     */
+    pub fn at_tensor<'a, S, const D: usize>(
+        &self,
+        indexes: [usize; D],
+        input: &RecordTensor<'a, T, S, D>
+    ) -> Option<T>
+    where
+        S: TensorRef<(T, Index), D>,
+    {
+        let index = match input.get_reference(indexes).map(|(_, i)| *i) {
+            Some(i) => i,
+            None => return None,
+        };
+        Some(self.derivatives[index].clone())
+    }
+
+    // TODO: some batch version that returns a Tensor of the derivatives? Most of the time we
+    // probably want all of them anyway
 }
 
 impl<'a, T, S, const D: usize> RecordTensor<'a, T, S, D>
