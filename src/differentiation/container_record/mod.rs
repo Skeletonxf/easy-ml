@@ -5,7 +5,7 @@ use crate::differentiation::record_operations;
 use crate::tensors::{Tensor, Dimension};
 use crate::tensors::views::{TensorRef, TensorMut, TensorView, DataLayout};
 use crate::tensors::indexing::TensorOwnedIterator;
-use crate::matrices::Matrix;
+use crate::matrices::{Matrix, Row, Column};
 use crate::matrices::iterators::RowMajorOwnedIterator;
 use crate::matrices::views::{MatrixView, MatrixRef, MatrixMut, NoInteriorMutability};
 
@@ -875,8 +875,6 @@ where
     {
         // x is lhs, y is rhs, so calling binary_left_assign on the rhs container
         // means we need to swap all the arguments
-        // TODO: Unit test this a lot to sanity check we do need to also swap dfxy_dy and dfxy_dx
-        // here
         rhs.binary_left_assign(self, |y, x| fxy(x, y), |y, x| dfxy_dy(x, y), |y, x| dfxy_dx(x, y))
     }
 
@@ -1140,5 +1138,78 @@ where
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut (T, Index) {
         self.numbers.source_ref_mut().get_reference_unchecked_mut(indexes)
+    }
+}
+
+// # Safety
+//
+// Our inner `numbers` matrix has to implement MatrixRef correctly so by delegating to it
+// without changing any indexes or introducing interior mutability, we implement MatrixRef
+// correctly as well.
+/**
+ * RecordMatrix implements MatrixRef when the source does, returning references to the tuples
+ * of `T` and [`Index`](Index).
+ */
+unsafe impl<'a, T, S> MatrixRef<(T, Index)> for RecordMatrix<'a, T, S>
+where
+    T: Primitive,
+    S: MatrixRef<(T, Index)>,
+{
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&(T, Index)> {
+        self.numbers.source_ref().try_get_reference(row, column)
+    }
+
+    fn view_rows(&self) -> Row {
+        self.numbers.source_ref().view_rows()
+    }
+
+    fn view_columns(&self) -> Column {
+        self.numbers.source_ref().view_columns()
+    }
+
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &(T, Index) {
+        self.numbers.source_ref().get_reference_unchecked(row, column)
+    }
+
+    fn data_layout(&self) -> crate::matrices::views::DataLayout {
+        self.numbers.source_ref().data_layout()
+    }
+}
+
+// # Safety
+//
+// Our inner `numbers` matrix has to implement NoInteriorMutability correctly so by delegating to
+// it without introducing interior mutability, we implement NoInteriorMutability
+// correctly as well.
+/**
+ * RecordMatrix implements NoInteriorMutability when the source does.
+ */
+unsafe impl<'a, T, S> NoInteriorMutability for RecordMatrix<'a, T, S>
+where
+    T: Primitive,
+    S: NoInteriorMutability
+{
+}
+
+// # Safety
+//
+// Our inner `numbers` matrix has to implement MatrixMut correctly so by delegating to it
+// without changing any indexes or introducing interior mutability, we implement MatrixMut
+// correctly as well.
+/**
+ * RecordMatrix implements MatrixMut when the source does, returning mutable references to the
+ * tuples of `T` and [`Index`](Index).
+ */
+unsafe impl<'a, T, S> MatrixMut<(T, Index)> for RecordMatrix<'a, T, S>
+where
+    T: Primitive,
+    S: MatrixMut<(T, Index)>,
+{
+    fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut (T, Index)> {
+        self.numbers.source_ref_mut().try_get_reference_mut(row, column)
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut (T, Index) {
+        self.numbers.source_ref_mut().get_reference_unchecked_mut(row, column)
     }
 }
