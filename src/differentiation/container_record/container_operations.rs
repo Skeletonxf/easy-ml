@@ -5,7 +5,7 @@ use crate::differentiation::{Primitive, Index};
 use crate::differentiation::record_operations::are_same_list;
 use crate::differentiation::{RecordContainer, RecordTensor};
 
-use std::ops::Add;
+use std::ops::{Add, Sub};
 
 /**
  * A record container is displayed by showing its number components.
@@ -196,3 +196,73 @@ record_tensor_operator_impl_value_value!(impl Add for RecordTensor { fn add } re
 record_tensor_operator_impl_value_reference!(impl Add for RecordTensor { fn add } record_tensor_add_value_reference);
 record_tensor_operator_impl_reference_value!(impl Add for RecordTensor { fn add } record_tensor_add_reference_value);
 record_tensor_operator_impl_reference_reference!(impl Add for RecordTensor { fn add } record_tensor_add_allocate);
+
+#[track_caller]
+fn record_tensor_sub_allocate<'a, T, S1, S2, const D: usize>(
+    lhs: &RecordTensor<'a, T, S1, D>,
+    rhs: &RecordTensor<'a, T, S2, D>
+) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), D>,
+    S2: TensorRef<(T, Index), D>,
+{
+    assert!(
+        are_same_list(lhs.history, rhs.history),
+        "Record containers must be using the same WengertList"
+    );
+    lhs.binary(
+        rhs,
+        |x, y| x - y,
+        |_x, _y| T::one(), // δ(lhs - rhs) / lhs = 1
+        |_x, _y| -T::one() // δ(lhs - rhs) / rhs = -1
+    )
+}
+
+#[track_caller]
+fn record_tensor_sub_value_value<'a, T, S1, S2, const D: usize>(
+    lhs: RecordTensor<'a, T, S1, D>,
+    rhs: RecordTensor<'a, T, S2, D>
+) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), D>,
+    S2: TensorRef<(T, Index), D>,
+{
+    record_tensor_sub_allocate::<T, S1, S2, D>(&lhs, &rhs)
+}
+
+#[track_caller]
+fn record_tensor_sub_value_reference<'a, T, S1, S2, const D: usize>(
+    lhs: RecordTensor<'a, T, S1, D>,
+    rhs: &RecordTensor<'a, T, S2, D>
+) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), D>,
+    S2: TensorRef<(T, Index), D>,
+{
+    record_tensor_sub_allocate::<T, S1, S2, D>(&lhs, rhs)
+}
+
+#[track_caller]
+fn record_tensor_sub_reference_value<'a, T, S1, S2, const D: usize>(
+    lhs: &RecordTensor<'a, T, S1, D>,
+    rhs: RecordTensor<'a, T, S2, D>
+) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), D>,
+    S2: TensorRef<(T, Index), D>,
+{
+    record_tensor_sub_allocate::<T, S1, S2, D>(lhs, &rhs)
+}
+
+record_tensor_operator_impl_value_value!(impl Sub for RecordTensor { fn sub } record_tensor_sub_value_value);
+record_tensor_operator_impl_value_reference!(impl Sub for RecordTensor { fn sub } record_tensor_sub_value_reference);
+record_tensor_operator_impl_reference_value!(impl Sub for RecordTensor { fn sub } record_tensor_sub_reference_value);
+record_tensor_operator_impl_reference_reference!(impl Sub for RecordTensor { fn sub } record_tensor_sub_allocate);

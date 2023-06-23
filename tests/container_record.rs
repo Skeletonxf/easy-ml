@@ -38,6 +38,9 @@ mod container_record_tests {
         let also_also_y_minus_x = y
             .do_binary_right_assign(x.clone(), subtraction, subtraction_dx, subtraction_dy);
 
+        let ops_x_minus_y = &x - &y;
+        let ops_y_minus_x = &y - &x;
+
         let expected: Vec<_> = {
             let history = WengertList::new();
             vec![
@@ -66,7 +69,7 @@ mod container_record_tests {
             *y_minus_x_dy == 1.0
         }));
 
-        for container in vec![x_minus_y, also_x_minus_y, also_also_x_minus_y] {
+        for container in vec![x_minus_y, also_x_minus_y, also_also_x_minus_y, ops_x_minus_y] {
             for index in ShapeIterator::from(container.shape()) {
                 let derivatives = container.derivatives_for(index).unwrap();
                 let dx = derivatives.at_tensor(index, &x).unwrap();
@@ -76,7 +79,7 @@ mod container_record_tests {
             }
         }
 
-        for container in vec![y_minus_x, also_y_minus_x, also_also_y_minus_x] {
+        for container in vec![y_minus_x, also_y_minus_x, also_also_y_minus_x, ops_y_minus_x] {
             for index in ShapeIterator::from(container.shape()) {
                 let derivatives = container.derivatives_for(index).unwrap();
                 let dx = derivatives.at_tensor(index, &x).unwrap();
