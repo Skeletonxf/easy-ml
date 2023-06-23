@@ -655,12 +655,12 @@ impl<T: Clone + Primitive> Derivatives<T> {
      * Queries the derivative at the provided index into the record tensor as input.
      *
      * If you construct a Derivatives object for some output y,
-     * and call .at_index(i, &xs) on it for some input container xs and index i, this
+     * and call .at_tensor_index(i, &xs) on it for some input container xs and index i, this
      * returns dy/dx where x = xs\[i\].
      *
-     * If the index is invalid, returns None instead.
+     * If the index into the tensor is invalid, returns None instead.
      */
-    pub fn at_tensor<'a, S, const D: usize>(
+    pub fn at_tensor_index<'a, S, const D: usize>(
         &self,
         indexes: [usize; D],
         input: &RecordTensor<'a, T, S, D>
@@ -675,8 +675,22 @@ impl<T: Clone + Primitive> Derivatives<T> {
         Some(self.derivatives[index].clone())
     }
 
-    // TODO: some batch version that returns a Tensor of the derivatives? Most of the time we
-    // probably want all of them anyway
+    /**
+     * Queries the derivatives at every element in the record tensor input.
+     *
+     * If you construct a Derivatives object for some output y,
+     * and call .at_tensor(&xs) on it for some input container xs this
+     * returns dy/dx for every x in xs.
+     */
+    pub fn at_tensor<'a, S, const D: usize>(
+        &self,
+        input: &RecordTensor<'a, T, S, D>,
+    ) -> Tensor<T, D>
+    where
+        S: TensorRef<(T, Index), D>,
+    {
+        TensorView::from(input).map(|(_, i)| self.derivatives[i].clone())
+    }
 }
 
 impl<'a, T, S, const D: usize> RecordTensor<'a, T, S, D>

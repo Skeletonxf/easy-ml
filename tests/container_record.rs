@@ -72,8 +72,8 @@ mod container_record_tests {
         for container in vec![x_minus_y, also_x_minus_y, also_also_x_minus_y, ops_x_minus_y] {
             for index in ShapeIterator::from(container.shape()) {
                 let derivatives = container.derivatives_for(index).unwrap();
-                let dx = derivatives.at_tensor(index, &x).unwrap();
-                let dy = derivatives.at_tensor(index, &y).unwrap();
+                let dx = derivatives.at_tensor_index(index, &x).unwrap();
+                let dy = derivatives.at_tensor_index(index, &y).unwrap();
                 assert_eq!(dx, 1.0);
                 assert_eq!(dy, -1.0);
             }
@@ -82,8 +82,8 @@ mod container_record_tests {
         for container in vec![y_minus_x, also_y_minus_x, also_also_y_minus_x, ops_y_minus_x] {
             for index in ShapeIterator::from(container.shape()) {
                 let derivatives = container.derivatives_for(index).unwrap();
-                let dx = derivatives.at_tensor(index, &x).unwrap();
-                let dy = derivatives.at_tensor(index, &y).unwrap();
+                let dx = derivatives.at_tensor_index(index, &x).unwrap();
+                let dy = derivatives.at_tensor_index(index, &y).unwrap();
                 assert_eq!(dx, -1.0);
                 assert_eq!(dy, 1.0);
             }
