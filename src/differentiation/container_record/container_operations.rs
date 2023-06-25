@@ -1,9 +1,11 @@
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::Tensor;
 use crate::tensors::views::TensorRef;
+use crate::matrices::Matrix;
+use crate::matrices::views::{MatrixRef, NoInteriorMutability};
 use crate::differentiation::{Primitive, Index};
 use crate::differentiation::record_operations::are_same_list;
-use crate::differentiation::{RecordContainer, RecordTensor};
+use crate::differentiation::{RecordContainer, RecordTensor, RecordMatrix};
 
 use std::ops::{Add, Sub};
 
@@ -58,6 +60,27 @@ macro_rules! record_tensor_operator_impl_value_value {
     };
 }
 
+macro_rules! record_matrix_operator_impl_value_value {
+    (impl $op:tt for RecordMatrix { fn $method:ident } $implementation:ident) => {
+        /**
+         * Operation for two record matrices of the same type.
+         */
+        impl<'a, T, S1, S2> $op<RecordMatrix<'a, T, S2>> for RecordMatrix<'a, T, S1>
+        where
+            T: Numeric + Primitive,
+            for<'t> &'t T: NumericRef<T>,
+            S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+            S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self, rhs: RecordMatrix<'a, T, S2>) -> Self::Output {
+                $implementation::<T, S1, S2>(self, rhs)
+            }
+        }
+    };
+}
+
 macro_rules! record_tensor_operator_impl_value_reference {
     (impl $op:tt for RecordTensor { fn $method:ident } $implementation:ident) => {
         /**
@@ -78,6 +101,28 @@ macro_rules! record_tensor_operator_impl_value_reference {
         }
     };
 }
+
+macro_rules! record_matrix_operator_impl_value_reference {
+    (impl $op:tt for RecordMatrix { fn $method:ident } $implementation:ident) => {
+        /**
+         * Operation for two record matrices with the right referenced.
+         */
+        impl<'a, T, S1, S2> $op<&RecordMatrix<'a, T, S2>> for RecordMatrix<'a, T, S1>
+        where
+            T: Numeric + Primitive,
+            for<'t> &'t T: NumericRef<T>,
+            S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+            S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self, rhs: &RecordMatrix<'a, T, S2>) -> Self::Output {
+                $implementation::<T, S1, S2>(self, rhs)
+            }
+        }
+    };
+}
+
 
 macro_rules! record_tensor_operator_impl_reference_value {
     (impl $op:tt for RecordTensor { fn $method:ident } $implementation:ident) => {
@@ -100,6 +145,27 @@ macro_rules! record_tensor_operator_impl_reference_value {
     };
 }
 
+macro_rules! record_matrix_operator_impl_reference_value {
+    (impl $op:tt for RecordMatrix { fn $method:ident } $implementation:ident) => {
+        /**
+         * Operation for two record matrices with the left referenced.
+         */
+        impl<'a, T, S1, S2> $op<RecordMatrix<'a, T, S2>> for &RecordMatrix<'a, T, S1>
+        where
+            T: Numeric + Primitive,
+            for<'t> &'t T: NumericRef<T>,
+            S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+            S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self, rhs: RecordMatrix<'a, T, S2>) -> Self::Output {
+                $implementation::<T, S1, S2>(self, rhs)
+            }
+        }
+    };
+}
+
 macro_rules! record_tensor_operator_impl_reference_reference {
     (impl $op:tt for RecordTensor { fn $method:ident } $implementation:ident) => {
         /**
@@ -116,6 +182,27 @@ macro_rules! record_tensor_operator_impl_reference_reference {
             #[track_caller]
             fn $method(self, rhs: &RecordTensor<'a, T, S2, D>) -> Self::Output {
                 $implementation::<T, S1, S2, D>(self, rhs)
+            }
+        }
+    };
+}
+
+macro_rules! record_matrix_operator_impl_reference_reference {
+    (impl $op:tt for RecordMatrix { fn $method:ident } $implementation:ident) => {
+        /**
+         * Operation for two record matrices with both referenced.
+         */
+        impl<'a, T, S1, S2> $op<&RecordMatrix<'a, T, S2>> for &RecordMatrix<'a, T, S1>
+        where
+            T: Numeric + Primitive,
+            for<'t> &'t T: NumericRef<T>,
+            S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+            S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self, rhs: &RecordMatrix<'a, T, S2>) -> Self::Output {
+                $implementation::<T, S1, S2>(self, rhs)
             }
         }
     };
@@ -198,6 +285,76 @@ record_tensor_operator_impl_reference_value!(impl Add for RecordTensor { fn add 
 record_tensor_operator_impl_reference_reference!(impl Add for RecordTensor { fn add } record_tensor_add_allocate);
 
 #[track_caller]
+fn record_matrix_add_allocate<'a, T, S1, S2>(
+    lhs: &RecordMatrix<'a, T, S1>,
+    rhs: &RecordMatrix<'a, T, S2>
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    assert!(
+        are_same_list(lhs.history, rhs.history),
+        "Record containers must be using the same WengertList"
+    );
+    lhs.binary(
+        rhs,
+        |x, y| x + y,
+        |_x, _y| T::one(), // δ(lhs + rhs) / lhs = 1
+        |_x, _y| T::one() // δ(lhs + rhs) / rhs = 1
+    )
+}
+
+#[track_caller]
+fn record_matrix_add_value_value<'a, T, S1, S2>(
+    lhs: RecordMatrix<'a, T, S1>,
+    rhs: RecordMatrix<'a, T, S2>
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    record_matrix_add_allocate::<T, S1, S2>(&lhs, &rhs)
+}
+
+#[track_caller]
+fn record_matrix_add_value_reference<'a, T, S1, S2>(
+    lhs: RecordMatrix<'a, T, S1>,
+    rhs: &RecordMatrix<'a, T, S2>
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    record_matrix_add_allocate::<T, S1, S2>(&lhs, rhs)
+}
+
+#[track_caller]
+fn record_matrix_add_reference_value<'a, T, S1, S2>(
+    lhs: &RecordMatrix<'a, T, S1>,
+    rhs: RecordMatrix<'a, T, S2>,
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    record_matrix_add_allocate::<T, S1, S2>(lhs, &rhs)
+}
+
+record_matrix_operator_impl_value_value!(impl Add for RecordMatrix { fn add } record_matrix_add_value_value);
+record_matrix_operator_impl_value_reference!(impl Add for RecordMatrix { fn add } record_matrix_add_value_reference);
+record_matrix_operator_impl_reference_value!(impl Add for RecordMatrix { fn add } record_matrix_add_reference_value);
+record_matrix_operator_impl_reference_reference!(impl Add for RecordMatrix { fn add } record_matrix_add_allocate);
+
+#[track_caller]
 fn record_tensor_sub_allocate<'a, T, S1, S2, const D: usize>(
     lhs: &RecordTensor<'a, T, S1, D>,
     rhs: &RecordTensor<'a, T, S2, D>
@@ -266,3 +423,73 @@ record_tensor_operator_impl_value_value!(impl Sub for RecordTensor { fn sub } re
 record_tensor_operator_impl_value_reference!(impl Sub for RecordTensor { fn sub } record_tensor_sub_value_reference);
 record_tensor_operator_impl_reference_value!(impl Sub for RecordTensor { fn sub } record_tensor_sub_reference_value);
 record_tensor_operator_impl_reference_reference!(impl Sub for RecordTensor { fn sub } record_tensor_sub_allocate);
+
+#[track_caller]
+fn record_matrix_sub_allocate<'a, T, S1, S2>(
+    lhs: &RecordMatrix<'a, T, S1>,
+    rhs: &RecordMatrix<'a, T, S2>
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    assert!(
+        are_same_list(lhs.history, rhs.history),
+        "Record containers must be using the same WengertList"
+    );
+    lhs.binary(
+        rhs,
+        |x, y| x - y,
+        |_x, _y| T::one(), // δ(lhs - rhs) / lhs = 1
+        |_x, _y| -T::one() // δ(lhs - rhs) / rhs = -1
+    )
+}
+
+#[track_caller]
+fn record_matrix_sub_value_value<'a, T, S1, S2>(
+    lhs: RecordMatrix<'a, T, S1>,
+    rhs: RecordMatrix<'a, T, S2>
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    record_matrix_sub_allocate::<T, S1, S2>(&lhs, &rhs)
+}
+
+#[track_caller]
+fn record_matrix_sub_value_reference<'a, T, S1, S2>(
+    lhs: RecordMatrix<'a, T, S1>,
+    rhs: &RecordMatrix<'a, T, S2>
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    record_matrix_sub_allocate::<T, S1, S2>(&lhs, rhs)
+}
+
+#[track_caller]
+fn record_matrix_sub_reference_value<'a, T, S1, S2>(
+    lhs: &RecordMatrix<'a, T, S1>,
+    rhs: RecordMatrix<'a, T, S2>,
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    record_matrix_sub_allocate::<T, S1, S2>(lhs, &rhs)
+}
+
+record_matrix_operator_impl_value_value!(impl Sub for RecordMatrix { fn sub } record_matrix_sub_value_value);
+record_matrix_operator_impl_value_reference!(impl Sub for RecordMatrix { fn sub } record_matrix_sub_value_reference);
+record_matrix_operator_impl_reference_value!(impl Sub for RecordMatrix { fn sub } record_matrix_sub_reference_value);
+record_matrix_operator_impl_reference_reference!(impl Sub for RecordMatrix { fn sub } record_matrix_sub_allocate);
