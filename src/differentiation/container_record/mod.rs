@@ -689,7 +689,24 @@ impl<T: Clone + Primitive> Derivatives<T> {
     where
         S: TensorRef<(T, Index), D>,
     {
-        TensorView::from(input).map(|(_, i)| self.derivatives[i].clone())
+        input.numbers.map(|(_, i)| self.derivatives[i].clone())
+    }
+
+    /**
+     * Queries the derivatives at every element in the record matrix input.
+     *
+     * If you construct a Derivatives object for some output y,
+     * and call .at_matrx(&xs) on it for some input container xs this
+     * returns dy/dx for every x in xs.
+     */
+    pub fn at_matrx<'a, S>(
+        &self,
+        input: &RecordMatrix<'a, T, S>,
+    ) -> Matrix<T>
+    where
+        S: MatrixRef<(T, Index)> + NoInteriorMutability,
+    {
+        input.numbers.map(|(_, i)| self.derivatives[i].clone())
     }
 }
 
@@ -1089,6 +1106,32 @@ where
                 }
             },
         }
+    }
+
+    /**
+     * For the record at the index, peforms a backward pass up its WengertList from it
+     * as the output, computing all the derivatives for the inputs involving this output.
+     *
+     * If the index is invalid or this container has no backing WengertList, ie was created
+     * as constants, then None is returned instead.
+     *
+     * If you have N inputs x<sub>1</sub> to x<sub>N</sub>, and this output is y,
+     * then this computes all the derivatives δy/δx<sub>i</sub> for i = 1 to N.
+     */
+    pub fn derivatives_for(&self, row: Row, column: Column) -> Option<Derivatives<T>> {
+        let (number, index) = match self.try_get_reference(row, column).map(|(x, i)| (x.clone(), *i)) {
+            Some(tuple) => tuple,
+            None => return None,
+        };
+        // The nature of reverse autodiff is that we expect to only have a few outputs from
+        // which we calculate all the derivatives we care about. Therefore just call Record and
+        // reuse the implementation instead of trying to do anything clever like calculate all
+        // derivatives for every number in this container.
+        Record {
+            number,
+            history: self.history,
+            index,
+        }.try_derivatives()
     }
 }
 
