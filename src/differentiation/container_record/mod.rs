@@ -693,6 +693,31 @@ impl<T: Clone + Primitive> Derivatives<T> {
     }
 
     /**
+     * Queries the derivative at the provided index into the record matrix as input.
+     *
+     * If you construct a Derivatives object for some output y,
+     * and call .at_matrx_index(i, j, &xs) on it for some input container xs and indexes i and j,
+     * this returns dy/dx where x = xs\[i, j\].
+     *
+     * If the index into the tensor is invalid, returns None instead.
+     */
+    pub fn at_matrx_index<'a, S>(
+        &self,
+        row: Row,
+        column: Column,
+        input: &RecordMatrix<'a, T, S>,
+    ) -> Option<T>
+    where
+        S: MatrixRef<(T, Index)> + NoInteriorMutability,
+    {
+        let index = match input.try_get_reference(row, column).map(|(_, i)| *i) {
+            Some(i) => i,
+            None => return None,
+        };
+        Some(self.derivatives[index].clone())
+    }
+
+    /**
      * Queries the derivatives at every element in the record matrix input.
      *
      * If you construct a Derivatives object for some output y,
