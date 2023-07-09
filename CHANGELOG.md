@@ -2,7 +2,11 @@
 
 ## Version 1.10
 
-Version 1.10 will include a bugfix for the `WithIndex` matrix row/column major
+Still in development
+
+## Versions 1.9.1 and 1.8.3
+
+Both versions contain a fix for the `WithIndex` matrix row/column major
 iterators not delegating to their base iterator exact size implementation.
 Calling the `len()` methods on earlier versions will panic as the standard
 library `len()` implementation for `ExactSizeIterator` checks the
@@ -11,10 +15,12 @@ The `len()` methods on the base iterators prior wrapping them in `WithIndex`
 was correct and can be used to get the exact length if needed on earlier
 versions of Easy ML.
 
-Version 1.10 will include a fix for `TensorView` not implementing `Clone` where
+Additionally version 1.9.1 includes `TensorView` implementing `Clone` where
 applicable. On earlier versions `map` with a no-op closure can be used as a
 partial workaround to return a `Tensor` with cloned data, which if needed could
 be converted back to a `TensorView` with `from`.
+
+Version 1.10 will also include both of these backported bugfixes.
 
 ## Version 1.9
 
