@@ -456,7 +456,7 @@ impl<'a, T: Clone, S: MatrixRef<T>> Iterator for WithIndex<ColumnMajorIterator<'
 }
 impl<'a, T: Clone, S: MatrixRef<T>> FusedIterator for WithIndex<ColumnMajorIterator<'a, T, S>> {}
 /**
- * Note: On earlier versions of Easy ML (<=1.9.0), the size hint given for this impl erroneously
+ * Note: On earlier versions of Easy ML (1.8.2), the size hint given for this impl erroneously
  * did not return an exact size
  */
 impl<'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for WithIndex<ColumnMajorIterator<'a, T, S>> {}
@@ -624,7 +624,7 @@ impl<'a, T: Clone, S: MatrixRef<T>> Iterator for WithIndex<RowMajorIterator<'a, 
 }
 impl<'a, T: Clone, S: MatrixRef<T>> FusedIterator for WithIndex<RowMajorIterator<'a, T, S>> {}
 /**
- * Note: On earlier versions of Easy ML (<=1.9.0), the size hint given for this impl erroneously
+ * Note: On earlier versions of Easy ML (1.8.2), the size hint given for this impl erroneously
  * did not return an exact size
  */
 impl<'a, T: Clone, S: MatrixRef<T>> ExactSizeIterator for WithIndex<RowMajorIterator<'a, T, S>> {}
@@ -902,7 +902,7 @@ impl<'a, T, S: MatrixRef<T>> Iterator for WithIndex<ColumnMajorReferenceIterator
 }
 impl<'a, T, S: MatrixRef<T>> FusedIterator for WithIndex<ColumnMajorReferenceIterator<'a, T, S>> {}
 /**
- * Note: On earlier versions of Easy ML (<=1.9.0), the size hint given for this impl erroneously
+ * Note: On earlier versions of Easy ML (1.8.2), the size hint given for this impl erroneously
  * did not return an exact size
  */
 #[rustfmt::skip]
@@ -1012,7 +1012,7 @@ impl<'a, T, S: MatrixRef<T>> Iterator for WithIndex<RowMajorReferenceIterator<'a
 }
 impl<'a, T, S: MatrixRef<T>> FusedIterator for WithIndex<RowMajorReferenceIterator<'a, T, S>> {}
 /**
- * Note: On earlier versions of Easy ML (<=1.9.0), the size hint given for this impl erroneously
+ * Note: On earlier versions of Easy ML (1.8.2), the size hint given for this impl erroneously
  * did not return an exact size
  */
 impl<'a, T, S: MatrixRef<T>> ExactSizeIterator for WithIndex<RowMajorReferenceIterator<'a, T, S>> {}
@@ -1269,7 +1269,7 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
 #[rustfmt::skip]
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for WithIndex<ColumnMajorReferenceMutIterator<'a, T, S>> {}
 /**
- * Note: On earlier versions of Easy ML (<=1.9.0), the size hint given for this impl erroneously
+ * Note: On earlier versions of Easy ML (1.8.2), the size hint given for this impl erroneously
  * did not return an exact size
  */
 #[rustfmt::skip]
@@ -1395,7 +1395,7 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
 #[rustfmt::skip]
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> FusedIterator for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {}
 /**
- * Note: On earlier versions of Easy ML (<=1.9.0), the size hint given for this impl erroneously
+ * Note: On earlier versions of Easy ML (1.8.2), the size hint given for this impl erroneously
  * did not return an exact size
  */
 #[rustfmt::skip]
