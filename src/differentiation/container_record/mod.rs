@@ -679,7 +679,7 @@ where
      * for domains where there are many more inputs than outputs.
      *
      * If you only need some of the derivatives then
-     * [derivatives_for](RecordContainer::derivatives_for) can be used instead to avoid
+     * [derivatives_for](RecordTensor::derivatives_for) can be used instead to avoid
      * calculating the rest.
      */
     pub fn derivatives(&self) -> Option<Tensor<Derivatives<T>, D>> {
@@ -769,12 +769,12 @@ impl<T: Clone + Primitive> Derivatives<T> {
      * Queries the derivative at the provided index into the record matrix as input.
      *
      * If you construct a Derivatives object for some output y,
-     * and call .at_matrx_index(i, j, &xs) on it for some input container xs and indexes i and j,
+     * and call .at_matrix_index(i, j, &xs) on it for some input container xs and indexes i and j,
      * this returns dy/dx where x = xs\[i, j\].
      *
      * If the index into the tensor is invalid, returns None instead.
      */
-    pub fn at_matrx_index<'a, S>(
+    pub fn at_matrix_index<'a, S>(
         &self,
         row: Row,
         column: Column,
@@ -794,10 +794,10 @@ impl<T: Clone + Primitive> Derivatives<T> {
      * Queries the derivatives at every element in the record matrix input.
      *
      * If you construct a Derivatives object for some output y,
-     * and call .at_matrx(&xs) on it for some input container xs this
+     * and call .at_matrix(&xs) on it for some input container xs this
      * returns dy/dx for every x in xs.
      */
-    pub fn at_matrx<'a, S>(
+    pub fn at_matrix<'a, S>(
         &self,
         input: &RecordMatrix<'a, T, S>,
     ) -> Matrix<T>
@@ -1056,7 +1056,37 @@ where
      * // the derivative of tanh(x) is sech(x) * sech(x) which is equivalent to
      * // 1 / (cosh(x) * cosh(x))
      * let Y = X.unary(|x| x.tanh(), |x| 1.0 / (x.cosh() * x.cosh()));
-     * // TODO Inspecting derivatives
+     *
+     * // we can unwrap here because we know Y contains variables not constants
+     * let derivatives = Y.derivatives().unwrap();
+     * assert_eq!(
+     *     derivatives.get_reference(0, 0).at_matrix(&X),
+     *     Matrix::from(vec![
+     *         // (0, 0) element in Y only had the one input variable (0, 0) in X
+     *         vec![0.9778332, 0.0],
+     *         vec![0.0,       0.0]
+     *     ]),
+     * );
+     * assert_eq!(
+     *     derivatives.get_reference(0, 1).at_matrix(&X),
+     *     Matrix::from(vec![
+     *         vec![0.0, 0.915137],
+     *         vec![0.0,      0.0]
+     *     ]),
+     * );
+     * assert_eq!(
+     *     // (0, 1) and (1, 0) elements in X had the same starting value so end up with the same
+     *     // derivative for their corresponding input variable in X
+     *     derivatives.get_reference(0, 1).at_matrix(&X).get(0, 1),
+     *     derivatives.get_reference(1, 0).at_matrix(&X).get(1, 0),
+     * );
+     * assert_eq!(
+     *     derivatives.get_reference(1, 1).at_matrix(&X),
+     *     Matrix::from(vec![
+     *         vec![0.0, 0.0      ],
+     *         vec![0.0, 0.8220013]
+     *     ]),
+     * );
      * ```
      */
     #[track_caller]
@@ -1207,6 +1237,39 @@ where
     }
 
     /**
+     * For each record in the container, peforms a backward pass up its WengertList from it
+     * as the output, computing all the derivatives for the inputs involving this output.
+     *
+     * If this container has no backing WengertList, ie was created as constants, then None is
+     * returned instead. Otherwise the returned Matrix will have the same size as this container,
+     * with the respective derivatives matching each element in this container.
+     *
+     * If you have N inputs x<sub>1</sub> to x<sub>N</sub>, and this output is Y with M outputs,
+     * then this computes all the derivatives δy<sub>j</sub>/δx<sub>i</sub> for i = 1 to N and
+     * j = 1 to M.
+     *
+     * If you have a lot of outputs this could be very expensive! Reverse auto diff is optimised
+     * for domains where there are many more inputs than outputs.
+     *
+     * If you only need some of the derivatives then
+     * [derivatives_for](RecordMatrix::derivatives_for) can be used instead to avoid
+     * calculating the rest.
+     */
+    pub fn derivatives(&self) -> Option<Matrix<Derivatives<T>>> {
+        self.history.map(|history| {
+            self
+                .numbers
+                .map(|(x, i)| {
+                    Record {
+                        number: x,
+                        history: Some(history),
+                        index: i,
+                    }.derivatives()
+                })
+        })
+    }
+
+    /**
      * For the record at the index, peforms a backward pass up its WengertList from it
      * as the output, computing all the derivatives for the inputs involving this output.
      *
@@ -1217,7 +1280,10 @@ where
      * then this computes all the derivatives δy/δx<sub>i</sub> for i = 1 to N.
      */
     pub fn derivatives_for(&self, row: Row, column: Column) -> Option<Derivatives<T>> {
-        let (number, index) = match self.try_get_reference(row, column).map(|(x, i)| (x.clone(), *i)) {
+        let (number, index) = match self
+            .try_get_reference(row, column)
+            .map(|(x, i)| (x.clone(), *i))
+        {
             Some(tuple) => tuple,
             None => return None,
         };
