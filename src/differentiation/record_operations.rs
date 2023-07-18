@@ -97,7 +97,7 @@ impl<'a, T: Copy + Primitive> Copy for Record<'a, T> {}
  * If both records have a WengertList, then checks that the lists are
  * the same.
  */
-pub(crate) fn same_list<'a, 'b, T: Primitive>(a: &Record<'a, T>, b: &Record<'b, T>) -> bool {
+pub(crate) fn same_list<T: Primitive>(a: &Record<T>, b: &Record<T>) -> bool {
     match (a.history, b.history) {
         (None, None) => true,
         (Some(_), None) => true,

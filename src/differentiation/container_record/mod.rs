@@ -46,8 +46,8 @@ pub type RecordTensor<'a, T, S, const D: usize> = RecordContainer<'a, T, TensorV
 
 fn calculate_incrementing_indexes(starting_index: usize, total: usize) -> Vec<Index> {
     let mut indexes = vec![0; total];
-    for i in 0..total {
-        indexes[i] = starting_index + i;
+    for (i, x) in indexes.iter_mut().enumerate() {
+        *x = starting_index + i;
     }
     indexes
 }
@@ -733,10 +733,10 @@ impl<T: Clone + Primitive> Derivatives<T> {
      *
      * If the index into the tensor is invalid, returns None instead.
      */
-    pub fn at_tensor_index<'a, S, const D: usize>(
+    pub fn at_tensor_index<S, const D: usize>(
         &self,
         indexes: [usize; D],
-        input: &RecordTensor<'a, T, S, D>
+        input: &RecordTensor<T, S, D>
     ) -> Option<T>
     where
         S: TensorRef<(T, Index), D>,
@@ -755,9 +755,9 @@ impl<T: Clone + Primitive> Derivatives<T> {
      * and call .at_tensor(&xs) on it for some input container xs this
      * returns dy/dx for every x in xs.
      */
-    pub fn at_tensor<'a, S, const D: usize>(
+    pub fn at_tensor<S, const D: usize>(
         &self,
-        input: &RecordTensor<'a, T, S, D>,
+        input: &RecordTensor<T, S, D>,
     ) -> Tensor<T, D>
     where
         S: TensorRef<(T, Index), D>,
@@ -774,11 +774,11 @@ impl<T: Clone + Primitive> Derivatives<T> {
      *
      * If the index into the tensor is invalid, returns None instead.
      */
-    pub fn at_matrix_index<'a, S>(
+    pub fn at_matrix_index<S>(
         &self,
         row: Row,
         column: Column,
-        input: &RecordMatrix<'a, T, S>,
+        input: &RecordMatrix<T, S>,
     ) -> Option<T>
     where
         S: MatrixRef<(T, Index)> + NoInteriorMutability,
@@ -797,9 +797,9 @@ impl<T: Clone + Primitive> Derivatives<T> {
      * and call .at_matrix(&xs) on it for some input container xs this
      * returns dy/dx for every x in xs.
      */
-    pub fn at_matrix<'a, S>(
+    pub fn at_matrix<S>(
         &self,
-        input: &RecordMatrix<'a, T, S>,
+        input: &RecordMatrix<T, S>,
     ) -> Matrix<T>
     where
         S: MatrixRef<(T, Index)> + NoInteriorMutability,
