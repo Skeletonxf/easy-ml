@@ -572,7 +572,57 @@ where
      *     |x, y| y/((x*x) + (y*y)),
      *     |x, y| -x/((x*x) + (y*y))
      * );
-     * // TODO Inspecting derivatives
+     *
+     *
+     * // we can unwrap here because we know Z contains variables not constants
+     * let derivatives = Z.derivatives().unwrap();
+     * // Just as in the unary example, only one pair of the four inputs in X and Y influence the
+     * // outputs in Z, so we have a lot of 0.0 derivatives, and the inputs in [0, 1] and [1, 0]
+     * // are identical so we see the same derivative.
+     * let dZ_dX = derivatives.map(|d| d.at_tensor(&X));
+     * assert_eq!(
+     *     dZ_dX,
+     *     Tensor::from([("rows", 2), ("columns", 2)], vec![
+     *         Tensor::from([("rows", 2), ("columns", 2)], vec![
+     *             0.5, 0.0,
+     *             0.0, 0.0
+     *         ]),
+     *         Tensor::from([("rows", 2), ("columns", 2)], vec![
+     *             0.0, 0.25,
+     *             0.0, 0.0
+     *         ]),
+     *         Tensor::from([("rows", 2), ("columns", 2)], vec![
+     *             0.0, 0.0,
+     *             0.25, 0.0
+     *         ]),
+     *         Tensor::from([("rows", 2), ("columns", 2)], vec![
+     *             0.0, 0.0,
+     *             0.0, 0.16666667
+     *         ])
+     *     ])
+     * );
+     * let dZ_dY = derivatives.map(|d| d.at_tensor(&Y));
+     * assert_eq!(
+     *     dZ_dY,
+     *     Tensor::from([("rows", 2), ("columns", 2)], vec![
+     *         Tensor::from([("rows", 2), ("columns", 2)], vec![
+     *             -0.5, 0.0,
+     *             0.0, 0.0
+     *         ]),
+     *         Tensor::from([("rows", 2), ("columns", 2)], vec![
+     *             0.0, -0.25,
+     *             0.0, 0.0
+     *         ]),
+     *         Tensor::from([("rows", 2), ("columns", 2)], vec![
+     *             0.0, 0.0,
+     *             -0.25, 0.0
+     *         ]),
+     *         Tensor::from([("rows", 2), ("columns", 2)], vec![
+     *             0.0, 0.0,
+     *             0.0, -0.16666667
+     *         ])
+     *     ])
+     * );
      * ```
      *
      * # Panics
@@ -1144,7 +1194,64 @@ where
      *     |x, y| y/((x*x) + (y*y)),
      *     |x, y| -x/((x*x) + (y*y))
      * );
-     * // TODO Inspecting derivatives
+     *
+     * // we can unwrap here because we know Z contains variables not constants
+     * let derivatives = Z.derivatives().unwrap();
+     * // Just as in the unary example, only one pair of the four inputs in X and Y influence the
+     * // outputs in Z, so we have a lot of 0.0 derivatives, and the inputs in [0, 1] and [1, 0]
+     * // are identical so we see the same derivative.
+     * let dZ_dX = derivatives.map(|d| d.at_matrix(&X));
+     * assert_eq!(
+     *     dZ_dX,
+     *     Matrix::from(vec![
+     *          vec![
+     *              Matrix::from(vec![
+     *                  vec![ 0.5, 0.0 ],
+     *                  vec![ 0.0, 0.0 ]
+     *              ]),
+     *              Matrix::from(vec![
+     *                  vec![ 0.0, 0.25 ],
+     *                  vec![ 0.0, 0.0 ]
+     *              ])
+     *          ],
+     *          vec![
+     *              Matrix::from(vec![
+     *                  vec![ 0.0, 0.0 ],
+     *                  vec![ 0.25, 0.0 ]
+     *              ]),
+     *              Matrix::from(vec![
+     *                  vec![ 0.0, 0.0 ],
+     *                  vec![ 0.0, 0.16666667 ]
+     *              ])
+     *          ]
+     *     ])
+     * );
+     * let dZ_dY = derivatives.map(|d| d.at_matrix(&Y));
+     * assert_eq!(
+     *     dZ_dY,
+     *     Matrix::from(vec![
+     *          vec![
+     *              Matrix::from(vec![
+     *                  vec![ -0.5, 0.0 ],
+     *                  vec![ 0.0, 0.0 ]
+     *              ]),
+     *              Matrix::from(vec![
+     *                  vec![ 0.0, -0.25 ],
+     *                  vec![ 0.0, 0.0 ]
+     *              ])
+     *          ],
+     *          vec![
+     *              Matrix::from(vec![
+     *                  vec![ 0.0, 0.0 ],
+     *                  vec![ -0.25, 0.0 ]
+     *              ]),
+     *              Matrix::from(vec![
+     *                  vec![ 0.0, 0.0 ],
+     *                  vec![ 0.0, -0.16666667 ]
+     *              ])
+     *          ]
+     *     ])
+     * );
      * ```
      *
      * # Panics
