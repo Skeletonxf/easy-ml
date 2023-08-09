@@ -170,7 +170,7 @@ where
 
     /**
      * A convenience helper function which takes a RecordContainer by value and
-     * calls [reset](RecordContainer::reset()) on it.
+     * calls [reset](RecordTensor::reset()) on it.
      */
     pub fn do_reset(mut x: Self) -> Self {
         x.reset();
@@ -257,6 +257,13 @@ where
     pub fn elements(&self) -> usize {
         self.numbers.rows() * self.numbers.columns()
     }
+
+    /**
+     * Returns the dimensionality of this matrix container in Row, Column format
+     */
+    pub fn size(&self) -> (Row, Column) {
+        self.numbers.size()
+    }
 }
 
 impl<'a, T, S> RecordMatrix<'a, T, S>
@@ -287,7 +294,7 @@ where
 
     /**
      * A convenience helper function which takes a RecordContainer by value and
-     * calls [reset](RecordContainer::reset()) on it.
+     * calls [reset](RecordMatrix::reset()) on it.
      */
     pub fn do_reset(mut x: Self) -> Self {
         x.reset();
@@ -988,7 +995,7 @@ where
 
     /**
      * A convenience helper function which takes the RecordContainer value and
-     * calls [unary_assign](RecordContainer::unary_assign()) on it, returning
+     * calls [unary_assign](RecordTensor::unary_assign()) on it, returning
      * the record container which now contains the result of the operation.
      */
     #[track_caller]
@@ -1003,7 +1010,7 @@ where
 
     /**
      * A convenience helper function which takes the left hand side by value and
-     * calls [binary_left_assign](RecordContainer::binary_left_assign()) on it, returning
+     * calls [binary_left_assign](RecordTensor::binary_left_assign()) on it, returning
      * the left hand side which now contains the result of the operation.
      */
     #[track_caller]
@@ -1059,7 +1066,7 @@ where
 
     /**
      * A convenience helper function which takes the right hand side by value and
-     * calls [binary_right_assign](RecordContainer::binary_right_assign()) on it, returning
+     * calls [binary_right_assign](RecordTensor::binary_right_assign()) on it, returning
      * the right hand side which now contains the result of the operation.
      */
     #[track_caller]
@@ -1412,7 +1419,218 @@ where
     for<'t> &'t T: NumericRef<T>,
     S: MatrixMut<(T, Index)> + NoInteriorMutability,
 {
-    // assign variants
+    /**
+     * Overwrites a RecordContainer by applying
+     * some unary function from `T` to `T` to every element in the container.
+     *
+     * To compute the new records, the unary function of some input x to some
+     * output y is needed along with its derivative with respect to its input x.
+     */
+    #[track_caller]
+    pub fn unary_assign(
+        &mut self,
+        fx: impl Fn(T) -> T,
+        dfx_dx: impl Fn(T) -> T
+    ) {
+        let total = self.elements();
+        match self.history {
+            None => self.numbers.map_mut(|(x, i)| (fx(x), i)),
+            Some(history) => {
+                let ys = unary::<T, _>(
+                    total, history, self.numbers.row_major_iter(), fx, dfx_dx
+                );
+                for (element, result) in self.numbers.row_major_reference_mut_iter().zip(ys) {
+                    *element = result;
+                }
+                self.history = Some(history);
+            },
+        }
+    }
+
+    /**
+     * Overwrites the left hand side of a RecordContainer with the result of applying
+     * some binary function from `T` to `T` to every element pair in the containers. Both
+     * containers must have the same shape.
+     * To compute the new records, the binary function of some inputs x and y to some
+     * output z is needed along with its derivative with respect to its first input x and
+     * its derivative with respect to its second input y.
+     *
+     * # Panics
+     *
+     * - If both record containers have a WengertList that are different to each other
+     * - If the record containers have different shapes
+     */
+    #[track_caller]
+    pub fn binary_left_assign<S2>(
+        &mut self,
+        rhs: &RecordMatrix<'a, T, S2>,
+        fxy: impl Fn(T, T) -> T,
+        dfxy_dx: impl Fn(T, T) -> T,
+        dfxy_dy: impl Fn(T, T) -> T,
+    )
+    where
+        S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+    {
+        {
+            let left_shape = self.numbers.size();
+            let right_shape = rhs.numbers.size();
+            if left_shape != right_shape {
+                panic!(
+                    "Record containers must have the same size for a binary operation: (left: {:?}, right: {:?})",
+                    left_shape,
+                    right_shape
+                );
+            }
+        }
+        let total = self.elements();
+        match (self.history, rhs.history) {
+            (None, None) => {
+                for (x, y) in self.numbers.row_major_reference_mut_iter().zip(rhs.numbers.row_major_iter()) {
+                    let (left, _) = x;
+                    let (right, _) = y;
+                    *x = (fxy(left.clone(), right), 0);
+                }
+            },
+            (Some(history), None) => {
+                let zs = binary_x_history::<T, _, _>(
+                    total,
+                    history,
+                    self.numbers.row_major_iter(),
+                    rhs.numbers.row_major_iter(),
+                    fxy,
+                    dfxy_dx
+                );
+                for (element, result) in self.numbers.row_major_reference_mut_iter().zip(zs) {
+                    *element = result;
+                }
+                self.history = Some(history);
+            },
+            (None, Some(history)) => {
+                let zs = binary_y_history::<T, _, _>(
+                    total,
+                    history,
+                    self.numbers.row_major_iter(),
+                    rhs.numbers.row_major_iter(),
+                    fxy,
+                    dfxy_dy
+                );
+                for (element, result) in self.numbers.row_major_reference_mut_iter().zip(zs) {
+                    *element = result;
+                }
+                self.history = Some(history);
+            },
+            (Some(history), Some(h)) => {
+                assert!(
+                    record_operations::same_lists(history, h),
+                    "Record containers must be using the same WengertList"
+                );
+                let zs = binary_both_history::<T, _, _>(
+                    total,
+                    history,
+                    self.numbers.row_major_iter(),
+                    rhs.numbers.row_major_iter(),
+                    fxy,
+                    dfxy_dx,
+                    dfxy_dy
+                );
+                for (element, result) in self.numbers.row_major_reference_mut_iter().zip(zs) {
+                    *element = result;
+                }
+                self.history = Some(history);
+            },
+        }
+    }
+
+    /**
+     * A convenience helper function which takes the RecordContainer value and
+     * calls [unary_assign](RecordMatrix::unary_assign()) on it, returning
+     * the record container which now contains the result of the operation.
+     */
+    #[track_caller]
+    pub fn do_unary_assign(
+        mut self,
+        fx: impl Fn(T) -> T,
+        dfx_dx: impl Fn(T) -> T
+    ) -> Self {
+        self.unary_assign(fx, dfx_dx);
+        self
+    }
+
+    /**
+     * A convenience helper function which takes the left hand side by value and
+     * calls [binary_left_assign](RecordMatrix::binary_left_assign()) on it, returning
+     * the left hand side which now contains the result of the operation.
+     */
+    #[track_caller]
+    pub fn do_binary_left_assign<S2>(
+        mut self,
+        rhs: &RecordMatrix<'a, T, S2>,
+        fxy: impl Fn(T, T) -> T,
+        dfxy_dx: impl Fn(T, T) -> T,
+        dfxy_dy: impl Fn(T, T) -> T,
+    ) -> Self
+    where
+        S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+    {
+        self.binary_left_assign(rhs, fxy, dfxy_dx, dfxy_dy);
+        self
+    }
+}
+
+impl<'a, T, S> RecordMatrix<'a, T, S>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    /**
+     * Overwrites the right hand side of a RecordContainer with the result of applying
+     * some binary function from `T` to `T` to every element pair in the containers. Both
+     * containers must have the same shape.
+     * To compute the new records, the binary function of some inputs x and y to some
+     * output z is needed along with its derivative with respect to its first input x and
+     * its derivative with respect to its second input y.
+     *
+     * # Panics
+     *
+     * - If both record containers have a WengertList that are different to each other
+     * - If the record containers have different shapes
+     */
+    #[track_caller]
+    pub fn binary_right_assign<S2>(
+        &self,
+        rhs: &mut RecordMatrix<'a, T, S2>,
+        fxy: impl Fn(T, T) -> T,
+        dfxy_dx: impl Fn(T, T) -> T,
+        dfxy_dy: impl Fn(T, T) -> T,
+    )
+    where
+        S2: MatrixMut<(T, Index)> + NoInteriorMutability,
+    {
+        // x is lhs, y is rhs, so calling binary_left_assign on the rhs container
+        // means we need to swap all the arguments
+        rhs.binary_left_assign(self, |y, x| fxy(x, y), |y, x| dfxy_dy(x, y), |y, x| dfxy_dx(x, y))
+    }
+
+    /**
+     * A convenience helper function which takes the right hand side by value and
+     * calls [binary_right_assign](RecordMatrix::binary_right_assign()) on it, returning
+     * the right hand side which now contains the result of the operation.
+     */
+    #[track_caller]
+     pub fn do_binary_right_assign<S2>(
+         &self,
+         mut rhs: RecordMatrix<'a, T, S2>,
+         fxy: impl Fn(T, T) -> T,
+         dfxy_dx: impl Fn(T, T) -> T,
+         dfxy_dy: impl Fn(T, T) -> T,
+     ) -> RecordMatrix<'a, T, S2>
+     where
+         S2: MatrixMut<(T, Index)> + NoInteriorMutability,
+     {
+         self.binary_right_assign(&mut rhs, fxy, dfxy_dx, dfxy_dy);
+         rhs
+     }
 }
 
 // # Safety
