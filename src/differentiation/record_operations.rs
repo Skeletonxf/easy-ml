@@ -35,6 +35,7 @@
  */
 
 use crate::differentiation::{Primitive, Record, WengertList};
+use crate::differentiation::functions::{Multiplication, FunctionDerivative};
 use crate::numeric::extra::{Cos, Exp, Ln, Pi, Pow, Real, RealRef, Sin, Sqrt};
 use crate::numeric::{FromUsize, Numeric, NumericRef, ZeroOne};
 use std::cmp::Ordering;
@@ -340,7 +341,7 @@ where
         );
         match (self.history, rhs.history) {
             (None, None) => Record {
-                number: self.number.clone() * rhs.number.clone(),
+                number: Multiplication::<T>::function(self.number.clone(), rhs.number.clone()),
                 history: None,
                 index: 0,
             },
@@ -348,15 +349,13 @@ where
             (Some(_), None) => self * &rhs.number,
             (None, Some(_)) => rhs * &self.number,
             (Some(history), Some(_)) => Record {
-                number: self.number.clone() * rhs.number.clone(),
+                number: Multiplication::<T>::function(self.number.clone(), rhs.number.clone()),
                 history: Some(history),
                 index: history.append_binary(
                     self.index,
-                    // δ(self * rhs) / δself = rhs
-                    rhs.number.clone(),
+                    Multiplication::<T>::d_function_dx(self.number.clone(), rhs.number.clone()),
                     rhs.index,
-                    // δ(self * rhs) / rhs = self
-                    self.number.clone(),
+                    Multiplication::<T>::d_function_dy(self.number.clone(), rhs.number.clone()),
                 ),
             },
         }
@@ -380,18 +379,17 @@ where
     fn mul(self, rhs: &T) -> Self::Output {
         match self.history {
             None => Record {
-                number: self.number.clone() * rhs.clone(),
+                number: Multiplication::<T>::function(self.number.clone(), rhs.clone()),
                 history: None,
                 index: 0,
             },
             Some(history) => {
                 Record {
-                    number: self.number.clone() * rhs.clone(),
+                    number: Multiplication::<T>::function(self.number.clone(), rhs.clone()),
                     history: Some(history),
                     index: history.append_unary(
                         self.index,
-                        // δ(self * C) / δself = C
-                        rhs.clone(),
+                        Multiplication::<T>::d_function_dx(self.number.clone(), rhs.clone()),
                     ),
                 }
             }
