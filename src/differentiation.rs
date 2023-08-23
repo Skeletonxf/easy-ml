@@ -195,6 +195,7 @@
 pub mod operations;
 pub mod record_operations;
 pub mod trace_operations;
+mod functions;
 mod container_record;
 
 pub use container_record::*;

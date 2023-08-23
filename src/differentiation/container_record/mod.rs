@@ -2,6 +2,7 @@ use crate::differentiation::Record;
 use crate::numeric::{Numeric, NumericRef};
 use crate::differentiation::{Primitive, Index, Derivatives, WengertList};
 use crate::differentiation::record_operations;
+use crate::differentiation::functions::{Multiplication, FunctionDerivative};
 use crate::tensors::{Tensor, Dimension};
 use crate::tensors::views::{TensorRef, TensorMut, TensorView, DataLayout};
 use crate::tensors::indexing::TensorOwnedIterator;
@@ -778,6 +779,21 @@ where
             index,
         }.try_derivatives()
     }
+
+    pub fn multiply<S2>(
+        &self,
+        other: &RecordTensor<'a, T, S2, D>,
+    )-> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+    where
+        S2: TensorRef<(T, Index), D>,
+    {
+        self.binary(
+            other,
+            Multiplication::<T>::function,
+            Multiplication::<T>::d_function_dx,
+            Multiplication::<T>::d_function_dy,
+        )
+    }
 }
 
 impl<T: Clone + Primitive> Derivatives<T> {
@@ -1410,6 +1426,21 @@ where
             history: self.history,
             index,
         }.try_derivatives()
+    }
+
+    pub fn multiply<S2>(
+        &self,
+        other: &RecordMatrix<'a, T, S2>,
+    ) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+    where
+        S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+    {
+        self.binary(
+            other,
+            Multiplication::<T>::function,
+            Multiplication::<T>::d_function_dx,
+            Multiplication::<T>::d_function_dy,
+        )
     }
 }
 
