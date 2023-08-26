@@ -2,7 +2,7 @@ use crate::differentiation::Record;
 use crate::numeric::{Numeric, NumericRef};
 use crate::differentiation::{Primitive, Index, Derivatives, WengertList};
 use crate::differentiation::record_operations;
-use crate::differentiation::functions::{Multiplication, FunctionDerivative};
+use crate::differentiation::functions::{Multiplication, Division, FunctionDerivative};
 use crate::tensors::{Tensor, Dimension};
 use crate::tensors::views::{TensorRef, TensorMut, TensorView, DataLayout};
 use crate::tensors::indexing::TensorOwnedIterator;
@@ -18,7 +18,15 @@ mod container_operations;
  *
  * Typically you would refer to one of the type aliases to disambiguate the type of `S` and
  * use more succinct generics: [RecordMatrix](RecordMatrix), [RecordTensor](RecordTensor).
+ *
+ * For both Matrix and Tensor source types, the containers implement [`+`](std::ops::Add) and
+ * [`-`](std::ops::Sub) and have the methods `elementwise_multiply` and `elementwise_divide`.
+ * In all cases the containers must have the same size for the operation and will panic if
+ * mismatched.
  */
+// TODO: Add container op number impls and document here.
+// TODO: Implement matrix multiplication on `*` and document here.
+// TODO: APIs for adjusting shape and docs on here for making shapes match up.
 #[derive(Debug)]
 pub struct RecordContainer<'a, T: Primitive, S, const D: usize> {
     // Opted to store the indexes alongside each number (T, Index) for a number of reasons, the
@@ -780,7 +788,16 @@ where
         }.try_derivatives()
     }
 
-    pub fn multiply<S2>(
+    /**
+     * Performs elementwise multiplication for two record tensors of the same shape.
+     *
+     * # Panics
+     *
+     * - If both record containers have a WengertList that are different to each other
+     * - If the record containers have different shapes
+     */
+    // TODO: Assign variants?
+    pub fn elementwise_multiply<S2>(
         &self,
         other: &RecordTensor<'a, T, S2, D>,
     )-> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
@@ -792,6 +809,29 @@ where
             Multiplication::<T>::function,
             Multiplication::<T>::d_function_dx,
             Multiplication::<T>::d_function_dy,
+        )
+    }
+
+    /**
+     * Performs elementwise division for two record tensors of the same shape.
+     *
+     * # Panics
+     *
+     * - If both record containers have a WengertList that are different to each other
+     * - If the record containers have different shapes
+     */
+    pub fn elementwise_divide<S2>(
+        &self,
+        other: &RecordTensor<'a, T, S2, D>,
+    )-> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+    where
+        S2: TensorRef<(T, Index), D>,
+    {
+        self.binary(
+            other,
+            Division::<T>::function,
+            Division::<T>::d_function_dx,
+            Division::<T>::d_function_dy,
         )
     }
 }
@@ -1428,7 +1468,16 @@ where
         }.try_derivatives()
     }
 
-    pub fn multiply<S2>(
+    /**
+     * Performs elementwise multiplication for two record matrices of the same size.
+     *
+     * # Panics
+     *
+     * - If both record containers have a WengertList that are different to each other
+     * - If the record containers have different shapes
+     */
+    // TODO: Assign variants?
+    pub fn elementwise_multiply<S2>(
         &self,
         other: &RecordMatrix<'a, T, S2>,
     ) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
@@ -1440,6 +1489,29 @@ where
             Multiplication::<T>::function,
             Multiplication::<T>::d_function_dx,
             Multiplication::<T>::d_function_dy,
+        )
+    }
+
+    /**
+     * Performs elementwise division for two record matrices of the same size.
+     *
+     * # Panics
+     *
+     * - If both record containers have a WengertList that are different to each other
+     * - If the record containers have different shapes
+     */
+    pub fn elementwise_divide<S2>(
+        &self,
+        other: &RecordMatrix<'a, T, S2>,
+    ) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+    where
+        S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+    {
+        self.binary(
+            other,
+            Division::<T>::function,
+            Division::<T>::d_function_dx,
+            Division::<T>::d_function_dy,
         )
     }
 }
