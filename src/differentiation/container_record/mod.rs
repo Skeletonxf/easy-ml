@@ -44,12 +44,12 @@ pub struct RecordContainer<'a, T: Primitive, S, const D: usize> {
 }
 
 /**
- * Alias for succinctly refering to RecordContainers backed by a matrix.
+ * Alias for succinctly referring to RecordContainers backed by a matrix.
  */
 pub type RecordMatrix<'a, T, S> = RecordContainer<'a, T, MatrixView<(T, Index), S>, 2>;
 
 /**
- * Alias for succinctly refering to RecordContainers backed by a tensor.
+ * Alias for succinctly referring to RecordContainers backed by a tensor.
  */
 pub type RecordTensor<'a, T, S, const D: usize> = RecordContainer<'a, T, TensorView<(T, Index), S, D>, D>;
 
