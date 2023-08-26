@@ -35,7 +35,7 @@
  */
 
 use crate::differentiation::{Primitive, Record, WengertList};
-use crate::differentiation::functions::{Multiplication, FunctionDerivative};
+use crate::differentiation::functions::{Multiplication, Division, FunctionDerivative};
 use crate::numeric::extra::{Cos, Exp, Ln, Pi, Pow, Real, RealRef, Sin, Sqrt};
 use crate::numeric::{FromUsize, Numeric, NumericRef, ZeroOne};
 use std::cmp::Ordering;
@@ -548,18 +548,19 @@ where
     fn div_swapped(self, lhs: &T) -> Self::Output {
         match self.history {
             None => Record {
-                number: lhs.clone() / self.number.clone(),
+                number: Division::<T>::function(lhs.clone(), self.number.clone()),
                 history: None,
                 index: 0,
             },
             Some(history) => {
                 Record {
-                    number: lhs.clone() / self.number.clone(),
+                    number: Division::<T>::function(lhs.clone(), self.number.clone()),
                     history: Some(history),
                     index: history.append_unary(
                         self.index,
-                        // δ(C / self) / δself = -(C / self^2)
-                        -&lhs.clone() / (self.number.clone() * self.number.clone()),
+                        // We want with respect to y because its the right hand side here that we
+                        // need the derivative for (since left is a constant).
+                        Division::<T>::d_function_dy(lhs.clone(), self.number.clone()),
                     ),
                 }
             }
@@ -657,7 +658,7 @@ where
         );
         match (self.history, rhs.history) {
             (None, None) => Record {
-                number: self.number.clone() / rhs.number.clone(),
+                number: Division::<T>::function(self.number.clone(), rhs.number.clone()),
                 history: None,
                 index: 0,
             },
@@ -667,15 +668,13 @@ where
             // so use the swapped version of Div
             (None, Some(_)) => rhs.div_swapped(self.number.clone()),
             (Some(history), Some(_)) => Record {
-                number: self.number.clone() / rhs.number.clone(),
+                number: Division::<T>::function(self.number.clone(), rhs.number.clone()),
                 history: Some(history),
                 index: history.append_binary(
                     self.index,
-                    // δ(self / rhs) / δself = 1 / rhs
-                    T::one() / rhs.number.clone(),
+                    Division::<T>::d_function_dx(self.number.clone(), rhs.number.clone()),
                     rhs.index,
-                    // δ(self / rhs) / δrhs = -(self / rhs^2)
-                    -&self.number / (rhs.number.clone() * rhs.number.clone()),
+                    Division::<T>::d_function_dy(self.number.clone(), rhs.number.clone()),
                 ),
             },
         }
@@ -699,18 +698,17 @@ where
     fn div(self, rhs: &T) -> Self::Output {
         match self.history {
             None => Record {
-                number: self.number.clone() / rhs.clone(),
+                number: Division::<T>::function(self.number.clone(), rhs.clone()),
                 history: None,
                 index: 0,
             },
             Some(history) => {
                 Record {
-                    number: self.number.clone() / rhs.clone(),
+                    number: Division::<T>::function(self.number.clone(), rhs.clone()),
                     history: Some(history),
                     index: history.append_unary(
                         self.index,
-                        // δ(self / C) / δself = 1 / C
-                        T::one() / rhs.clone(),
+                        Division::<T>::d_function_dx(self.number.clone(), rhs.clone()),
                     ),
                 }
             }
