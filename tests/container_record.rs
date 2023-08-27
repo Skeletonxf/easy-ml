@@ -3,6 +3,7 @@ extern crate easy_ml;
 #[cfg(test)]
 mod container_record_tests {
     use easy_ml::tensors::Tensor;
+    use easy_ml::tensors::views::TensorView;
     use easy_ml::tensors::indexing::ShapeIterator;
     use easy_ml::differentiation::{Record, RecordTensor, WengertList};
 
@@ -90,5 +91,148 @@ mod container_record_tests {
         }
     }
 
-    // TODO: Test division works as expected too
+    #[test]
+    fn test_division_derivatives() {
+        let list = WengertList::new();
+        let x = RecordTensor::variables(
+            &list,
+            Tensor::from(
+                [("r", 3), ("c", 3)],
+                vec![
+                    12.0, 15.0, 18.0,
+                    360.0, 180.0, 90.0,
+                    45.0, 240.0, 10.0
+                ]
+            )
+        );
+        let y = RecordTensor::variables(
+            &list,
+            Tensor::from(
+                [("r", 3), ("c", 3)],
+                vec![
+                    4.0, 3.0, 6.0,
+                    18.0, 10.0, 30.0,
+                    5.0, 20.0, 5.0
+                ]
+            )
+        );
+
+        let x_div_y = x.elementwise_divide(&y);
+
+        #[rustfmt::skip]
+        // Normally we'd want a tolerance for float comparisons but the implementation should
+        // always perform just a normal division so we should always get identical results
+        // here comparing to the calculation with constants.
+        assert_eq!(
+            TensorView::from(&x_div_y).map(|(x, _)| x),
+            Tensor::from(
+                [("r", 3), ("c", 3)],
+                vec![
+                    12.0 / 4.0,   15.0 / 3.0,    18.0 / 6.0,
+                    360.0 / 18.0, 180.0 / 10.0,  90.0 / 30.0,
+                    45.0 / 5.0,   240.0 / 20.0,  10.0 / 5.0
+                ]
+            )
+        );
+
+        for container in vec![x_div_y] {
+            let derivatives = container.derivatives().unwrap();
+            let dx = derivatives.map(|d| d.at_tensor(&x));
+            let dy = derivatives.map(|d| d.at_tensor(&y));
+
+            // x / y, derivative with respect to x is 1 / x, rest are 0 because output and input
+            // unrelated
+            assert_eq!(
+                dx,
+                Tensor::from(
+                    [("r", 3), ("c", 3)],
+                    vec![
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 1.0 / 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 1.0 / 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 0.0, 1.0 / 6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 0.0, 0.0, 1.0 / 18.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 0.0, 0.0, 0.0, 1.0 / 10.0, 0.0, 0.0, 0.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 / 30.0, 0.0, 0.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 / 5.0, 0.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 / 20.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 / 5.0 ]
+                        )
+                    ]
+                )
+            );
+
+            // x / y, derivative with respect to y is -x / (y^2), rest are 0 because output and
+            // input unrelated
+            assert_eq!(
+                dy,
+                Tensor::from(
+                    [("r", 3), ("c", 3)],
+                    vec![
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ -12.0 / (4.0 * 4.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, -15.0 / (3.0 * 3.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 0.0, -18.0 / (6.0 * 6.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 0.0, 0.0, -360.0 / (18.0 * 18.0), 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 0.0, 0.0, 0.0, -180.0 / (10.0 * 10.0), 0.0, 0.0, 0.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, -90.0 / (30.0 * 30.0), 0.0, 0.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -45.0 / (5.0 * 5.0), 0.0, 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -240.0 / (20.0 * 20.0), 0.0 ]
+                        ),
+                        Tensor::from(
+                            [("r", 3), ("c", 3)],
+                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -10.0 / (5.0 * 5.0) ]
+                        )
+                    ]
+                )
+            );
+        }
+    }
 }
