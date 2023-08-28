@@ -35,7 +35,7 @@
  */
 
 use crate::differentiation::{Primitive, Record, WengertList};
-use crate::differentiation::functions::{Multiplication, Division, FunctionDerivative};
+use crate::differentiation::functions::{Addition, Multiplication, Division, FunctionDerivative};
 use crate::numeric::extra::{Cos, Exp, Ln, Pi, Pow, Real, RealRef, Sin, Sqrt};
 use crate::numeric::{FromUsize, Numeric, NumericRef, ZeroOne};
 use std::cmp::Ordering;
@@ -149,7 +149,7 @@ where
             // for 2x + (2 * (1 + y)) to be stored, but we don't care about the derivatives
             // for 1 + 1, because neither were inputs to f.
             (None, None) => Record {
-                number: self.number.clone() + rhs.number.clone(),
+                number: Addition::<T>::function(self.number.clone(), rhs.number.clone()),
                 history: None,
                 index: 0,
             },
@@ -157,15 +157,13 @@ where
             (Some(_), None) => self + &rhs.number,
             (None, Some(_)) => rhs + &self.number,
             (Some(history), Some(_)) => Record {
-                number: self.number.clone() + rhs.number.clone(),
+                number: Addition::<T>::function(self.number.clone(), rhs.number.clone()),
                 history: Some(history),
                 index: history.append_binary(
                     self.index,
-                    // δ(self + rhs) / δself = 1
-                    T::one(),
+                    Addition::<T>::d_function_dx(self.number.clone(), rhs.number.clone()),
                     rhs.index,
-                    // δ(self + rhs) / rhs = 1
-                    T::one(),
+                    Addition::<T>::d_function_dy(self.number.clone(), rhs.number.clone()),
                 ),
             },
         }
@@ -185,18 +183,17 @@ where
     fn add(self, rhs: &T) -> Self::Output {
         match self.history {
             None => Record {
-                number: self.number.clone() + rhs.clone(),
+                number: Addition::<T>::function(self.number.clone(), rhs.clone()),
                 history: None,
                 index: 0,
             },
             Some(history) => {
                 Record {
-                    number: self.number.clone() + rhs.clone(),
+                    number: Addition::<T>::function(self.number.clone(), rhs.clone()),
                     history: Some(history),
                     index: history.append_unary(
                         self.index,
-                        // δ(self + C) / δself = 1
-                        T::one(),
+                        Addition::<T>::d_function_dx(self.number.clone(), rhs.clone()),
                     ),
                 }
             }
