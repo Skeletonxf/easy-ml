@@ -34,6 +34,31 @@ where
     }
 }
 
+pub struct Subtraction<T> {
+    _type: PhantomData<T>,
+}
+
+impl<T> FunctionDerivative<T> for Subtraction<T>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+{
+    /// `x - y`
+    fn function(x: T, y: T) -> T {
+        x - y
+    }
+
+    /// `d(x - y) / dx = 1`
+    fn d_function_dx(_x: T, _y: T) -> T {
+        T::one()
+    }
+
+    /// `d(x - y) / dy = -1`
+    fn d_function_dy(_x: T, _y: T) -> T {
+        -T::one()
+    }
+}
+
 pub struct Multiplication<T> {
     _type: PhantomData<T>,
 }

@@ -35,7 +35,7 @@
  */
 
 use crate::differentiation::{Primitive, Record, WengertList};
-use crate::differentiation::functions::{Addition, Multiplication, Division, FunctionDerivative};
+use crate::differentiation::functions::{Addition, Subtraction, Multiplication, Division, FunctionDerivative};
 use crate::numeric::extra::{Cos, Exp, Ln, Pi, Pow, Real, RealRef, Sin, Sqrt};
 use crate::numeric::{FromUsize, Numeric, NumericRef, ZeroOne};
 use std::cmp::Ordering;
@@ -422,7 +422,7 @@ where
             // for 2x + (2 * (1 + y)) to be stored, but we don't care about the derivatives
             // for 1 + 1, because neither were inputs to f.
             (None, None) => Record {
-                number: self.number.clone() - rhs.number.clone(),
+                number: Subtraction::<T>::function(self.number.clone(), rhs.number.clone()),
                 history: None,
                 index: 0,
             },
@@ -432,15 +432,13 @@ where
             // so use the swapped version of Sub
             (None, Some(_)) => rhs.sub_swapped(self.number.clone()),
             (Some(history), Some(_)) => Record {
-                number: self.number.clone() - rhs.number.clone(),
+                number: Subtraction::<T>::function(self.number.clone(), rhs.number.clone()),
                 history: Some(history),
                 index: history.append_binary(
                     self.index,
-                    // δ(self - rhs) / δself = 1
-                    T::one(),
+                    Subtraction::<T>::d_function_dx(self.number.clone(), rhs.number.clone()),
                     rhs.index,
-                    // δ(self - rhs) / rhs = -1
-                    -T::one(),
+                    Subtraction::<T>::d_function_dy(self.number.clone(), rhs.number.clone()),
                 ),
             },
         }
@@ -463,18 +461,17 @@ where
     fn sub(self, rhs: &T) -> Self::Output {
         match self.history {
             None => Record {
-                number: self.number.clone() - rhs.clone(),
+                number: Subtraction::<T>::function(self.number.clone(), rhs.clone()),
                 history: None,
                 index: 0,
             },
             Some(history) => {
                 Record {
-                    number: self.number.clone() - rhs.clone(),
+                    number: Subtraction::<T>::function(self.number.clone(), rhs.clone()),
                     history: Some(history),
                     index: history.append_unary(
                         self.index,
-                        // δ(self - C) / δself = 1
-                        T::one(),
+                        Subtraction::<T>::d_function_dx(self.number.clone(), rhs.clone()),
                     ),
                 }
             }
@@ -519,18 +516,19 @@ where
     fn sub_swapped(self, lhs: &T) -> Self::Output {
         match self.history {
             None => Record {
-                number: lhs.clone() - self.number.clone(),
+                number: Subtraction::<T>::function(lhs.clone(), self.number.clone()),
                 history: None,
                 index: 0,
             },
             Some(history) => {
                 Record {
-                    number: lhs.clone() - self.number.clone(),
+                    number: Subtraction::<T>::function(lhs.clone(), self.number.clone()),
                     history: Some(history),
                     index: history.append_unary(
                         self.index,
-                        // δ(C - self) / δself = -1
-                        -T::one(),
+                        // We want with respect to y because it is the right hand side here that we
+                        // need the derivative for (since left is a constant).
+                        Subtraction::<T>::d_function_dy(lhs.clone(), self.number.clone()),
                     ),
                 }
             }
@@ -555,7 +553,7 @@ where
                     history: Some(history),
                     index: history.append_unary(
                         self.index,
-                        // We want with respect to y because its the right hand side here that we
+                        // We want with respect to y because it is the right hand side here that we
                         // need the derivative for (since left is a constant).
                         Division::<T>::d_function_dy(lhs.clone(), self.number.clone()),
                     ),

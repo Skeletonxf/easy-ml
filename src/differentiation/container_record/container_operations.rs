@@ -6,7 +6,7 @@ use crate::matrices::views::{MatrixRef, NoInteriorMutability};
 use crate::differentiation::{Primitive, Index};
 use crate::differentiation::record_operations::are_same_list;
 use crate::differentiation::{RecordContainer, RecordTensor, RecordMatrix};
-use crate::differentiation::functions::{Addition, FunctionDerivative};
+use crate::differentiation::functions::{Addition, Subtraction, FunctionDerivative};
 
 use std::ops::{Add, Sub};
 
@@ -372,9 +372,9 @@ where
     );
     lhs.binary(
         rhs,
-        |x, y| x - y,
-        |_x, _y| T::one(), // δ(lhs - rhs) / lhs = 1
-        |_x, _y| -T::one() // δ(lhs - rhs) / rhs = -1
+        Subtraction::<T>::function,
+        Subtraction::<T>::d_function_dx,
+        Subtraction::<T>::d_function_dy,
     )
 }
 
@@ -442,9 +442,9 @@ where
     );
     lhs.binary(
         rhs,
-        |x, y| x - y,
-        |_x, _y| T::one(), // δ(lhs - rhs) / lhs = 1
-        |_x, _y| -T::one() // δ(lhs - rhs) / rhs = -1
+        Subtraction::<T>::function,
+        Subtraction::<T>::d_function_dx,
+        Subtraction::<T>::d_function_dy,
     )
 }
 
