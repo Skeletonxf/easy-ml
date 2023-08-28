@@ -149,6 +149,45 @@ where
     pub fn shape(&self) -> [(Dimension, usize); D] {
         self.numbers.shape()
     }
+
+    /**
+     * Creates a container from variables directly, most likely obtained by getting a tensor view
+     * of an existing container. **The inputs are not checked for validity**. It is possible to
+     * pass in the wrong Wengert list here or even numbers with indexes that aren't tracked on the
+     * WengertList.
+     *
+     * It is recommended to use this constructor only in conjunction with
+     * resizing or masking an existing container and not for creating new variables. Any variables
+     * created outside of `RecordContainer::variables` would have to be manually added to the
+     * correct Wengert list, and any arithmetic operations would also need tracking correctly.
+     *
+     * ```
+     * use easy_ml::differentiation::RecordTensor;
+     * use easy_ml::differentiation::WengertList;
+     * use easy_ml::tensors::Tensor;
+     * use easy_ml::tensors::views::{TensorView, TensorRename};
+     *
+     * let list = WengertList::new();
+     * let x = RecordTensor::variables(
+     *     &list,
+     *     Tensor::from_fn([("x", 2), ("y", 2)], |[r, c]| ((r + 3) * (c + 2)) as f64)
+     * );
+     * // oh no wrong shape!
+     * let fixed = TensorView::from(TensorRename::from(x, ["a", "b"]));
+     * let x = RecordTensor::from_existing_variables(&list, fixed);
+     * ```
+     */
+    // FIXME: Add APIs so that doc example is the one tweak you don't need this for and change doc
+    // example to something resizing instead.
+    pub fn from_existing_variables(
+        history: &'a WengertList<T>,
+        numbers: TensorView<(T, Index), S, D>,
+    ) -> Self {
+        RecordContainer {
+            numbers,
+            history: Some(history),
+        }
+    }
 }
 
 impl<'a, T, S, const D: usize> RecordTensor<'a, T, S, D>
