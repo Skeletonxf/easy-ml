@@ -4,7 +4,7 @@ use crate::differentiation::{Primitive, Index, Derivatives, WengertList};
 use crate::differentiation::record_operations;
 use crate::differentiation::functions::{Multiplication, Division, FunctionDerivative};
 use crate::tensors::{Tensor, Dimension};
-use crate::tensors::views::{TensorRef, TensorMut, TensorView, DataLayout};
+use crate::tensors::views::{TensorRef, TensorMut, TensorView, DataLayout, TensorRename};
 use crate::tensors::indexing::TensorOwnedIterator;
 use crate::matrices::{Matrix, Row, Column};
 use crate::matrices::iterators::RowMajorOwnedIterator;
@@ -151,15 +151,53 @@ where
     }
 
     /**
-     * Creates a container from variables directly, most likely obtained by getting a tensor view
-     * of an existing container. **The inputs are not checked for validity**. It is possible to
-     * pass in the wrong Wengert list here or even numbers with indexes that aren't tracked on the
-     * WengertList.
+     * Creates a container from constants/variables directly, most likely obtained by getting a
+     * tensor view of an existing container. **The inputs are not checked for validity**. It is
+     * possible to pass in the wrong Wengert list here or even numbers with indexes that aren't
+     * tracked on the WengertList.
      *
      * It is recommended to use this constructor only in conjunction with
      * resizing or masking an existing container and not for creating new variables. Any variables
      * created outside of `RecordContainer::variables` would have to be manually added to the
      * correct Wengert list, and any arithmetic operations would also need tracking correctly.
+     *
+     * ```
+     * use easy_ml::differentiation::RecordTensor;
+     * use easy_ml::differentiation::WengertList;
+     * use easy_ml::tensors::Tensor;
+     * use easy_ml::tensors::views::{TensorView, TensorRange};
+     *
+     * let list = WengertList::new();
+     * let x = RecordTensor::variables(
+     *     &list,
+     *     Tensor::from_fn([("x", 2), ("y", 2)], |[r, c]| ((r + 3) * (c + 2)) as f64)
+     * );
+     * // oh no wrong shape!
+     * let fixed = TensorView::from(TensorRange::from(x, [("y", 0..1)]).unwrap()); // we can unwrap here because we know the range is valid
+     * let x = RecordTensor::from_existing(Some(&list), fixed);
+     * assert_eq!([("x", 2), ("y", 1)], x.shape());
+     * ```
+     */
+    pub fn from_existing(
+        history: Option<&'a WengertList<T>>,
+        numbers: TensorView<(T, Index), S, D>,
+    ) -> Self {
+        RecordContainer {
+            numbers,
+            history,
+        }
+    }
+
+    /**
+     * Returns a record tensor with the dimension names of the shape renamed to the provided
+     * dimensions. The data of this container and the dimension lengths and order remain unchanged.
+     *
+     * This is a shorthand for constructing the RecordTensor via manipulating this TensorView. See
+     * [`RecordTensor::from_existing`](RecordTensor::from_existing).
+     *
+     * # Panics
+     *
+     * If a dimension name is not unique
      *
      * ```
      * use easy_ml::differentiation::RecordTensor;
@@ -172,21 +210,20 @@ where
      *     &list,
      *     Tensor::from_fn([("x", 2), ("y", 2)], |[r, c]| ((r + 3) * (c + 2)) as f64)
      * );
-     * // oh no wrong shape!
-     * let fixed = TensorView::from(TensorRename::from(x, ["a", "b"]));
-     * let x = RecordTensor::from_existing_variables(&list, fixed);
+     * // oh no wrong dimension names!
+     * let x = x.rename_view(["a", "b"]);
+     * assert_eq!([("a", 2), ("b", 2)], x.shape());
      * ```
      */
-    // FIXME: Add APIs so that doc example is the one tweak you don't need this for and change doc
-    // example to something resizing instead.
-    pub fn from_existing_variables(
-        history: &'a WengertList<T>,
-        numbers: TensorView<(T, Index), S, D>,
-    ) -> Self {
-        RecordContainer {
-            numbers,
-            history: Some(history),
-        }
+    #[track_caller]
+    pub fn rename_view(
+        self,
+        dimensions: [Dimension; D],
+    ) -> RecordTensor<'a, T, TensorRename<(T, Index), S, D>, D> {
+        RecordTensor::from_existing(
+            self.history,
+            TensorView::from(TensorRename::from(self.numbers.source(), dimensions))
+        )
     }
 }
 
