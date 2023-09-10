@@ -145,6 +145,8 @@ pub unsafe trait MatrixMut<T>: MatrixRef<T> {
  * When combined with [MatrixRef](MatrixRef) or [MatrixMut](MatrixMut), other code can rely on
  * the type not being resizable or otherwise mutated through a shared reference.
  *
+ * NB: In a future 2.0 release, this requirement will become mandatory to implement MatrixView.
+ *
  * # Safety
  *
  * Implementing types must ensure that their internal state cannot be changed through a shared

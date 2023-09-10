@@ -349,6 +349,44 @@ where
     pub fn size(&self) -> (Row, Column) {
         self.numbers.size()
     }
+
+    /**
+     * Creates a container from constants/variables directly, most likely obtained by getting a
+     * matrix view of an existing container. **The inputs are not checked for validity**. It is
+     * possible to pass in the wrong Wengert list here or even numbers with indexes that aren't
+     * tracked on the WengertList.
+     *
+     * It is recommended to use this constructor only in conjunction with
+     * resizing or masking an existing container and not for creating new variables. Any variables
+     * created outside of `RecordContainer::variables` would have to be manually added to the
+     * correct Wengert list, and any arithmetic operations would also need tracking correctly.
+     *
+     * ```
+     * use easy_ml::differentiation::RecordMatrix;
+     * use easy_ml::differentiation::WengertList;
+     * use easy_ml::matrices::Matrix;
+     * use easy_ml::matrices::views::{MatrixView, MatrixRange};
+     *
+     * let list = WengertList::new();
+     * let x = RecordMatrix::variables(
+     *     &list,
+     *     Matrix::from_fn((2, 2), |(r, c)| ((r + 3) * (c + 2)) as f64)
+     * );
+     * // oh no wrong shape!
+     * let fixed = MatrixView::from(MatrixRange::from(x, 0..2, 0..1));
+     * let x = RecordMatrix::from_existing(Some(&list), fixed);
+     * assert_eq!((2, 1), x.size());
+     * ```
+     */
+    pub fn from_existing(
+        history: Option<&'a WengertList<T>>,
+        numbers: MatrixView<(T, Index), S>,
+    ) -> Self {
+        RecordContainer {
+            numbers,
+            history,
+        }
+    }
 }
 
 impl<'a, T, S> RecordMatrix<'a, T, S>
