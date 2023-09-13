@@ -235,4 +235,33 @@ mod container_record_tests {
             );
         }
     }
+
+    #[test]
+    fn test_negation_derivatives() {
+        let list = WengertList::new();
+        let x = RecordTensor::variables(
+            &list,
+            Tensor::<f64, 2>::from([("r", 2), ("c", 2)], vec![ 0.25, 1.25, 3.5, 0.75 ])
+        );
+        let y = -&x;
+        let derivatives = y.derivatives().unwrap();
+        let dx = derivatives.map(|d| d.at_tensor(&x));
+        let expected = Tensor::from([("r", 2), ("c", 2)], vec![ -0.25, -1.25, -3.5, -0.75 ]);
+        for (expected, (actual, _)) in expected.iter().zip(TensorView::from(y).iter()) {
+            let absolute_difference = (expected - actual).abs();
+            assert!(absolute_difference <= std::f64::EPSILON);
+        }
+        assert_eq!(
+            dx.map(|ds| ds.map(|d| d as i32)),
+            Tensor::from(
+                [("r", 2), ("c", 2)],
+                vec![
+                    Tensor::from([("r", 2), ("c", 2)], vec![ -1, 0, 0, 0 ]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![ 0, -1, 0, 0 ]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![ 0, 0, -1, 0 ]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![ 0, 0, 0, -1 ]),
+                ]
+            )
+        );
+    }
 }

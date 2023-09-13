@@ -9,6 +9,11 @@ pub trait FunctionDerivative<T> {
     fn d_function_dy(x: T, y: T) -> T;
 }
 
+pub trait UnaryFunctionDerivative<T> {
+    fn function(x: T) -> T;
+    fn d_function_dx(x: T) -> T;
+}
+
 pub struct Addition<T> {
     _type: PhantomData<T>,
 }
@@ -106,5 +111,25 @@ where
     /// `d(x / y) / dy = -x / (y^2)`
     fn d_function_dy(x: T, y: T) -> T {
         -x / (y.clone() * y)
+    }
+}
+
+pub struct Negation<T> {
+    _type: PhantomData<T>,
+}
+
+impl<T> UnaryFunctionDerivative<T> for Negation<T>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+{
+    /// `x - y`
+    fn function(x: T) -> T {
+        -x
+    }
+
+    /// `d(-x) / dx = -1` (same as `d(x - y) / dy for x = 0`)
+    fn d_function_dx(_x: T) -> T {
+        -T::one()
     }
 }

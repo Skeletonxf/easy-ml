@@ -6,9 +6,9 @@ use crate::matrices::views::{MatrixRef, NoInteriorMutability};
 use crate::differentiation::{Primitive, Index};
 use crate::differentiation::record_operations::are_same_list;
 use crate::differentiation::{RecordContainer, RecordTensor, RecordMatrix};
-use crate::differentiation::functions::{Addition, Subtraction, FunctionDerivative};
+use crate::differentiation::functions::{Addition, Subtraction, Negation, UnaryFunctionDerivative, FunctionDerivative};
 
-use std::ops::{Add, Sub};
+use std::ops::{Add, Sub, Neg};
 
 /**
  * A record container is displayed by showing its number components.
@@ -124,7 +124,6 @@ macro_rules! record_matrix_operator_impl_value_reference {
     };
 }
 
-
 macro_rules! record_tensor_operator_impl_reference_value {
     (impl $op:tt for RecordTensor { fn $method:ident } $implementation:ident) => {
         /**
@@ -204,6 +203,86 @@ macro_rules! record_matrix_operator_impl_reference_reference {
             #[track_caller]
             fn $method(self, rhs: &RecordMatrix<'a, T, S2>) -> Self::Output {
                 $implementation::<T, S1, S2>(self, rhs)
+            }
+        }
+    };
+}
+
+macro_rules! record_tensor_operator_impl_value {
+    (impl $op:tt for RecordTensor { fn $method:ident } $implementation:ident) => {
+        /**
+         * Operation for a record tensor of some type.
+         */
+        impl<'a, T, S, const D: usize> $op for RecordTensor<'a, T, S, D>
+        where
+            T: Numeric + Primitive,
+            for<'t> &'t T: NumericRef<T>,
+            S: TensorRef<(T, Index), D>,
+        {
+            type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
+            #[track_caller]
+            fn $method(self) -> Self::Output {
+                $implementation::<T, S, D>(self)
+            }
+        }
+    };
+}
+
+macro_rules! record_matrix_operator_impl_value {
+    (impl $op:tt for RecordMatrix { fn $method:ident } $implementation:ident) => {
+        /**
+         * Operation for a record matrix of some type.
+         */
+        impl<'a, T, S> $op for RecordMatrix<'a, T, S>
+        where
+            T: Numeric + Primitive,
+            for<'t> &'t T: NumericRef<T>,
+            S: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self) -> Self::Output {
+                $implementation::<T, S>(self)
+            }
+        }
+    };
+}
+
+macro_rules! record_tensor_operator_impl_reference {
+    (impl $op:tt for RecordTensor { fn $method:ident } $implementation:ident) => {
+        /**
+         * Operation for a referenced record tensor of some type.
+         */
+        impl<'a, T, S, const D: usize> $op for &RecordTensor<'a, T, S, D>
+        where
+            T: Numeric + Primitive,
+            for<'t> &'t T: NumericRef<T>,
+            S: TensorRef<(T, Index), D>,
+        {
+            type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
+            #[track_caller]
+            fn $method(self) -> Self::Output {
+                $implementation::<T, S, D>(self)
+            }
+        }
+    };
+}
+
+macro_rules! record_matrix_operator_impl_reference {
+    (impl $op:tt for RecordMatrix { fn $method:ident } $implementation:ident) => {
+        /**
+         * Operation for a referenced record matrix of some type.
+         */
+        impl<'a, T, S> $op for &RecordMatrix<'a, T, S>
+        where
+            T: Numeric + Primitive,
+            for<'t> &'t T: NumericRef<T>,
+            S: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self) -> Self::Output {
+                $implementation::<T, S>(self)
             }
         }
     };
@@ -494,3 +573,57 @@ record_matrix_operator_impl_value_value!(impl Sub for RecordMatrix { fn sub } re
 record_matrix_operator_impl_value_reference!(impl Sub for RecordMatrix { fn sub } record_matrix_sub_value_reference);
 record_matrix_operator_impl_reference_value!(impl Sub for RecordMatrix { fn sub } record_matrix_sub_reference_value);
 record_matrix_operator_impl_reference_reference!(impl Sub for RecordMatrix { fn sub } record_matrix_sub_allocate);
+
+#[track_caller]
+fn record_tensor_neg_value<'a, T, S, const D: usize>(
+    lhs: RecordTensor<'a, T, S, D>,
+) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S: TensorRef<(T, Index), D>,
+{
+    lhs.unary(Negation::<T>::function, Negation::<T>::d_function_dx)
+}
+
+#[track_caller]
+fn record_tensor_neg_reference<'a, T, S, const D: usize>(
+    lhs: &RecordTensor<'a, T, S, D>,
+) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S: TensorRef<(T, Index), D>,
+{
+    lhs.unary(Negation::<T>::function, Negation::<T>::d_function_dx)
+}
+
+record_tensor_operator_impl_value!(impl Neg for RecordTensor { fn neg } record_tensor_neg_value);
+record_tensor_operator_impl_reference!(impl Neg for RecordTensor { fn neg } record_tensor_neg_reference);
+
+#[track_caller]
+fn record_matrix_neg_reference<'a, T, S>(
+    lhs: &RecordMatrix<'a, T, S>,
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    lhs.unary(Negation::<T>::function, Negation::<T>::d_function_dx)
+}
+
+#[track_caller]
+fn record_matrix_neg_value<'a, T, S>(
+    lhs: RecordMatrix<'a, T, S>,
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    lhs.unary(Negation::<T>::function, Negation::<T>::d_function_dx)
+}
+
+record_matrix_operator_impl_value!(impl Neg for RecordMatrix { fn neg } record_matrix_neg_value);
+record_matrix_operator_impl_reference!(impl Neg for RecordMatrix { fn neg } record_matrix_neg_reference);
