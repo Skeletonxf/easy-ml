@@ -1,4 +1,5 @@
 use crate::numeric::{Numeric, NumericRef};
+use crate::numeric::extra::{Real, RealRef};
 use crate::differentiation::Primitive;
 
 use std::marker::PhantomData;
@@ -131,5 +132,45 @@ where
     /// `d(-x) / dx = -1` (same as `d(x - y) / dy for x = 0`)
     fn d_function_dx(_x: T) -> T {
         -T::one()
+    }
+}
+
+pub struct Sine<T> {
+    _type: PhantomData<T>,
+}
+
+impl<T> UnaryFunctionDerivative<T> for Sine<T>
+where
+    T: Numeric + Real + Primitive,
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+{
+    /// `sin(x)`
+    fn function(x: T) -> T {
+        x.sin()
+    }
+
+    /// `d(sin(x)) / dx = cos(x)`
+    fn d_function_dx(x: T) -> T {
+        x.cos()
+    }
+}
+
+pub struct Cosine<T> {
+    _type: PhantomData<T>,
+}
+
+impl<T> UnaryFunctionDerivative<T> for Cosine<T>
+where
+    T: Numeric + Real + Primitive,
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+{
+    /// `cos(x)`
+    fn function(x: T) -> T {
+        x.cos()
+    }
+
+    /// `d(cos(x)) / dx = -sin(x)`
+    fn d_function_dx(x: T) -> T {
+        -x.sin()
     }
 }

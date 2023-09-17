@@ -35,7 +35,9 @@
  */
 
 use crate::differentiation::{Primitive, Record, WengertList};
-use crate::differentiation::functions::{Addition, Subtraction, Multiplication, Division, FunctionDerivative};
+use crate::differentiation::functions::{
+    Addition, Subtraction, Multiplication, Division, Sine, Cosine, UnaryFunctionDerivative, FunctionDerivative
+};
 use crate::numeric::extra::{Cos, Exp, Ln, Pi, Pow, Real, RealRef, Sin, Sqrt};
 use crate::numeric::{FromUsize, Numeric, NumericRef, ZeroOne};
 use std::cmp::Ordering;
@@ -864,18 +866,17 @@ where
     fn sin(self) -> Self::Output {
         match self.history {
             None => Record {
-                number: self.number.clone().sin(),
+                number: Sine::<T>::function(self.number.clone()),
                 history: None,
                 index: 0,
             },
             Some(history) => {
                 Record {
-                    number: self.number.clone().sin(),
+                    number: Sine::<T>::function(self.number.clone()),
                     history: Some(history),
                     index: history.append_unary(
                         self.index,
-                        // δ(sin(self)) / δself = cos(self)
-                        self.number.clone().cos(),
+                        Sine::<T>::d_function_dx(self.number.clone()),
                     ),
                 }
             }
@@ -915,18 +916,17 @@ where
     fn cos(self) -> Self::Output {
         match self.history {
             None => Record {
-                number: self.number.clone().cos(),
+                number: Cosine::<T>::function(self.number.clone()),
                 history: None,
                 index: 0,
             },
             Some(history) => {
                 Record {
-                    number: self.number.clone().cos(),
+                    number: Cosine::<T>::function(self.number.clone()),
                     history: Some(history),
                     index: history.append_unary(
                         self.index,
-                        // δ(cos(self)) / δself = -sin(self)
-                        -self.number.clone().sin(),
+                        Cosine::<T>::d_function_dx(self.number.clone()),
                     ),
                 }
             }
