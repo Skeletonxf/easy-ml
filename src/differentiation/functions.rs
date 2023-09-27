@@ -194,3 +194,23 @@ where
         x.exp()
     }
 }
+
+pub struct NaturalLogarithm<T> {
+    _type: PhantomData<T>,
+}
+
+impl<T> UnaryFunctionDerivative<T> for NaturalLogarithm<T>
+where
+    T: Numeric + Real + Primitive,
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+{
+    /// `ln(x)`
+    fn function(x: T) -> T {
+        x.ln()
+    }
+
+    /// `d(ln(x)) / dx = 1 / x`
+    fn d_function_dx(x: T) -> T {
+        T::one() / x
+    }
+}

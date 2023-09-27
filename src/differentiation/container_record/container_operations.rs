@@ -6,9 +6,9 @@ use crate::matrices::views::{MatrixRef, NoInteriorMutability};
 use crate::differentiation::{Primitive, Index};
 use crate::differentiation::record_operations::are_same_list;
 use crate::differentiation::{RecordContainer, RecordTensor, RecordMatrix};
-use crate::differentiation::functions::{Addition, Subtraction, Negation, Sine, Cosine, Exponential, UnaryFunctionDerivative, FunctionDerivative};
+use crate::differentiation::functions::{Addition, Subtraction, Negation, NaturalLogarithm, Sine, Cosine, Exponential, UnaryFunctionDerivative, FunctionDerivative};
 
-use crate::numeric::extra::{Cos, Exp, Real, RealRef, Sin};
+use crate::numeric::extra::{Cos, Exp, Ln, Real, RealRef, Sin};
 
 use std::ops::{Add, Sub, Neg};
 
@@ -871,3 +871,57 @@ where
 
 record_real_matrix_operator_impl_value!(impl Exp for RecordMatrix { fn exp } record_matrix_exp_value);
 record_real_matrix_operator_impl_reference!(impl Exp for RecordMatrix { fn exp } record_matrix_exp_reference);
+
+#[track_caller]
+fn record_tensor_ln_value<'a, T, S, const D: usize>(
+    lhs: RecordTensor<'a, T, S, D>,
+) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+where
+    T: Numeric + Real + Primitive,
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    S: TensorRef<(T, Index), D>,
+{
+    lhs.unary(NaturalLogarithm::<T>::function, NaturalLogarithm::<T>::d_function_dx)
+}
+
+#[track_caller]
+fn record_tensor_ln_reference<'a, T, S, const D: usize>(
+    lhs: &RecordTensor<'a, T, S, D>,
+) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+where
+    T: Numeric + Real + Primitive,
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    S: TensorRef<(T, Index), D>,
+{
+    lhs.unary(NaturalLogarithm::<T>::function, NaturalLogarithm::<T>::d_function_dx)
+}
+
+record_real_tensor_operator_impl_value!(impl Ln for RecordTensor { fn ln } record_tensor_ln_value);
+record_real_tensor_operator_impl_reference!(impl Ln for RecordTensor { fn ln } record_tensor_ln_reference);
+
+#[track_caller]
+fn record_matrix_ln_reference<'a, T, S>(
+    lhs: &RecordMatrix<'a, T, S>,
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Real + Primitive,
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    S: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    lhs.unary(NaturalLogarithm::<T>::function, NaturalLogarithm::<T>::d_function_dx)
+}
+
+#[track_caller]
+fn record_matrix_ln_value<'a, T, S>(
+    lhs: RecordMatrix<'a, T, S>,
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Real + Primitive,
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    S: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    lhs.unary(NaturalLogarithm::<T>::function, NaturalLogarithm::<T>::d_function_dx)
+}
+
+record_real_matrix_operator_impl_value!(impl Ln for RecordMatrix { fn ln } record_matrix_ln_value);
+record_real_matrix_operator_impl_reference!(impl Ln for RecordMatrix { fn ln } record_matrix_ln_reference);
