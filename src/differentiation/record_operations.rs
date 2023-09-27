@@ -36,7 +36,7 @@
 
 use crate::differentiation::{Primitive, Record, WengertList};
 use crate::differentiation::functions::{
-    Addition, Subtraction, NaturalLogarithm, Multiplication, Division, Sine, Cosine, Exponential, UnaryFunctionDerivative, FunctionDerivative,
+    Addition, Subtraction, NaturalLogarithm, Multiplication, Division, Sine, SquareRoot, Cosine, Exponential, UnaryFunctionDerivative, FunctionDerivative,
 };
 use crate::numeric::extra::{Cos, Exp, Ln, Pi, Pow, Real, RealRef, Sin, Sqrt};
 use crate::numeric::{FromUsize, Numeric, NumericRef, ZeroOne};
@@ -1012,18 +1012,17 @@ where
     fn sqrt(self) -> Self::Output {
         match self.history {
             None => Record {
-                number: self.number.clone().sqrt(),
+                number: SquareRoot::<T>::function(self.number.clone()),
                 history: None,
                 index: 0,
             },
             Some(history) => {
                 Record {
-                    number: self.number.clone().sqrt(),
+                    number: SquareRoot::<T>::function(self.number.clone()),
                     history: Some(history),
                     index: history.append_unary(
                         self.index,
-                        // δ(sqrt(self)) / δself = 1 / (2*sqrt(self))
-                        T::one() / ((T::one() + T::one()) * self.number.clone().sqrt()),
+                        SquareRoot::<T>::d_function_dx(self.number.clone()),
                     ),
                 }
             }

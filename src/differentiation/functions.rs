@@ -214,3 +214,23 @@ where
         T::one() / x
     }
 }
+
+pub struct SquareRoot<T> {
+    _type: PhantomData<T>,
+}
+
+impl<T> UnaryFunctionDerivative<T> for SquareRoot<T>
+where
+    T: Numeric + Real + Primitive,
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+{
+    /// `sqrt(x)`
+    fn function(x: T) -> T {
+        x.sqrt()
+    }
+
+    /// `d(sqrt(x)) / dx = 1 / (2*sqrt(x))`
+    fn d_function_dx(x: T) -> T {
+        T::one() / ((T::one() + T::one()) * x.sqrt())
+    }
+}
