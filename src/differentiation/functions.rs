@@ -174,3 +174,23 @@ where
         -x.sin()
     }
 }
+
+pub struct Exponential<T> {
+    _type: PhantomData<T>,
+}
+
+impl<T> UnaryFunctionDerivative<T> for Exponential<T>
+where
+    T: Numeric + Real + Primitive,
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+{
+    /// `e^x`
+    fn function(x: T) -> T {
+        x.exp()
+    }
+
+    /// `d(e^x) / dx = e^x (itself)`
+    fn d_function_dx(x: T) -> T {
+        x.exp()
+    }
+}

@@ -36,7 +36,7 @@
 
 use crate::differentiation::{Primitive, Record, WengertList};
 use crate::differentiation::functions::{
-    Addition, Subtraction, Multiplication, Division, Sine, Cosine, UnaryFunctionDerivative, FunctionDerivative
+    Addition, Subtraction, Multiplication, Division, Sine, Cosine, Exponential, UnaryFunctionDerivative, FunctionDerivative
 };
 use crate::numeric::extra::{Cos, Exp, Ln, Pi, Pow, Real, RealRef, Sin, Sqrt};
 use crate::numeric::{FromUsize, Numeric, NumericRef, ZeroOne};
@@ -948,18 +948,17 @@ where
     fn exp(self) -> Self::Output {
         match self.history {
             None => Record {
-                number: self.number.clone().exp(),
+                number: Exponential::<T>::function(self.number.clone()),
                 history: None,
                 index: 0,
             },
             Some(history) => {
                 Record {
-                    number: self.number.clone().exp(),
+                    number: Exponential::<T>::function(self.number.clone()),
                     history: Some(history),
                     index: history.append_unary(
                         self.index,
-                        // δ(e^self) / δself = e^self
-                        self.number.clone().exp(),
+                        Exponential::<T>::d_function_dx(self.number.clone()),
                     ),
                 }
             }

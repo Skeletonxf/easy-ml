@@ -6,9 +6,9 @@ use crate::matrices::views::{MatrixRef, NoInteriorMutability};
 use crate::differentiation::{Primitive, Index};
 use crate::differentiation::record_operations::are_same_list;
 use crate::differentiation::{RecordContainer, RecordTensor, RecordMatrix};
-use crate::differentiation::functions::{Addition, Subtraction, Negation, Sine, Cosine, UnaryFunctionDerivative, FunctionDerivative};
+use crate::differentiation::functions::{Addition, Subtraction, Negation, Sine, Cosine, Exponential, UnaryFunctionDerivative, FunctionDerivative};
 
-use crate::numeric::extra::{Cos, Real, RealRef, Sin};
+use crate::numeric::extra::{Cos, Exp, Real, RealRef, Sin};
 
 use std::ops::{Add, Sub, Neg};
 
@@ -817,3 +817,57 @@ where
 
 record_real_matrix_operator_impl_value!(impl Cos for RecordMatrix { fn cos } record_matrix_cos_value);
 record_real_matrix_operator_impl_reference!(impl Cos for RecordMatrix { fn cos } record_matrix_cos_reference);
+
+#[track_caller]
+fn record_tensor_exp_value<'a, T, S, const D: usize>(
+    lhs: RecordTensor<'a, T, S, D>,
+) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+where
+    T: Numeric + Real + Primitive,
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    S: TensorRef<(T, Index), D>,
+{
+    lhs.unary(Exponential::<T>::function, Exponential::<T>::d_function_dx)
+}
+
+#[track_caller]
+fn record_tensor_exp_reference<'a, T, S, const D: usize>(
+    lhs: &RecordTensor<'a, T, S, D>,
+) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+where
+    T: Numeric + Real + Primitive,
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    S: TensorRef<(T, Index), D>,
+{
+    lhs.unary(Exponential::<T>::function, Exponential::<T>::d_function_dx)
+}
+
+record_real_tensor_operator_impl_value!(impl Exp for RecordTensor { fn exp } record_tensor_exp_value);
+record_real_tensor_operator_impl_reference!(impl Exp for RecordTensor { fn exp } record_tensor_exp_reference);
+
+#[track_caller]
+fn record_matrix_exp_reference<'a, T, S>(
+    lhs: &RecordMatrix<'a, T, S>,
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Real + Primitive,
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    S: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    lhs.unary(Exponential::<T>::function, Exponential::<T>::d_function_dx)
+}
+
+#[track_caller]
+fn record_matrix_exp_value<'a, T, S>(
+    lhs: RecordMatrix<'a, T, S>,
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Real + Primitive,
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    S: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    lhs.unary(Exponential::<T>::function, Exponential::<T>::d_function_dx)
+}
+
+record_real_matrix_operator_impl_value!(impl Exp for RecordMatrix { fn exp } record_matrix_exp_value);
+record_real_matrix_operator_impl_reference!(impl Exp for RecordMatrix { fn exp } record_matrix_exp_reference);
