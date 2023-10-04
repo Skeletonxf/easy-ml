@@ -3,14 +3,14 @@ use crate::tensors::Tensor;
 use crate::tensors::views::TensorRef;
 use crate::matrices::Matrix;
 use crate::matrices::views::{MatrixRef, NoInteriorMutability};
-use crate::differentiation::{Primitive, Index};
+use crate::differentiation::{Primitive, WengertList, Index};
 use crate::differentiation::record_operations::are_same_list;
 use crate::differentiation::{RecordContainer, RecordTensor, RecordMatrix};
-use crate::differentiation::functions::{Addition, Subtraction, Negation, NaturalLogarithm, Sine, SquareRoot, Cosine, Exponential, UnaryFunctionDerivative, FunctionDerivative};
+use crate::differentiation::functions::{Addition, Subtraction, Multiplication, Negation, NaturalLogarithm, Sine, SquareRoot, Cosine, Exponential, UnaryFunctionDerivative, FunctionDerivative};
 
 use crate::numeric::extra::{Cos, Exp, Ln, Real, RealRef, Sin, Sqrt};
 
-use std::ops::{Add, Sub, Neg};
+use std::ops::{Add, Sub, Mul, Neg};
 
 /**
  * A record container is displayed by showing its number components.
@@ -655,6 +655,225 @@ record_matrix_operator_impl_value_value!(impl Sub for RecordMatrix { fn sub } re
 record_matrix_operator_impl_value_reference!(impl Sub for RecordMatrix { fn sub } record_matrix_sub_value_reference);
 record_matrix_operator_impl_reference_value!(impl Sub for RecordMatrix { fn sub } record_matrix_sub_reference_value);
 record_matrix_operator_impl_reference_reference!(impl Sub for RecordMatrix { fn sub } record_matrix_sub_allocate);
+
+fn record_scalar_product<'l, 'r, T, S1, S2>(
+    left_iter: S1,
+    right_iter: S2,
+    history: Option<&WengertList<T>>,
+) -> (T, Index)
+where
+    T: Numeric + Primitive,
+    T: 'l,
+    T: 'r,
+    for<'a> &'a T: NumericRef<T>,
+    S1: Iterator<Item = &'l (T, Index)>,
+    S2: Iterator<Item = &'r (T, Index)>,
+{
+    match history {
+        None => (
+            crate::tensors::operations::scalar_product::<T, _, _>(
+                left_iter.map(|(x, _)| x),
+                right_iter.map(|(y, _)| y)
+            ),
+            0
+        ),
+        Some(history) => {
+            let products = left_iter.zip(right_iter).map(|((x, x_index), (y, y_index))| {
+                let z = Multiplication::<T>::function(x.clone(), y.clone());
+                (z, history.append_binary(
+                    *x_index,
+                    Multiplication::<T>::d_function_dx(x.clone(), y.clone()),
+                    *y_index,
+                    Multiplication::<T>::d_function_dy(x.clone(), y.clone()),
+                ))
+            });
+            products.reduce(|(x, x_index), (y, y_index)| {
+                let z = Addition::<T>::function(x.clone(), y.clone());
+                (z, history.append_binary(
+                    x_index,
+                    Addition::<T>::d_function_dx(x.clone(), y.clone()),
+                    y_index,
+                    Addition::<T>::d_function_dy(x, y)
+                ))
+            }).unwrap() // this won't be called on 0 length iterators
+        }
+    }
+}
+
+#[track_caller]
+fn record_tensor_matrix_multiply<'a, T, S1, S2>(
+    lhs: &RecordTensor<'a, T, S1, 2>,
+    rhs: &RecordTensor<'a, T, S2, 2>
+) -> RecordTensor<'a, T, Tensor<(T, Index), 2>, 2>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), 2>,
+    S2: TensorRef<(T, Index), 2>,
+{
+    use crate::tensors::views::{TensorIndex, TensorView};
+    use crate::tensors::indexing::TensorReferenceIterator;
+
+    assert!(
+        are_same_list(lhs.history, rhs.history),
+        "Record containers must be using the same WengertList"
+    );
+
+    // TODO: Deduplicate this validation, proper error return types so can reuse messages
+    let left_shape = lhs.view_shape();
+    let right_shape = rhs.view_shape();
+    if left_shape[1].1 != right_shape[0].1 {
+        panic!(
+            "Mismatched record tensors, left is {:?}, right is {:?}, * is only defined for MxN * NxL dimension lengths",
+            lhs.view_shape(), rhs.view_shape()
+        );
+    }
+    if left_shape[0].0 == right_shape[1].0 {
+        panic!(
+            "Matrix multiplication of record tensors with shapes left {:?} and right {:?} would \
+             create duplicate dimension names as the shape {:?}. Rename one or both of the \
+             dimension names in the input to prevent this. * is defined as MxN * NxL = MxL",
+            left_shape,
+            right_shape,
+            [left_shape[0], right_shape[1]]
+        )
+    }
+
+    let history = match (lhs.history, rhs.history) {
+        (None, None) => None,
+        (Some(history), _) => Some(history),
+        (_, Some(history)) => Some(history),
+    };
+
+    // LxM * MxN -> LxN
+    // [a,b,c; d,e,f] * [g,h; i,j; k,l] -> [a*g+b*i+c*k, a*h+b*j+c*l; d*g+e*i+f*k, d*h+e*j+f*l]
+    // Matrix multiplication gives us another Matrix where each element [i,j] is the dot product
+    // of the i'th row in the left matrix and the j'th column in the right matrix.
+    let mut tensor = Tensor::empty([lhs.view_shape()[0], rhs.view_shape()[1]], (T::zero(), 0));
+    for ([i, j], x) in tensor.iter_reference_mut().with_index() {
+        // Select the i'th row in the left tensor to give us a vector
+        let left = TensorIndex::from(&lhs, [(lhs.view_shape()[0].0, i)]);
+        // Select the j'th column in the right tensor to give us a vector
+        let right = TensorIndex::from(&rhs, [(rhs.view_shape()[1].0, j)]);
+        // Since we checked earlier that we have MxN * NxL these two vectors have the same length.
+        *x = record_scalar_product::<T, _, _>(
+            TensorReferenceIterator::from(&left),
+            TensorReferenceIterator::from(&right),
+            history,
+        )
+    }
+    RecordTensor::from_existing(history, TensorView::from(tensor))
+}
+
+#[track_caller]
+fn record_tensor_matrix_multiply_value_value<'a, T, S1, S2>(
+    lhs: RecordTensor<'a, T, S1, 2>,
+    rhs: RecordTensor<'a, T, S2, 2>
+) -> RecordTensor<'a, T, Tensor<(T, Index), 2>, 2>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), 2>,
+    S2: TensorRef<(T, Index), 2>,
+{
+    record_tensor_matrix_multiply::<T, S1, S2>(&lhs, &rhs)
+}
+
+#[track_caller]
+fn record_tensor_matrix_multiply_value_reference<'a, T, S1, S2>(
+    lhs: RecordTensor<'a, T, S1, 2>,
+    rhs: &RecordTensor<'a, T, S2, 2>
+) -> RecordTensor<'a, T, Tensor<(T, Index), 2>, 2>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), 2>,
+    S2: TensorRef<(T, Index), 2>,
+{
+    record_tensor_matrix_multiply::<T, S1, S2>(&lhs, rhs)
+}
+
+#[track_caller]
+fn record_tensor_matrix_multiply_reference_value<'a, T, S1, S2>(
+    lhs: &RecordTensor<'a, T, S1, 2>,
+    rhs: RecordTensor<'a, T, S2, 2>
+) -> RecordTensor<'a, T, Tensor<(T, Index), 2>, 2>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), 2>,
+    S2: TensorRef<(T, Index), 2>,
+{
+    record_tensor_matrix_multiply::<T, S1, S2>(lhs, &rhs)
+}
+
+/**
+ * Matrix multiplication for two record tensors with both referenced.
+ */
+impl<'a, T, S1, S2> Mul<&RecordTensor<'a, T, S2, 2>> for &RecordTensor<'a, T, S1, 2>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), 2>,
+    S2: TensorRef<(T, Index), 2>,
+{
+    type Output = RecordTensor<'a, T, Tensor<(T, Index), 2>, 2>;
+    #[track_caller]
+    fn mul(self, rhs: &RecordTensor<'a, T, S2, 2>) -> Self::Output {
+        record_tensor_matrix_multiply::<T, S1, S2>(self, rhs)
+    }
+}
+
+/**
+ * Matrix multiplication for two record tensors of the same type.
+ */
+impl<'a, T, S1, S2> Mul<RecordTensor<'a, T, S2, 2>> for RecordTensor<'a, T, S1, 2>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), 2>,
+    S2: TensorRef<(T, Index), 2>,
+{
+    type Output = RecordTensor<'a, T, Tensor<(T, Index), 2>, 2>;
+    #[track_caller]
+    fn mul(self, rhs: RecordTensor<'a, T, S2, 2>) -> Self::Output {
+        record_tensor_matrix_multiply_value_value::<T, S1, S2>(self, rhs)
+    }
+}
+
+/**
+ * Matrix multiplication for two record tensors with the right referenced.
+ */
+impl<'a, T, S1, S2> Mul<&RecordTensor<'a, T, S2, 2>> for RecordTensor<'a, T, S1, 2>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), 2>,
+    S2: TensorRef<(T, Index), 2>,
+{
+    type Output = RecordTensor<'a, T, Tensor<(T, Index), 2>, 2>;
+    #[track_caller]
+    fn mul(self, rhs: &RecordTensor<'a, T, S2, 2>) -> Self::Output {
+        record_tensor_matrix_multiply_value_reference::<T, S1, S2>(self, rhs)
+    }
+}
+
+/**
+ * Matrix multiplication for two record tensors with the left referenced.
+ */
+impl<'a, T, S1, S2> Mul<RecordTensor<'a, T, S2, 2>> for &RecordTensor<'a, T, S1, 2>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: TensorRef<(T, Index), 2>,
+    S2: TensorRef<(T, Index), 2>,
+{
+    type Output = RecordTensor<'a, T, Tensor<(T, Index), 2>, 2>;
+    #[track_caller]
+    fn mul(self, rhs: RecordTensor<'a, T, S2, 2>) -> Self::Output {
+        record_tensor_matrix_multiply_reference_value::<T, S1, S2>(self, rhs)
+    }
+}
 
 #[track_caller]
 fn record_tensor_neg_value<'a, T, S, const D: usize>(

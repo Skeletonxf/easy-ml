@@ -375,7 +375,7 @@ where
  * https://en.wikipedia.org/wiki/Dot_product
  */
 #[inline]
-fn scalar_product<'l, 'r, T, S1, S2>(left_iter: S1, right_iter: S2) -> T
+pub(crate) fn scalar_product<'l, 'r, T, S1, S2>(left_iter: S1, right_iter: S2) -> T
 where
     T: Numeric,
     T: 'l,
