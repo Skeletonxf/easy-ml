@@ -1976,3 +1976,98 @@ where
         self.numbers.source_ref_mut().get_reference_unchecked_mut(row, column)
     }
 }
+
+#[test]
+fn matrix_multiplication_derivatives_are_the_same() {
+    #[rustfmt::skip]
+    let a = Tensor::from(
+        [("r", 4), ("c", 3)],
+        vec![
+            1.0, 2.0, 3.0,
+            4.0, 5.0, 6.0,
+            7.0, 8.0, 9.0,
+            0.0, 5.0, 2.0
+        ]
+    );
+    let b = a.transpose(["c", "r"]);
+    let history = WengertList::new();
+    let also_history: WengertList<f64> = WengertList::new();
+    let tensor_of_records_a = a.map(|x| Record::variable(x, &history));
+    let tensor_of_records_b = b.map(|x| Record::variable(x, &history));
+    let tensor_of_records_c = &tensor_of_records_a * &tensor_of_records_b;
+    let record_tensor_a = RecordTensor::variables(&also_history, a);
+    let record_tensor_b = RecordTensor::variables(&also_history, b);
+    let record_tensor_c = &record_tensor_a * &record_tensor_b;
+
+    // C should be calculated the same in terms of the actual number
+    assert_eq!(
+        tensor_of_records_c.map(|r| r.number),
+        TensorView::from(&record_tensor_c).map(|(n, _)| n)
+    );
+
+    let tensor_of_records_derivatives = tensor_of_records_c.map(|r| r.derivatives());
+    let tensor_of_records_a_derivatives = tensor_of_records_derivatives
+        .map(|d| d.at_tensor(&record_tensor_a));
+    let tensor_of_records_b_derivatives = tensor_of_records_derivatives
+        .map(|d| d.at_tensor(&record_tensor_b));
+
+    let record_tensor_derivatives = record_tensor_c.derivatives().unwrap();
+    let record_tensor_a_derivatives = record_tensor_derivatives
+        .map(|d| d.at_tensor(&record_tensor_a));
+    let record_tensor_b_derivatives = record_tensor_derivatives
+        .map(|d| d.at_tensor(&record_tensor_b));
+
+    // Every calculated derivative should match exactly
+    assert_eq!(tensor_of_records_a_derivatives, record_tensor_a_derivatives);
+    assert_eq!(tensor_of_records_b_derivatives, record_tensor_b_derivatives);
+
+    // Verify C is actually calculated correctly
+    #[rustfmt::skip]
+    assert_eq!(
+        tensor_of_records_c.map(|r| r.number),
+        Tensor::from(
+            [("r", 4), ("c", 4)],
+            vec![
+                14.0, 32.0, 50.0, 16.0,
+                32.0, 77.0, 122.0, 37.0,
+                50.0, 122.0, 194.0, 58.0,
+                16.0, 37.0, 58.0, 29.0
+            ]
+        )
+    );
+    #[rustfmt::skip]
+    assert_eq!(
+        tensor_of_records_c.map(|r| r.number),
+        Tensor::from(
+            [("r", 4), ("c", 4)],
+            vec![
+                (1.0 * 1.0) + (2.0 * 2.0) + (3.0 * 3.0),
+                (1.0 * 4.0) + (2.0 * 5.0) + (3.0 * 6.0),
+                (1.0 * 7.0) + (2.0 * 8.0) + (3.0 * 9.0),
+                (1.0 * 0.0) + (2.0 * 5.0) + (3.0 * 2.0),
+
+                (4.0 * 1.0) + (5.0 * 2.0) + (6.0 * 3.0),
+                (4.0 * 4.0) + (5.0 * 5.0) + (6.0 * 6.0),
+                (4.0 * 7.0) + (5.0 * 8.0) + (6.0 * 9.0),
+                (4.0 * 0.0) + (5.0 * 5.0) + (6.0 * 2.0),
+
+                (7.0 * 1.0) + (8.0 * 2.0) + (9.0 * 3.0),
+                (7.0 * 4.0) + (8.0 * 5.0) + (9.0 * 6.0),
+                (7.0 * 7.0) + (8.0 * 8.0) + (9.0 * 9.0),
+                (7.0 * 0.0) + (8.0 * 5.0) + (9.0 * 2.0),
+
+                (0.0 * 1.0) + (5.0 * 2.0) + (2.0 * 3.0),
+                (0.0 * 4.0) + (5.0 * 5.0) + (2.0 * 6.0),
+                (0.0 * 7.0) + (5.0 * 8.0) + (2.0 * 9.0),
+                (0.0 * 0.0) + (5.0 * 5.0) + (2.0 * 2.0)
+            ]
+        )
+    );
+
+    // FIXME: Why does record tensor do fewer operations to arrive at the same result?
+    // Doesn't seem like this is actually a bug so is there a missed optimisation for standard
+    // record matrix multiplication impls?
+    //let tensor_of_records_derivatives = history.operations.borrow().clone();
+    //let record_tensor_derivatives = also_history.operations.borrow().clone();
+    //assert_eq!(tensor_of_records_derivatives.len(), record_tensor_derivatives.len());
+}
