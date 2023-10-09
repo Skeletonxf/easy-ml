@@ -2064,10 +2064,7 @@ fn matrix_multiplication_derivatives_are_the_same() {
         )
     );
 
-    // FIXME: Why does record tensor do fewer operations to arrive at the same result?
-    // Doesn't seem like this is actually a bug so is there a missed optimisation for standard
-    // record matrix multiplication impls?
-    //let tensor_of_records_derivatives = history.operations.borrow().clone();
-    //let record_tensor_derivatives = also_history.operations.borrow().clone();
-    //assert_eq!(tensor_of_records_derivatives.len(), record_tensor_derivatives.len());
+    let tensor_of_records_derivatives = history.operations.borrow().clone();
+    let record_tensor_derivatives = also_history.operations.borrow().clone();
+    assert_eq!(tensor_of_records_derivatives.len(), record_tensor_derivatives.len());
 }
