@@ -1977,6 +1977,101 @@ where
     }
 }
 
+// TODO: Delete these in version 2.0 as can add blanket impl to MatrixRef itself
+
+// # Safety
+//
+// Our inner `numbers` matrix has to implement MatrixRef correctly so by delegating to it
+// without changing any indexes or introducing interior mutability, we implement MatrixRef
+// correctly as well.
+/**
+ * RecordMatrix implements MatrixRef when the source does, returning references to the tuples
+ * of `T` and [`Index`](Index).
+ */
+unsafe impl<'a, T, S> MatrixRef<(T, Index)> for &RecordMatrix<'a, T, S>
+where
+    T: Primitive,
+    S: MatrixRef<(T, Index)>,
+{
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&(T, Index)> {
+        self.numbers.source_ref().try_get_reference(row, column)
+    }
+
+    fn view_rows(&self) -> Row {
+        self.numbers.source_ref().view_rows()
+    }
+
+    fn view_columns(&self) -> Column {
+        self.numbers.source_ref().view_columns()
+    }
+
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &(T, Index) {
+        self.numbers.source_ref().get_reference_unchecked(row, column)
+    }
+
+    fn data_layout(&self) -> crate::matrices::views::DataLayout {
+        self.numbers.source_ref().data_layout()
+    }
+}
+
+// # Safety
+//
+// Our inner `numbers` matrix has to implement MatrixRef correctly so by delegating to it
+// without changing any indexes or introducing interior mutability, we implement MatrixRef
+// correctly as well.
+/**
+ * RecordMatrix implements MatrixRef when the source does, returning references to the tuples
+ * of `T` and [`Index`](Index).
+ */
+unsafe impl<'a, T, S> MatrixRef<(T, Index)> for &mut RecordMatrix<'a, T, S>
+where
+    T: Primitive,
+    S: MatrixRef<(T, Index)>,
+{
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&(T, Index)> {
+        self.numbers.source_ref().try_get_reference(row, column)
+    }
+
+    fn view_rows(&self) -> Row {
+        self.numbers.source_ref().view_rows()
+    }
+
+    fn view_columns(&self) -> Column {
+        self.numbers.source_ref().view_columns()
+    }
+
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &(T, Index) {
+        self.numbers.source_ref().get_reference_unchecked(row, column)
+    }
+
+    fn data_layout(&self) -> crate::matrices::views::DataLayout {
+        self.numbers.source_ref().data_layout()
+    }
+}
+
+// # Safety
+//
+// Our inner `numbers` matrix has to implement MatrixMut correctly so by delegating to it
+// without changing any indexes or introducing interior mutability, we implement MatrixMut
+// correctly as well.
+/**
+ * RecordMatrix implements MatrixMut when the source does, returning mutable references to the
+ * tuples of `T` and [`Index`](Index).
+ */
+unsafe impl<'a, T, S> MatrixMut<(T, Index)> for &mut RecordMatrix<'a, T, S>
+where
+    T: Primitive,
+    S: MatrixMut<(T, Index)>,
+{
+    fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut (T, Index)> {
+        self.numbers.source_ref_mut().try_get_reference_mut(row, column)
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut (T, Index) {
+        self.numbers.source_ref_mut().get_reference_unchecked_mut(row, column)
+    }
+}
+
 #[test]
 fn matrix_multiplication_derivatives_are_the_same() {
     #[rustfmt::skip]
@@ -2067,4 +2162,93 @@ fn matrix_multiplication_derivatives_are_the_same() {
     let tensor_of_records_derivatives = history.operations.borrow().clone();
     let record_tensor_derivatives = also_history.operations.borrow().clone();
     assert_eq!(tensor_of_records_derivatives.len(), record_tensor_derivatives.len());
+}
+
+#[test]
+fn matrix_view_matrix_multiplication_derivatives_are_the_same() {
+    #[rustfmt::skip]
+    let a = Matrix::from(vec![
+        vec![ 1.0, 2.0, 3.0 ],
+        vec![ 4.0, 5.0, 6.0 ],
+        vec![ 7.0, 8.0, 9.0 ],
+        vec![ 0.0, 5.0, 2.0 ]
+    ]);
+    let b = a.transpose();
+    let history = WengertList::new();
+    let also_history: WengertList<f64> = WengertList::new();
+    let matrix_of_records_a = a.map(|x| Record::variable(x, &history));
+    let matrix_of_records_b = b.map(|x| Record::variable(x, &history));
+    let matrix_of_records_c = &matrix_of_records_a * &matrix_of_records_b;
+    let record_matrix_a = RecordMatrix::variables(&also_history, a);
+    let record_matrix_b = RecordMatrix::variables(&also_history, b);
+    let record_matrix_c = &record_matrix_a * &record_matrix_b;
+
+    // C should be calculated the same in terms of the actual number
+    assert_eq!(
+        matrix_of_records_c.map(|r| r.number),
+        MatrixView::from(&record_matrix_c).map(|(n, _)| n)
+    );
+
+    let matrix_of_records_derivatives = matrix_of_records_c.map(|r| r.derivatives());
+    let matrix_of_records_a_derivatives = matrix_of_records_derivatives
+        .map(|d| d.at_matrix(&record_matrix_a));
+    let matrix_of_records_b_derivatives = matrix_of_records_derivatives
+        .map(|d| d.at_matrix(&record_matrix_b));
+
+    let record_matrix_derivatives = record_matrix_c.derivatives().unwrap();
+    let record_matrix_a_derivatives = record_matrix_derivatives
+        .map(|d| d.at_matrix(&record_matrix_a));
+    let record_matrix_b_derivatives = record_matrix_derivatives
+        .map(|d| d.at_matrix(&record_matrix_b));
+
+    // Every calculated derivative should match exactly
+    assert_eq!(matrix_of_records_a_derivatives, record_matrix_a_derivatives);
+    assert_eq!(matrix_of_records_b_derivatives, record_matrix_b_derivatives);
+
+    // Verify C is actually calculated correctly
+    #[rustfmt::skip]
+    assert_eq!(
+        matrix_of_records_c.map(|r| r.number),
+        Matrix::from(vec![
+                vec![ 14.0, 32.0, 50.0, 16.0 ],
+                vec![ 32.0, 77.0, 122.0, 37.0 ],
+                vec![ 50.0, 122.0, 194.0, 58.0 ],
+                vec![ 16.0, 37.0, 58.0, 29.0 ]
+            ]
+        )
+    );
+    #[rustfmt::skip]
+    assert_eq!(
+        matrix_of_records_c.map(|r| r.number),
+        Matrix::from(vec![
+                vec![
+                    (1.0 * 1.0) + (2.0 * 2.0) + (3.0 * 3.0),
+                    (1.0 * 4.0) + (2.0 * 5.0) + (3.0 * 6.0),
+                    (1.0 * 7.0) + (2.0 * 8.0) + (3.0 * 9.0),
+                    (1.0 * 0.0) + (2.0 * 5.0) + (3.0 * 2.0),
+                ],
+                vec![
+                    (4.0 * 1.0) + (5.0 * 2.0) + (6.0 * 3.0),
+                    (4.0 * 4.0) + (5.0 * 5.0) + (6.0 * 6.0),
+                    (4.0 * 7.0) + (5.0 * 8.0) + (6.0 * 9.0),
+                    (4.0 * 0.0) + (5.0 * 5.0) + (6.0 * 2.0),
+                ],
+                vec![
+                    (7.0 * 1.0) + (8.0 * 2.0) + (9.0 * 3.0),
+                    (7.0 * 4.0) + (8.0 * 5.0) + (9.0 * 6.0),
+                    (7.0 * 7.0) + (8.0 * 8.0) + (9.0 * 9.0),
+                    (7.0 * 0.0) + (8.0 * 5.0) + (9.0 * 2.0),
+                ],
+                vec![
+                    (0.0 * 1.0) + (5.0 * 2.0) + (2.0 * 3.0),
+                    (0.0 * 4.0) + (5.0 * 5.0) + (2.0 * 6.0),
+                    (0.0 * 7.0) + (5.0 * 8.0) + (2.0 * 9.0),
+                    (0.0 * 0.0) + (5.0 * 5.0) + (2.0 * 2.0)
+                ]
+        ])
+    );
+
+    let matrix_of_records_derivatives = history.operations.borrow().clone();
+    let record_matrix_derivatives = also_history.operations.borrow().clone();
+    //assert_eq!(matrix_of_records_derivatives.len(), record_matrix_derivatives.len());
 }

@@ -876,6 +876,157 @@ where
 }
 
 #[track_caller]
+fn record_matrix_matrix_multiply<'a, T, S1, S2>(
+    lhs: &RecordMatrix<'a, T, S1>,
+    rhs: &RecordMatrix<'a, T, S2>,
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    use crate::matrices::views::MatrixView;
+    use crate::matrices::iterators::{RowReferenceIterator, ColumnReferenceIterator};
+    // LxM * MxN -> LxN
+    assert!(
+        lhs.view_columns() == rhs.view_rows(),
+        "Mismatched Matrices, left is {}x{}, right is {}x{}, * is only defined for MxN * NxL",
+        lhs.view_rows(),
+        lhs.view_columns(),
+        rhs.view_rows(),
+        rhs.view_columns()
+    );
+
+    let history = match (lhs.history, rhs.history) {
+        (None, None) => None,
+        (Some(history), _) => Some(history),
+        (_, Some(history)) => Some(history),
+    };
+
+    let mut result = Matrix::empty((T::zero(), 0), (lhs.view_rows(), rhs.view_columns()));
+    for ((i, j), x) in result.row_major_reference_mut_iter().with_index() {
+        // Select the i'th row in the left tensor to give us a vector
+        let left = RowReferenceIterator::from(lhs, i);
+        // Select the j'th column in the right tensor to give us a vector
+        let right = ColumnReferenceIterator::from(rhs, j);
+        // Since we checked earlier that we have MxN * NxL these two vectors have the same length.
+        *x = record_scalar_product::<T, _, _>(left, right, history,);
+    }
+    RecordMatrix::from_existing(history, MatrixView::from(result))
+}
+
+#[track_caller]
+fn record_matrix_matrix_multiply_value_value<'a, T, S1, S2>(
+    lhs: RecordMatrix<'a, T, S1>,
+    rhs: RecordMatrix<'a, T, S2>
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    record_matrix_matrix_multiply::<T, S1, S2>(&lhs, &rhs)
+}
+
+#[track_caller]
+fn record_matrix_matrix_multiply_value_reference<'a, T, S1, S2>(
+    lhs: RecordMatrix<'a, T, S1>,
+    rhs: &RecordMatrix<'a, T, S2>
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    record_matrix_matrix_multiply::<T, S1, S2>(&lhs, rhs)
+}
+
+#[track_caller]
+fn record_matrix_matrix_multiply_reference_value<'a, T, S1, S2>(
+    lhs: &RecordMatrix<'a, T, S1>,
+    rhs: RecordMatrix<'a, T, S2>,
+) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    record_matrix_matrix_multiply::<T, S1, S2>(lhs, &rhs)
+}
+
+/**
+ * Matrix multiplication for two record matrices with both referenced.
+ */
+impl<'a, T, S1, S2> Mul<&RecordMatrix<'a, T, S2>> for &RecordMatrix<'a, T, S1>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+    #[track_caller]
+    fn mul(self, rhs: &RecordMatrix<'a, T, S2>) -> Self::Output {
+        record_matrix_matrix_multiply::<T, S1, S2>(self, rhs)
+    }
+}
+
+/**
+ * Matrix multiplication for two record matrices of the same type.
+ */
+impl<'a, T, S1, S2> Mul<RecordMatrix<'a, T, S2>> for RecordMatrix<'a, T, S1>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+    #[track_caller]
+    fn mul(self, rhs: RecordMatrix<'a, T, S2>) -> Self::Output {
+        record_matrix_matrix_multiply_value_value::<T, S1, S2>(self, rhs)
+    }
+}
+
+/**
+ * Matrix multiplication for two record matrices with the right referenced.
+ */
+impl<'a, T, S1, S2> Mul<&RecordMatrix<'a, T, S2>> for RecordMatrix<'a, T, S1>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+    #[track_caller]
+    fn mul(self, rhs: &RecordMatrix<'a, T, S2>) -> Self::Output {
+        record_matrix_matrix_multiply_value_reference::<T, S1, S2>(self, rhs)
+    }
+}
+
+/**
+ * Matrix multiplication for two record matrices with the left referenced.
+ */
+impl<'a, T, S1, S2> Mul<RecordMatrix<'a, T, S2>> for &RecordMatrix<'a, T, S1>
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixRef<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+    #[track_caller]
+    fn mul(self, rhs: RecordMatrix<'a, T, S2>) -> Self::Output {
+        record_matrix_matrix_multiply_reference_value::<T, S1, S2>(self, rhs)
+    }
+}
+
+#[track_caller]
 fn record_tensor_neg_value<'a, T, S, const D: usize>(
     lhs: RecordTensor<'a, T, S, D>,
 ) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
