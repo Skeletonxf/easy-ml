@@ -173,6 +173,7 @@ impl<const D: usize> DimensionMappings<D> {
 pub fn is_square<const D: usize>(shape: &[(Dimension, usize); D]) -> bool {
     if D > 1 {
         let first = shape[0].1;
+        #[allow(clippy::needless_range_loop)]
         for d in 1..D {
             if shape[d].1 != first {
                 return false;

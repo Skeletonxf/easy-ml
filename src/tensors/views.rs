@@ -105,6 +105,7 @@ pub unsafe trait TensorRef<T, const D: usize> {
      * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [TensorRef]: TensorRef
      */
+    #[allow(clippy::missing_safety_doc)] // it's not missing
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T;
 
     /**
@@ -232,6 +233,7 @@ pub unsafe trait TensorMut<T, const D: usize>: TensorRef<T, D> {
      * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [TensorRef]: TensorRef
      */
+    #[allow(clippy::missing_safety_doc)] // it's not missing
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T;
 }
 
@@ -730,6 +732,7 @@ where
         // Transposition is essentially reordering, but we retain the dimension name ordering
         // of the original order, this means we may swap dimension lengths, but the dimensions
         // will not change order.
+        #[allow(clippy::needless_range_loop)]
         for d in 0..D {
             reordered.shape[d].0 = shape[d].0;
         }

@@ -100,6 +100,7 @@ pub unsafe trait MatrixRef<T> {
      * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [MatrixRef]: MatrixRef
      */
+    #[allow(clippy::missing_safety_doc)] // it's not missing
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T;
 
     /**
@@ -136,6 +137,7 @@ pub unsafe trait MatrixMut<T>: MatrixRef<T> {
      * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [MatrixRef]: MatrixRef
      */
+    #[allow(clippy::missing_safety_doc)] // it's not missing
     unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T;
 }
 
@@ -304,6 +306,7 @@ where
      * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [MatrixRef]: MatrixRef
      */
+    #[allow(clippy::missing_safety_doc)] // it's not missing
     pub unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
         self.source.get_reference_unchecked(row, column)
     }
@@ -638,6 +641,7 @@ where
      * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [MatrixRef]: MatrixRef
      */
+    #[allow(clippy::missing_safety_doc)] // it's not missing
     pub unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
         self.source.get_reference_unchecked_mut(row, column)
     }

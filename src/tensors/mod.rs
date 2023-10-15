@@ -319,7 +319,7 @@ impl<T, const D: usize> Tensor<T, D> {
     {
         let length = dimensions::elements(&shape);
         let mut data = Vec::with_capacity(length);
-        let iterator = ShapeIterator::from(shape.clone());
+        let iterator = ShapeIterator::from(shape);
         for index in iterator {
             data.push(producer(index));
         }
@@ -703,6 +703,7 @@ impl<T, const D: usize> Tensor<T, D> {
         if crate::tensors::dimensions::has_duplicates_names(&dimensions) {
             panic!("Dimension names must all be unique: {:?}", &dimensions);
         }
+        #[allow(clippy::needless_range_loop)]
         for d in 0..D {
             self.shape[d].0 = dimensions[d];
         }
@@ -1165,6 +1166,7 @@ where
         // Transposition is essentially reordering, but we retain the dimension name ordering
         // of the original order, this means we may swap dimension lengths, but the dimensions
         // will not change order.
+        #[allow(clippy::needless_range_loop)]
         for d in 0..D {
             reordered.shape[d].0 = shape[d].0;
         }
@@ -1196,6 +1198,7 @@ where
         // Transposition is essentially reordering, but we retain the dimension name ordering
         // we had before, this means we may swap dimension lengths, but the dimensions
         // will not change order.
+        #[allow(clippy::needless_range_loop)]
         for d in 0..D {
             self.shape[d].0 = shape[d].0;
         }

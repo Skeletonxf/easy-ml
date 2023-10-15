@@ -626,7 +626,7 @@ where
         // our source, we can just return the length of each range now
         let mut shape = self.source.view_shape();
         // TODO: zip would work really nicely here but it's not stable yet
-        for (mut pair, range) in shape.iter_mut().zip(self.range.iter()) {
+        for (pair, range) in shape.iter_mut().zip(self.range.iter()) {
             pair.1 = range.length;
         }
         shape
@@ -706,7 +706,7 @@ where
         // our source, we can just return subtract length of each mask now
         let mut shape = self.source.view_shape();
         // TODO: zip would work really nicely here but it's not stable yet
-        for (mut pair, mask) in shape.iter_mut().zip(self.mask.iter()) {
+        for (pair, mask) in shape.iter_mut().zip(self.mask.iter()) {
             pair.1 -= mask.length;
         }
         shape

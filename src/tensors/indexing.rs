@@ -262,6 +262,7 @@ where
      */
     // NOTE: This aliases with TensorRef::get_reference_unchecked but the TensorRef impl
     // just calls this and the signatures match anyway, so there are no potential issues.
+    #[allow(clippy::missing_safety_doc)] // it's not missing
     pub unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         self.source
             .get_reference_unchecked(self.dimension_mapping.map_dimensions_to_source(&indexes))
@@ -400,6 +401,7 @@ where
      */
      // NOTE: This aliases with TensorRef::get_reference_unchecked_mut but the TensorMut impl
      // just calls this and the signatures match anyway, so there are no potential issues.
+    #[allow(clippy::missing_safety_doc)] // it's not missing
     pub unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
         self.source
             .get_reference_unchecked_mut(self.dimension_mapping.map_dimensions_to_source(&indexes))
