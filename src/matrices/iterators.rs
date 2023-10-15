@@ -1503,8 +1503,7 @@ impl<T, S: MatrixMut<T> + NoInteriorMutability> ColumnMajorOwnedIterator<T, S> {
     }
 }
 
-impl<T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnMajorOwnedIterator<T, S>
-{
+impl<T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnMajorOwnedIterator<T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1527,7 +1526,8 @@ impl<T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnMajorOwnedIte
             // could otherwise make our cursor read the same data twice.
             let producer = self.producer;
             let dummy = producer();
-            let value = std::mem::replace(self.matrix.get_reference_unchecked_mut(row, column), dummy);
+            let value =
+                std::mem::replace(self.matrix.get_reference_unchecked_mut(row, column), dummy);
             value
         })
     }
@@ -1666,8 +1666,7 @@ impl<T, S: MatrixMut<T> + NoInteriorMutability> RowMajorOwnedIterator<T, S> {
     }
 }
 
-impl<T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowMajorOwnedIterator<T, S>
-{
+impl<T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowMajorOwnedIterator<T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1690,7 +1689,8 @@ impl<T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowMajorOwnedIterat
             // could otherwise make our cursor read the same data twice.
             let producer = self.producer;
             let dummy = producer();
-            let value = std::mem::replace(self.matrix.get_reference_unchecked_mut(row, column), dummy);
+            let value =
+                std::mem::replace(self.matrix.get_reference_unchecked_mut(row, column), dummy);
             value
         })
     }

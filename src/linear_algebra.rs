@@ -1044,6 +1044,7 @@ where
     cholesky_decomposition_less_generic::<T, S>(&tensor.into())
 }
 
+#[rustfmt::skip]
 fn cholesky_decomposition_less_generic<T, S>(tensor: &TensorView<T, S, 2>) -> Option<Tensor<T, 2>>
 where
     T: Numeric + Sqrt<Output = T>,
@@ -1059,6 +1060,7 @@ where
     let mut lower_triangular_indexing = lower_triangular.index_mut();
     let tensor_indexing = tensor.index();
     let n = shape[0].1;
+
     for i in 0..n {
         // For each column j we need to compute all i, j entries
         // before incrementing j further as the diagonals depend
@@ -1066,6 +1068,7 @@ where
         // and the elements below the diagonal depend on the diagonal
         // of their column and elements below the diagonal up to that
         // column.
+
         for j in 0..=i {
             // For the i = j case we compute the sum of squares, otherwise we're
             // computing a sum of L_ik * L_jk using the current column and prior columns
@@ -1234,7 +1237,7 @@ where
 }
 
 fn ldlt_decomposition_less_generic<T, S>(
-    tensor: &TensorView<T, S, 2>
+    tensor: &TensorView<T, S, 2>,
 ) -> Option<LDLTDecompositionTensor<T>>
 where
     T: Numeric,
@@ -1339,7 +1342,7 @@ impl<T> QRDecomposition<T> {
 
 fn householder_matrix_tensor<T: Numeric + Real>(
     vector: Vec<T>,
-    names: [Dimension; 2]
+    names: [Dimension; 2],
 ) -> Tensor<T, 2>
 where
     for<'a> &'a T: NumericRef<T> + RealRef<T>,
@@ -1481,7 +1484,7 @@ where
 }
 
 fn qr_decomposition_less_generic<T, S>(
-    tensor: &TensorView<T, S, 2>
+    tensor: &TensorView<T, S, 2>,
 ) -> Option<QRDecompositionTensor<T>>
 where
     T: Numeric + Real,
@@ -1506,7 +1509,11 @@ where
         // been zeroed. However, we then immediately discard all but the first column of that
         // minor, so we skip the minor step and compute directly the first column of the minor
         // we would have taken.
-        let submatrix_first_column = r.select([(shape[1].0, c)]).iter().skip(c).collect::<Vec<_>>();
+        let submatrix_first_column = r
+            .select([(shape[1].0, c)])
+            .iter()
+            .skip(c)
+            .collect::<Vec<_>>();
         // compute the (M-column)x(M-column) householder matrix
         let h = householder_matrix_tensor::<T>(submatrix_first_column, names);
         // pad the h into the bottom right of an identity matrix so it is MxM
@@ -1516,10 +1523,7 @@ where
         // 0 H H
         let h = {
             let h_indexing = h.index();
-            let mut identity = Tensor::diagonal(
-                [(shape[0].0, rows), (shape[1].0, rows)],
-                T::one()
-            );
+            let mut identity = Tensor::diagonal([(shape[0].0, rows), (shape[1].0, rows)], T::one());
             // the column we're on is the same as how many steps we inset the
             // householder matrix into the identity
             let inset = c;

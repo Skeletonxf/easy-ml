@@ -34,10 +34,11 @@
  * you have to import the trait as well as have a type that implements it!
  */
 
-use crate::differentiation::{Primitive, Record, WengertList};
 use crate::differentiation::functions::{
-    Addition, Subtraction, NaturalLogarithm, Multiplication, Division, Sine, SquareRoot, Cosine, Exponential, UnaryFunctionDerivative, FunctionDerivative,
+    Addition, Cosine, Division, Exponential, FunctionDerivative, Multiplication, NaturalLogarithm,
+    Sine, SquareRoot, Subtraction, UnaryFunctionDerivative,
 };
+use crate::differentiation::{Primitive, Record, WengertList};
 use crate::numeric::extra::{Cos, Exp, Ln, Pi, Pow, Real, RealRef, Sin, Sqrt};
 use crate::numeric::{FromUsize, Numeric, NumericRef, ZeroOne};
 use std::cmp::Ordering;
@@ -117,7 +118,7 @@ pub(crate) fn same_lists<T: Primitive>(list_a: &WengertList<T>, list_b: &Wengert
 /// Compares two Options of WengertList references directly.
 pub(crate) fn are_same_list<T: Primitive>(
     list_a: Option<&WengertList<T>>,
-    list_b: Option<&WengertList<T>>
+    list_b: Option<&WengertList<T>>,
 ) -> bool {
     match (list_a, list_b) {
         (None, None) => true,
@@ -189,16 +190,14 @@ where
                 history: None,
                 index: 0,
             },
-            Some(history) => {
-                Record {
-                    number: Addition::<T>::function(self.number.clone(), rhs.clone()),
-                    history: Some(history),
-                    index: history.append_unary(
-                        self.index,
-                        Addition::<T>::d_function_dx(self.number.clone(), rhs.clone()),
-                    ),
-                }
-            }
+            Some(history) => Record {
+                number: Addition::<T>::function(self.number.clone(), rhs.clone()),
+                history: Some(history),
+                index: history.append_unary(
+                    self.index,
+                    Addition::<T>::d_function_dx(self.number.clone(), rhs.clone()),
+                ),
+            },
         }
     }
 }
@@ -382,16 +381,14 @@ where
                 history: None,
                 index: 0,
             },
-            Some(history) => {
-                Record {
-                    number: Multiplication::<T>::function(self.number.clone(), rhs.clone()),
-                    history: Some(history),
-                    index: history.append_unary(
-                        self.index,
-                        Multiplication::<T>::d_function_dx(self.number.clone(), rhs.clone()),
-                    ),
-                }
-            }
+            Some(history) => Record {
+                number: Multiplication::<T>::function(self.number.clone(), rhs.clone()),
+                history: Some(history),
+                index: history.append_unary(
+                    self.index,
+                    Multiplication::<T>::d_function_dx(self.number.clone(), rhs.clone()),
+                ),
+            },
         }
     }
 }
@@ -467,16 +464,14 @@ where
                 history: None,
                 index: 0,
             },
-            Some(history) => {
-                Record {
-                    number: Subtraction::<T>::function(self.number.clone(), rhs.clone()),
-                    history: Some(history),
-                    index: history.append_unary(
-                        self.index,
-                        Subtraction::<T>::d_function_dx(self.number.clone(), rhs.clone()),
-                    ),
-                }
-            }
+            Some(history) => Record {
+                number: Subtraction::<T>::function(self.number.clone(), rhs.clone()),
+                history: Some(history),
+                index: history.append_unary(
+                    self.index,
+                    Subtraction::<T>::d_function_dx(self.number.clone(), rhs.clone()),
+                ),
+            },
         }
     }
 }
@@ -699,16 +694,14 @@ where
                 history: None,
                 index: 0,
             },
-            Some(history) => {
-                Record {
-                    number: Division::<T>::function(self.number.clone(), rhs.clone()),
-                    history: Some(history),
-                    index: history.append_unary(
-                        self.index,
-                        Division::<T>::d_function_dx(self.number.clone(), rhs.clone()),
-                    ),
-                }
-            }
+            Some(history) => Record {
+                number: Division::<T>::function(self.number.clone(), rhs.clone()),
+                history: Some(history),
+                index: history.append_unary(
+                    self.index,
+                    Division::<T>::d_function_dx(self.number.clone(), rhs.clone()),
+                ),
+            },
         }
     }
 }
@@ -870,16 +863,12 @@ where
                 history: None,
                 index: 0,
             },
-            Some(history) => {
-                Record {
-                    number: Sine::<T>::function(self.number.clone()),
-                    history: Some(history),
-                    index: history.append_unary(
-                        self.index,
-                        Sine::<T>::d_function_dx(self.number.clone()),
-                    ),
-                }
-            }
+            Some(history) => Record {
+                number: Sine::<T>::function(self.number.clone()),
+                history: Some(history),
+                index: history
+                    .append_unary(self.index, Sine::<T>::d_function_dx(self.number.clone())),
+            },
         }
     }
 }
@@ -920,16 +909,12 @@ where
                 history: None,
                 index: 0,
             },
-            Some(history) => {
-                Record {
-                    number: Cosine::<T>::function(self.number.clone()),
-                    history: Some(history),
-                    index: history.append_unary(
-                        self.index,
-                        Cosine::<T>::d_function_dx(self.number.clone()),
-                    ),
-                }
-            }
+            Some(history) => Record {
+                number: Cosine::<T>::function(self.number.clone()),
+                history: Some(history),
+                index: history
+                    .append_unary(self.index, Cosine::<T>::d_function_dx(self.number.clone())),
+            },
         }
     }
 }
@@ -952,16 +937,14 @@ where
                 history: None,
                 index: 0,
             },
-            Some(history) => {
-                Record {
-                    number: Exponential::<T>::function(self.number.clone()),
-                    history: Some(history),
-                    index: history.append_unary(
-                        self.index,
-                        Exponential::<T>::d_function_dx(self.number.clone()),
-                    ),
-                }
-            }
+            Some(history) => Record {
+                number: Exponential::<T>::function(self.number.clone()),
+                history: Some(history),
+                index: history.append_unary(
+                    self.index,
+                    Exponential::<T>::d_function_dx(self.number.clone()),
+                ),
+            },
         }
     }
 }
@@ -984,16 +967,14 @@ where
                 history: None,
                 index: 0,
             },
-            Some(history) => {
-                Record {
-                    number: NaturalLogarithm::<T>::function(self.number.clone()),
-                    history: Some(history),
-                    index: history.append_unary(
-                        self.index,
-                        NaturalLogarithm::<T>::d_function_dx(self.number.clone()),
-                    ),
-                }
-            }
+            Some(history) => Record {
+                number: NaturalLogarithm::<T>::function(self.number.clone()),
+                history: Some(history),
+                index: history.append_unary(
+                    self.index,
+                    NaturalLogarithm::<T>::d_function_dx(self.number.clone()),
+                ),
+            },
         }
     }
 }
@@ -1016,16 +997,14 @@ where
                 history: None,
                 index: 0,
             },
-            Some(history) => {
-                Record {
-                    number: SquareRoot::<T>::function(self.number.clone()),
-                    history: Some(history),
-                    index: history.append_unary(
-                        self.index,
-                        SquareRoot::<T>::d_function_dx(self.number.clone()),
-                    ),
-                }
-            }
+            Some(history) => Record {
+                number: SquareRoot::<T>::function(self.number.clone()),
+                history: Some(history),
+                index: history.append_unary(
+                    self.index,
+                    SquareRoot::<T>::d_function_dx(self.number.clone()),
+                ),
+            },
         }
     }
 }

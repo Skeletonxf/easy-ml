@@ -243,7 +243,8 @@ mod linear_algebra {
             54.0, 86.0, 174.0, 134.0,
             42.0, 62.0, 134.0, 106.0,
         ]);
-        let lower_triangular = linear_algebra::cholesky_decomposition_tensor::<f64, _, _>(&tensor).unwrap();
+        let lower_triangular =
+            linear_algebra::cholesky_decomposition_tensor::<f64, _, _>(&tensor).unwrap();
         let recovered = &lower_triangular * lower_triangular.transpose(["c", "r"]);
         #[rustfmt::skip]
         let expected = Tensor::from([("r", 4), ("c", 4)], vec![

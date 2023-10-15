@@ -407,7 +407,9 @@ where
      * ```
      */
     pub fn transpose(&self) -> Matrix<T> {
-        Matrix::from_fn((self.columns(), self.rows()), |(column, row)| self.get(row, column))
+        Matrix::from_fn((self.columns(), self.rows()), |(column, row)| {
+            self.get(row, column)
+        })
     }
 
     /**

@@ -1,16 +1,19 @@
-use crate::numeric::{Numeric, NumericRef};
-use crate::tensors::Tensor;
-use crate::tensors::views::TensorRef;
-use crate::matrices::Matrix;
-use crate::matrices::views::{MatrixRef, NoInteriorMutability};
-use crate::differentiation::{Primitive, WengertList, Index};
+use crate::differentiation::functions::{
+    Addition, Cosine, Exponential, FunctionDerivative, Multiplication, NaturalLogarithm, Negation,
+    Sine, SquareRoot, Subtraction, UnaryFunctionDerivative,
+};
 use crate::differentiation::record_operations::are_same_list;
-use crate::differentiation::{RecordContainer, RecordTensor, RecordMatrix};
-use crate::differentiation::functions::{Addition, Subtraction, Multiplication, Negation, NaturalLogarithm, Sine, SquareRoot, Cosine, Exponential, UnaryFunctionDerivative, FunctionDerivative};
+use crate::differentiation::{Index, Primitive, WengertList};
+use crate::differentiation::{RecordContainer, RecordMatrix, RecordTensor};
+use crate::matrices::views::{MatrixRef, NoInteriorMutability};
+use crate::matrices::Matrix;
+use crate::numeric::{Numeric, NumericRef};
+use crate::tensors::views::TensorRef;
+use crate::tensors::Tensor;
 
 use crate::numeric::extra::{Cos, Exp, Ln, Real, RealRef, Sin, Sqrt};
 
-use std::ops::{Add, Sub, Mul, Neg};
+use std::ops::{Add, Mul, Neg, Sub};
 
 /**
  * A record container is displayed by showing its number components.
@@ -19,7 +22,7 @@ impl<'a, T, S, const D: usize> std::fmt::Display for RecordContainer<'a, T, S, D
 where
     T: std::fmt::Display + Primitive,
     S: std::fmt::Display,
-    {
+{
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.numbers)
     }
@@ -47,7 +50,8 @@ macro_rules! record_tensor_operator_impl_value_value {
         /**
          * Operation for two record tensors of the same type.
          */
-        impl<'a, T, S1, S2, const D: usize> $op<RecordTensor<'a, T, S2, D>> for RecordTensor<'a, T, S1, D>
+        impl<'a, T, S1, S2, const D: usize> $op<RecordTensor<'a, T, S2, D>>
+            for RecordTensor<'a, T, S1, D>
         where
             T: Numeric + Primitive,
             for<'t> &'t T: NumericRef<T>,
@@ -89,7 +93,8 @@ macro_rules! record_tensor_operator_impl_value_reference {
         /**
          * Operation for two record tensors with the right referenced.
          */
-        impl<'a, T, S1, S2, const D: usize> $op<&RecordTensor<'a, T, S2, D>> for RecordTensor<'a, T, S1, D>
+        impl<'a, T, S1, S2, const D: usize> $op<&RecordTensor<'a, T, S2, D>>
+            for RecordTensor<'a, T, S1, D>
         where
             T: Numeric + Primitive,
             for<'t> &'t T: NumericRef<T>,
@@ -131,7 +136,8 @@ macro_rules! record_tensor_operator_impl_reference_value {
         /**
          * Operation for two record tensors with the left referenced.
          */
-        impl<'a, T, S1, S2, const D: usize> $op<RecordTensor<'a, T, S2, D>> for &RecordTensor<'a, T, S1, D>
+        impl<'a, T, S1, S2, const D: usize> $op<RecordTensor<'a, T, S2, D>>
+            for &RecordTensor<'a, T, S1, D>
         where
             T: Numeric + Primitive,
             for<'t> &'t T: NumericRef<T>,
@@ -173,7 +179,8 @@ macro_rules! record_tensor_operator_impl_reference_reference {
         /**
          * Operation for two record tensors with both referenced.
          */
-        impl<'a, T, S1, S2, const D: usize> $op<&RecordTensor<'a, T, S2, D>> for &RecordTensor<'a, T, S1, D>
+        impl<'a, T, S1, S2, const D: usize> $op<&RecordTensor<'a, T, S2, D>>
+            for &RecordTensor<'a, T, S1, D>
         where
             T: Numeric + Primitive,
             for<'t> &'t T: NumericRef<T>,
@@ -379,7 +386,7 @@ macro_rules! record_real_matrix_operator_impl_reference {
 #[track_caller]
 fn record_tensor_add_allocate<'a, T, S1, S2, const D: usize>(
     lhs: &RecordTensor<'a, T, S1, D>,
-    rhs: &RecordTensor<'a, T, S2, D>
+    rhs: &RecordTensor<'a, T, S2, D>,
 ) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
@@ -402,7 +409,7 @@ where
 #[track_caller]
 fn record_tensor_add_value_value<'a, T, S1, S2, const D: usize>(
     lhs: RecordTensor<'a, T, S1, D>,
-    rhs: RecordTensor<'a, T, S2, D>
+    rhs: RecordTensor<'a, T, S2, D>,
 ) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
@@ -416,7 +423,7 @@ where
 #[track_caller]
 fn record_tensor_add_value_reference<'a, T, S1, S2, const D: usize>(
     lhs: RecordTensor<'a, T, S1, D>,
-    rhs: &RecordTensor<'a, T, S2, D>
+    rhs: &RecordTensor<'a, T, S2, D>,
 ) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
@@ -430,7 +437,7 @@ where
 #[track_caller]
 fn record_tensor_add_reference_value<'a, T, S1, S2, const D: usize>(
     lhs: &RecordTensor<'a, T, S1, D>,
-    rhs: RecordTensor<'a, T, S2, D>
+    rhs: RecordTensor<'a, T, S2, D>,
 ) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
@@ -449,7 +456,7 @@ record_tensor_operator_impl_reference_reference!(impl Add for RecordTensor { fn 
 #[track_caller]
 fn record_matrix_add_allocate<'a, T, S1, S2>(
     lhs: &RecordMatrix<'a, T, S1>,
-    rhs: &RecordMatrix<'a, T, S2>
+    rhs: &RecordMatrix<'a, T, S2>,
 ) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
 where
     T: Numeric + Primitive,
@@ -472,7 +479,7 @@ where
 #[track_caller]
 fn record_matrix_add_value_value<'a, T, S1, S2>(
     lhs: RecordMatrix<'a, T, S1>,
-    rhs: RecordMatrix<'a, T, S2>
+    rhs: RecordMatrix<'a, T, S2>,
 ) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
 where
     T: Numeric + Primitive,
@@ -486,7 +493,7 @@ where
 #[track_caller]
 fn record_matrix_add_value_reference<'a, T, S1, S2>(
     lhs: RecordMatrix<'a, T, S1>,
-    rhs: &RecordMatrix<'a, T, S2>
+    rhs: &RecordMatrix<'a, T, S2>,
 ) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
 where
     T: Numeric + Primitive,
@@ -519,7 +526,7 @@ record_matrix_operator_impl_reference_reference!(impl Add for RecordMatrix { fn 
 #[track_caller]
 fn record_tensor_sub_allocate<'a, T, S1, S2, const D: usize>(
     lhs: &RecordTensor<'a, T, S1, D>,
-    rhs: &RecordTensor<'a, T, S2, D>
+    rhs: &RecordTensor<'a, T, S2, D>,
 ) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
@@ -542,7 +549,7 @@ where
 #[track_caller]
 fn record_tensor_sub_value_value<'a, T, S1, S2, const D: usize>(
     lhs: RecordTensor<'a, T, S1, D>,
-    rhs: RecordTensor<'a, T, S2, D>
+    rhs: RecordTensor<'a, T, S2, D>,
 ) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
@@ -556,7 +563,7 @@ where
 #[track_caller]
 fn record_tensor_sub_value_reference<'a, T, S1, S2, const D: usize>(
     lhs: RecordTensor<'a, T, S1, D>,
-    rhs: &RecordTensor<'a, T, S2, D>
+    rhs: &RecordTensor<'a, T, S2, D>,
 ) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
@@ -570,7 +577,7 @@ where
 #[track_caller]
 fn record_tensor_sub_reference_value<'a, T, S1, S2, const D: usize>(
     lhs: &RecordTensor<'a, T, S1, D>,
-    rhs: RecordTensor<'a, T, S2, D>
+    rhs: RecordTensor<'a, T, S2, D>,
 ) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
@@ -589,7 +596,7 @@ record_tensor_operator_impl_reference_reference!(impl Sub for RecordTensor { fn 
 #[track_caller]
 fn record_matrix_sub_allocate<'a, T, S1, S2>(
     lhs: &RecordMatrix<'a, T, S1>,
-    rhs: &RecordMatrix<'a, T, S2>
+    rhs: &RecordMatrix<'a, T, S2>,
 ) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
 where
     T: Numeric + Primitive,
@@ -612,7 +619,7 @@ where
 #[track_caller]
 fn record_matrix_sub_value_value<'a, T, S1, S2>(
     lhs: RecordMatrix<'a, T, S1>,
-    rhs: RecordMatrix<'a, T, S2>
+    rhs: RecordMatrix<'a, T, S2>,
 ) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
 where
     T: Numeric + Primitive,
@@ -626,7 +633,7 @@ where
 #[track_caller]
 fn record_matrix_sub_value_reference<'a, T, S1, S2>(
     lhs: RecordMatrix<'a, T, S1>,
-    rhs: &RecordMatrix<'a, T, S2>
+    rhs: &RecordMatrix<'a, T, S2>,
 ) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
 where
     T: Numeric + Primitive,
@@ -673,29 +680,39 @@ where
         None => (
             crate::tensors::operations::scalar_product::<T, _, _>(
                 left_iter.map(|(x, _)| x),
-                right_iter.map(|(y, _)| y)
+                right_iter.map(|(y, _)| y),
             ),
-            0
+            0,
         ),
         Some(history) => {
-            let products = left_iter.zip(right_iter).map(|((x, x_index), (y, y_index))| {
-                let z = Multiplication::<T>::function(x.clone(), y.clone());
-                (z, history.append_binary(
-                    *x_index,
-                    Multiplication::<T>::d_function_dx(x.clone(), y.clone()),
-                    *y_index,
-                    Multiplication::<T>::d_function_dy(x.clone(), y.clone()),
-                ))
-            });
-            products.reduce(|(x, x_index), (y, y_index)| {
-                let z = Addition::<T>::function(x.clone(), y.clone());
-                (z, history.append_binary(
-                    x_index,
-                    Addition::<T>::d_function_dx(x.clone(), y.clone()),
-                    y_index,
-                    Addition::<T>::d_function_dy(x, y)
-                ))
-            }).unwrap() // this won't be called on 0 length iterators
+            let products = left_iter
+                .zip(right_iter)
+                .map(|((x, x_index), (y, y_index))| {
+                    let z = Multiplication::<T>::function(x.clone(), y.clone());
+                    (
+                        z,
+                        history.append_binary(
+                            *x_index,
+                            Multiplication::<T>::d_function_dx(x.clone(), y.clone()),
+                            *y_index,
+                            Multiplication::<T>::d_function_dy(x.clone(), y.clone()),
+                        ),
+                    )
+                });
+            products
+                .reduce(|(x, x_index), (y, y_index)| {
+                    let z = Addition::<T>::function(x.clone(), y.clone());
+                    (
+                        z,
+                        history.append_binary(
+                            x_index,
+                            Addition::<T>::d_function_dx(x.clone(), y.clone()),
+                            y_index,
+                            Addition::<T>::d_function_dy(x, y),
+                        ),
+                    )
+                })
+                .unwrap() // this won't be called on 0 length iterators
         }
     }
 }
@@ -703,7 +720,7 @@ where
 #[track_caller]
 fn record_tensor_matrix_multiply<'a, T, S1, S2>(
     lhs: &RecordTensor<'a, T, S1, 2>,
-    rhs: &RecordTensor<'a, T, S2, 2>
+    rhs: &RecordTensor<'a, T, S2, 2>,
 ) -> RecordTensor<'a, T, Tensor<(T, Index), 2>, 2>
 where
     T: Numeric + Primitive,
@@ -711,8 +728,8 @@ where
     S1: TensorRef<(T, Index), 2>,
     S2: TensorRef<(T, Index), 2>,
 {
-    use crate::tensors::views::{TensorIndex, TensorView};
     use crate::tensors::indexing::TensorReferenceIterator;
+    use crate::tensors::views::{TensorIndex, TensorView};
 
     assert!(
         are_same_list(lhs.history, rhs.history),
@@ -768,7 +785,7 @@ where
 #[track_caller]
 fn record_tensor_matrix_multiply_value_value<'a, T, S1, S2>(
     lhs: RecordTensor<'a, T, S1, 2>,
-    rhs: RecordTensor<'a, T, S2, 2>
+    rhs: RecordTensor<'a, T, S2, 2>,
 ) -> RecordTensor<'a, T, Tensor<(T, Index), 2>, 2>
 where
     T: Numeric + Primitive,
@@ -782,7 +799,7 @@ where
 #[track_caller]
 fn record_tensor_matrix_multiply_value_reference<'a, T, S1, S2>(
     lhs: RecordTensor<'a, T, S1, 2>,
-    rhs: &RecordTensor<'a, T, S2, 2>
+    rhs: &RecordTensor<'a, T, S2, 2>,
 ) -> RecordTensor<'a, T, Tensor<(T, Index), 2>, 2>
 where
     T: Numeric + Primitive,
@@ -796,7 +813,7 @@ where
 #[track_caller]
 fn record_tensor_matrix_multiply_reference_value<'a, T, S1, S2>(
     lhs: &RecordTensor<'a, T, S1, 2>,
-    rhs: RecordTensor<'a, T, S2, 2>
+    rhs: RecordTensor<'a, T, S2, 2>,
 ) -> RecordTensor<'a, T, Tensor<(T, Index), 2>, 2>
 where
     T: Numeric + Primitive,
@@ -886,8 +903,8 @@ where
     S1: MatrixRef<(T, Index)> + NoInteriorMutability,
     S2: MatrixRef<(T, Index)> + NoInteriorMutability,
 {
+    use crate::matrices::iterators::{ColumnReferenceIterator, RowReferenceIterator};
     use crate::matrices::views::MatrixView;
-    use crate::matrices::iterators::{RowReferenceIterator, ColumnReferenceIterator};
     // LxM * MxN -> LxN
     assert!(
         lhs.view_columns() == rhs.view_rows(),
@@ -911,7 +928,7 @@ where
         // Select the j'th column in the right tensor to give us a vector
         let right = ColumnReferenceIterator::from(rhs, j);
         // Since we checked earlier that we have MxN * NxL these two vectors have the same length.
-        *x = record_scalar_product::<T, _, _>(left, right, history,);
+        *x = record_scalar_product::<T, _, _>(left, right, history);
     }
     RecordMatrix::from_existing(history, MatrixView::from(result))
 }
@@ -919,7 +936,7 @@ where
 #[track_caller]
 fn record_matrix_matrix_multiply_value_value<'a, T, S1, S2>(
     lhs: RecordMatrix<'a, T, S1>,
-    rhs: RecordMatrix<'a, T, S2>
+    rhs: RecordMatrix<'a, T, S2>,
 ) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
 where
     T: Numeric + Primitive,
@@ -933,7 +950,7 @@ where
 #[track_caller]
 fn record_matrix_matrix_multiply_value_reference<'a, T, S1, S2>(
     lhs: RecordMatrix<'a, T, S1>,
-    rhs: &RecordMatrix<'a, T, S2>
+    rhs: &RecordMatrix<'a, T, S2>,
 ) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
 where
     T: Numeric + Primitive,
@@ -1251,7 +1268,10 @@ where
     for<'t> &'t T: NumericRef<T> + RealRef<T>,
     S: TensorRef<(T, Index), D>,
 {
-    lhs.unary(NaturalLogarithm::<T>::function, NaturalLogarithm::<T>::d_function_dx)
+    lhs.unary(
+        NaturalLogarithm::<T>::function,
+        NaturalLogarithm::<T>::d_function_dx,
+    )
 }
 
 #[track_caller]
@@ -1263,7 +1283,10 @@ where
     for<'t> &'t T: NumericRef<T> + RealRef<T>,
     S: TensorRef<(T, Index), D>,
 {
-    lhs.unary(NaturalLogarithm::<T>::function, NaturalLogarithm::<T>::d_function_dx)
+    lhs.unary(
+        NaturalLogarithm::<T>::function,
+        NaturalLogarithm::<T>::d_function_dx,
+    )
 }
 
 record_real_tensor_operator_impl_value!(impl Ln for RecordTensor { fn ln } record_tensor_ln_value);
@@ -1278,7 +1301,10 @@ where
     for<'t> &'t T: NumericRef<T> + RealRef<T>,
     S: MatrixRef<(T, Index)> + NoInteriorMutability,
 {
-    lhs.unary(NaturalLogarithm::<T>::function, NaturalLogarithm::<T>::d_function_dx)
+    lhs.unary(
+        NaturalLogarithm::<T>::function,
+        NaturalLogarithm::<T>::d_function_dx,
+    )
 }
 
 #[track_caller]
@@ -1290,7 +1316,10 @@ where
     for<'t> &'t T: NumericRef<T> + RealRef<T>,
     S: MatrixRef<(T, Index)> + NoInteriorMutability,
 {
-    lhs.unary(NaturalLogarithm::<T>::function, NaturalLogarithm::<T>::d_function_dx)
+    lhs.unary(
+        NaturalLogarithm::<T>::function,
+        NaturalLogarithm::<T>::d_function_dx,
+    )
 }
 
 record_real_matrix_operator_impl_value!(impl Ln for RecordMatrix { fn ln } record_matrix_ln_value);

@@ -2,53 +2,54 @@ extern crate easy_ml;
 
 #[cfg(test)]
 mod container_record_tests {
-    use easy_ml::tensors::Tensor;
-    use easy_ml::tensors::views::TensorView;
-    use easy_ml::tensors::indexing::ShapeIterator;
     use easy_ml::differentiation::{Record, RecordTensor, WengertList};
+    use easy_ml::tensors::indexing::ShapeIterator;
+    use easy_ml::tensors::views::TensorView;
+    use easy_ml::tensors::Tensor;
 
     #[test]
     fn test_subtraction_derivatives() {
         let list = WengertList::new();
         let x = RecordTensor::variables(
             &list,
-            Tensor::from_fn([("r", 3), ("c", 3)], |[x, y]| x as f64 + y as f64)
+            Tensor::from_fn([("r", 3), ("c", 3)], |[x, y]| x as f64 + y as f64),
         );
         let y = RecordTensor::variables(
             &list,
-            Tensor::from_fn([("r", 3), ("c", 3)], |[x, y]| 3.0 + x as f64 - y as f64)
+            Tensor::from_fn([("r", 3), ("c", 3)], |[x, y]| 3.0 + x as f64 - y as f64),
         );
         let subtraction = |x, y| x - y;
         // δ(lhs - rhs) / lhs = 1
         let subtraction_dx = |_x, _y| 1.0;
         // δ(lhs - rhs) / rhs = -1
         let subtraction_dy = |_x, _y| -1.0;
-        let x_minus_y = x
-            .binary(&y, subtraction, subtraction_dx, subtraction_dy);
-        let also_x_minus_y = x
-            .clone()
-            .do_binary_left_assign(&y, subtraction, subtraction_dx, subtraction_dy);
-        let also_also_x_minus_y = x
-            .do_binary_right_assign(y.clone(), subtraction, subtraction_dx, subtraction_dy);
+        let x_minus_y = x.binary(&y, subtraction, subtraction_dx, subtraction_dy);
+        let also_x_minus_y =
+            x.clone()
+                .do_binary_left_assign(&y, subtraction, subtraction_dx, subtraction_dy);
+        let also_also_x_minus_y =
+            x.do_binary_right_assign(y.clone(), subtraction, subtraction_dx, subtraction_dy);
 
-        let y_minus_x = y
-            .binary(&x, subtraction, subtraction_dx, subtraction_dy);
-        let also_y_minus_x = y
-            .clone()
-            .do_binary_left_assign(&x, subtraction, subtraction_dx, subtraction_dy);
-        let also_also_y_minus_x = y
-            .do_binary_right_assign(x.clone(), subtraction, subtraction_dx, subtraction_dy);
+        let y_minus_x = y.binary(&x, subtraction, subtraction_dx, subtraction_dy);
+        let also_y_minus_x =
+            y.clone()
+                .do_binary_left_assign(&x, subtraction, subtraction_dx, subtraction_dy);
+        let also_also_y_minus_x =
+            y.do_binary_right_assign(x.clone(), subtraction, subtraction_dx, subtraction_dy);
 
         let ops_x_minus_y = &x - &y;
         let ops_y_minus_x = &y - &x;
 
+        #[rustfmt::skip]
         let expected: Vec<_> = {
             let history = WengertList::new();
             vec![
                 (0.0, 3.0), (1.0, 4.0), (2.0, 5.0),
                 (1.0, 2.0), (2.0, 3.0), (3.0, 4.0),
-                (2.0, 1.0), (3.0, 2.0), (4.0, 3.0)
-            ].into_iter().map(|(x, y)| {
+                (2.0, 1.0), (3.0, 2.0), (4.0, 3.0),
+            ]
+            .into_iter()
+            .map(|(x, y)| {
                 let x = Record::variable(x, &history);
                 let y = Record::variable(y, &history);
                 let x_minus_y = x - y;
@@ -60,17 +61,25 @@ mod container_record_tests {
                 let y_minus_x_dx = y_minus_x_derivatives.at(&x);
                 let y_minus_x_dy = y_minus_x_derivatives.at(&y);
                 (x_minus_y_dx, x_minus_y_dy, y_minus_x_dx, y_minus_x_dy)
-            }).collect()
+            })
+            .collect()
         };
 
-        assert!(expected.iter().all(|(x_minus_y_dx, x_minus_y_dy, y_minus_x_dx, y_minus_x_dy)| {
-            *x_minus_y_dx == 1.0 &&
-            *x_minus_y_dy == -1.0 &&
-            *y_minus_x_dx == -1.0 &&
-            *y_minus_x_dy == 1.0
-        }));
+        assert!(expected
+            .iter()
+            .all(|(x_minus_y_dx, x_minus_y_dy, y_minus_x_dx, y_minus_x_dy)| {
+                *x_minus_y_dx == 1.0
+                    && *x_minus_y_dy == -1.0
+                    && *y_minus_x_dx == -1.0
+                    && *y_minus_x_dy == 1.0
+            }));
 
-        for container in vec![x_minus_y, also_x_minus_y, also_also_x_minus_y, ops_x_minus_y] {
+        for container in vec![
+            x_minus_y,
+            also_x_minus_y,
+            also_also_x_minus_y,
+            ops_x_minus_y,
+        ] {
             for index in ShapeIterator::from(container.shape()) {
                 let derivatives = container.derivatives_for(index).unwrap();
                 let dx = derivatives.at_tensor_index(index, &x).unwrap();
@@ -80,7 +89,12 @@ mod container_record_tests {
             }
         }
 
-        for container in vec![y_minus_x, also_y_minus_x, also_also_y_minus_x, ops_y_minus_x] {
+        for container in vec![
+            y_minus_x,
+            also_y_minus_x,
+            also_also_y_minus_x,
+            ops_y_minus_x,
+        ] {
             for index in ShapeIterator::from(container.shape()) {
                 let derivatives = container.derivatives_for(index).unwrap();
                 let dx = derivatives.at_tensor_index(index, &x).unwrap();
@@ -94,6 +108,7 @@ mod container_record_tests {
     #[test]
     fn test_division_derivatives() {
         let list = WengertList::new();
+        #[rustfmt::skip]
         let x = RecordTensor::variables(
             &list,
             Tensor::from(
@@ -102,9 +117,10 @@ mod container_record_tests {
                     12.0, 15.0, 18.0,
                     360.0, 180.0, 90.0,
                     45.0, 240.0, 10.0
-                ]
-            )
+                ],
+            ),
         );
+        #[rustfmt::skip]
         let y = RecordTensor::variables(
             &list,
             Tensor::from(
@@ -113,8 +129,8 @@ mod container_record_tests {
                     4.0, 3.0, 6.0,
                     18.0, 10.0, 30.0,
                     5.0, 20.0, 5.0
-                ]
-            )
+                ],
+            ),
         );
 
         let x_div_y = x.elementwise_divide(&y);
@@ -142,6 +158,7 @@ mod container_record_tests {
 
             // x / y, derivative with respect to x is 1 / x, rest are 0 because output and input
             // unrelated
+            #[rustfmt::skip]
             assert_eq!(
                 dx,
                 Tensor::from(
@@ -149,39 +166,75 @@ mod container_record_tests {
                     vec![
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 1.0 / 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                            vec![
+                                1.0 / 4.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 1.0 / 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                            vec![
+                                0.0, 1.0 / 3.0, 0.0,
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 0.0, 1.0 / 6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                            vec![
+                                0.0, 0.0, 1.0 / 6.0,
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 0.0, 0.0, 1.0 / 18.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                            vec![
+                                0.0, 0.0, 0.0,
+                                1.0 / 18.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 0.0, 0.0, 0.0, 1.0 / 10.0, 0.0, 0.0, 0.0, 0.0 ]
+                            vec![
+                                0.0, 0.0, 0.0,
+                                0.0, 1.0 / 10.0, 0.0,
+                                0.0, 0.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 / 30.0, 0.0, 0.0, 0.0 ]
+                            vec![
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, 1.0 / 30.0,
+                                0.0, 0.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 / 5.0, 0.0, 0.0 ]
+                            vec![
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0,
+                                1.0 / 5.0, 0.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 / 20.0, 0.0 ]
+                            vec![
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0,
+                                0.0, 1.0 / 20.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 / 5.0 ]
+                            vec![
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, 1.0 / 5.0
+                            ]
                         )
                     ]
                 )
@@ -189,6 +242,7 @@ mod container_record_tests {
 
             // x / y, derivative with respect to y is -x / (y^2), rest are 0 because output and
             // input unrelated
+            #[rustfmt::skip]
             assert_eq!(
                 dy,
                 Tensor::from(
@@ -196,39 +250,75 @@ mod container_record_tests {
                     vec![
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ -12.0 / (4.0 * 4.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                            vec![
+                                -12.0 / (4.0 * 4.0), 0.0, 0.0,
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, -15.0 / (3.0 * 3.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                            vec![
+                                0.0, -15.0 / (3.0 * 3.0), 0.0,
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 0.0, -18.0 / (6.0 * 6.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                            vec![
+                                0.0, 0.0, -18.0 / (6.0 * 6.0),
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 0.0, 0.0, -360.0 / (18.0 * 18.0), 0.0, 0.0, 0.0, 0.0, 0.0 ]
+                            vec![
+                                0.0, 0.0, 0.0,
+                                -360.0 / (18.0 * 18.0), 0.0, 0.0,
+                                0.0, 0.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 0.0, 0.0, 0.0, -180.0 / (10.0 * 10.0), 0.0, 0.0, 0.0, 0.0 ]
+                            vec![
+                                0.0, 0.0, 0.0,
+                                0.0, -180.0 / (10.0 * 10.0), 0.0,
+                                0.0, 0.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, -90.0 / (30.0 * 30.0), 0.0, 0.0, 0.0 ]
+                            vec![
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, -90.0 / (30.0 * 30.0),
+                                0.0, 0.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -45.0 / (5.0 * 5.0), 0.0, 0.0 ]
+                            vec![
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0,
+                                -45.0 / (5.0 * 5.0), 0.0, 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -240.0 / (20.0 * 20.0), 0.0 ]
+                            vec![
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0,
+                                0.0, -240.0 / (20.0 * 20.0), 0.0
+                            ]
                         ),
                         Tensor::from(
                             [("r", 3), ("c", 3)],
-                            vec![ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -10.0 / (5.0 * 5.0) ]
+                            vec![
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0,
+                                0.0, 0.0, -10.0 / (5.0 * 5.0)
+                            ]
                         )
                     ]
                 )
@@ -241,12 +331,12 @@ mod container_record_tests {
         let list = WengertList::new();
         let x = RecordTensor::variables(
             &list,
-            Tensor::<f64, 2>::from([("r", 2), ("c", 2)], vec![ 0.25, 1.25, 3.5, 0.75 ])
+            Tensor::<f64, 2>::from([("r", 2), ("c", 2)], vec![0.25, 1.25, 3.5, 0.75]),
         );
         let y = -&x;
         let derivatives = y.derivatives().unwrap();
         let dx = derivatives.map(|d| d.at_tensor(&x));
-        let expected = Tensor::from([("r", 2), ("c", 2)], vec![ -0.25, -1.25, -3.5, -0.75 ]);
+        let expected = Tensor::from([("r", 2), ("c", 2)], vec![-0.25, -1.25, -3.5, -0.75]);
         for (expected, (actual, _)) in expected.iter().zip(TensorView::from(y).iter()) {
             let absolute_difference = (expected - actual).abs();
             assert!(absolute_difference <= std::f64::EPSILON);
@@ -256,10 +346,10 @@ mod container_record_tests {
             Tensor::from(
                 [("r", 2), ("c", 2)],
                 vec![
-                    Tensor::from([("r", 2), ("c", 2)], vec![ -1, 0, 0, 0 ]),
-                    Tensor::from([("r", 2), ("c", 2)], vec![ 0, -1, 0, 0 ]),
-                    Tensor::from([("r", 2), ("c", 2)], vec![ 0, 0, -1, 0 ]),
-                    Tensor::from([("r", 2), ("c", 2)], vec![ 0, 0, 0, -1 ]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![-1, 0, 0, 0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0, -1, 0, 0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0, 0, -1, 0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0, 0, 0, -1]),
                 ]
             )
         );

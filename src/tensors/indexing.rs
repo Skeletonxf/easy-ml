@@ -39,9 +39,9 @@ use crate::tensors::dimensions::DimensionMappings;
 use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
 use crate::tensors::{Dimension, Tensor};
 
-use std::iter::{ExactSizeIterator, FusedIterator};
 use std::error::Error;
 use std::fmt;
+use std::iter::{ExactSizeIterator, FusedIterator};
 use std::marker::PhantomData;
 
 pub use crate::matrices::iterators::WithIndex;
@@ -370,9 +370,9 @@ where
      * Using the dimension ordering of the TensorAccess, gets a mutable reference to the value at
      * the index if the index is in range, panicking if the index is out of range.
      */
-     // NOTE: Ideally `get_reference_mut` would be used here for consistency, but that opens the
-     // minefield of TensorMut::get_reference_mut and TensorAccess::get_ref_mut being different
-     // signatures but the same name.
+    // NOTE: Ideally `get_reference_mut` would be used here for consistency, but that opens the
+    // minefield of TensorMut::get_reference_mut and TensorAccess::get_ref_mut being different
+    // signatures but the same name.
     #[track_caller]
     pub fn get_ref_mut(&mut self, indexes: [usize; D]) -> &mut T {
         match self.try_get_reference_mut(indexes) {
@@ -399,8 +399,8 @@ where
      * [undefined behavior]: <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
      * [TensorRef]: TensorRef
      */
-     // NOTE: This aliases with TensorRef::get_reference_unchecked_mut but the TensorMut impl
-     // just calls this and the signatures match anyway, so there are no potential issues.
+    // NOTE: This aliases with TensorRef::get_reference_unchecked_mut but the TensorMut impl
+    // just calls this and the signatures match anyway, so there are no potential issues.
     #[allow(clippy::missing_safety_doc)] // it's not missing
     pub unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
         self.source
@@ -775,13 +775,15 @@ impl<'a, T, S, const D: usize> FusedIterator for TensorIterator<'a, T, S, D>
 where
     T: Clone,
     S: TensorRef<T, D>,
-{}
+{
+}
 
 impl<'a, T, S, const D: usize> ExactSizeIterator for TensorIterator<'a, T, S, D>
 where
     T: Clone,
     S: TensorRef<T, D>,
-{}
+{
+}
 
 impl<'a, T, S, const D: usize> Iterator for WithIndex<TensorIterator<'a, T, S, D>>
 where
@@ -804,13 +806,15 @@ impl<'a, T, S, const D: usize> FusedIterator for WithIndex<TensorIterator<'a, T,
 where
     T: Clone,
     S: TensorRef<T, D>,
-{}
+{
+}
 
 impl<'a, T, S, const D: usize> ExactSizeIterator for WithIndex<TensorIterator<'a, T, S, D>>
 where
     T: Clone,
     S: TensorRef<T, D>,
-{}
+{
+}
 
 /**
  * An iterator over references to all values in a tensor.
@@ -939,15 +943,15 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> FusedIterator for TensorReferenceIterator<'a, T, S, D>
-where
-    S: TensorRef<T, D>,
-{}
+impl<'a, T, S, const D: usize> FusedIterator for TensorReferenceIterator<'a, T, S, D> where
+    S: TensorRef<T, D>
+{
+}
 
-impl<'a, T, S, const D: usize> ExactSizeIterator for TensorReferenceIterator<'a, T, S, D>
-where
-    S: TensorRef<T, D>,
-{}
+impl<'a, T, S, const D: usize> ExactSizeIterator for TensorReferenceIterator<'a, T, S, D> where
+    S: TensorRef<T, D>
+{
+}
 
 impl<'a, T, S, const D: usize> Iterator for WithIndex<TensorReferenceIterator<'a, T, S, D>>
 where
@@ -965,15 +969,15 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> FusedIterator for WithIndex<TensorReferenceIterator<'a, T, S, D>>
-where
-    S: TensorRef<T, D>,
-{}
+impl<'a, T, S, const D: usize> FusedIterator for WithIndex<TensorReferenceIterator<'a, T, S, D>> where
+    S: TensorRef<T, D>
+{
+}
 
-impl<'a, T, S, const D: usize> ExactSizeIterator for WithIndex<TensorReferenceIterator<'a, T, S, D>>
-where
-    S: TensorRef<T, D>,
-{}
+impl<'a, T, S, const D: usize> ExactSizeIterator for WithIndex<TensorReferenceIterator<'a, T, S, D>> where
+    S: TensorRef<T, D>
+{
+}
 
 /**
  * An iterator over mutable references to all values in a tensor.
@@ -1059,15 +1063,15 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> FusedIterator for TensorReferenceMutIterator<'a, T, S, D>
-where
-    S: TensorMut<T, D>,
-{}
+impl<'a, T, S, const D: usize> FusedIterator for TensorReferenceMutIterator<'a, T, S, D> where
+    S: TensorMut<T, D>
+{
+}
 
-impl<'a, T, S, const D: usize> ExactSizeIterator for TensorReferenceMutIterator<'a, T, S, D>
-where
-    S: TensorMut<T, D>,
-{}
+impl<'a, T, S, const D: usize> ExactSizeIterator for TensorReferenceMutIterator<'a, T, S, D> where
+    S: TensorMut<T, D>
+{
+}
 
 impl<'a, T, S, const D: usize> Iterator for WithIndex<TensorReferenceMutIterator<'a, T, S, D>>
 where
@@ -1085,15 +1089,17 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> FusedIterator for WithIndex<TensorReferenceMutIterator<'a, T, S, D>>
-where
-    S: TensorMut<T, D>,
-{}
+impl<'a, T, S, const D: usize> FusedIterator for WithIndex<TensorReferenceMutIterator<'a, T, S, D>> where
+    S: TensorMut<T, D>
+{
+}
 
-impl<'a, T, S, const D: usize> ExactSizeIterator for WithIndex<TensorReferenceMutIterator<'a, T, S, D>>
+impl<'a, T, S, const D: usize> ExactSizeIterator
+    for WithIndex<TensorReferenceMutIterator<'a, T, S, D>>
 where
     S: TensorMut<T, D>,
-{}
+{
+}
 
 /**
  * An iterator over all values in an owned tensor.
@@ -1194,7 +1200,7 @@ where
             // our iteration.
             let value = std::mem::replace(
                 unsafe { self.source.get_reference_unchecked_mut(indexes) },
-                dummy
+                dummy,
             );
             value
         })
@@ -1205,15 +1211,12 @@ where
     }
 }
 
-impl<T, S, const D: usize> FusedIterator for TensorOwnedIterator<T, S, D>
-where
-    S: TensorMut<T, D>,
-{}
+impl<T, S, const D: usize> FusedIterator for TensorOwnedIterator<T, S, D> where S: TensorMut<T, D> {}
 
-impl<T, S, const D: usize> ExactSizeIterator for TensorOwnedIterator<T, S, D>
-where
-    S: TensorMut<T, D>,
-{}
+impl<T, S, const D: usize> ExactSizeIterator for TensorOwnedIterator<T, S, D> where
+    S: TensorMut<T, D>
+{
+}
 
 impl<T, S, const D: usize> Iterator for WithIndex<TensorOwnedIterator<T, S, D>>
 where
@@ -1231,15 +1234,15 @@ where
     }
 }
 
-impl<T, S, const D: usize> FusedIterator for WithIndex<TensorOwnedIterator<T, S, D>>
-where
-    S: TensorMut<T, D>,
-{}
+impl<T, S, const D: usize> FusedIterator for WithIndex<TensorOwnedIterator<T, S, D>> where
+    S: TensorMut<T, D>
+{
+}
 
-impl<T, S, const D: usize> ExactSizeIterator for WithIndex<TensorOwnedIterator<T, S, D>>
-where
-    S: TensorMut<T, D>,
-{}
+impl<T, S, const D: usize> ExactSizeIterator for WithIndex<TensorOwnedIterator<T, S, D>> where
+    S: TensorMut<T, D>
+{
+}
 
 /**
  * A TensorTranspose makes the data in the tensor it is created from appear to be in a different

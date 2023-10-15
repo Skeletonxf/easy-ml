@@ -16,8 +16,8 @@ use std::marker::PhantomData;
 use crate::linear_algebra;
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::{
-    TensorAccess, TensorIterator, TensorReferenceIterator, TensorReferenceMutIterator,
-    TensorTranspose, TensorOwnedIterator,
+    TensorAccess, TensorIterator, TensorOwnedIterator, TensorReferenceIterator,
+    TensorReferenceMutIterator, TensorTranspose,
 };
 use crate::tensors::{Dimension, Tensor};
 
@@ -648,10 +648,7 @@ where
 
     /// Unverified constructor for interal use when we know the dimensions/data/strides are
     /// the same as the existing instance and don't need reverification
-    pub(crate) fn new_with_same_shape(
-        &self,
-        data: Vec<T>,
-    ) -> TensorView<T, Tensor<T, D>, D> {
+    pub(crate) fn new_with_same_shape(&self, data: Vec<T>) -> TensorView<T, Tensor<T, D>, D> {
         let shape = self.shape();
         let strides = crate::tensors::compute_strides(&shape);
         TensorView::from(Tensor {

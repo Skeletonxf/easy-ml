@@ -1,6 +1,6 @@
-use crate::numeric::{Numeric, NumericRef};
-use crate::numeric::extra::{Real, RealRef};
 use crate::differentiation::Primitive;
+use crate::numeric::extra::{Real, RealRef};
+use crate::numeric::{Numeric, NumericRef};
 
 use std::marker::PhantomData;
 

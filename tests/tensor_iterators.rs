@@ -42,9 +42,8 @@ mod tensors {
     fn higher_dimensional_shape_iterator_len_test() {
         use std::iter::ExactSizeIterator;
 
-        let mut iterator = ShapeIterator::from(
-            [("a", 1), ("b", 2), ("c", 1), ("d", 2), ("e", 1), ("f", 2)]
-        );
+        let mut iterator =
+            ShapeIterator::from([("a", 1), ("b", 2), ("c", 1), ("d", 2), ("e", 1), ("f", 2)]);
         assert_eq!(iterator.len(), 8);
 
         let a = iterator.next();

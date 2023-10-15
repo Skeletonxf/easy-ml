@@ -1,14 +1,14 @@
-use crate::differentiation::Record;
-use crate::numeric::{Numeric, NumericRef};
-use crate::differentiation::{Primitive, Index, Derivatives, WengertList};
+use crate::differentiation::functions::{Division, FunctionDerivative, Multiplication};
 use crate::differentiation::record_operations;
-use crate::differentiation::functions::{Multiplication, Division, FunctionDerivative};
-use crate::tensors::{Tensor, Dimension};
-use crate::tensors::views::{TensorRef, TensorMut, TensorView, DataLayout, TensorRename};
-use crate::tensors::indexing::TensorOwnedIterator;
-use crate::matrices::{Matrix, Row, Column};
+use crate::differentiation::Record;
+use crate::differentiation::{Derivatives, Index, Primitive, WengertList};
 use crate::matrices::iterators::RowMajorOwnedIterator;
-use crate::matrices::views::{MatrixView, MatrixRef, MatrixMut, NoInteriorMutability};
+use crate::matrices::views::{MatrixMut, MatrixRef, MatrixView, NoInteriorMutability};
+use crate::matrices::{Column, Matrix, Row};
+use crate::numeric::{Numeric, NumericRef};
+use crate::tensors::indexing::TensorOwnedIterator;
+use crate::tensors::views::{DataLayout, TensorMut, TensorRef, TensorRename, TensorView};
+use crate::tensors::{Dimension, Tensor};
 
 mod container_operations;
 
@@ -51,7 +51,8 @@ pub type RecordMatrix<'a, T, S> = RecordContainer<'a, T, MatrixView<(T, Index), 
 /**
  * Alias for succinctly referring to RecordContainers backed by a tensor.
  */
-pub type RecordTensor<'a, T, S, const D: usize> = RecordContainer<'a, T, TensorView<(T, Index), S, D>, D>;
+pub type RecordTensor<'a, T, S, const D: usize> =
+    RecordContainer<'a, T, TensorView<(T, Index), S, D>, D>;
 
 fn calculate_incrementing_indexes(starting_index: usize, total: usize) -> Vec<Index> {
     let mut indexes = vec![0; total];
@@ -83,7 +84,9 @@ where
         RecordContainer {
             numbers: TensorView::from(Tensor::from(
                 c.view_shape(),
-                TensorOwnedIterator::from_numeric(c).map(|x| (x, 0)).collect()
+                TensorOwnedIterator::from_numeric(c)
+                    .map(|x| (x, 0))
+                    .collect(),
             )),
             history: None,
         }
@@ -119,7 +122,7 @@ where
                 x.view_shape(),
                 TensorOwnedIterator::from_numeric(x)
                     .zip(calculate_incrementing_indexes(starting_index, total))
-                    .collect()
+                    .collect(),
             )),
             history: Some(history),
         }
@@ -182,10 +185,7 @@ where
         history: Option<&'a WengertList<T>>,
         numbers: TensorView<(T, Index), S, D>,
     ) -> Self {
-        RecordContainer {
-            numbers,
-            history,
-        }
+        RecordContainer { numbers, history }
     }
 
     /**
@@ -222,7 +222,7 @@ where
     ) -> RecordTensor<'a, T, TensorRename<(T, Index), S, D>, D> {
         RecordTensor::from_existing(
             self.history,
-            TensorView::from(TensorRename::from(self.numbers.source(), dimensions))
+            TensorView::from(TensorRename::from(self.numbers.source(), dimensions)),
         )
     }
 }
@@ -242,14 +242,15 @@ where
             Some(history) => {
                 let total = self.elements();
                 let starting_index = history.append_nullary_repeating(total);
-                for (x, i) in self.numbers
+                for (x, i) in self
+                    .numbers
                     .iter_reference_mut()
                     .zip(calculate_incrementing_indexes(starting_index, total))
                 {
                     let (_, ref mut old_index) = x;
                     *old_index = i;
                 }
-            },
+            }
         };
     }
 
@@ -285,7 +286,9 @@ where
         RecordContainer {
             numbers: MatrixView::from(Matrix::from_flat_row_major(
                 (c.view_rows(), c.view_columns()),
-                RowMajorOwnedIterator::from_numeric(c).map(|x| (x, 0)).collect()
+                RowMajorOwnedIterator::from_numeric(c)
+                    .map(|x| (x, 0))
+                    .collect(),
             )),
             history: None,
         }
@@ -321,7 +324,7 @@ where
                 (x.view_rows(), x.view_columns()),
                 RowMajorOwnedIterator::from_numeric(x)
                     .zip(calculate_incrementing_indexes(starting_index, total))
-                    .collect()
+                    .collect(),
             )),
             history: Some(history),
         }
@@ -382,10 +385,7 @@ where
         history: Option<&'a WengertList<T>>,
         numbers: MatrixView<(T, Index), S>,
     ) -> Self {
-        RecordContainer {
-            numbers,
-            history,
-        }
+        RecordContainer { numbers, history }
     }
 }
 
@@ -404,14 +404,15 @@ where
             Some(history) => {
                 let total = self.elements();
                 let starting_index = history.append_nullary_repeating(total);
-                for (x, i) in self.numbers
+                for (x, i) in self
+                    .numbers
                     .row_major_reference_mut_iter()
                     .zip(calculate_incrementing_indexes(starting_index, total))
                 {
                     let (_, ref mut old_index) = x;
                     *old_index = i;
                 }
-            },
+            }
         };
     }
 
@@ -427,7 +428,7 @@ where
 
 impl<'a, T, S, const D: usize> RecordContainer<'a, T, S, D>
 where
-    T: Primitive
+    T: Primitive,
 {
     /**
      * Gets the WengertList these records are backed by if variables, and [None](None) if constants.
@@ -444,7 +445,7 @@ fn unary<'a, T, I>(
     history: &WengertList<T>,
     records: I,
     fx: impl Fn(T) -> T,
-    dfx_dx: impl Fn(T) -> T
+    dfx_dx: impl Fn(T) -> T,
 ) -> Vec<(T, usize)>
 where
     I: Iterator<Item = (T, Index)>,
@@ -645,20 +646,18 @@ where
     pub fn unary(
         &self,
         fx: impl Fn(T) -> T,
-        dfx_dx: impl Fn(T) -> T
+        dfx_dx: impl Fn(T) -> T,
     ) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D> {
         let total = self.elements();
         match self.history {
             None => RecordTensor::constants(self.numbers.map(|(x, _)| fx(x))),
             Some(history) => {
-                let ys = unary::<T, _>(
-                    total, history, self.numbers.iter(), fx, dfx_dx
-                );
+                let ys = unary::<T, _>(total, history, self.numbers.iter(), fx, dfx_dx);
                 RecordContainer {
                     numbers: self.numbers.new_with_same_shape(ys),
                     history: Some(history),
                 }
-            },
+            }
         }
     }
 
@@ -788,10 +787,12 @@ where
                 // use direct_from here maybe?
                 Tensor::from(
                     self.numbers.shape(),
-                    self.numbers.iter()
-                        .zip(rhs.numbers.iter()).map(|((x, _), (y, _))| fxy(x, y))
-                        .collect()
-                )
+                    self.numbers
+                        .iter()
+                        .zip(rhs.numbers.iter())
+                        .map(|((x, _), (y, _))| fxy(x, y))
+                        .collect(),
+                ),
             ),
             (Some(history), None) => {
                 let zs = binary_x_history::<T, _, _>(
@@ -800,13 +801,13 @@ where
                     self.numbers.iter(),
                     rhs.numbers.iter(),
                     fxy,
-                    dfxy_dx
+                    dfxy_dx,
                 );
                 RecordContainer {
                     numbers: self.numbers.new_with_same_shape(zs),
                     history: Some(history),
                 }
-            },
+            }
             (None, Some(history)) => {
                 let zs = binary_y_history::<T, _, _>(
                     total,
@@ -814,13 +815,13 @@ where
                     self.numbers.iter(),
                     rhs.numbers.iter(),
                     fxy,
-                    dfxy_dy
+                    dfxy_dy,
                 );
                 RecordContainer {
                     numbers: self.numbers.new_with_same_shape(zs),
                     history: Some(history),
                 }
-            },
+            }
             (Some(history), Some(h)) => {
                 assert!(
                     record_operations::same_lists(history, h),
@@ -833,13 +834,13 @@ where
                     rhs.numbers.iter(),
                     fxy,
                     dfxy_dx,
-                    dfxy_dy
+                    dfxy_dy,
                 );
                 RecordContainer {
                     numbers: self.numbers.new_with_same_shape(zs),
                     history: Some(history),
                 }
-            },
+            }
         }
     }
 
@@ -864,15 +865,14 @@ where
      */
     pub fn derivatives(&self) -> Option<Tensor<Derivatives<T>, D>> {
         self.history.map(|history| {
-            self
-                .numbers
-                .map(|(x, i)| {
-                    Record {
-                        number: x,
-                        history: Some(history),
-                        index: i,
-                    }.derivatives()
-                })
+            self.numbers.map(|(x, i)| {
+                Record {
+                    number: x,
+                    history: Some(history),
+                    index: i,
+                }
+                .derivatives()
+            })
         })
     }
 
@@ -899,7 +899,8 @@ where
             number,
             history: self.history,
             index,
-        }.try_derivatives()
+        }
+        .try_derivatives()
     }
 
     /**
@@ -914,7 +915,7 @@ where
     pub fn elementwise_multiply<S2>(
         &self,
         other: &RecordTensor<'a, T, S2, D>,
-    )-> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+    ) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
     where
         S2: TensorRef<(T, Index), D>,
     {
@@ -937,7 +938,7 @@ where
     pub fn elementwise_divide<S2>(
         &self,
         other: &RecordTensor<'a, T, S2, D>,
-    )-> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
+    ) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
     where
         S2: TensorRef<(T, Index), D>,
     {
@@ -963,7 +964,7 @@ impl<T: Clone + Primitive> Derivatives<T> {
     pub fn at_tensor_index<S, const D: usize>(
         &self,
         indexes: [usize; D],
-        input: &RecordTensor<T, S, D>
+        input: &RecordTensor<T, S, D>,
     ) -> Option<T>
     where
         S: TensorRef<(T, Index), D>,
@@ -982,10 +983,7 @@ impl<T: Clone + Primitive> Derivatives<T> {
      * and call .at_tensor(&xs) on it for some input container xs this
      * returns dy/dx for every x in xs.
      */
-    pub fn at_tensor<S, const D: usize>(
-        &self,
-        input: &RecordTensor<T, S, D>,
-    ) -> Tensor<T, D>
+    pub fn at_tensor<S, const D: usize>(&self, input: &RecordTensor<T, S, D>) -> Tensor<T, D>
     where
         S: TensorRef<(T, Index), D>,
     {
@@ -1024,10 +1022,7 @@ impl<T: Clone + Primitive> Derivatives<T> {
      * and call .at_matrix(&xs) on it for some input container xs this
      * returns dy/dx for every x in xs.
      */
-    pub fn at_matrix<S>(
-        &self,
-        input: &RecordMatrix<T, S>,
-    ) -> Matrix<T>
+    pub fn at_matrix<S>(&self, input: &RecordMatrix<T, S>) -> Matrix<T>
     where
         S: MatrixRef<(T, Index)> + NoInteriorMutability,
     {
@@ -1049,23 +1044,17 @@ where
      * output y is needed along with its derivative with respect to its input x.
      */
     #[track_caller]
-    pub fn unary_assign(
-        &mut self,
-        fx: impl Fn(T) -> T,
-        dfx_dx: impl Fn(T) -> T
-    ) {
+    pub fn unary_assign(&mut self, fx: impl Fn(T) -> T, dfx_dx: impl Fn(T) -> T) {
         let total = self.elements();
         match self.history {
             None => self.numbers.map_mut(|(x, i)| (fx(x), i)),
             Some(history) => {
-                let ys = unary::<T, _>(
-                    total, history, self.numbers.iter(), fx, dfx_dx
-                );
+                let ys = unary::<T, _>(total, history, self.numbers.iter(), fx, dfx_dx);
                 for (element, result) in self.numbers.iter_reference_mut().zip(ys) {
                     *element = result;
                 }
                 self.history = Some(history);
-            },
+            }
         }
     }
 
@@ -1089,8 +1078,7 @@ where
         fxy: impl Fn(T, T) -> T,
         dfxy_dx: impl Fn(T, T) -> T,
         dfxy_dy: impl Fn(T, T) -> T,
-    )
-    where
+    ) where
         S2: TensorRef<(T, Index), D>,
     {
         {
@@ -1112,7 +1100,7 @@ where
                     let (right, _) = y;
                     *x = (fxy(left.clone(), right), 0);
                 }
-            },
+            }
             (Some(history), None) => {
                 let zs = binary_x_history::<T, _, _>(
                     total,
@@ -1120,13 +1108,13 @@ where
                     self.numbers.iter(),
                     rhs.numbers.iter(),
                     fxy,
-                    dfxy_dx
+                    dfxy_dx,
                 );
                 for (element, result) in self.numbers.iter_reference_mut().zip(zs) {
                     *element = result;
                 }
                 self.history = Some(history);
-            },
+            }
             (None, Some(history)) => {
                 let zs = binary_y_history::<T, _, _>(
                     total,
@@ -1134,13 +1122,13 @@ where
                     self.numbers.iter(),
                     rhs.numbers.iter(),
                     fxy,
-                    dfxy_dy
+                    dfxy_dy,
                 );
                 for (element, result) in self.numbers.iter_reference_mut().zip(zs) {
                     *element = result;
                 }
                 self.history = Some(history);
-            },
+            }
             (Some(history), Some(h)) => {
                 assert!(
                     record_operations::same_lists(history, h),
@@ -1153,13 +1141,13 @@ where
                     rhs.numbers.iter(),
                     fxy,
                     dfxy_dx,
-                    dfxy_dy
+                    dfxy_dy,
                 );
                 for (element, result) in self.numbers.iter_reference_mut().zip(zs) {
                     *element = result;
                 }
                 self.history = Some(history);
-            },
+            }
         }
     }
 
@@ -1169,11 +1157,7 @@ where
      * the record container which now contains the result of the operation.
      */
     #[track_caller]
-    pub fn do_unary_assign(
-        mut self,
-        fx: impl Fn(T) -> T,
-        dfx_dx: impl Fn(T) -> T
-    ) -> Self {
+    pub fn do_unary_assign(mut self, fx: impl Fn(T) -> T, dfx_dx: impl Fn(T) -> T) -> Self {
         self.unary_assign(fx, dfx_dx);
         self
     }
@@ -1225,13 +1209,17 @@ where
         fxy: impl Fn(T, T) -> T,
         dfxy_dx: impl Fn(T, T) -> T,
         dfxy_dy: impl Fn(T, T) -> T,
-    )
-    where
+    ) where
         S2: TensorMut<(T, Index), D>,
     {
         // x is lhs, y is rhs, so calling binary_left_assign on the rhs container
         // means we need to swap all the arguments
-        rhs.binary_left_assign(self, |y, x| fxy(x, y), |y, x| dfxy_dy(x, y), |y, x| dfxy_dx(x, y))
+        rhs.binary_left_assign(
+            self,
+            |y, x| fxy(x, y),
+            |y, x| dfxy_dy(x, y),
+            |y, x| dfxy_dx(x, y),
+        )
     }
 
     /**
@@ -1240,19 +1228,19 @@ where
      * the right hand side which now contains the result of the operation.
      */
     #[track_caller]
-     pub fn do_binary_right_assign<S2>(
-         &self,
-         mut rhs: RecordTensor<'a, T, S2, D>,
-         fxy: impl Fn(T, T) -> T,
-         dfxy_dx: impl Fn(T, T) -> T,
-         dfxy_dy: impl Fn(T, T) -> T,
-     ) -> RecordTensor<'a, T, S2, D>
-     where
-         S2: TensorMut<(T, Index), D>,
-     {
-         self.binary_right_assign(&mut rhs, fxy, dfxy_dx, dfxy_dy);
-         rhs
-     }
+    pub fn do_binary_right_assign<S2>(
+        &self,
+        mut rhs: RecordTensor<'a, T, S2, D>,
+        fxy: impl Fn(T, T) -> T,
+        dfxy_dx: impl Fn(T, T) -> T,
+        dfxy_dy: impl Fn(T, T) -> T,
+    ) -> RecordTensor<'a, T, S2, D>
+    where
+        S2: TensorMut<(T, Index), D>,
+    {
+        self.binary_right_assign(&mut rhs, fxy, dfxy_dx, dfxy_dy);
+        rhs
+    }
 }
 
 impl<'a, T, S> RecordMatrix<'a, T, S>
@@ -1320,20 +1308,18 @@ where
     pub fn unary(
         &self,
         fx: impl Fn(T) -> T,
-        dfx_dx: impl Fn(T) -> T
+        dfx_dx: impl Fn(T) -> T,
     ) -> RecordMatrix<'a, T, Matrix<(T, Index)>> {
         let total = self.elements();
         match self.history {
             None => RecordMatrix::constants(self.numbers.map(|(x, _)| fx(x))),
             Some(history) => {
-                let ys = unary::<T, _>(
-                    total, history, self.numbers.row_major_iter(), fx, dfx_dx
-                );
+                let ys = unary::<T, _>(total, history, self.numbers.row_major_iter(), fx, dfx_dx);
                 RecordContainer {
                     numbers: MatrixView::from(Matrix::from_flat_row_major(self.numbers.size(), ys)),
                     history: Some(history),
                 }
-            },
+            }
         }
     }
 
@@ -1461,15 +1447,14 @@ where
         };
         let total = self.elements();
         match (self.history, rhs.history) {
-            (None, None) => RecordMatrix::constants(
-                Matrix::from_flat_row_major(
-                    shape,
-                    self.numbers.row_major_iter()
-                        .zip(rhs.numbers.row_major_iter())
-                        .map(|((x, _), (y, _))| fxy(x, y))
-                        .collect()
-                )
-            ),
+            (None, None) => RecordMatrix::constants(Matrix::from_flat_row_major(
+                shape,
+                self.numbers
+                    .row_major_iter()
+                    .zip(rhs.numbers.row_major_iter())
+                    .map(|((x, _), (y, _))| fxy(x, y))
+                    .collect(),
+            )),
             (Some(history), None) => {
                 let zs = binary_x_history::<T, _, _>(
                     total,
@@ -1477,13 +1462,13 @@ where
                     self.numbers.row_major_iter(),
                     rhs.numbers.row_major_iter(),
                     fxy,
-                    dfxy_dx
+                    dfxy_dx,
                 );
                 RecordContainer {
                     numbers: MatrixView::from(Matrix::from_flat_row_major(shape, zs)),
                     history: Some(history),
                 }
-            },
+            }
             (None, Some(history)) => {
                 let zs = binary_y_history::<T, _, _>(
                     total,
@@ -1491,13 +1476,13 @@ where
                     self.numbers.row_major_iter(),
                     rhs.numbers.row_major_iter(),
                     fxy,
-                    dfxy_dy
+                    dfxy_dy,
                 );
                 RecordContainer {
                     numbers: MatrixView::from(Matrix::from_flat_row_major(shape, zs)),
                     history: Some(history),
                 }
-            },
+            }
             (Some(history), Some(h)) => {
                 assert!(
                     record_operations::same_lists(history, h),
@@ -1510,13 +1495,13 @@ where
                     rhs.numbers.row_major_iter(),
                     fxy,
                     dfxy_dx,
-                    dfxy_dy
+                    dfxy_dy,
                 );
                 RecordContainer {
                     numbers: MatrixView::from(Matrix::from_flat_row_major(shape, zs)),
                     history: Some(history),
                 }
-            },
+            }
         }
     }
 
@@ -1541,15 +1526,14 @@ where
      */
     pub fn derivatives(&self) -> Option<Matrix<Derivatives<T>>> {
         self.history.map(|history| {
-            self
-                .numbers
-                .map(|(x, i)| {
-                    Record {
-                        number: x,
-                        history: Some(history),
-                        index: i,
-                    }.derivatives()
-                })
+            self.numbers.map(|(x, i)| {
+                Record {
+                    number: x,
+                    history: Some(history),
+                    index: i,
+                }
+                .derivatives()
+            })
         })
     }
 
@@ -1579,7 +1563,8 @@ where
             number,
             history: self.history,
             index,
-        }.try_derivatives()
+        }
+        .try_derivatives()
     }
 
     /**
@@ -1644,23 +1629,17 @@ where
      * output y is needed along with its derivative with respect to its input x.
      */
     #[track_caller]
-    pub fn unary_assign(
-        &mut self,
-        fx: impl Fn(T) -> T,
-        dfx_dx: impl Fn(T) -> T
-    ) {
+    pub fn unary_assign(&mut self, fx: impl Fn(T) -> T, dfx_dx: impl Fn(T) -> T) {
         let total = self.elements();
         match self.history {
             None => self.numbers.map_mut(|(x, i)| (fx(x), i)),
             Some(history) => {
-                let ys = unary::<T, _>(
-                    total, history, self.numbers.row_major_iter(), fx, dfx_dx
-                );
+                let ys = unary::<T, _>(total, history, self.numbers.row_major_iter(), fx, dfx_dx);
                 for (element, result) in self.numbers.row_major_reference_mut_iter().zip(ys) {
                     *element = result;
                 }
                 self.history = Some(history);
-            },
+            }
         }
     }
 
@@ -1684,8 +1663,7 @@ where
         fxy: impl Fn(T, T) -> T,
         dfxy_dx: impl Fn(T, T) -> T,
         dfxy_dy: impl Fn(T, T) -> T,
-    )
-    where
+    ) where
         S2: MatrixRef<(T, Index)> + NoInteriorMutability,
     {
         {
@@ -1702,12 +1680,16 @@ where
         let total = self.elements();
         match (self.history, rhs.history) {
             (None, None) => {
-                for (x, y) in self.numbers.row_major_reference_mut_iter().zip(rhs.numbers.row_major_iter()) {
+                for (x, y) in self
+                    .numbers
+                    .row_major_reference_mut_iter()
+                    .zip(rhs.numbers.row_major_iter())
+                {
                     let (left, _) = x;
                     let (right, _) = y;
                     *x = (fxy(left.clone(), right), 0);
                 }
-            },
+            }
             (Some(history), None) => {
                 let zs = binary_x_history::<T, _, _>(
                     total,
@@ -1715,13 +1697,13 @@ where
                     self.numbers.row_major_iter(),
                     rhs.numbers.row_major_iter(),
                     fxy,
-                    dfxy_dx
+                    dfxy_dx,
                 );
                 for (element, result) in self.numbers.row_major_reference_mut_iter().zip(zs) {
                     *element = result;
                 }
                 self.history = Some(history);
-            },
+            }
             (None, Some(history)) => {
                 let zs = binary_y_history::<T, _, _>(
                     total,
@@ -1729,13 +1711,13 @@ where
                     self.numbers.row_major_iter(),
                     rhs.numbers.row_major_iter(),
                     fxy,
-                    dfxy_dy
+                    dfxy_dy,
                 );
                 for (element, result) in self.numbers.row_major_reference_mut_iter().zip(zs) {
                     *element = result;
                 }
                 self.history = Some(history);
-            },
+            }
             (Some(history), Some(h)) => {
                 assert!(
                     record_operations::same_lists(history, h),
@@ -1748,13 +1730,13 @@ where
                     rhs.numbers.row_major_iter(),
                     fxy,
                     dfxy_dx,
-                    dfxy_dy
+                    dfxy_dy,
                 );
                 for (element, result) in self.numbers.row_major_reference_mut_iter().zip(zs) {
                     *element = result;
                 }
                 self.history = Some(history);
-            },
+            }
         }
     }
 
@@ -1764,11 +1746,7 @@ where
      * the record container which now contains the result of the operation.
      */
     #[track_caller]
-    pub fn do_unary_assign(
-        mut self,
-        fx: impl Fn(T) -> T,
-        dfx_dx: impl Fn(T) -> T
-    ) -> Self {
+    pub fn do_unary_assign(mut self, fx: impl Fn(T) -> T, dfx_dx: impl Fn(T) -> T) -> Self {
         self.unary_assign(fx, dfx_dx);
         self
     }
@@ -1820,13 +1798,17 @@ where
         fxy: impl Fn(T, T) -> T,
         dfxy_dx: impl Fn(T, T) -> T,
         dfxy_dy: impl Fn(T, T) -> T,
-    )
-    where
+    ) where
         S2: MatrixMut<(T, Index)> + NoInteriorMutability,
     {
         // x is lhs, y is rhs, so calling binary_left_assign on the rhs container
         // means we need to swap all the arguments
-        rhs.binary_left_assign(self, |y, x| fxy(x, y), |y, x| dfxy_dy(x, y), |y, x| dfxy_dx(x, y))
+        rhs.binary_left_assign(
+            self,
+            |y, x| fxy(x, y),
+            |y, x| dfxy_dy(x, y),
+            |y, x| dfxy_dx(x, y),
+        )
     }
 
     /**
@@ -1835,19 +1817,19 @@ where
      * the right hand side which now contains the result of the operation.
      */
     #[track_caller]
-     pub fn do_binary_right_assign<S2>(
-         &self,
-         mut rhs: RecordMatrix<'a, T, S2>,
-         fxy: impl Fn(T, T) -> T,
-         dfxy_dx: impl Fn(T, T) -> T,
-         dfxy_dy: impl Fn(T, T) -> T,
-     ) -> RecordMatrix<'a, T, S2>
-     where
-         S2: MatrixMut<(T, Index)> + NoInteriorMutability,
-     {
-         self.binary_right_assign(&mut rhs, fxy, dfxy_dx, dfxy_dy);
-         rhs
-     }
+    pub fn do_binary_right_assign<S2>(
+        &self,
+        mut rhs: RecordMatrix<'a, T, S2>,
+        fxy: impl Fn(T, T) -> T,
+        dfxy_dx: impl Fn(T, T) -> T,
+        dfxy_dy: impl Fn(T, T) -> T,
+    ) -> RecordMatrix<'a, T, S2>
+    where
+        S2: MatrixMut<(T, Index)> + NoInteriorMutability,
+    {
+        self.binary_right_assign(&mut rhs, fxy, dfxy_dx, dfxy_dy);
+        rhs
+    }
 }
 
 // # Safety
@@ -1900,7 +1882,9 @@ where
     }
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut (T, Index) {
-        self.numbers.source_ref_mut().get_reference_unchecked_mut(indexes)
+        self.numbers
+            .source_ref_mut()
+            .get_reference_unchecked_mut(indexes)
     }
 }
 
@@ -1931,7 +1915,9 @@ where
     }
 
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &(T, Index) {
-        self.numbers.source_ref().get_reference_unchecked(row, column)
+        self.numbers
+            .source_ref()
+            .get_reference_unchecked(row, column)
     }
 
     fn data_layout(&self) -> crate::matrices::views::DataLayout {
@@ -1950,7 +1936,7 @@ where
 unsafe impl<'a, T, S> NoInteriorMutability for RecordMatrix<'a, T, S>
 where
     T: Primitive,
-    S: NoInteriorMutability
+    S: NoInteriorMutability,
 {
 }
 
@@ -1969,11 +1955,15 @@ where
     S: MatrixMut<(T, Index)>,
 {
     fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut (T, Index)> {
-        self.numbers.source_ref_mut().try_get_reference_mut(row, column)
+        self.numbers
+            .source_ref_mut()
+            .try_get_reference_mut(row, column)
     }
 
     unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut (T, Index) {
-        self.numbers.source_ref_mut().get_reference_unchecked_mut(row, column)
+        self.numbers
+            .source_ref_mut()
+            .get_reference_unchecked_mut(row, column)
     }
 }
 
@@ -2006,7 +1996,9 @@ where
     }
 
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &(T, Index) {
-        self.numbers.source_ref().get_reference_unchecked(row, column)
+        self.numbers
+            .source_ref()
+            .get_reference_unchecked(row, column)
     }
 
     fn data_layout(&self) -> crate::matrices::views::DataLayout {
@@ -2041,7 +2033,9 @@ where
     }
 
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &(T, Index) {
-        self.numbers.source_ref().get_reference_unchecked(row, column)
+        self.numbers
+            .source_ref()
+            .get_reference_unchecked(row, column)
     }
 
     fn data_layout(&self) -> crate::matrices::views::DataLayout {
@@ -2064,11 +2058,15 @@ where
     S: MatrixMut<(T, Index)>,
 {
     fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut (T, Index)> {
-        self.numbers.source_ref_mut().try_get_reference_mut(row, column)
+        self.numbers
+            .source_ref_mut()
+            .try_get_reference_mut(row, column)
     }
 
     unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut (T, Index) {
-        self.numbers.source_ref_mut().get_reference_unchecked_mut(row, column)
+        self.numbers
+            .source_ref_mut()
+            .get_reference_unchecked_mut(row, column)
     }
 }
 
@@ -2101,16 +2099,16 @@ fn matrix_multiplication_derivatives_are_the_same() {
     );
 
     let tensor_of_records_derivatives = tensor_of_records_c.map(|r| r.derivatives());
-    let tensor_of_records_a_derivatives = tensor_of_records_derivatives
-        .map(|d| d.at_tensor(&record_tensor_a));
-    let tensor_of_records_b_derivatives = tensor_of_records_derivatives
-        .map(|d| d.at_tensor(&record_tensor_b));
+    let tensor_of_records_a_derivatives =
+        tensor_of_records_derivatives.map(|d| d.at_tensor(&record_tensor_a));
+    let tensor_of_records_b_derivatives =
+        tensor_of_records_derivatives.map(|d| d.at_tensor(&record_tensor_b));
 
     let record_tensor_derivatives = record_tensor_c.derivatives().unwrap();
-    let record_tensor_a_derivatives = record_tensor_derivatives
-        .map(|d| d.at_tensor(&record_tensor_a));
-    let record_tensor_b_derivatives = record_tensor_derivatives
-        .map(|d| d.at_tensor(&record_tensor_b));
+    let record_tensor_a_derivatives =
+        record_tensor_derivatives.map(|d| d.at_tensor(&record_tensor_a));
+    let record_tensor_b_derivatives =
+        record_tensor_derivatives.map(|d| d.at_tensor(&record_tensor_b));
 
     // Every calculated derivative should match exactly
     assert_eq!(tensor_of_records_a_derivatives, record_tensor_a_derivatives);
@@ -2161,7 +2159,10 @@ fn matrix_multiplication_derivatives_are_the_same() {
 
     let tensor_of_records_derivatives = history.operations.borrow().clone();
     let record_tensor_derivatives = also_history.operations.borrow().clone();
-    assert_eq!(tensor_of_records_derivatives.len(), record_tensor_derivatives.len());
+    assert_eq!(
+        tensor_of_records_derivatives.len(),
+        record_tensor_derivatives.len()
+    );
 }
 
 #[test]
@@ -2190,16 +2191,16 @@ fn matrix_view_matrix_multiplication_derivatives_are_the_same() {
     );
 
     let matrix_of_records_derivatives = matrix_of_records_c.map(|r| r.derivatives());
-    let matrix_of_records_a_derivatives = matrix_of_records_derivatives
-        .map(|d| d.at_matrix(&record_matrix_a));
-    let matrix_of_records_b_derivatives = matrix_of_records_derivatives
-        .map(|d| d.at_matrix(&record_matrix_b));
+    let matrix_of_records_a_derivatives =
+        matrix_of_records_derivatives.map(|d| d.at_matrix(&record_matrix_a));
+    let matrix_of_records_b_derivatives =
+        matrix_of_records_derivatives.map(|d| d.at_matrix(&record_matrix_b));
 
     let record_matrix_derivatives = record_matrix_c.derivatives().unwrap();
-    let record_matrix_a_derivatives = record_matrix_derivatives
-        .map(|d| d.at_matrix(&record_matrix_a));
-    let record_matrix_b_derivatives = record_matrix_derivatives
-        .map(|d| d.at_matrix(&record_matrix_b));
+    let record_matrix_a_derivatives =
+        record_matrix_derivatives.map(|d| d.at_matrix(&record_matrix_a));
+    let record_matrix_b_derivatives =
+        record_matrix_derivatives.map(|d| d.at_matrix(&record_matrix_b));
 
     // Every calculated derivative should match exactly
     assert_eq!(matrix_of_records_a_derivatives, record_matrix_a_derivatives);
@@ -2250,5 +2251,8 @@ fn matrix_view_matrix_multiplication_derivatives_are_the_same() {
 
     let matrix_of_records_derivatives = history.operations.borrow().clone();
     let record_matrix_derivatives = also_history.operations.borrow().clone();
-    assert_eq!(matrix_of_records_derivatives.len(), record_matrix_derivatives.len());
+    assert_eq!(
+        matrix_of_records_derivatives.len(),
+        record_matrix_derivatives.len()
+    );
 }

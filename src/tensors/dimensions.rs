@@ -48,10 +48,7 @@ pub fn position_of<const D: usize>(
 /**
  * Checks if the dimension name is in the shape.
  */
-pub fn contains<const D: usize>(
-    shape: &[(Dimension, usize); D],
-    dimension: Dimension,
-) -> bool {
+pub fn contains<const D: usize>(shape: &[(Dimension, usize); D], dimension: Dimension) -> bool {
     shape.iter().any(|(d, _)| d == &dimension)
 }
 

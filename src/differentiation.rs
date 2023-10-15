@@ -192,11 +192,11 @@
  * - [Yes you should understand backprop](https://medium.com/@karpathy/yes-you-should-understand-backprop-e2f06eab496b)
  */
 
+mod container_record;
+mod functions;
 pub mod operations;
 pub mod record_operations;
 pub mod trace_operations;
-mod functions;
-mod container_record;
 
 pub use container_record::*;
 
@@ -851,8 +851,12 @@ impl<T: Numeric + Primitive> WengertList<T> {
     ) -> Index {
         use std::ops::DerefMut;
         let mut borrow = self.operations.borrow_mut();
-        BorrowedWengertList::new(borrow.deref_mut())
-            .append_binary(left_parent, left_derivative, right_parent, right_derivative)
+        BorrowedWengertList::new(borrow.deref_mut()).append_binary(
+            left_parent,
+            left_derivative,
+            right_parent,
+            right_derivative,
+        )
     }
 
     /**

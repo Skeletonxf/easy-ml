@@ -707,8 +707,11 @@ mod tensors {
     #[test]
     fn display_and_indexing_for_reordering() {
         use easy_ml::tensors::views::TensorView;
-        let tensor = Tensor::from([("a", 2), ("b", 3), ("c", 4)], (0..(2*3*4)).collect());
-        assert_eq!(tensor.iter().collect::<Vec<_>>(), (0..(2*3*4)).collect::<Vec<_>>());
+        let tensor = Tensor::from([("a", 2), ("b", 3), ("c", 4)], (0..(2 * 3 * 4)).collect());
+        assert_eq!(
+            tensor.iter().collect::<Vec<_>>(),
+            (0..(2 * 3 * 4)).collect::<Vec<_>>()
+        );
         assert_eq!(
             r#"D = 3
 ("a", 2), ("b", 3), ("c", 4)
@@ -721,7 +724,7 @@ mod tensors {
   16, 17, 18, 19
   20, 21, 22, 23
 ]"#,
-             tensor.to_string(),
+            tensor.to_string(),
         );
         let reordered = tensor.index_by(["b", "c", "a"]);
         // reordering the 3D tensor should yield a tensor that still displays with the leftmost
@@ -730,8 +733,8 @@ mod tensors {
         assert_eq!(
             reordered.iter().collect::<Vec<_>>(),
             vec![
-                0, 12, 1, 13, 2, 14, 3, 15, 4, 16, 5, 17, 6, 18, 7, 19, 8, 20, 9, 21, 10, 22,
-                11, 23
+                0, 12, 1, 13, 2, 14, 3, 15, 4, 16, 5, 17, 6, 18, 7, 19, 8, 20, 9, 21, 10, 22, 11,
+                23
             ]
         );
         assert_eq!(
@@ -754,14 +757,17 @@ mod tensors {
   11, 23
 ]
 Data Layout = Linear(["a", "b", "c"])"#,
-             reordered.to_string(),
+            reordered.to_string(),
         );
 
         // To transpose our way back, make biggest dimension a, since as from above that's a
         // stride of 12. Make next dimension b. since that's a stride of 4, then make smallest
         // dimension c since that's a stride of 1 (this aligns with data layout too).
         let transposed = TensorView::from(reordered).transpose(["a", "b", "c"]);
-        assert_eq!(transposed.iter().collect::<Vec<_>>(), (0..(2*3*4)).collect::<Vec<_>>());
+        assert_eq!(
+            transposed.iter().collect::<Vec<_>>(),
+            (0..(2 * 3 * 4)).collect::<Vec<_>>()
+        );
         assert_eq!(
             r#"D = 3
 ("b", 2), ("c", 3), ("a", 4)
@@ -774,7 +780,7 @@ Data Layout = Linear(["a", "b", "c"])"#,
   16, 17, 18, 19
   20, 21, 22, 23
 ]"#,
-             transposed.to_string(),
+            transposed.to_string(),
         );
     }
 
@@ -799,7 +805,7 @@ Data Layout = Linear(["a", "b", "c"])"#,
         let mut_tensor = &mut tensor;
         let owned_iter = TensorOwnedIterator::from(mut_tensor);
         let drained = owned_iter.collect::<Vec<_>>();
-        assert_eq!(drained, vec![ 0, 1, 1, 2 ]);
+        assert_eq!(drained, vec![0, 1, 1, 2]);
         // original tensor is now drained of its values so should be set to 0 as that's the
         // default value substituted.
         assert_eq!(tensor, Tensor::empty([("x", 2), ("y", 2)], 0));

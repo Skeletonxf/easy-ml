@@ -6,11 +6,11 @@
  * and a compile time constant. Each tensor also carries `D` dimension name and length pairs.
  */
 use crate::linear_algebra;
-use crate::numeric::{Numeric, NumericRef};
 use crate::numeric::extra::{Real, RealRef};
+use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::{
-    ShapeIterator, TensorAccess, TensorIterator, TensorReferenceIterator,
-    TensorReferenceMutIterator, TensorTranspose, TensorOwnedIterator,
+    ShapeIterator, TensorAccess, TensorIterator, TensorOwnedIterator, TensorReferenceIterator,
+    TensorReferenceMutIterator, TensorTranspose,
 };
 use crate::tensors::views::{
     DataLayout, IndexRange, IndexRangeValidationError, TensorExpansion, TensorIndex, TensorMask,
@@ -392,10 +392,7 @@ impl<T, const D: usize> Tensor<T, D> {
     /// Unverified constructor for interal use when we know the dimensions/data/strides are
     /// the same as the existing instance and don't need reverification
     #[allow(dead_code)] // pretty sure something else will want this in the future
-    pub(crate) fn new_with_same_shape(
-        &self,
-        data: Vec<T>,
-    ) -> Self {
+    pub(crate) fn new_with_same_shape(&self, data: Vec<T>) -> Self {
         Tensor {
             data,
             shape: self.shape,
@@ -810,10 +807,7 @@ impl<T, const D: usize> Tensor<T, D> {
      */
     // TODO: View version
     #[track_caller]
-    pub fn reshape_owned<const D2: usize>(
-        self,
-        shape: [(Dimension, usize); D2],
-    ) -> Tensor<T, D2> {
+    pub fn reshape_owned<const D2: usize>(self, shape: [(Dimension, usize); D2]) -> Tensor<T, D2> {
         Tensor::from(shape, self.data)
     }
 
@@ -1599,7 +1593,10 @@ where
      */
     // TODO: Scalar ops for tensors
     pub fn euclidean_length(&self) -> T {
-        self.direct_iter_reference().map(|x| x * x).sum::<T>().sqrt()
+        self.direct_iter_reference()
+            .map(|x| x * x)
+            .sum::<T>()
+            .sqrt()
     }
 }
 

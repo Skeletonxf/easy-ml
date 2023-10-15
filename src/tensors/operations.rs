@@ -386,7 +386,8 @@ where
 {
     // Using reduce instead of sum because when T is a Record type adding the first element to 0
     // has a minor cost on the WengertList.
-    left_iter.zip(right_iter)
+    left_iter
+        .zip(right_iter)
         .map(|(x, y)| x * y)
         .reduce(|x, y| x + y)
         .unwrap() // this won't be called on 0 length iterators
