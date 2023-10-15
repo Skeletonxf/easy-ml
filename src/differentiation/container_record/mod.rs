@@ -2250,5 +2250,5 @@ fn matrix_view_matrix_multiplication_derivatives_are_the_same() {
 
     let matrix_of_records_derivatives = history.operations.borrow().clone();
     let record_matrix_derivatives = also_history.operations.borrow().clone();
-    //assert_eq!(matrix_of_records_derivatives.len(), record_matrix_derivatives.len());
+    assert_eq!(matrix_of_records_derivatives.len(), record_matrix_derivatives.len());
 }

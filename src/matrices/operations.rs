@@ -103,6 +103,7 @@ where
     S1: MatrixRef<T> + NoInteriorMutability,
     S2: MatrixRef<T> + NoInteriorMutability,
 {
+    use crate::tensors::operations::scalar_product;
     // LxM * MxN -> LxN
     assert!(
         left.view_columns() == right.view_rows(),
@@ -114,18 +115,14 @@ where
     );
 
     let mut result = Matrix::empty(T::zero(), (left.view_rows(), right.view_columns()));
-    for i in 0..left.view_rows() {
-        for j in 0..right.view_columns() {
-            // compute dot product for each element in the new matrix
-            result.set(
-                i,
-                j,
-                RowReferenceIterator::from(left, i)
-                    .zip(ColumnReferenceIterator::from(right, j))
-                    .map(|(x, y)| x * y)
-                    .sum(),
-            );
-        }
+
+    for ((i, j), x) in result.row_major_reference_mut_iter().with_index() {
+        // Select the i'th row in the left tensor to give us a vector
+        let left = RowReferenceIterator::from(left, i);
+        // Select the j'th column in the right tensor to give us a vector
+        let right = ColumnReferenceIterator::from(right, j);
+        // Since we checked earlier that we have MxN * NxL these two vectors have the same length.
+        *x = scalar_product::<T, _, _>(left, right);
     }
     result
 }
