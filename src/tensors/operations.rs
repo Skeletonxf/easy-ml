@@ -49,7 +49,7 @@ use crate::tensors::indexing::{TensorAccess, TensorReferenceIterator};
 use crate::tensors::views::{TensorIndex, TensorRef, TensorView};
 use crate::tensors::{Dimension, Tensor};
 
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, Div, Mul, Sub};
 
 // Common tensor equality definition (list of dimension names must match, and elements must match)
 #[inline]
@@ -1422,3 +1422,149 @@ where
         )
     }
 }
+
+macro_rules! tensor_scalar {
+    (impl $op:tt for Tensor { fn $method:ident }) => {
+        /**
+         * Operation for a tensor and scalar by reference. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+        impl<T: Numeric, const D: usize> $op<&T> for &Tensor<T, D>
+        where
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Tensor<T, D>;
+            #[inline]
+            fn $method(self, rhs: &T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+
+        /**
+         * Operation for a tensor by value and scalar by reference. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+        impl<T: Numeric, const D: usize> $op<&T> for Tensor<T, D>
+        where
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Tensor<T, D>;
+            #[inline]
+            fn $method(self, rhs: &T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+
+        /**
+         * Operation for a tensor by reference and scalar by value. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+        impl<T: Numeric, const D: usize> $op<T> for &Tensor<T, D>
+        where
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Tensor<T, D>;
+            #[inline]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+
+        /**
+         * Operation for a tensor and scalar by value. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+        impl<T: Numeric, const D: usize> $op<T> for Tensor<T, D>
+        where
+            for<'a> &'a T: NumericRef<T>,
+        {
+            type Output = Tensor<T, D>;
+            #[inline]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+    };
+}
+
+macro_rules! tensor_view_scalar {
+    (impl $op:tt for TensorView { fn $method:ident }) => {
+        /**
+         * Operation for a tensor view and scalar by reference. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+        impl<T, S, const D: usize> $op<&T> for &TensorView<T, S, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+            #[inline]
+            fn $method(self, rhs: &T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+
+        /**
+         * Operation for a tensor view by value and scalar by reference. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+        impl<T, S, const D: usize> $op<&T> for TensorView<T, S, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+            #[inline]
+            fn $method(self, rhs: &T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+
+        /**
+         * Operation for a tensor view by reference and scalar by value. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+        impl<T, S, const D: usize> $op<T> for &TensorView<T, S, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+            #[inline]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+
+        /**
+         * Operation for a tensor view and scalar by value. The scalar is applied to
+         * all elements, this is a shorthand for map().
+         */
+        impl<T, S, const D: usize> $op<T> for TensorView<T, S, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, D>,
+        {
+            type Output = Tensor<T, D>;
+            #[inline]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.map(|x| (x).$method(rhs.clone()))
+            }
+        }
+    };
+}
+
+tensor_scalar!(impl Add for Tensor { fn add });
+tensor_scalar!(impl Sub for Tensor { fn sub });
+tensor_scalar!(impl Mul for Tensor { fn mul });
+tensor_scalar!(impl Div for Tensor { fn div });
+
+tensor_view_scalar!(impl Add for TensorView { fn add });
+tensor_view_scalar!(impl Sub for TensorView { fn sub });
+tensor_view_scalar!(impl Mul for TensorView { fn mul });
+tensor_view_scalar!(impl Div for TensorView { fn div });
