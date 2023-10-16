@@ -1379,7 +1379,7 @@ where
 record_real_matrix_operator_impl_value!(impl Sqrt for RecordMatrix { fn sqrt } record_matrix_sqrt_value);
 record_real_matrix_operator_impl_reference!(impl Sqrt for RecordMatrix { fn sqrt } record_matrix_sqrt_reference);
 
-macro_rules! record_tensor_operator_impl_scalar_value_value {
+macro_rules! record_tensor_operator_impl_scalar {
     (impl $op:tt for RecordTensor { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record tensor and a constant of the same type. The scalar is applied
@@ -1400,11 +1400,7 @@ macro_rules! record_tensor_operator_impl_scalar_value_value {
                 )
             }
         }
-    };
-}
 
-macro_rules! record_tensor_operator_impl_scalar_value_reference {
-    (impl $op:tt for RecordTensor { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record tensor and a constant with the right referenced. The scalar is
          * applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
@@ -1424,11 +1420,7 @@ macro_rules! record_tensor_operator_impl_scalar_value_reference {
                 )
             }
         }
-    };
-}
 
-macro_rules! record_tensor_operator_impl_scalar_reference_value {
-    (impl $op:tt for RecordTensor { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record tensor and a constant with the left referenced. The scalar is
          * applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
@@ -1448,11 +1440,7 @@ macro_rules! record_tensor_operator_impl_scalar_reference_value {
                 )
             }
         }
-    };
-}
 
-macro_rules! record_tensor_operator_impl_scalar_reference_reference {
-    (impl $op:tt for RecordTensor { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record tensor and a constant with both referenced. The scalar is
          * applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
@@ -1475,27 +1463,12 @@ macro_rules! record_tensor_operator_impl_scalar_reference_reference {
     };
 }
 
-record_tensor_operator_impl_scalar_reference_reference!(impl Add for RecordTensor { fn add } Addition);
-record_tensor_operator_impl_scalar_value_value!(impl Add for RecordTensor { fn add } Addition);
-record_tensor_operator_impl_scalar_value_reference!(impl Add for RecordTensor { fn add } Addition);
-record_tensor_operator_impl_scalar_reference_value!(impl Add for RecordTensor { fn add } Addition);
+record_tensor_operator_impl_scalar!(impl Add for RecordTensor { fn add } Addition);
+record_tensor_operator_impl_scalar!(impl Sub for RecordTensor { fn sub } Subtraction);
+record_tensor_operator_impl_scalar!(impl Mul for RecordTensor { fn mul } Multiplication);
+record_tensor_operator_impl_scalar!(impl Div for RecordTensor { fn div } Division);
 
-record_tensor_operator_impl_scalar_reference_reference!(impl Sub for RecordTensor { fn sub } Subtraction);
-record_tensor_operator_impl_scalar_value_value!(impl Sub for RecordTensor { fn sub } Subtraction);
-record_tensor_operator_impl_scalar_value_reference!(impl Sub for RecordTensor { fn sub } Subtraction);
-record_tensor_operator_impl_scalar_reference_value!(impl Sub for RecordTensor { fn sub } Subtraction);
-
-record_tensor_operator_impl_scalar_reference_reference!(impl Mul for RecordTensor { fn mul } Multiplication);
-record_tensor_operator_impl_scalar_value_value!(impl Mul for RecordTensor { fn mul } Multiplication);
-record_tensor_operator_impl_scalar_value_reference!(impl Mul for RecordTensor { fn mul } Multiplication);
-record_tensor_operator_impl_scalar_reference_value!(impl Mul for RecordTensor { fn mul } Multiplication);
-
-record_tensor_operator_impl_scalar_reference_reference!(impl Div for RecordTensor { fn div } Division);
-record_tensor_operator_impl_scalar_value_value!(impl Div for RecordTensor { fn div } Division);
-record_tensor_operator_impl_scalar_value_reference!(impl Div for RecordTensor { fn div } Division);
-record_tensor_operator_impl_scalar_reference_value!(impl Div for RecordTensor { fn div } Division);
-
-macro_rules! record_matrix_operator_impl_scalar_value_value {
+macro_rules! record_matrix_operator_impl_scalar {
     (impl $op:tt for RecordMatrix { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record matrix and a constant of the same type. The scalar is applied
@@ -1516,11 +1489,7 @@ macro_rules! record_matrix_operator_impl_scalar_value_value {
                 )
             }
         }
-    };
-}
 
-macro_rules! record_matrix_operator_impl_scalar_value_reference {
-    (impl $op:tt for RecordMatrix { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record matrix and a constant with the right referenced. The scalar is
          * applied to all elements, this is a shorthand for [unary()](RecordMatrix::unary).
@@ -1540,11 +1509,7 @@ macro_rules! record_matrix_operator_impl_scalar_value_reference {
                 )
             }
         }
-    };
-}
 
-macro_rules! record_matrix_operator_impl_scalar_reference_value {
-    (impl $op:tt for RecordMatrix { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record matrix and a constant with the left referenced. The scalar is
          * applied to all elements, this is a shorthand for [unary()](RecordMatrix::unary).
@@ -1564,11 +1529,7 @@ macro_rules! record_matrix_operator_impl_scalar_reference_value {
                 )
             }
         }
-    };
-}
 
-macro_rules! record_matrix_operator_impl_scalar_reference_reference {
-    (impl $op:tt for RecordMatrix { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record matrix and a constant with both referenced. The scalar is applied
          * to all elements, this is a shorthand for [unary()](RecordMatrix::unary).
@@ -1591,22 +1552,7 @@ macro_rules! record_matrix_operator_impl_scalar_reference_reference {
     };
 }
 
-record_matrix_operator_impl_scalar_reference_reference!(impl Add for RecordMatrix { fn add } Addition);
-record_matrix_operator_impl_scalar_value_value!(impl Add for RecordMatrix { fn add } Addition);
-record_matrix_operator_impl_scalar_value_reference!(impl Add for RecordMatrix { fn add } Addition);
-record_matrix_operator_impl_scalar_reference_value!(impl Add for RecordMatrix { fn add } Addition);
-
-record_matrix_operator_impl_scalar_reference_reference!(impl Sub for RecordMatrix { fn sub } Subtraction);
-record_matrix_operator_impl_scalar_value_value!(impl Sub for RecordMatrix { fn sub } Subtraction);
-record_matrix_operator_impl_scalar_value_reference!(impl Sub for RecordMatrix { fn sub } Subtraction);
-record_matrix_operator_impl_scalar_reference_value!(impl Sub for RecordMatrix { fn sub } Subtraction);
-
-record_matrix_operator_impl_scalar_reference_reference!(impl Mul for RecordMatrix { fn mul } Multiplication);
-record_matrix_operator_impl_scalar_value_value!(impl Mul for RecordMatrix { fn mul } Multiplication);
-record_matrix_operator_impl_scalar_value_reference!(impl Mul for RecordMatrix { fn mul } Multiplication);
-record_matrix_operator_impl_scalar_reference_value!(impl Mul for RecordMatrix { fn mul } Multiplication);
-
-record_matrix_operator_impl_scalar_reference_reference!(impl Div for RecordMatrix { fn div } Division);
-record_matrix_operator_impl_scalar_value_value!(impl Div for RecordMatrix { fn div } Division);
-record_matrix_operator_impl_scalar_value_reference!(impl Div for RecordMatrix { fn div } Division);
-record_matrix_operator_impl_scalar_reference_value!(impl Div for RecordMatrix { fn div } Division);
+record_matrix_operator_impl_scalar!(impl Add for RecordMatrix { fn add } Addition);
+record_matrix_operator_impl_scalar!(impl Sub for RecordMatrix { fn sub } Subtraction);
+record_matrix_operator_impl_scalar!(impl Mul for RecordMatrix { fn mul } Multiplication);
+record_matrix_operator_impl_scalar!(impl Div for RecordMatrix { fn div } Division);
