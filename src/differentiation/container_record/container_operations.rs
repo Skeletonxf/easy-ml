@@ -1383,7 +1383,7 @@ macro_rules! record_tensor_operator_impl_scalar_value_value {
     (impl $op:tt for RecordTensor { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record tensor and a constant of the same type. The scalar is applied
-         * to all elements, this is a shorthand for unary().
+         * to all elements, this is a shorthand for [unary()](RecordTensor::unary).
          */
         impl<'a, T, S1, const D: usize> $op<T> for RecordTensor<'a, T, S1, D>
         where
@@ -1407,7 +1407,7 @@ macro_rules! record_tensor_operator_impl_scalar_value_reference {
     (impl $op:tt for RecordTensor { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record tensor and a constant with the right referenced. The scalar is
-         * applied to all elements, this is a shorthand for unary().
+         * applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
          */
         impl<'a, T, S1, const D: usize> $op<&T> for RecordTensor<'a, T, S1, D>
         where
@@ -1431,7 +1431,7 @@ macro_rules! record_tensor_operator_impl_scalar_reference_value {
     (impl $op:tt for RecordTensor { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record tensor and a constant with the left referenced. The scalar is
-         * applied to all elements, this is a shorthand for unary().
+         * applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
          */
         impl<'a, T, S1, const D: usize> $op<T> for &RecordTensor<'a, T, S1, D>
         where
@@ -1455,7 +1455,7 @@ macro_rules! record_tensor_operator_impl_scalar_reference_reference {
     (impl $op:tt for RecordTensor { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record tensor and a constant with both referenced. The scalar is
-         * applied to all elements, this is a shorthand for unary().
+         * applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
          */
         impl<'a, T, S1, const D: usize> $op<&T> for &RecordTensor<'a, T, S1, D>
         where
@@ -1499,7 +1499,7 @@ macro_rules! record_matrix_operator_impl_scalar_value_value {
     (impl $op:tt for RecordMatrix { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record matrix and a constant of the same type. The scalar is applied
-         * to all elements, this is a shorthand for unary().
+         * to all elements, this is a shorthand for [unary()](RecordMatrix::unary).
          */
         impl<'a, T, S1> $op<T> for RecordMatrix<'a, T, S1>
         where
@@ -1523,7 +1523,7 @@ macro_rules! record_matrix_operator_impl_scalar_value_reference {
     (impl $op:tt for RecordMatrix { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record matrix and a constant with the right referenced. The scalar is
-         * applied to all elements, this is a shorthand for unary().
+         * applied to all elements, this is a shorthand for [unary()](RecordMatrix::unary).
          */
         impl<'a, T, S1> $op<&T> for RecordMatrix<'a, T, S1>
         where
@@ -1547,7 +1547,7 @@ macro_rules! record_matrix_operator_impl_scalar_reference_value {
     (impl $op:tt for RecordMatrix { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record matrix and a constant with the left referenced. The scalar is
-         * applied to all elements, this is a shorthand for unary().
+         * applied to all elements, this is a shorthand for [unary()](RecordMatrix::unary).
          */
         impl<'a, T, S1> $op<T> for &RecordMatrix<'a, T, S1>
         where
@@ -1571,7 +1571,7 @@ macro_rules! record_matrix_operator_impl_scalar_reference_reference {
     (impl $op:tt for RecordMatrix { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record matrix and a constant with both referenced. The scalar is applied
-         * to all elements, this is a shorthand for unary().
+         * to all elements, this is a shorthand for [unary()](RecordMatrix::unary).
          */
         impl<'a, T, S1> $op<&T> for &RecordMatrix<'a, T, S1>
         where

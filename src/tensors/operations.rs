@@ -1427,7 +1427,7 @@ macro_rules! tensor_scalar {
     (impl $op:tt for Tensor { fn $method:ident }) => {
         /**
          * Operation for a tensor and scalar by reference. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](Tensor::map).
          */
         impl<T: Numeric, const D: usize> $op<&T> for &Tensor<T, D>
         where
@@ -1442,7 +1442,7 @@ macro_rules! tensor_scalar {
 
         /**
          * Operation for a tensor by value and scalar by reference. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](Tensor::map).
          */
         impl<T: Numeric, const D: usize> $op<&T> for Tensor<T, D>
         where
@@ -1457,7 +1457,7 @@ macro_rules! tensor_scalar {
 
         /**
          * Operation for a tensor by reference and scalar by value. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](Tensor::map).
          */
         impl<T: Numeric, const D: usize> $op<T> for &Tensor<T, D>
         where
@@ -1472,7 +1472,7 @@ macro_rules! tensor_scalar {
 
         /**
          * Operation for a tensor and scalar by value. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](Tensor::map).
          */
         impl<T: Numeric, const D: usize> $op<T> for Tensor<T, D>
         where
@@ -1491,7 +1491,7 @@ macro_rules! tensor_view_scalar {
     (impl $op:tt for TensorView { fn $method:ident }) => {
         /**
          * Operation for a tensor view and scalar by reference. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](TensorView::map).
          */
         impl<T, S, const D: usize> $op<&T> for &TensorView<T, S, D>
         where
@@ -1508,7 +1508,7 @@ macro_rules! tensor_view_scalar {
 
         /**
          * Operation for a tensor view by value and scalar by reference. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](TensorView::map).
          */
         impl<T, S, const D: usize> $op<&T> for TensorView<T, S, D>
         where
@@ -1525,7 +1525,7 @@ macro_rules! tensor_view_scalar {
 
         /**
          * Operation for a tensor view by reference and scalar by value. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](TensorView::map).
          */
         impl<T, S, const D: usize> $op<T> for &TensorView<T, S, D>
         where
@@ -1542,7 +1542,7 @@ macro_rules! tensor_view_scalar {
 
         /**
          * Operation for a tensor view and scalar by value. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](TensorView::map).
          */
         impl<T, S, const D: usize> $op<T> for TensorView<T, S, D>
         where

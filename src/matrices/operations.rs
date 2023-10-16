@@ -1009,7 +1009,7 @@ macro_rules! matrix_scalar {
     (impl $op:tt for Matrix { fn $method:ident }) => {
         /**
          * Operation for a matrix and scalar by reference. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](Matrix::map).
          */
         impl<T: Numeric> $op<&T> for &Matrix<T>
         where
@@ -1024,7 +1024,7 @@ macro_rules! matrix_scalar {
 
         /**
          * Operation for a matrix by value and scalar by reference. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](Matrix::map).
          */
         impl<T: Numeric> $op<&T> for Matrix<T>
         where
@@ -1039,7 +1039,7 @@ macro_rules! matrix_scalar {
 
         /**
          * Operation for a matrix by reference and scalar by value. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](Matrix::map).
          */
         impl<T: Numeric> $op<T> for &Matrix<T>
         where
@@ -1054,7 +1054,7 @@ macro_rules! matrix_scalar {
 
         /**
          * Operation for a matrix and scalar by value. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](Matrix::map).
          */
         impl<T: Numeric> $op<T> for Matrix<T>
         where
@@ -1073,7 +1073,7 @@ macro_rules! matrix_view_scalar {
     (impl $op:tt for MatrixView { fn $method:ident }) => {
         /**
          * Operation for a matrix view and scalar by reference. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](MatrixView::map).
          */
         impl<T, S> $op<&T> for &MatrixView<T, S>
         where
@@ -1090,7 +1090,7 @@ macro_rules! matrix_view_scalar {
 
         /**
          * Operation for a matrix viiew by value and scalar by reference. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](MatrixView::map).
          */
         impl<T, S> $op<&T> for MatrixView<T, S>
         where
@@ -1107,7 +1107,7 @@ macro_rules! matrix_view_scalar {
 
         /**
          * Operation for a matrix view by reference and scalar by value. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](MatrixView::map).
          */
         impl<T, S> $op<T> for &MatrixView<T, S>
         where
@@ -1124,7 +1124,7 @@ macro_rules! matrix_view_scalar {
 
         /**
          * Operation for a matrix view and scalar by value. The scalar is applied to
-         * all elements, this is a shorthand for map().
+         * all elements, this is a shorthand for [map()](MatrixView::map).
          */
         impl<T, S> $op<T> for MatrixView<T, S>
         where
