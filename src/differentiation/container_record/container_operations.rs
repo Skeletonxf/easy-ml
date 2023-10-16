@@ -297,8 +297,8 @@ macro_rules! record_matrix_operator_impl_reference {
     };
 }
 
-macro_rules! record_real_tensor_operator_impl_value {
-    (impl $op:tt for RecordTensor { fn $method:ident } $implementation:ident) => {
+macro_rules! record_real_tensor_operator_impl_unary {
+    (impl $op:tt for RecordTensor { fn $method:ident } $function:ident) => {
         /**
          * Operation for a record tensor of some type.
          */
@@ -311,34 +311,10 @@ macro_rules! record_real_tensor_operator_impl_value {
             type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
             #[track_caller]
             fn $method(self) -> Self::Output {
-                $implementation::<T, S, D>(self)
+                self.unary($function::<T>::function, $function::<T>::d_function_dx)
             }
         }
-    };
-}
 
-macro_rules! record_real_matrix_operator_impl_value {
-    (impl $op:tt for RecordMatrix { fn $method:ident } $implementation:ident) => {
-        /**
-         * Operation for a record matrix of some type.
-         */
-        impl<'a, T, S> $op for RecordMatrix<'a, T, S>
-        where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
-            S: MatrixRef<(T, Index)> + NoInteriorMutability,
-        {
-            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
-            #[track_caller]
-            fn $method(self) -> Self::Output {
-                $implementation::<T, S>(self)
-            }
-        }
-    };
-}
-
-macro_rules! record_real_tensor_operator_impl_reference {
-    (impl $op:tt for RecordTensor { fn $method:ident } $implementation:ident) => {
         /**
          * Operation for a referenced record tensor of some type.
          */
@@ -351,14 +327,30 @@ macro_rules! record_real_tensor_operator_impl_reference {
             type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
             #[track_caller]
             fn $method(self) -> Self::Output {
-                $implementation::<T, S, D>(self)
+                self.unary($function::<T>::function, $function::<T>::d_function_dx)
             }
         }
     };
 }
 
-macro_rules! record_real_matrix_operator_impl_reference {
-    (impl $op:tt for RecordMatrix { fn $method:ident } $implementation:ident) => {
+macro_rules! record_real_matrix_operator_impl_unary {
+    (impl $op:tt for RecordMatrix { fn $method:ident } $function:ident) => {
+        /**
+         * Operation for a record matrix of some type.
+         */
+        impl<'a, T, S> $op for RecordMatrix<'a, T, S>
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self) -> Self::Output {
+                self.unary($function::<T>::function, $function::<T>::d_function_dx)
+            }
+        }
+
         /**
          * Operation for a referenced record matrix of some type.
          */
@@ -371,7 +363,7 @@ macro_rules! record_real_matrix_operator_impl_reference {
             type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
             #[track_caller]
             fn $method(self) -> Self::Output {
-                $implementation::<T, S>(self)
+                self.unary($function::<T>::function, $function::<T>::d_function_dx)
             }
         }
     };
@@ -1097,287 +1089,20 @@ where
 record_matrix_operator_impl_value!(impl Neg for RecordMatrix { fn neg } record_matrix_neg_value);
 record_matrix_operator_impl_reference!(impl Neg for RecordMatrix { fn neg } record_matrix_neg_reference);
 
-#[track_caller]
-fn record_tensor_sin_value<'a, T, S, const D: usize>(
-    lhs: RecordTensor<'a, T, S, D>,
-) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: TensorRef<(T, Index), D>,
-{
-    lhs.unary(Sine::<T>::function, Sine::<T>::d_function_dx)
-}
+record_real_tensor_operator_impl_unary!(impl Sin for RecordTensor { fn sin } Sine);
+record_real_matrix_operator_impl_unary!(impl Sin for RecordMatrix { fn sin } Sine);
 
-#[track_caller]
-fn record_tensor_sin_reference<'a, T, S, const D: usize>(
-    lhs: &RecordTensor<'a, T, S, D>,
-) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: TensorRef<(T, Index), D>,
-{
-    lhs.unary(Sine::<T>::function, Sine::<T>::d_function_dx)
-}
+record_real_tensor_operator_impl_unary!(impl Cos for RecordTensor { fn cos } Cosine);
+record_real_matrix_operator_impl_unary!(impl Cos for RecordMatrix { fn cos } Cosine);
 
-record_real_tensor_operator_impl_value!(impl Sin for RecordTensor { fn sin } record_tensor_sin_value);
-record_real_tensor_operator_impl_reference!(impl Sin for RecordTensor { fn sin } record_tensor_sin_reference);
+record_real_tensor_operator_impl_unary!(impl Exp for RecordTensor { fn exp } Exponential);
+record_real_matrix_operator_impl_unary!(impl Exp for RecordMatrix { fn exp } Exponential);
 
-#[track_caller]
-fn record_matrix_sin_reference<'a, T, S>(
-    lhs: &RecordMatrix<'a, T, S>,
-) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: MatrixRef<(T, Index)> + NoInteriorMutability,
-{
-    lhs.unary(Sine::<T>::function, Sine::<T>::d_function_dx)
-}
+record_real_tensor_operator_impl_unary!(impl Ln for RecordTensor { fn ln } NaturalLogarithm);
+record_real_matrix_operator_impl_unary!(impl Ln for RecordMatrix { fn ln } NaturalLogarithm);
 
-#[track_caller]
-fn record_matrix_sin_value<'a, T, S>(
-    lhs: RecordMatrix<'a, T, S>,
-) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: MatrixRef<(T, Index)> + NoInteriorMutability,
-{
-    lhs.unary(Sine::<T>::function, Sine::<T>::d_function_dx)
-}
-
-record_real_matrix_operator_impl_value!(impl Sin for RecordMatrix { fn sin } record_matrix_sin_value);
-record_real_matrix_operator_impl_reference!(impl Sin for RecordMatrix { fn sin } record_matrix_sin_reference);
-
-#[track_caller]
-fn record_tensor_cos_value<'a, T, S, const D: usize>(
-    lhs: RecordTensor<'a, T, S, D>,
-) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: TensorRef<(T, Index), D>,
-{
-    lhs.unary(Cosine::<T>::function, Cosine::<T>::d_function_dx)
-}
-
-#[track_caller]
-fn record_tensor_cos_reference<'a, T, S, const D: usize>(
-    lhs: &RecordTensor<'a, T, S, D>,
-) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: TensorRef<(T, Index), D>,
-{
-    lhs.unary(Cosine::<T>::function, Cosine::<T>::d_function_dx)
-}
-
-record_real_tensor_operator_impl_value!(impl Cos for RecordTensor { fn cos } record_tensor_cos_value);
-record_real_tensor_operator_impl_reference!(impl Cos for RecordTensor { fn cos } record_tensor_cos_reference);
-
-#[track_caller]
-fn record_matrix_cos_reference<'a, T, S>(
-    lhs: &RecordMatrix<'a, T, S>,
-) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: MatrixRef<(T, Index)> + NoInteriorMutability,
-{
-    lhs.unary(Cosine::<T>::function, Cosine::<T>::d_function_dx)
-}
-
-#[track_caller]
-fn record_matrix_cos_value<'a, T, S>(
-    lhs: RecordMatrix<'a, T, S>,
-) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: MatrixRef<(T, Index)> + NoInteriorMutability,
-{
-    lhs.unary(Cosine::<T>::function, Cosine::<T>::d_function_dx)
-}
-
-record_real_matrix_operator_impl_value!(impl Cos for RecordMatrix { fn cos } record_matrix_cos_value);
-record_real_matrix_operator_impl_reference!(impl Cos for RecordMatrix { fn cos } record_matrix_cos_reference);
-
-#[track_caller]
-fn record_tensor_exp_value<'a, T, S, const D: usize>(
-    lhs: RecordTensor<'a, T, S, D>,
-) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: TensorRef<(T, Index), D>,
-{
-    lhs.unary(Exponential::<T>::function, Exponential::<T>::d_function_dx)
-}
-
-#[track_caller]
-fn record_tensor_exp_reference<'a, T, S, const D: usize>(
-    lhs: &RecordTensor<'a, T, S, D>,
-) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: TensorRef<(T, Index), D>,
-{
-    lhs.unary(Exponential::<T>::function, Exponential::<T>::d_function_dx)
-}
-
-record_real_tensor_operator_impl_value!(impl Exp for RecordTensor { fn exp } record_tensor_exp_value);
-record_real_tensor_operator_impl_reference!(impl Exp for RecordTensor { fn exp } record_tensor_exp_reference);
-
-#[track_caller]
-fn record_matrix_exp_reference<'a, T, S>(
-    lhs: &RecordMatrix<'a, T, S>,
-) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: MatrixRef<(T, Index)> + NoInteriorMutability,
-{
-    lhs.unary(Exponential::<T>::function, Exponential::<T>::d_function_dx)
-}
-
-#[track_caller]
-fn record_matrix_exp_value<'a, T, S>(
-    lhs: RecordMatrix<'a, T, S>,
-) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: MatrixRef<(T, Index)> + NoInteriorMutability,
-{
-    lhs.unary(Exponential::<T>::function, Exponential::<T>::d_function_dx)
-}
-
-record_real_matrix_operator_impl_value!(impl Exp for RecordMatrix { fn exp } record_matrix_exp_value);
-record_real_matrix_operator_impl_reference!(impl Exp for RecordMatrix { fn exp } record_matrix_exp_reference);
-
-#[track_caller]
-fn record_tensor_ln_value<'a, T, S, const D: usize>(
-    lhs: RecordTensor<'a, T, S, D>,
-) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: TensorRef<(T, Index), D>,
-{
-    lhs.unary(
-        NaturalLogarithm::<T>::function,
-        NaturalLogarithm::<T>::d_function_dx,
-    )
-}
-
-#[track_caller]
-fn record_tensor_ln_reference<'a, T, S, const D: usize>(
-    lhs: &RecordTensor<'a, T, S, D>,
-) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: TensorRef<(T, Index), D>,
-{
-    lhs.unary(
-        NaturalLogarithm::<T>::function,
-        NaturalLogarithm::<T>::d_function_dx,
-    )
-}
-
-record_real_tensor_operator_impl_value!(impl Ln for RecordTensor { fn ln } record_tensor_ln_value);
-record_real_tensor_operator_impl_reference!(impl Ln for RecordTensor { fn ln } record_tensor_ln_reference);
-
-#[track_caller]
-fn record_matrix_ln_reference<'a, T, S>(
-    lhs: &RecordMatrix<'a, T, S>,
-) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: MatrixRef<(T, Index)> + NoInteriorMutability,
-{
-    lhs.unary(
-        NaturalLogarithm::<T>::function,
-        NaturalLogarithm::<T>::d_function_dx,
-    )
-}
-
-#[track_caller]
-fn record_matrix_ln_value<'a, T, S>(
-    lhs: RecordMatrix<'a, T, S>,
-) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: MatrixRef<(T, Index)> + NoInteriorMutability,
-{
-    lhs.unary(
-        NaturalLogarithm::<T>::function,
-        NaturalLogarithm::<T>::d_function_dx,
-    )
-}
-
-record_real_matrix_operator_impl_value!(impl Ln for RecordMatrix { fn ln } record_matrix_ln_value);
-record_real_matrix_operator_impl_reference!(impl Ln for RecordMatrix { fn ln } record_matrix_ln_reference);
-
-#[track_caller]
-fn record_tensor_sqrt_value<'a, T, S, const D: usize>(
-    lhs: RecordTensor<'a, T, S, D>,
-) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: TensorRef<(T, Index), D>,
-{
-    lhs.unary(SquareRoot::<T>::function, SquareRoot::<T>::d_function_dx)
-}
-
-#[track_caller]
-fn record_tensor_sqrt_reference<'a, T, S, const D: usize>(
-    lhs: &RecordTensor<'a, T, S, D>,
-) -> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: TensorRef<(T, Index), D>,
-{
-    lhs.unary(SquareRoot::<T>::function, SquareRoot::<T>::d_function_dx)
-}
-
-record_real_tensor_operator_impl_value!(impl Sqrt for RecordTensor { fn sqrt } record_tensor_sqrt_value);
-record_real_tensor_operator_impl_reference!(impl Sqrt for RecordTensor { fn sqrt } record_tensor_sqrt_reference);
-
-#[track_caller]
-fn record_matrix_sqrt_reference<'a, T, S>(
-    lhs: &RecordMatrix<'a, T, S>,
-) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: MatrixRef<(T, Index)> + NoInteriorMutability,
-{
-    lhs.unary(SquareRoot::<T>::function, SquareRoot::<T>::d_function_dx)
-}
-
-#[track_caller]
-fn record_matrix_sqrt_value<'a, T, S>(
-    lhs: RecordMatrix<'a, T, S>,
-) -> RecordMatrix<'a, T, Matrix<(T, Index)>>
-where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
-    S: MatrixRef<(T, Index)> + NoInteriorMutability,
-{
-    lhs.unary(SquareRoot::<T>::function, SquareRoot::<T>::d_function_dx)
-}
-
-record_real_matrix_operator_impl_value!(impl Sqrt for RecordMatrix { fn sqrt } record_matrix_sqrt_value);
-record_real_matrix_operator_impl_reference!(impl Sqrt for RecordMatrix { fn sqrt } record_matrix_sqrt_reference);
+record_real_tensor_operator_impl_unary!(impl Sqrt for RecordTensor { fn sqrt } SquareRoot);
+record_real_matrix_operator_impl_unary!(impl Sqrt for RecordMatrix { fn sqrt } SquareRoot);
 
 macro_rules! record_tensor_operator_impl_scalar {
     (impl $op:tt for RecordTensor { fn $method:ident } $function:ident) => {
