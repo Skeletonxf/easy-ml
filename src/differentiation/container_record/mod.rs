@@ -23,9 +23,20 @@ mod container_operations;
  * [`-`](std::ops::Sub) and have the methods `elementwise_multiply` and `elementwise_divide`.
  * In all cases the containers must have the same size for the operation and will panic if
  * mismatched.
+ * [`*`](std::ops::Mul) is also implemented for 2 dimensional tensors and matrices as matrix
+ * multiplication.
+ *
+ * For convenience, as with Trace and Record, many unary operations including
+ * [Cos](crate::numeric::extra::Cos), [Exp](crate::numeric::extra::Exp),
+ * [Ln](crate::numeric::extra::Ln), [Neg](std::ops::Neg), [Sin](crate::numeric::extra::Sin), and
+ * [Sqrt](crate::numeric::extra::Sqrt) are implemented as well, applying the unary function to
+ * each element in the tensor.
+ *
+ * `+`, `-`, `*` and `/` operations with a RecordContainer and a scalar are also implemented,
+ * treating the right hand side scalar as a constant. These are also unary functions in terms of
+ * the derivative tracking, for example `X + 5` applies the function `+5` to each element in
+ * `X`.
  */
-// TODO: Add container op number impls and document here.
-// TODO: Implement matrix multiplication on `*` and document here.
 // TODO: APIs for adjusting shape and docs on here for making shapes match up.
 #[derive(Debug)]
 pub struct RecordContainer<'a, T: Primitive, S, const D: usize> {
