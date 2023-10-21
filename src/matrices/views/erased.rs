@@ -7,9 +7,8 @@ performance.
 
 When using a `MatrixView` with a trait object you will likely want to define your own traits
 in order to include all the behavior you want such as `Debug` or `Clone` that are not required
-by [`MatrixRef`](MatrixRef), [`MatrixMut`](MatrixMut) or
-[`NoInteriorMutability`](NoInteriorMutability) but are still useful for the source type of a
-MatrixView to implement.
+by [`MatrixRef`], [`MatrixMut`] or [`NoInteriorMutability`] but are still useful for the source
+type of a MatrixView to implement.
 ```
 use easy_ml::matrices::views::{DataLayout, MatrixView, MatrixRef, MatrixMut, NoInteriorMutability};
 use easy_ml::matrices::{Matrix, Row, Column};

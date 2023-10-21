@@ -2,7 +2,7 @@
  * Operator implementations for Records.
  *
  * These implementations are written here but Rust docs will display them on the
- * [Record](super::Record) struct page.
+ * [Record] struct page.
  *
  * Records of any Numeric type (provided the type also implements the operations by reference
  * as described in the [numeric](super::super::numeric) module) implement all the standard
@@ -27,9 +27,8 @@
  * assert_eq!((Record::variable(2.0, &WengertList::new()) * 2.0).number, 4.0);
  * ```
  *
- * Records of a [Real](super::super::numeric::extra::Real) type (provided the type also
- * implements the operations by reference as described in the
- * [numeric](super::super::numeric::extra) module) also implement
+ * Records of a [Real] type (provided the type also implements the operations by reference as
+ * described in the [numeric](super::super::numeric::extra) module) also implement
  * all of those extra traits and operations. Note that to use a method defined in a trait
  * you have to import the trait as well as have a type that implements it!
  */

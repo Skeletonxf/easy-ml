@@ -35,8 +35,8 @@
  * so you should favor &x + &y style notation for tensors you intend to continue using.
  *
  * These implementations are written here but Rust docs will display them on their implemented
- * types. All 16 combinations of owned and referenced [Tensor](crate::tensors::Tensor) and
- * [TensorView](crate::tensors::views::TensorView) operations are implemented.
+ * types. All 16 combinations of owned and referenced [Tensor] and [TensorView]
+ * operations are implemented.
  *
  * Operations on tensors of the wrong sizes or mismatched dimension names will result in a panic.
  * No broadcasting is performed, ie you cannot multiply a (NxM) 'matrix' tensor by a (Nx1)
@@ -170,15 +170,15 @@ where
 }
 
 /**
- * Similarity comparisons. This is a looser comparison than [PartialEq](PartialEq),
- * but anything which returns true for [PartialEq::eq](PartialEq::eq) will also return true
+ * Similarity comparisons. This is a looser comparison than [PartialEq],
+ * but anything which returns true for [PartialEq::eq] will also return true
  * for [Similar::similar].
  *
  * This trait is sealed and cannot be implemented for types outside this crate.
  */
 pub trait Similar<Rhs: ?Sized = Self>: private::Sealed {
     /**
-     * Tests if two values are similar. This is a looser comparison than [PartialEq](PartialEq),
+     * Tests if two values are similar. This is a looser comparison than [PartialEq],
      * but anything which is PartialEq is also similar.
      */
     #[must_use]

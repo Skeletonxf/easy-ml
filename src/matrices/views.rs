@@ -1,9 +1,9 @@
 /*!
  * Generic views into a matrix.
  *
- * The concept of a view into a matrix is built from the low level [MatrixRef](MatrixRef) and
- * [MatrixMut](MatrixMut) traits which define having read and read/write access to Matrix data
- * respectively, and the high level API implemented on the [MatrixView](MatrixView) struct.
+ * The concept of a view into a matrix is built from the low level [MatrixRef] and
+ * [MatrixMut] traits which define having read and read/write access to Matrix data
+ * respectively, and the high level API implemented on the [MatrixView] struct.
  *
  * Since a Matrix is itself a MatrixRef, the APIs for the traits are purposefully verbose to
  * avoid name clashes with methods defined on the Matrix and MatrixView types. You should
@@ -50,14 +50,14 @@ pub use ranges::*;
 * be changed by a shared reference to the MatrixRef implementation, or `get_reference_unchecked`
 * and `get_reference_unchecked_mut` must panic if the index is invalid.
 *
-* If a type implements both MatrixRef and [`NoInteriorMutability`](NoInteriorMutability) #2
+* If a type implements both MatrixRef and [`NoInteriorMutability`] #2
 * becomes just 'the `view_rows`/`view_columns` that define which indexes are valid may not
 * be changed by a shared reference to the MatrixRef implementation'. ie, the matrix
 * may not be resized while a mutable reference is held to it, except by that reference.
 *
 * Essentially, interior mutability causes problems, since code looping through the range of valid
 * indexes in a MatrixRef needs to be able to rely on that range of valid indexes not changing.
-* This is trivially the case by default since a [Matrix](Matrix) does not have any form of
+* This is trivially the case by default since a [Matrix] does not have any form of
 * interior mutability, and therefore an iterator holding a shared reference to a Matrix prevents
 * that matrix being resized. However, a type implementing MatrixRef could introduce interior
 * mutability by putting the Matrix in an `Arc<Mutex<>>` which would allow another thread to
@@ -116,7 +116,7 @@ pub unsafe trait MatrixRef<T> {
  *
  * # Safety
  *
- * See [MatrixRef](MatrixRef).
+ * See [MatrixRef].
  */
 pub unsafe trait MatrixMut<T>: MatrixRef<T> {
     /**
@@ -144,7 +144,7 @@ pub unsafe trait MatrixMut<T>: MatrixRef<T> {
 /**
  * A marker trait that promises that the implementing type does not permit interior mutability.
  *
- * When combined with [MatrixRef](MatrixRef) or [MatrixMut](MatrixMut), other code can rely on
+ * When combined with [MatrixRef] or [MatrixMut], other code can rely on
  * the type not being resizable or otherwise mutated through a shared reference.
  *
  * NB: In a future 2.0 release, this requirement will become mandatory to implement MatrixView.
@@ -171,7 +171,7 @@ pub enum DataLayout {
 /**
  * A view into some or all of a matrix.
  *
- * A MatrixView has a similar relationship to a [`Matrix`](Matrix) as a
+ * A MatrixView has a similar relationship to a [`Matrix`] as a
  * `&str` has to a `String`, or an array slice to an array. A MatrixView cannot resize
  * its source, and may span only a portion of the source Matrix in each dimension.
  *
@@ -190,7 +190,7 @@ pub struct MatrixView<T, S> {
 // TODO linear_algebra numeric functions, transpositions
 
 /**
- * MatrixView methods which require only read access via a [MatrixRef](MatrixRef) source.
+ * MatrixView methods which require only read access via a [MatrixRef] source.
  */
 impl<T, S> MatrixView<T, S>
 where
@@ -219,7 +219,7 @@ where
 
     /**
      * Gives a reference to the matrix view's source. This should typically not be needed
-     * since Easy ML APIs which take [MatrixRef](MatrixRef)s as inputs like iterators are
+     * since Easy ML APIs which take [MatrixRef]s as inputs like iterators are
      * already wrapped for you as methods on MatrixView.
      */
     pub fn source_ref(&self) -> &S {
@@ -228,7 +228,7 @@ where
 
     /**
      * Gives a mutable reference to the matrix view's source. This should typically not be needed
-     * since Easy ML APIs which take [MatrixRef](MatrixRef)s as inputs like iterators are
+     * since Easy ML APIs which take [MatrixRef]s as inputs like iterators are
      * already wrapped for you as methods on MatrixView.
      */
     pub fn source_ref_mut(&mut self) -> &mut S {
@@ -362,7 +362,7 @@ where
 }
 
 /**
- * MatrixView methods which require only read access via a [MatrixRef](MatrixRef) source
+ * MatrixView methods which require only read access via a [MatrixRef] source
  * and a clonable type.
  */
 impl<T, S> MatrixView<T, S>
@@ -575,7 +575,7 @@ where
 }
 
 /**
- * MatrixView methods which require mutable access via a [MatrixMut](MatrixMut) source.
+ * MatrixView methods which require mutable access via a [MatrixMut] source.
  */
 impl<T, S> MatrixView<T, S>
 where
@@ -650,7 +650,7 @@ where
 }
 
 /**
- * MatrixView methods which require mutable access via a [MatrixMut](MatrixMut) source and
+ * MatrixView methods which require mutable access via a [MatrixMut] source and
  * no interior mutability.
  */
 impl<T, S> MatrixView<T, S>
@@ -711,7 +711,7 @@ where
 }
 
 /**
- * MatrixView methods which require mutable access via a [MatrixMut](MatrixMut) source
+ * MatrixView methods which require mutable access via a [MatrixMut] source
  * and a clonable type.
  */
 impl<T, S> MatrixView<T, S>

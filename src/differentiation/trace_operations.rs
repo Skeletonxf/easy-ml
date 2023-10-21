@@ -3,7 +3,7 @@
 * Operator implementations for Traces
 *
 * These implementations are written here but Rust docs will display them on the
-* [Trace](super::Trace) struct page.
+* [Trace] struct page.
 *
 * Traces of any Numeric type (provided the type also implements the operations by reference
 * as described in the [numeric](super::super::numeric) module) implement all the standard
@@ -27,9 +27,8 @@
 * assert_eq!((Trace::variable(2.0) * 2.0).number, 4.0);
 * ```
 *
-* Traces of a [Real](super::super::numeric::extra::Real) type (provided the type also
-* implements the operations by reference as described in the
-* [numeric](super::super::numeric::extra) module) also implement
+* Traces of a [Real] type (provided the type also implements the operations by reference as
+* described in the [numeric](super::super::numeric::extra) module) also implement
 * all of those extra traits and operations. Note that to use a method defined in a trait
 * you have to import the trait as well as have a type that implements it!
 */

@@ -1,10 +1,10 @@
 /*!
- * Trait implementations for [TensorRef](TensorRef) and [TensorMut](TensorMut).
+ * Trait implementations for [TensorRef] and [TensorMut].
  *
  * These implementations are written here but Rust docs will display them on the
  * traits' pages.
  *
- * An owned or referenced [Tensor](Tensor) is a TensorRef, and a TensorMut if not a shared
+ * An owned or referenced [Tensor] is a TensorRef, and a TensorMut if not a shared
  * reference, Therefore, you can pass a Tensor to any function which takes a TensorRef.
  *
  * Boxed TensorRef and TensorMut values also implement TensorRef and TensorMut respectively.

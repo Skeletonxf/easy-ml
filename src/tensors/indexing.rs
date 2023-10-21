@@ -29,7 +29,7 @@
  * memory.
  *
  * Even with a name for each dimension, at some point you still need to say what order you want
- * to index each dimension with, and this is where [`TensorAccess`](TensorAccess) comes in. It
+ * to index each dimension with, and this is where [`TensorAccess`] comes in. It
  * creates a mapping from the dimension name order you want to access elements with to the order
  * the dimensions are stored as.
  */
@@ -140,7 +140,7 @@ where
      * is not linear.
      *
      * Hence if you use `from_memory_order` on a source that was originally big endian like
-     * [Tensor](Tensor) this uses the order for efficient iteration through each step in memory
+     * [Tensor] this uses the order for efficient iteration through each step in memory
      * when [iterating](TensorIterator).
      */
     pub fn from_memory_order(source: S) -> Option<TensorAccess<T, S, D>> {
@@ -315,7 +315,7 @@ where
      * Creates and returns a new tensor with all values from the original with the
      * function applied to each.
      *
-     * Note: mapping methods are defined on [Tensor](Tensor) and
+     * Note: mapping methods are defined on [Tensor] and
      * [TensorView](crate::tensors::views::TensorView) directly so you don't need to create a
      * TensorAccess unless you want to do the mapping with a different dimension order.
      */
@@ -331,7 +331,7 @@ where
      * order that the TensorAccess is indexed by, not neccessarily the index order the
      * original source uses.
      *
-     * Note: mapping methods are defined on [Tensor](Tensor) and
+     * Note: mapping methods are defined on [Tensor] and
      * [TensorView](crate::tensors::views::TensorView) directly so you don't need to create a
      * TensorAccess unless you want to do the mapping with a different dimension order.
      */
@@ -646,11 +646,11 @@ fn size_hint<const D: usize>(
  * An iterator over copies of all values in a tensor.
  *
  * First the all 0 index is iterated, then each iteration increments the rightmost index.
- * For [Tensor](Tensor) or [TensorRef](TensorRef)s which do not reorder the underlying Tensor
+ * For [Tensor] or [TensorRef]s which do not reorder the underlying Tensor
  * this will take a single step in memory on each iteration, akin to iterating through the
  * flattened data of the tensor.
  *
- * If the TensorRef reorders the tensor data (e.g. [TensorAccess](TensorAccess)) this iterator
+ * If the TensorRef reorders the tensor data (e.g. [TensorAccess]) this iterator
  * will still iterate the rightmost index allowing iteration through dimensions in a different
  * order to how they are stored, but no longer taking a single step in memory on each
  * iteration (which may be less cache friendly for the CPU).
@@ -820,11 +820,11 @@ where
  * An iterator over references to all values in a tensor.
  *
  * First the all 0 index is iterated, then each iteration increments the rightmost index.
- * For [Tensor](Tensor) or [TensorRef](TensorRef)s which do not reorder the underlying Tensor
+ * For [Tensor] or [TensorRef]s which do not reorder the underlying Tensor
  * this will take a single step in memory on each iteration, akin to iterating through the
  * flattened data of the tensor.
  *
- * If the TensorRef reorders the tensor data (e.g. [TensorAccess](TensorAccess)) this iterator
+ * If the TensorRef reorders the tensor data (e.g. [TensorAccess]) this iterator
  * will still iterate the rightmost index allowing iteration through dimensions in a different
  * order to how they are stored, but no longer taking a single step in memory on each
  * iteration (which may be less cache friendly for the CPU).
@@ -983,11 +983,11 @@ impl<'a, T, S, const D: usize> ExactSizeIterator for WithIndex<TensorReferenceIt
  * An iterator over mutable references to all values in a tensor.
  *
  * First the all 0 index is iterated, then each iteration increments the rightmost index.
- * For [Tensor](Tensor) or [TensorRef](TensorRef)s which do not reorder the underlying Tensor
+ * For [Tensor] or [TensorRef]s which do not reorder the underlying Tensor
  * this will take a single step in memory on each iteration, akin to iterating through the
  * flattened data of the tensor.
  *
- * If the TensorRef reorders the tensor data (e.g. [TensorAccess](TensorAccess)) this iterator
+ * If the TensorRef reorders the tensor data (e.g. [TensorAccess]) this iterator
  * will still iterate the rightmost index allowing iteration through dimensions in a different
  * order to how they are stored, but no longer taking a single step in memory on each
  * iteration (which may be less cache friendly for the CPU).
@@ -1105,17 +1105,17 @@ where
  * An iterator over all values in an owned tensor.
  *
  * This iterator does not clone the values, it returns the actual values stored in the tensor.
- * There is no such method to return `T` by value from a [TensorRef](TensorRef)/TensorMut, to do
+ * There is no such method to return `T` by value from a [TensorRef]/[TensorMut], to do
  * this it [replaces](std::mem::replace) the values with dummy values. Hence it can only be
- * created for types that implement [Default](Default) or [ZeroOne](crate::numeric::ZeroOne)
+ * created for types that implement [Default] or [ZeroOne](crate::numeric::ZeroOne)
  * from [Numeric](crate::numeric) which provide a means to create dummy values.
  *
  * First the all 0 index is iterated, then each iteration increments the rightmost index.
- * For [Tensor](Tensor) or [TensorRef](TensorRef)s which do not reorder the underlying Tensor
+ * For [Tensor] or [TensorRef]s which do not reorder the underlying Tensor
  * this will take a single step in memory on each iteration, akin to iterating through the
  * flattened data of the tensor.
  *
- * If the TensorRef reorders the tensor data (e.g. [TensorAccess](TensorAccess)) this iterator
+ * If the TensorRef reorders the tensor data (e.g. [TensorAccess]) this iterator
  * will still iterate the rightmost index allowing iteration through dimensions in a different
  * order to how they are stored, but no longer taking a single step in memory on each
  * iteration (which may be less cache friendly for the CPU).
@@ -1144,7 +1144,7 @@ where
 {
     /**
      * Creates the TensorOwnedIterator from a source where the default values will be provided
-     * by [Default::default](Default::default). This constructor is also used by the convenience
+     * by [Default::default]. This constructor is also used by the convenience
      * methods on [Tensor::iter_owned](Tensor::iter_owned) and
      * [TensorView::iter_owned](crate::tensors::views::TensorView::iter_owned).
      */

@@ -1958,7 +1958,7 @@ where
 // correctly as well.
 /**
  * RecordMatrix implements MatrixMut when the source does, returning mutable references to the
- * tuples of `T` and [`Index`](Index).
+ * tuples of `T` and [`Index`].
  */
 unsafe impl<'a, T, S> MatrixMut<(T, Index)> for RecordMatrix<'a, T, S>
 where
@@ -1987,7 +1987,7 @@ where
 // correctly as well.
 /**
  * RecordMatrix implements MatrixRef when the source does, returning references to the tuples
- * of `T` and [`Index`](Index).
+ * of `T` and [`Index`].
  */
 unsafe impl<'a, T, S> MatrixRef<(T, Index)> for &RecordMatrix<'a, T, S>
 where
@@ -2024,7 +2024,7 @@ where
 // correctly as well.
 /**
  * RecordMatrix implements MatrixRef when the source does, returning references to the tuples
- * of `T` and [`Index`](Index).
+ * of `T` and [`Index`].
  */
 unsafe impl<'a, T, S> MatrixRef<(T, Index)> for &mut RecordMatrix<'a, T, S>
 where
@@ -2061,7 +2061,7 @@ where
 // correctly as well.
 /**
  * RecordMatrix implements MatrixMut when the source does, returning mutable references to the
- * tuples of `T` and [`Index`](Index).
+ * tuples of `T` and [`Index`].
  */
 unsafe impl<'a, T, S> MatrixMut<(T, Index)> for &mut RecordMatrix<'a, T, S>
 where

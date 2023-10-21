@@ -1,9 +1,9 @@
 /*!
  * Generic views into a tensor.
  *
- * The concept of a view into a tensor is built from the low level [TensorRef](TensorRef) and
- * [TensorMut](TensorMut) traits which define having read and read/write access to Tensor data
- * respectively, and the high level API implemented on the [TensorView](TensorView) struct.
+ * The concept of a view into a tensor is built from the low level [TensorRef] and
+ * [TensorMut] traits which define having read and read/write access to Tensor data
+ * respectively, and the high level API implemented on the [TensorView] struct.
  *
  * Since a Tensor is itself a TensorRef, the APIs for the traits are a little verbose to
  * avoid name clashes with methods defined on the Tensor and TensorView types. You should
@@ -64,11 +64,11 @@ pub use zip::*;
 *
 * 4 - All dimension lengths in the `view_shape` must be non zero.
 *
-* 5 - `data_layout` must return values correctly as documented on [`DataLayout`](DataLayout)
+* 5 - `data_layout` must return values correctly as documented on [`DataLayout`]
 *
 * Essentially, interior mutability causes problems, since code looping through the range of valid
 * indexes in a TensorRef needs to be able to rely on that range of valid indexes not changing.
-* This is trivially the case by default since a [Tensor](Tensor) does not have any form of
+* This is trivially the case by default since a [Tensor] does not have any form of
 * interior mutability, and therefore an iterator holding a shared reference to a Tensor prevents
 * that tensor being resized. However, a type *wrongly* implementing TensorRef could introduce
 * interior mutability by putting the Tensor in an `Arc<Mutex<>>` which would allow another thread
@@ -212,7 +212,7 @@ pub enum DataLayout<const D: usize> {
  *
  * # Safety
  *
- * See [TensorRef](TensorRef).
+ * See [TensorRef].
  */
 pub unsafe trait TensorMut<T, const D: usize>: TensorRef<T, D> {
     /**
@@ -240,9 +240,9 @@ pub unsafe trait TensorMut<T, const D: usize>: TensorRef<T, D> {
 /**
  * A view into some or all of a tensor.
  *
- * A TensorView has a similar relationship to a [`Tensor`](Tensor) as a
- * `&str` has to a `String`, or an array slice to an array. A TensorView cannot resize
- * its source, and may span only a portion of the source Tensor in each dimension.
+ * A TensorView has a similar relationship to a [`Tensor`] as a `&str` has to a `String`, or an
+ * array slice to an array. A TensorView cannot resize its source, and may span only a portion
+ * of the source Tensor in each dimension.
  *
  * However a TensorView is generic not only over the type of the data in the Tensor,
  * but also over the way the Tensor is 'sliced' and the two are orthogonal to each other.
@@ -257,7 +257,7 @@ pub struct TensorView<T, S, const D: usize> {
 }
 
 /**
- * TensorView methods which require only read access via a [TensorRef](TensorRef) source.
+ * TensorView methods which require only read access via a [TensorRef] source.
  */
 impl<T, S, const D: usize> TensorView<T, S, D>
 where
@@ -411,7 +411,7 @@ where
 
     /**
      * Returns a TensorView with a range taken in P dimensions, hiding the values **outside** the
-     * range from view. Error cases are documented on [TensorRange](TensorRange).
+     * range from view. Error cases are documented on [TensorRange].
      *
      * This is a shorthand for constructing the TensorView from this TensorView. See
      * [`Tensor::range`](Tensor::range).
@@ -428,7 +428,7 @@ where
 
     /**
      * Returns a TensorView with a range taken in P dimensions, hiding the values **outside** the
-     * range from view. Error cases are documented on [TensorRange](TensorRange). The TensorRange
+     * range from view. Error cases are documented on [TensorRange]. The TensorRange
      * mutably borrows the source, and can therefore mutate it if it implements TensorMut.
      *
      * This is a shorthand for constructing the TensorView from this TensorView. See
@@ -446,7 +446,7 @@ where
 
     /**
      * Returns a TensorView with a range taken in P dimensions, hiding the values **outside** the
-     * range from view. Error cases are documented on [TensorRange](TensorRange). The TensorRange
+     * range from view. Error cases are documented on [TensorRange]. The TensorRange
      * takes ownership of the source, and can therefore mutate it if it implements TensorMut.
      *
      * This is a shorthand for constructing the TensorView from this TensorView. See
@@ -464,7 +464,7 @@ where
 
     /**
      * Returns a TensorView with a mask taken in P dimensions, hiding the values **inside** the
-     * range from view. Error cases are documented on [TensorMask](TensorMask).
+     * range from view. Error cases are documented on [TensorMask].
      *
      * This is a shorthand for constructing the TensorView from this TensorView. See
      * [`Tensor::mask`](Tensor::mask).
@@ -481,7 +481,7 @@ where
 
     /**
      * Returns a TensorView with a mask taken in P dimensions, hiding the values **inside** the
-     * range from view. Error cases are documented on [TensorMask](TensorMask). The TensorMask
+     * range from view. Error cases are documented on [TensorMask]. The TensorMask
      * mutably borrows the source, and can therefore mutate it if it implements TensorMut.
      *
      * This is a shorthand for constructing the TensorView from this TensorView. See
@@ -499,7 +499,7 @@ where
 
     /**
      * Returns a TensorView with a mask taken in P dimensions, hiding the values **inside** the
-     * range from view. Error cases are documented on [TensorMask](TensorMask). The TensorMask
+     * range from view. Error cases are documented on [TensorMask]. The TensorMask
      * takes ownership of the source, and can therefore mutate it if it implements TensorMut.
      *
      * This is a shorthand for constructing the TensorView from this TensorView. See
@@ -632,7 +632,7 @@ where
      *
      * This is a shorthand for constructing the TensorView from this TensorView.
      *
-     * See also: [transpose](TensorView::transpose), [TensorTranspose](TensorTranspose)
+     * See also: [transpose](TensorView::transpose), [TensorTranspose]
      *
      * # Panics
      *
@@ -682,7 +682,7 @@ where
 }
 
 /**
- * TensorView methods which require only read access via a [TensorRef](TensorRef) source
+ * TensorView methods which require only read access via a [TensorRef] source
  * and a clonable type.
  */
 impl<T, S, const D: usize> TensorView<T, S, D>
@@ -714,7 +714,7 @@ where
      * `[("batch", b), ("h", h), ("w", w), ("c", c)]` via `transpose(["batch", "w", "h", "c"])`
      * which would return a new tensor where all the images have been swapped over the diagonal.
      *
-     * See also: [TensorAccess](TensorAccess), [reorder](TensorView::reorder)
+     * See also: [TensorAccess], [reorder](TensorView::reorder)
      *
      * # Panics
      *
@@ -750,7 +750,7 @@ where
      * which would return a new tensor where every (b,w,h,c) of its data corresponds to (b,h,w,c)
      * in the original.
      *
-     * See also: [TensorAccess](TensorAccess), [transpose](TensorView::transpose)
+     * See also: [TensorAccess], [transpose](TensorView::transpose)
      *
      * # Panics
      *
@@ -881,7 +881,7 @@ where
 }
 
 /**
- * TensorView methods which require only read access via a scalar [TensorRef](TensorRef) source
+ * TensorView methods which require only read access via a scalar [TensorRef] source
  * and a clonable type.
  */
 impl<T, S> TensorView<T, S, 0>
@@ -898,7 +898,7 @@ where
 }
 
 /**
- * TensorView methods which require mutable access via a [TensorMut](TensorMut) source.
+ * TensorView methods which require mutable access via a [TensorMut] source.
  */
 impl<T, S, const D: usize> TensorView<T, S, D>
 where
@@ -1006,7 +1006,7 @@ macro_rules! tensor_view_select_impl {
              * always indexed as the provided values.
              *
              * This is a shorthand for manually constructing the TensorView and
-             * [TensorIndex](TensorIndex)
+             * [TensorIndex]
              *
              * Note: due to limitations in Rust's const generics support, this method is only
              * implemented for `provided_indexes` of length 1 and `D` from 1 to 6. You can fall
@@ -1075,7 +1075,7 @@ macro_rules! tensor_view_expand_impl {
              * dimensions than this TensorView.
              *
              * This is a shorthand for manually constructing the TensorView and
-             * [TensorExpansion](TensorExpansion)
+             * [TensorExpansion]
              *
              * Note: due to limitations in Rust's const generics support, this method is only
              * implemented for `extra_dimension_names` of length 1 and `D` from 0 to 5. You can

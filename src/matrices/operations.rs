@@ -10,8 +10,8 @@
  * There are also convenience operations defined for a matrix and a scalar.
  *
  * These implementations are written here but Rust docs will display them on their implemented
- * types. All 16 combinations of owned and referenced [Matrix](crate::matrices::Matrix) and
- * [MatrixView](crate::matrices::views::MatrixView) operations are implemented.
+ * types. All 16 combinations of owned and referenced [Matrix] and [MatrixView] operations are
+ * implemented.
  *
  * Matrix multiplication is such that a matrix of dimensionality (LxM) multiplied with
  * a matrix of dimensionality (MxN) yields a new matrix of dimensionality (LxN) with each element

@@ -26,7 +26,7 @@ use std::ops::Sub;
  *
  * The requirements are Add, Sub, Mul, Div, Neg and Sized. Note that
  * unsigned integers do not implement Neg unless they are wrapped by
- * [Wrapping](std::num::Wrapping).
+ * [Wrapping].
  */
 pub trait NumericByValue<Rhs = Self, Output = Self>:
     Add<Rhs, Output = Output>

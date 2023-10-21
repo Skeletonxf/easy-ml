@@ -1405,9 +1405,9 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for WithIn
  * A column major iterator over all values in a matrix.
  *
  * This iterator does not clone the values, it returns the actual values stored in the matrix.
- * There is no such method to return `T` by value from a [MatrixRef](MatrixRef)/MatrixMut, to do
+ * There is no such method to return `T` by value from a [MatrixRef]/[MatrixMut], to do
  * this it [replaces](std::mem::replace) the values with dummy values. Hence it can only be
- * created for types that implement [Default](Default) or [ZeroOne](crate::numeric::ZeroOne)
+ * created for types that implement [Default] or [ZeroOne](crate::numeric::ZeroOne)
  * from [Numeric](crate::numeric) which provide a means to create dummy values.
  *
  * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie
@@ -1569,9 +1569,9 @@ impl<T, S: MatrixMut<T> + NoInteriorMutability> ExactSizeIterator for WithIndex<
  * A row major iterator over all values in a matrix.
  *
  * This iterator does not clone the values, it returns the actual values stored in the matrix.
- * There is no such method to return `T` by value from a [MatrixRef](MatrixRef)/MatrixMut, to do
+ * There is no such method to return `T` by value from a [MatrixRef]/[MatrixMut], to do
  * this it [replaces](std::mem::replace) the values with dummy values. Hence it can only be
- * created for types that implement [Default](Default) or [ZeroOne](crate::numeric::ZeroOne)
+ * created for types that implement [Default] or [ZeroOne](crate::numeric::ZeroOne)
  * from [Numeric](crate::numeric) which provide a means to create dummy values.
  *
  * For a 2x2 matrix such as `[ 1, 2; 3, 4]`: ie

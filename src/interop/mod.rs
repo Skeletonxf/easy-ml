@@ -41,10 +41,9 @@ pub struct TensorRefMatrix<T, S, N> {
 }
 
 /**
- * The first and second dimension name a Matrix type wrapped in a
- * [TensorRefMatrix](TensorRefMatrix) will report on its view shape. If you don't care what the
- * dimension names are, [RowAndColumn](RowAndColumn) can be used which will hardcode the
- * dimension names to "row" and "column" respectively.
+ * The first and second dimension name a Matrix type wrapped in a [TensorRefMatrix] will report
+ * on its view shape. If you don't care what the dimension names are, [RowAndColumn] can be used
+ * which will hardcode the dimension names to "row" and "column" respectively.
  */
 pub trait DimensionNames {
     fn names(&self) -> [Dimension; 2];

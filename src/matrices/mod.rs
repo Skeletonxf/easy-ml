@@ -26,9 +26,8 @@ use crate::numeric::{Numeric, NumericRef};
 /**
  * A general purpose matrix of some type. This type may implement
  * no traits, in which case the matrix will be rather useless. If the
- * type implements [`Clone`](std::clone::Clone)
- * most storage and accessor methods are defined and if the type implements
- * [`Numeric`](super::numeric) then the matrix can be used in
+ * type implements [`Clone`] most storage and accessor methods are defined and if the type
+ * implements [`Numeric`](super::numeric) then the matrix can be used in
  * a mathematical way.
  *
  * When doing numeric operations with Matrices you should be careful to not
@@ -1507,8 +1506,7 @@ where
  * precision and hence can't be used for operations like square roots.
  *
  * Third party fixed precision and infinite precision decimal types should
- * be able to implement all of the methods for [Real](super::numeric::extra::Real)
- * and then utilise these functions.
+ * be able to implement all of the methods for [Real] and then utilise these functions.
  */
 impl<T: Numeric + Real> Matrix<T>
 where

@@ -217,7 +217,7 @@ fn test_send() {
  *
  * Tensors are a generalisation of matrices; whereas [Matrix](crate::matrices::Matrix) only
  * supports 2 dimensions, and vectors are represented in Matrix by making either the rows or
- * columns have a length of one, [Tensor](Tensor) supports an arbitary number of dimensions,
+ * columns have a length of one, [Tensor] supports an arbitary number of dimensions,
  * with 0 through 6 having full API support. A `Tensor<T, 2>` is very similar to a `Matrix<T>`
  * except that this type associates each dimension with a name, and favor names to refer to
  * dimensions instead of index order.
@@ -236,7 +236,7 @@ fn test_send() {
  * so you should favor &x + &y style notation for tensors you intend to continue using.
  *
  * See also:
- * - [indexing](indexing)
+ * - [indexing]
  */
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize))]
@@ -331,8 +331,8 @@ impl<T, const D: usize> Tensor<T, D> {
      * list of lengths along each dimension, but instead a list of pairs of names and lengths.
      *
      * See also
-     * - [dimensions](crate::tensors::dimensions)
-     * - [indexing](crate::tensors::indexing)
+     * - [dimensions]
+     * - [indexing]
      */
     pub fn shape(&self) -> [(Dimension, usize); D] {
         self.shape
@@ -813,7 +813,7 @@ impl<T, const D: usize> Tensor<T, D> {
 
     /**
      * Returns a TensorView with a range taken in P dimensions, hiding the values **outside** the
-     * range from view. Error cases are documented on [TensorRange](TensorRange).
+     * range from view. Error cases are documented on [TensorRange].
      *
      * This is a shorthand for constructing the TensorView from this Tensor.
      *
@@ -854,7 +854,7 @@ impl<T, const D: usize> Tensor<T, D> {
 
     /**
      * Returns a TensorView with a range taken in P dimensions, hiding the values **outside** the
-     * range from view. Error cases are documented on [TensorRange](TensorRange). The TensorRange
+     * range from view. Error cases are documented on [TensorRange]. The TensorRange
      * mutably borrows this Tensor, and can therefore mutate it
      *
      * This is a shorthand for constructing the TensorView from this Tensor.
@@ -874,7 +874,7 @@ impl<T, const D: usize> Tensor<T, D> {
 
     /**
      * Returns a TensorView with a range taken in P dimensions, hiding the values **outside** the
-     * range from view. Error cases are documented on [TensorRange](TensorRange). The TensorRange
+     * range from view. Error cases are documented on [TensorRange]. The TensorRange
      * takes ownership of this Tensor, and can therefore mutate it
      *
      * This is a shorthand for constructing the TensorView from this Tensor.
@@ -891,7 +891,7 @@ impl<T, const D: usize> Tensor<T, D> {
 
     /**
      * Returns a TensorView with a mask taken in P dimensions, hiding the values **inside** the
-     * range from view. Error cases are documented on [TensorMask](TensorMask).
+     * range from view. Error cases are documented on [TensorMask].
      *
      * This is a shorthand for constructing the TensorView from this Tensor.
      *
@@ -933,7 +933,7 @@ impl<T, const D: usize> Tensor<T, D> {
 
     /**
      * Returns a TensorView with a mask taken in P dimensions, hiding the values **inside** the
-     * range from view. Error cases are documented on [TensorMask](TensorMask). The TensorMask
+     * range from view. Error cases are documented on [TensorMask]. The TensorMask
      * mutably borrows this Tensor, and can therefore mutate it
      *
      * This is a shorthand for constructing the TensorView from this Tensor.
@@ -953,7 +953,7 @@ impl<T, const D: usize> Tensor<T, D> {
 
     /**
      * Returns a TensorView with a mask taken in P dimensions, hiding the values **inside** the
-     * range from view. Error cases are documented on [TensorMask](TensorMask). The TensorMask
+     * range from view. Error cases are documented on [TensorMask]. The TensorMask
      * takes ownership of this Tensor, and can therefore mutate it
      *
      * This is a shorthand for constructing the TensorView from this Tensor.
@@ -1086,7 +1086,7 @@ impl<T, const D: usize> Tensor<T, D> {
      *
      * This is a shorthand for constructing the TensorView from this Tensor.
      *
-     * See also: [transpose](Tensor::transpose), [TensorTranspose](TensorTranspose)
+     * See also: [transpose](Tensor::transpose), [TensorTranspose]
      *
      * # Panics
      *
@@ -1145,7 +1145,7 @@ where
      * `[("batch", b), ("h", h), ("w", w), ("c", c)]` via `transpose(["batch", "w", "h", "c"])`
      * which would return a new tensor where all the images have been swapped over the diagonal.
      *
-     * See also: [TensorAccess](TensorAccess), [reorder](Tensor::reorder)
+     * See also: [TensorAccess], [reorder](Tensor::reorder)
      *
      * # Panics
      *
@@ -1212,7 +1212,7 @@ where
      * which would return a new tensor where every (b,w,h,c) of its data corresponds to (b,h,w,c)
      * in the original.
      *
-     * See also: [TensorAccess](TensorAccess), [transpose](Tensor::transpose)
+     * See also: [TensorAccess], [transpose](Tensor::transpose)
      *
      * # Panics
      *
@@ -1561,8 +1561,7 @@ impl<T> Tensor<T, 2> {
  * precision and hence can't be used for operations like square roots.
  *
  * Third party fixed precision and infinite precision decimal types should
- * be able to implement all of the methods for [Real](super::numeric::extra::Real)
- * and then utilise these functions.
+ * be able to implement all of the methods for [Real] and then utilise these functions.
  */
 impl<T: Numeric + Real> Tensor<T, 1>
 where
@@ -1722,7 +1721,7 @@ macro_rules! tensor_select_impl {
              * always indexed as the provided values.
              *
              * This is a shorthand for manually constructing the TensorView and
-             * [TensorIndex](TensorIndex)
+             * [TensorIndex]
              *
              * Note: due to limitations in Rust's const generics support, this method is only
              * implemented for `provided_indexes` of length 1 and `D` from 1 to 6. You can fall
@@ -1788,7 +1787,7 @@ macro_rules! tensor_expand_impl {
              * dimensions than this Tensor.
              *
              * This is a shorthand for manually constructing the TensorView and
-             * [TensorExpansion](TensorExpansion)
+             * [TensorExpansion]
              *
              * Note: due to limitations in Rust's const generics support, this method is only
              * implemented for `extra_dimension_names` of length 1 and `D` from 0 to 5. You can

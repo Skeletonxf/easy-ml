@@ -258,8 +258,8 @@ where
  *
  * # Invariants
  *
- * The mean [Matrix](Matrix) must always be a column vector, and
- * must be the same length as the covariance matrix.
+ * The mean [Matrix] must always be a column vector, and must be the same length as the
+ * covariance matrix.
  */
 #[derive(Clone, Debug)]
 pub struct MultivariateGaussian<T: Numeric + Real> {

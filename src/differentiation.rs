@@ -395,7 +395,7 @@ where
 use std::cell::RefCell;
 
 /**
- * WengertLists are indexed with [`usize`](usize).
+ * WengertLists are indexed with [`usize`].
  */
 pub type Index = usize;
 
@@ -419,9 +419,8 @@ pub type Index = usize;
  *
  * Every operation and nearly every method a Record has involves manipulating the
  * record's history on its referenced WengertList. This WengertList itself maintains
- * a [RefCell](std::cell::RefCell) which tracks
- * borrows at runtime rather than compile time. This is neccessary to maintain the
- * illusion that Records are just ordinary numbers, and the side effects of doing
+ * a [RefCell] which tracks borrows at runtime rather than compile time. This is neccessary to
+ * maintain the illusion that Records are just ordinary numbers, and the side effects of doing
  * arithmetic with Records are limited to their referenced WengertList. Hence, the Rust
  * compiler correctly infers that it is not safe to share references to WengertLists between
  * threads, nor transfer Records across threads. If you called a method on two Records that both
@@ -542,9 +541,8 @@ impl<T: Clone + Primitive> Clone for Operation<T> {
  *
  * Every operation and nearly every method a Record has involves manipulating the
  * record's history on its referenced [WengertList]. This WengertList itself maintains
- * a [RefCell](std::cell::RefCell) which tracks
- * borrows at runtime rather than compile time. This is neccessary to maintain the
- * illusion that Records are just ordinary numbers, and the side effects of doing
+ * a [RefCell] which tracks borrows at runtime rather than compile time. This is neccessary to
+ * maintain the illusion that Records are just ordinary numbers, and the side effects of doing
  * arithmetic with Records are limited to their referenced WengertList. Hence, the Rust
  * compiler infers that it is not safe to share references to WengertLists between threads,
  * nor transfer Records across threads. If you called a method on two Records that both
@@ -667,7 +665,7 @@ impl<'a, T: Numeric + Primitive> Record<'a, T> {
     }
 
     /**
-     * Gets the WengertList this Record is backed by if a variable, and [None](None) if a constant.
+     * Gets the WengertList this Record is backed by if a variable, and [None] if a constant.
      */
     pub fn history(&self) -> Option<&'a WengertList<T>> {
         self.history
