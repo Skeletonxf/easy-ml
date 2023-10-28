@@ -137,7 +137,7 @@ fn scatter_plot(data: &Matrix<f64>) {
         .map(|(x, y)| (x as f32, y as f32))
         .collect::<Vec<(f32, f32)>>();
     Chart::new(180, 60, -8.0, 8.0)
-        .lineplot(Shape::Points(&scatter_points))
+        .lineplot(&Shape::Points(&scatter_points))
         .display();
 }
 
@@ -257,7 +257,7 @@ for i in 0..25 {
 
 println!("Log likelihood over 25 iterations (bigger is better as logs are monotonic)");
 Chart::new(180, 60, 0.0, 15.0)
-    .lineplot(Shape::Lines(&log_likelihood_progress))
+    .lineplot(&Shape::Lines(&log_likelihood_progress))
     .display();
 
 println!("Decision boundry after 25 iterations");
@@ -311,7 +311,7 @@ fn decision_boundry(weights: &Matrix<f64>) {
         .map(|(x1, x2, _)| (x1 as f32, x2 as f32))
         .collect::<Vec<(f32, f32)>>();
     Chart::new(180, 60, -8.0, 8.0)
-        .lineplot(Shape::Points(&points))
+        .lineplot(&Shape::Points(&points))
         .display();
 }
 ```
@@ -391,7 +391,7 @@ fn scatter_plot(data: &Tensor<f64, 2>) {
         .map(|(x, y)| (x as f32, y as f32))
         .collect::<Vec<(f32, f32)>>();
     Chart::new(180, 60, -8.0, 8.0)
-        .lineplot(Shape::Points(&scatter_points))
+        .lineplot(&Shape::Points(&scatter_points))
         .display();
 }
 
@@ -523,7 +523,7 @@ for i in 0..25 {
 
 println!("Log likelihood over 25 iterations (bigger is better as logs are monotonic)");
 Chart::new(180, 60, 0.0, 15.0)
-    .lineplot(Shape::Lines(&log_likelihood_progress))
+    .lineplot(&Shape::Lines(&log_likelihood_progress))
     .display();
 
 println!("Decision boundry after 25 iterations");
@@ -578,7 +578,7 @@ fn decision_boundry(weights: &Tensor<f64, 1>) {
         .map(|(x1, x2, _)| (x1 as f32, x2 as f32))
         .collect::<Vec<(f32, f32)>>();
     Chart::new(180, 60, -8.0, 8.0)
-        .lineplot(Shape::Points(&points))
+        .lineplot(&Shape::Points(&points))
         .display();
 }
 ```

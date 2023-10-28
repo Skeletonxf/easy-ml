@@ -50,7 +50,7 @@ let histogram_points = {
 // looks like a Gaussian. This will show a bell curve for large enough SAMPLES.
 let histogram = textplots::utils::histogram(&histogram_points, -3.0, 3.0, 30);
 Chart::new(180, 60, -3.0, 3.0)
-    .lineplot( Shape::Bars(&histogram) )
+    .lineplot(&Shape::Bars(&histogram))
     .nice();
 ```
 

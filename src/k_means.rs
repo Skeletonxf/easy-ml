@@ -18,7 +18,8 @@ use rand::{Rng, SeedableRng};
 use rand::distributions::{DistIter, Standard};
 use rand_chacha::ChaCha8Rng;
 
-use textplots::{Chart, Plot, Shape};
+use rgb::RGB8;
+use textplots::{Chart, ColorPlot, Plot, Shape};
 
 // use a fixed seed random generator from the rand crate
 let mut random_generator = ChaCha8Rng::seed_from_u64(11);
@@ -66,7 +67,7 @@ let scatter_points = cluster1_points.column_iter(0)
     .map(|(x, y)| (x as f32, y as f32))
     .collect::<Vec<(f32, f32)>>();
 Chart::new(180, 60, -8.0, 8.0)
-    .lineplot(Shape::Points(&scatter_points))
+    .lineplot(&Shape::Points(&scatter_points))
     .display();
 
 
@@ -167,9 +168,9 @@ cluster_center_2_history.push((clusters.get(1, X) as f32, clusters.get(1, Y) as 
 
 println!("Cluster centre movements");
 Chart::new(180, 60, -8.0, 8.0)
-    .lineplot(Shape::Points(&scatter_points))
-    .lineplot(Shape::Lines(&cluster_center_1_history))
-    .lineplot(Shape::Lines(&cluster_center_2_history))
+    .lineplot(&Shape::Points(&scatter_points))
+    .linecolorplot(&Shape::Lines(&cluster_center_1_history), RGB8::new(255, 100, 100))
+    .linecolorplot(&Shape::Lines(&cluster_center_2_history), RGB8::new(100, 100, 255))
     .display();
 ```
 
@@ -184,7 +185,8 @@ use rand::{Rng, SeedableRng};
 use rand::distributions::{DistIter, Standard};
 use rand_chacha::ChaCha8Rng;
 
-use textplots::{Chart, Plot, Shape};
+use rgb::RGB8;
+use textplots::{Chart, ColorPlot, Plot, Shape};
 
 // use a fixed seed random generator from the rand crate
 let mut random_generator = ChaCha8Rng::seed_from_u64(11);
@@ -250,7 +252,7 @@ let scatter_points = cluster1_points
     .collect::<Vec<(f32, f32)>>();
 
 Chart::new(180, 60, -8.0, 8.0)
-    .lineplot(Shape::Points(&scatter_points))
+    .lineplot(&Shape::Points(&scatter_points))
     .display();
 
 
@@ -372,9 +374,9 @@ cluster_center_2_history.push((clusters.get([1, X]) as f32, clusters.get([1, Y])
 
 println!("Cluster centre movements");
 Chart::new(180, 60, -8.0, 8.0)
-    .lineplot(Shape::Points(&scatter_points))
-    .lineplot(Shape::Lines(&cluster_center_1_history))
-    .lineplot(Shape::Lines(&cluster_center_2_history))
+    .lineplot(&Shape::Points(&scatter_points))
+    .linecolorplot(&Shape::Lines(&cluster_center_1_history), RGB8::new(255, 100, 100))
+    .linecolorplot(&Shape::Lines(&cluster_center_2_history), RGB8::new(100, 100, 255))
     .display();
 ```
 
