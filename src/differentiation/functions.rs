@@ -115,6 +115,31 @@ where
     }
 }
 
+pub struct Power<T> {
+    _type: PhantomData<T>,
+}
+
+impl<T> FunctionDerivative<T> for Power<T>
+where
+    T: Numeric + Real + Primitive,
+    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+{
+    /// `x ^ y`
+    fn function(x: T, y: T) -> T {
+        x.pow(y)
+    }
+
+    /// `d(x ^ y) / dx = y * x^(y-1)`
+    fn d_function_dx(x: T, y: T) -> T {
+        y.clone() * x.pow(y - T::one())
+    }
+
+    /// `d(x ^ y) / dy = x^y * ln(x)`
+    fn d_function_dy(x: T, y: T) -> T {
+        x.clone().pow(y) * x.ln()
+    }
+}
+
 pub struct Negation<T> {
     _type: PhantomData<T>,
 }

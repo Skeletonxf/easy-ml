@@ -35,7 +35,7 @@
 
 use crate::differentiation::functions::{
     Addition, Cosine, Division, Exponential, FunctionDerivative, Multiplication, NaturalLogarithm,
-    Sine, SquareRoot, Subtraction, UnaryFunctionDerivative,
+    Power, Sine, SquareRoot, Subtraction, UnaryFunctionDerivative,
 };
 use crate::differentiation::{Primitive, Record, WengertList};
 use crate::numeric::extra::{Cos, Exp, Ln, Pi, Pow, Real, RealRef, Sin, Sqrt};
@@ -1028,7 +1028,7 @@ where
         );
         match (self.history, rhs.history) {
             (None, None) => Record {
-                number: self.number.clone().pow(rhs.number.clone()),
+                number: Power::<T>::function(self.number.clone(), rhs.number.clone()),
                 history: None,
                 index: 0,
             },
@@ -1036,15 +1036,13 @@ where
             (Some(_), None) => self.pow(&rhs.number),
             (None, Some(_)) => (&self.number).pow(rhs),
             (Some(history), Some(_)) => Record {
-                number: self.number.clone().pow(rhs.number.clone()),
+                number: Power::<T>::function(self.number.clone(), rhs.number.clone()),
                 history: Some(history),
                 index: history.append_binary(
                     self.index,
-                    // δ(self^rhs) / δself = rhs * self^(rhs-1)
-                    rhs.number.clone() * self.number.clone().pow(rhs.number.clone() - T::one()),
+                    Power::<T>::d_function_dx(self.number.clone(), rhs.number.clone()),
                     rhs.index,
-                    // δ(self^rhs) / δrhs = self^rhs * ln(self)
-                    (self.number.clone().pow(rhs.number.clone())) * self.number.clone().ln(),
+                    Power::<T>::d_function_dy(self.number.clone(), rhs.number.clone()),
                 ),
             },
         }
@@ -1124,21 +1122,18 @@ where
     fn pow(self, rhs: &T) -> Self::Output {
         match self.history {
             None => Record {
-                number: self.number.clone().pow(rhs.clone()),
+                number: Power::<T>::function(self.number.clone(), rhs.clone()),
                 history: None,
                 index: 0,
             },
-            Some(history) => {
-                Record {
-                    number: self.number.clone().pow(rhs.clone()),
-                    history: Some(history),
-                    index: history.append_unary(
-                        self.index,
-                        // δ(self^rhs) / δself = rhs * self^(rhs-1)
-                        rhs.clone() * self.number.clone().pow(rhs.clone() - T::one()),
-                    ),
-                }
-            }
+            Some(history) => Record {
+                number: Power::<T>::function(self.number.clone(), rhs.clone()),
+                history: Some(history),
+                index: history.append_unary(
+                    self.index,
+                    Power::<T>::d_function_dx(self.number.clone(), rhs.clone()),
+                ),
+            },
         }
     }
 }
@@ -1155,18 +1150,19 @@ where
     fn pow(self, rhs: &Record<'a, T>) -> Self::Output {
         match rhs.history {
             None => Record {
-                number: self.clone().pow(rhs.number.clone()),
+                number: Power::<T>::function(self.clone(), rhs.number.clone()),
                 history: None,
                 index: 0,
             },
             Some(history) => {
                 Record {
-                    number: self.clone().pow(rhs.number.clone()),
+                    number: Power::<T>::function(self.clone(), rhs.number.clone()),
                     history: Some(history),
                     index: history.append_unary(
                         rhs.index,
-                        // δ(self^rhs) / δrhs = self^rhs * ln(self)
-                        (self.clone().pow(rhs.number.clone())) * self.clone().ln(),
+                        // We want with respect to y because it is the right hand side here that we
+                        // need the derivative for (since left is a constant).
+                        Power::<T>::d_function_dy(self.clone(), rhs.number.clone()),
                     ),
                 }
             }
