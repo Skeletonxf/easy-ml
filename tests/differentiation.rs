@@ -482,4 +482,44 @@ mod reverse_tests {
         assert!(dx - also_dx < std::f64::EPSILON);
         assert!((y.number - also_y.number) < std::f64::EPSILON);
     }
+
+    #[test]
+    fn test_pow() {
+        use easy_ml::differentiation::{RecordMatrix, RecordTensor};
+        use easy_ml::matrices::Matrix;
+        use easy_ml::tensors::Tensor;
+        // 5 ^ 3 = 5 * 5 * 5 = 125, derivative w/ x is y * (x ^ (y - 1)) = 3 * (5 ^ 2) = 75
+        // derivative w/ y is x ^ y * ln(x) = 125 * ln(5)
+        let list = WengertList::new();
+        let x = Record::variable(5.0, &list);
+        let y = Record::variable(3.0, &list);
+        let z = x.pow(y);
+        assert_eq!(z.number, 125.0);
+        let (z_dx, z_dy) = {
+            let derivatives = z.derivatives();
+            (derivatives.at(&x), derivatives.at(&y))
+        };
+        let expected_z_dx: f64 = 75.0;
+        let expected_z_dy: f64 = 125.0 * 5.0.ln();
+        assert_eq!(z_dx, expected_z_dx);
+        assert!((z_dy - expected_z_dy).abs() < 1e-10);
+
+        let x = RecordTensor::variables(&list, Tensor::from([("x", 1)], vec![5.0]));
+        #[rustfmt::skip]
+        let z_dx = (&x).pow(3.0).derivatives_for([0]).unwrap().at_tensor_index([0], &x).unwrap();
+        assert_eq!(z_dx, expected_z_dx);
+        let y = RecordTensor::variables(&list, Tensor::from([("x", 1)], vec![3.0]));
+        #[rustfmt::skip]
+        let z_dy = 5.0.pow(&y).derivatives_for([0]).unwrap().at_tensor_index([0], &y).unwrap();
+        assert!((z_dy - expected_z_dy).abs() < 1e-10);
+
+        let x = RecordMatrix::variables(&list, Matrix::from(vec![vec![5.0]]));
+        #[rustfmt::skip]
+        let z_dx = (&x).pow(3.0).derivatives_for(0, 0).unwrap().at_matrix_index(0, 0, &x).unwrap();
+        assert_eq!(z_dx, expected_z_dx);
+        let y = RecordMatrix::variables(&list, Matrix::from(vec![vec![3.0]]));
+        #[rustfmt::skip]
+        let z_dy = 5.0.pow(&y).derivatives_for(0, 0).unwrap().at_matrix_index(0, 0, &y).unwrap();
+        assert!((z_dy - expected_z_dy).abs() < 1e-10);
+    }
 }

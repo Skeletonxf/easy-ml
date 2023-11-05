@@ -28,14 +28,15 @@ mod container_operations;
  *
  * For convenience, as with Trace and Record, many unary operations including
  * [Cos](crate::numeric::extra::Cos), [Exp](crate::numeric::extra::Exp),
- * [Ln](crate::numeric::extra::Ln), [Neg](std::ops::Neg), [Sin](crate::numeric::extra::Sin), and
- * [Sqrt](crate::numeric::extra::Sqrt) are implemented as well, applying the unary function to
- * each element in the tensor.
+ * [Ln](crate::numeric::extra::Ln), [Neg](std::ops::Neg), [Pow](crate::numeric::extra::Pow),
+ * [Sin](crate::numeric::extra::Sin), and [Sqrt](crate::numeric::extra::Sqrt) are implemented as
+ * well, applying the unary function to each element in the tensor.
  *
  * `+`, `-`, `*` and `/` operations with a RecordContainer and a scalar are also implemented,
  * treating the right hand side scalar as a constant. These are also unary functions in terms of
  * the derivative tracking, for example `X + 5` applies the function `+5` to each element in
- * `X`.
+ * `X`. Due to the orphan rule, the standard library scalars cannot be implemented for a left hand
+ * side scalar, see [SwappedOperations](crate::differentiation::record_operations::SwappedOperations).
  */
 // TODO: APIs for adjusting shape and docs on here for making shapes match up.
 #[derive(Debug)]

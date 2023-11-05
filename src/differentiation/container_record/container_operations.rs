@@ -1,6 +1,6 @@
 use crate::differentiation::functions::{
     Addition, Cosine, Division, Exponential, FunctionDerivative, Multiplication, NaturalLogarithm,
-    Negation, Sine, SquareRoot, Subtraction, UnaryFunctionDerivative,
+    Negation, Power, Sine, SquareRoot, Subtraction, UnaryFunctionDerivative,
 };
 use crate::differentiation::record_operations::are_same_list;
 use crate::differentiation::{Index, Primitive, WengertList};
@@ -11,7 +11,7 @@ use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::views::TensorRef;
 use crate::tensors::Tensor;
 
-use crate::numeric::extra::{Cos, Exp, Ln, Real, RealRef, Sin, Sqrt};
+use crate::numeric::extra::{Cos, Exp, Ln, Pow, Real, RealRef, Sin, Sqrt};
 
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
@@ -364,6 +364,360 @@ macro_rules! record_real_matrix_operator_impl_unary {
             #[track_caller]
             fn $method(self) -> Self::Output {
                 self.unary($function::<T>::function, $function::<T>::d_function_dx)
+            }
+        }
+    };
+}
+
+macro_rules! record_real_tensor_operator_impl_scalar {
+    (impl $op:tt for RecordTensor { fn $method:ident } $function:ident) => {
+        /**
+         * Operation for a record tensor and a constant of the same type. The scalar is applied
+         * to all elements, this is a shorthand for [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S, const D: usize> $op<T> for RecordTensor<'a, T, S, D>
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: TensorRef<(T, Index), D>,
+        {
+            type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
+            #[track_caller]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.unary(
+                    |x| $function::<T>::function(x, rhs.clone()),
+                    |x| $function::<T>::d_function_dx(x, rhs.clone()),
+                )
+            }
+        }
+
+        /**
+         * Operation for a referenced record tensor and a constant of the same type. The scalar
+         * is applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S, const D: usize> $op<T> for &RecordTensor<'a, T, S, D>
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: TensorRef<(T, Index), D>,
+        {
+            type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
+            #[track_caller]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.unary(
+                    |x| $function::<T>::function(x, rhs.clone()),
+                    |x| $function::<T>::d_function_dx(x, rhs.clone()),
+                )
+            }
+        }
+
+        /**
+         * Operation for a record tensor and a referenced constant. The scalar is
+         * applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S, const D: usize> $op<&T> for RecordTensor<'a, T, S, D>
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: TensorRef<(T, Index), D>,
+        {
+            type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
+            #[track_caller]
+            fn $method(self, rhs: &T) -> Self::Output {
+                self.unary(
+                    |x| $function::<T>::function(x, rhs.clone()),
+                    |x| $function::<T>::d_function_dx(x, rhs.clone()),
+                )
+            }
+        }
+
+        /**
+         * Operation for a record tensor and a constant with both referenced. The scalar is
+         * applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S, const D: usize> $op<&T> for &RecordTensor<'a, T, S, D>
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: TensorRef<(T, Index), D>,
+        {
+            type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
+            #[track_caller]
+            fn $method(self, rhs: &T) -> Self::Output {
+                self.unary(
+                    |x| $function::<T>::function(x, rhs.clone()),
+                    |x| $function::<T>::d_function_dx(x, rhs.clone()),
+                )
+            }
+        }
+    };
+}
+
+macro_rules! record_real_tensor_operator_impl_scalar_no_orphan_rule {
+    (impl $op:tt for RecordTensor { fn $method:ident } $function:ident) => {
+        /**
+         * Operation for a constant and a record tensor of the same type. The scalar is applied
+         * to all elements, this is a shorthand for [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S, const D: usize> $op<RecordTensor<'a, T, S, D>> for T
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: TensorRef<(T, Index), D>,
+        {
+            type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
+            #[track_caller]
+            fn $method(self, rhs: RecordTensor<'a, T, S, D>) -> Self::Output {
+                rhs.unary(
+                    // We want with respect to y because it is the right hand side here that we
+                    // need the derivative for (since left is a constant).
+                    |x| $function::<T>::function(self.clone(), x),
+                    |x| $function::<T>::d_function_dy(self.clone(), x),
+                )
+            }
+        }
+
+        /**
+         * Operation for a constant and a referenced record tensor of the same type. The scalar
+         * is applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S, const D: usize> $op<&RecordTensor<'a, T, S, D>> for T
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: TensorRef<(T, Index), D>,
+        {
+            type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
+            #[track_caller]
+            fn $method(self, rhs: &RecordTensor<'a, T, S, D>) -> Self::Output {
+                rhs.unary(
+                    // We want with respect to y because it is the right hand side here that we
+                    // need the derivative for (since left is a constant).
+                    |x| $function::<T>::function(self.clone(), x),
+                    |x| $function::<T>::d_function_dy(self.clone(), x),
+                )
+            }
+        }
+
+        /**
+         * Operation for a referenced constant and a record tensor of the same type. The scalar
+         * is applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S, const D: usize> $op<RecordTensor<'a, T, S, D>> for &T
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: TensorRef<(T, Index), D>,
+        {
+            type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
+            #[track_caller]
+            fn $method(self, rhs: RecordTensor<'a, T, S, D>) -> Self::Output {
+                rhs.unary(
+                    // We want with respect to y because it is the right hand side here that we
+                    // need the derivative for (since left is a constant).
+                    |x| $function::<T>::function(self.clone(), x),
+                    |x| $function::<T>::d_function_dy(self.clone(), x),
+                )
+            }
+        }
+
+        /**
+         * Operation for a constant and a record tensor of the same type with both referenced. The
+         * scalar is applied to all elements, this is a shorthand for
+         * [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S, const D: usize> $op<&RecordTensor<'a, T, S, D>> for &T
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: TensorRef<(T, Index), D>,
+        {
+            type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
+            #[track_caller]
+            fn $method(self, rhs: &RecordTensor<'a, T, S, D>) -> Self::Output {
+                rhs.unary(
+                    // We want with respect to y because it is the right hand side here that we
+                    // need the derivative for (since left is a constant).
+                    |x| $function::<T>::function(self.clone(), x),
+                    |x| $function::<T>::d_function_dy(self.clone(), x),
+                )
+            }
+        }
+    };
+}
+
+macro_rules! record_real_matrix_operator_impl_scalar {
+    (impl $op:tt for RecordMatrix { fn $method:ident } $function:ident) => {
+        /**
+         * Operation for a record matrix and a constant of the same type. The scalar is applied
+         * to all elements, this is a shorthand for [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S> $op<T> for RecordMatrix<'a, T, S>
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.unary(
+                    |x| $function::<T>::function(x, rhs.clone()),
+                    |x| $function::<T>::d_function_dx(x, rhs.clone()),
+                )
+            }
+        }
+
+        /**
+         * Operation for a referenced record matrix and a constant of the same type. The scalar
+         * is applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S> $op<T> for &RecordMatrix<'a, T, S>
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self, rhs: T) -> Self::Output {
+                self.unary(
+                    |x| $function::<T>::function(x, rhs.clone()),
+                    |x| $function::<T>::d_function_dx(x, rhs.clone()),
+                )
+            }
+        }
+
+        /**
+         * Operation for a record matrix and a referenced constant. The scalar is
+         * applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S> $op<&T> for RecordMatrix<'a, T, S>
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self, rhs: &T) -> Self::Output {
+                self.unary(
+                    |x| $function::<T>::function(x, rhs.clone()),
+                    |x| $function::<T>::d_function_dx(x, rhs.clone()),
+                )
+            }
+        }
+
+        /**
+         * Operation for a record matrix and a constant with both referenced. The scalar is
+         * applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S> $op<&T> for &RecordMatrix<'a, T, S>
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self, rhs: &T) -> Self::Output {
+                self.unary(
+                    |x| $function::<T>::function(x, rhs.clone()),
+                    |x| $function::<T>::d_function_dx(x, rhs.clone()),
+                )
+            }
+        }
+    };
+}
+
+macro_rules! record_real_matrix_operator_impl_scalar_no_orphan_rule {
+    (impl $op:tt for RecordMatrix { fn $method:ident } $function:ident) => {
+        /**
+         * Operation for a constant and a record matrix of the same type. The scalar is applied
+         * to all elements, this is a shorthand for [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S> $op<RecordMatrix<'a, T, S>> for T
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self, rhs: RecordMatrix<'a, T, S>) -> Self::Output {
+                rhs.unary(
+                    // We want with respect to y because it is the right hand side here that we
+                    // need the derivative for (since left is a constant).
+                    |x| $function::<T>::function(self.clone(), x),
+                    |x| $function::<T>::d_function_dy(self.clone(), x),
+                )
+            }
+        }
+
+        /**
+         * Operation for a constant and a referenced record matrix of the same type. The scalar
+         * is applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S> $op<&RecordMatrix<'a, T, S>> for T
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self, rhs: &RecordMatrix<'a, T, S>) -> Self::Output {
+                rhs.unary(
+                    // We want with respect to y because it is the right hand side here that we
+                    // need the derivative for (since left is a constant).
+                    |x| $function::<T>::function(self.clone(), x),
+                    |x| $function::<T>::d_function_dy(self.clone(), x),
+                )
+            }
+        }
+
+        /**
+         * Operation for a referenced constant and a record matrix of the same type. The scalar is
+         * applied to all elements, this is a shorthand for [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S> $op<RecordMatrix<'a, T, S>> for &T
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self, rhs: RecordMatrix<'a, T, S>) -> Self::Output {
+                rhs.unary(
+                    // We want with respect to y because it is the right hand side here that we
+                    // need the derivative for (since left is a constant).
+                    |x| $function::<T>::function(self.clone(), x),
+                    |x| $function::<T>::d_function_dy(self.clone(), x),
+                )
+            }
+        }
+
+        /**
+         * Operation for a constant and a record matrix of the same type with both referenced.
+         * The scalar is applied to all elements, this is a shorthand for
+         * [unary()](RecordTensor::unary).
+         */
+        impl<'a, T, S> $op<&RecordMatrix<'a, T, S>> for &T
+        where
+            T: Numeric + Real + Primitive,
+            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            S: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
+            #[track_caller]
+            fn $method(self, rhs: &RecordMatrix<'a, T, S>) -> Self::Output {
+                rhs.unary(
+                    // We want with respect to y because it is the right hand side here that we
+                    // need the derivative for (since left is a constant).
+                    |x| $function::<T>::function(self.clone(), x),
+                    |x| $function::<T>::d_function_dy(self.clone(), x),
+                )
             }
         }
     };
@@ -1103,6 +1457,11 @@ record_real_matrix_operator_impl_unary!(impl Ln for RecordMatrix { fn ln } Natur
 
 record_real_tensor_operator_impl_unary!(impl Sqrt for RecordTensor { fn sqrt } SquareRoot);
 record_real_matrix_operator_impl_unary!(impl Sqrt for RecordMatrix { fn sqrt } SquareRoot);
+
+record_real_tensor_operator_impl_scalar!(impl Pow for RecordTensor { fn pow } Power);
+record_real_matrix_operator_impl_scalar!(impl Pow for RecordMatrix { fn pow } Power);
+record_real_tensor_operator_impl_scalar_no_orphan_rule!(impl Pow for RecordTensor { fn pow } Power);
+record_real_matrix_operator_impl_scalar_no_orphan_rule!(impl Pow for RecordMatrix { fn pow } Power);
 
 macro_rules! record_tensor_operator_impl_scalar {
     (impl $op:tt for RecordTensor { fn $method:ident } $function:ident) => {

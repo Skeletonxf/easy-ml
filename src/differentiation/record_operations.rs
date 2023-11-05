@@ -1231,7 +1231,7 @@ record_real_number_operator_impl_value_reference!(impl Pow for Record { fn pow }
 macro_rules! real_number_record_operator_impl_value_value {
     (impl $op:tt for Record { fn $method:ident }) => {
         /**
-         * Operation for a constant and a record  of the same type.
+         * Operation for a constant and a record of the same type.
          */
         impl<'a, T: Numeric + Real + Primitive> $op<Record<'a, T>> for T
         where
