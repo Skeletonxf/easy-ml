@@ -492,6 +492,29 @@ record_number_operator_impl_value_reference!(impl Sub for Record { fn sub });
  * a constant to a Trace with ease. While you can lift constants to Records
  * with ease too, these operations allow for the avoidance of storing the
  * constant on the WengertList which saves memory.
+ *
+ * ```
+ * use easy_ml::differentiation::{Record, RecordTensor, WengertList};
+ * use easy_ml::differentiation::record_operations::SwappedOperations;
+ * use easy_ml::tensors::Tensor;
+ * use easy_ml::tensors::views::TensorView;
+ *
+ * let history = WengertList::new();
+ *
+ * let x = Record::variable(-1.0, &history);
+ * let z = x.sub_swapped(10.0);
+ * assert_eq!(z.number, 11.0);
+ *
+ * let X = RecordTensor::variables(
+ *     &history,
+ *     Tensor::from_fn([("x", 2), ("y", 2)], |[r, c]| ((r + 4) * (c + 1)) as f64)
+ * );
+ * let Z = X.div_swapped(100.0);
+ * assert_eq!(
+ *     TensorView::from(Z).map(|(x, _)| x),
+ *     Tensor::from([("x", 2), ("y", 2)], vec![ 25.0, 12.5, 20.0, 10.0 ])
+ * );
+ * ```
  */
 pub trait SwappedOperations<Lhs = Self> {
     type Output;

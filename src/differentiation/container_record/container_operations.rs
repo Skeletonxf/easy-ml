@@ -15,6 +15,8 @@ use crate::numeric::extra::{Cos, Exp, Ln, Pow, Real, RealRef, Sin, Sqrt};
 
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
+mod swapped;
+
 /**
  * A record container is displayed by showing its number components.
  */
