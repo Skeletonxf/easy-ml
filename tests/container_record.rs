@@ -4,7 +4,6 @@ extern crate easy_ml;
 mod container_record_tests {
     use easy_ml::differentiation::{Record, RecordTensor, WengertList};
     use easy_ml::tensors::indexing::ShapeIterator;
-    use easy_ml::tensors::views::TensorView;
     use easy_ml::tensors::Tensor;
 
     #[test]
@@ -140,7 +139,7 @@ mod container_record_tests {
         // always perform just a normal division so we should always get identical results
         // here comparing to the calculation with constants.
         assert_eq!(
-            TensorView::from(&x_div_y).map(|(x, _)| x),
+            x_div_y.view().map(|(x, _)| x),
             Tensor::from(
                 [("r", 3), ("c", 3)],
                 vec![
@@ -337,7 +336,7 @@ mod container_record_tests {
         let derivatives = y.derivatives().unwrap();
         let dx = derivatives.map(|d| d.at_tensor(&x));
         let expected = Tensor::from([("r", 2), ("c", 2)], vec![-0.25, -1.25, -3.5, -0.75]);
-        for (expected, (actual, _)) in expected.iter().zip(TensorView::from(y).iter()) {
+        for (expected, (actual, _)) in expected.iter().zip(y.view().iter()) {
             let absolute_difference = (expected - actual).abs();
             assert!(absolute_difference <= std::f64::EPSILON);
         }

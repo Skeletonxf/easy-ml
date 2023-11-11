@@ -645,6 +645,25 @@ impl<'a, T: Numeric + Primitive> Record<'a, T> {
     }
 
     /**
+     * Creates a record from a constant/variable directly, most likely obtained by getting a
+     * tensor view of an existing [container](RecordContainer). **The inputs are not checked for
+     * validity**. It is possible to pass in the wrong Wengert list here or even numbers with
+     * indexes that aren’t tracked on the WengertList.
+     *
+     * It is recommended to use this constructor only in conjunction with manipulating an existing
+     * container and not for creating new variables. Any variables created outside of
+     * `Record::variable` / `RecordContainer::variables` would have to be manually added to the
+     * correct Wengert list, and any arithmetic operations would also need tracking correctly.
+     */
+    pub fn from_existing(numbers: (T, Index), history: Option<&'a WengertList<T>>) -> Record<'a, T> {
+        Record {
+            number: numbers.0,
+            history,
+            index: numbers.1,
+        }
+    }
+
+    /**
      * Resets this Record to place it back on its WengertList, for use
      * in performing another derivation after clearing the WengertList.
      */

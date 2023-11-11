@@ -898,6 +898,22 @@ where
 }
 
 /**
+ * TensorView methods which require mutable access via a [TensorMut] source and a [Default].
+ */
+impl<T, S> TensorView<T, S, 0>
+where
+    T: Default,
+    S: TensorMut<T, 0>,
+{
+    /**
+     * Returns the sole element in the 0 dimensional tensor.
+     */
+    pub fn into_scalar(self) -> T {
+        TensorOwnedIterator::from(self.source).next().unwrap()
+    }
+}
+
+/**
  * TensorView methods which require mutable access via a [TensorMut] source.
  */
 impl<T, S, const D: usize> TensorView<T, S, D>

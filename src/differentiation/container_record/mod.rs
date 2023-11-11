@@ -6,7 +6,7 @@ use crate::matrices::iterators::RowMajorOwnedIterator;
 use crate::matrices::views::{MatrixMut, MatrixRef, MatrixView, NoInteriorMutability};
 use crate::matrices::{Column, Matrix, Row};
 use crate::numeric::{Numeric, NumericRef};
-use crate::tensors::indexing::TensorOwnedIterator;
+use crate::tensors::indexing::{TensorAccess, TensorOwnedIterator};
 use crate::tensors::views::{DataLayout, TensorMut, TensorRef, TensorRename, TensorView};
 use crate::tensors::{Dimension, Tensor};
 
@@ -37,6 +37,18 @@ mod container_operations;
  * the derivative tracking, for example `X + 5` applies the function `+5` to each element in
  * `X`. Due to the orphan rule, the standard library scalars cannot be implemented for a left hand
  * side scalar, see [SwappedOperations](crate::differentiation::record_operations::SwappedOperations).
+ *
+ * Both [RecordMatrix](RecordMatrix) and [RecordTensor](RecordTensor) implement
+ * [MatrixRef](MatrixRef) and [TensorRef](TensorRef) respectively, which provide read and write
+ * access to the underlying numbers and indexes into the WengertList. These APIs along with the
+ * `from_existing` constructors for RecordMatrix, RecordTensor, and Record allow arbitary
+ * manipulation of specific elements in a record container if needed. However, any arithmetic
+ * performed on the raw data won't be tracked on the WengertList and overwriting data within a
+ * record container already tracked on the WengertList could result in nonsense. These APIs exist
+ * for easy read access to check the data in a record container and for read/write access when
+ * manipulating the shape of a record container, and are designed to be used only for moving data
+ * around - you should put it back unchanged in a RecordContainer or Record before doing further
+ * arithmetic that needs to be tracked on the WengertList.
  */
 // TODO: APIs for adjusting shape and docs on here for making shapes match up.
 #[derive(Debug)]
@@ -237,6 +249,49 @@ where
             TensorView::from(TensorRename::from(self.numbers.source(), dimensions)),
         )
     }
+
+    /**
+     * Returns a TensorView of this record container, both the `T` for each record element and
+     * also the index for that record's entry in the WengertList. These can be parsed back into
+     * a RecordTensor with [`from_existing`](RecordTensor::from_existing) or individually into
+     * [Record](Record)s with [`Record::from_existing`](Record::from_existing) to continue tracking
+     * numerical operations on the data.
+     */
+    pub fn view(&self) -> TensorView<(T, usize), &RecordTensor<'a, T, S, D>, D> {
+        TensorView::from(self)
+    }
+
+    /**
+     * Returns a TensorAccess which can be indexed in the order of the supplied dimensions
+     * to read values from this record container, both the `T` for each record element and
+     * also the index for that record's entry in the WengertList. These can be parsed back into
+     * a RecordTensor with [`from_existing`](RecordTensor::from_existing) or individually into
+     * [Record](Record)s with [`Record::from_existing`](Record::from_existing) to continue tracking
+     * numerical operations on the data.
+     *
+     * # Panics
+     *
+     * If the set of dimensions supplied do not match the set of dimensions in this tensor's shape.
+     */
+    #[track_caller]
+    pub fn index_by(
+        &self,
+        dimensions: [Dimension; D]
+    ) -> TensorAccess<(T, Index), &RecordTensor<'a, T, S, D>, D> {
+        TensorAccess::from(self, dimensions)
+    }
+
+    /**
+     * Creates a TensorAccess which will index into the dimensions this record was created with
+     * in the same order as they were provided, both the `T` for each record element and
+     * also the index for that record's entry in the WengertList. These can be parsed back into
+     * a RecordTensor with [`from_existing`](RecordTensor::from_existing) or individually into
+     * [Record](Record)s with [`Record::from_existing`](Record::from_existing) to continue tracking
+     * numerical operations on the data.. See [TensorAccess::from_source_order].
+     */
+    pub fn index(&self) -> TensorAccess<(T, Index), &RecordTensor<'a, T, S, D>, D> {
+        TensorAccess::from_source_order(self)
+    }
 }
 
 impl<'a, T, S, const D: usize> RecordTensor<'a, T, S, D>
@@ -398,6 +453,17 @@ where
         numbers: MatrixView<(T, Index), S>,
     ) -> Self {
         RecordContainer { numbers, history }
+    }
+
+    /**
+     * Returns a MatrixView of this record container, both the `T` for each record element and
+     * also the index for that record's entry in the WengertList. These can be parsed back into
+     * a RecordMatrix with [`from_existing`](RecordMatrix::from_existing) or individually into
+     * [Record](Record)s with [`Record::from_existing`](Record::from_existing) to continue tracking
+     * numerical operations on the data.
+     */
+    pub fn view(&self) -> MatrixView<(T, usize), &RecordMatrix<'a, T, S>> {
+        MatrixView::from(self)
     }
 }
 
@@ -2079,6 +2145,78 @@ where
         self.numbers
             .source_ref_mut()
             .get_reference_unchecked_mut(row, column)
+    }
+}
+
+/**
+ * A zero dimensional record tensor can be converted losslessly into a record.
+ */
+impl<'a, T, S> From<RecordTensor<'a, T, S, 0>> for Record<'a, T>
+where
+    T: Numeric + Primitive,
+    S: TensorRef<(T, Index), 0>,
+{
+    /**
+     * Converts the sole element in the zero dimensional record tensor into a record.
+     */
+    fn from(scalar: RecordTensor<'a, T, S, 0>) -> Record<'a, T> {
+        // Not a good way to make this zero copy and just move the data out of the scalar because
+        // TensorRef API doesn't have by value moves of the data and using TensorOwnedIterator
+        // requires T: Default and a dummy value (at which point a clone is probably cheaper or
+        // basically the same?)
+        Record::from(&scalar)
+    }
+}
+
+/**
+ * A zero dimensional record tensor can be converted losslessly into a record.
+ */
+impl<'a, T, S> From<&RecordTensor<'a, T, S, 0>> for Record<'a, T>
+where
+    T: Numeric + Primitive,
+    S: TensorRef<(T, Index), 0>,
+{
+    /**
+     * Converts the sole element in the zero dimensional record tensor into a record.
+     */
+    fn from(scalar: &RecordTensor<'a, T, S, 0>) -> Record<'a, T> {
+        Record::from_existing(scalar.view().scalar(), scalar.history)
+    }
+}
+
+/**
+ * A record can be converted losslessly into a zero dimensional record tensor.
+ */
+impl<'a, T> From<Record<'a, T>> for RecordTensor<'a, T, Tensor<(T, Index), 0>, 0>
+where
+    T: Numeric + Primitive,
+{
+    /**
+     * Converts a record into a zero dimensional record tensor with the single element.
+     */
+    fn from(record: Record<'a, T>) -> RecordTensor<'a, T, Tensor<(T, Index), 0>, 0> {
+        RecordTensor::from_existing(
+            record.history,
+            TensorView::from(Tensor::from([], vec![(record.number, record.index)]))
+        )
+    }
+}
+
+/**
+ * A record can be converted losslessly into a zero dimensional record tensor.
+ */
+impl<'a, T> From<&Record<'a, T>> for RecordTensor<'a, T, Tensor<(T, Index), 0>, 0>
+where
+    T: Numeric + Primitive,
+{
+    /**
+     * Converts a record into a zero dimensional record tensor with the single element.
+     */
+    fn from(record: &Record<'a, T>) -> RecordTensor<'a, T, Tensor<(T, Index), 0>, 0> {
+        RecordTensor::from_existing(
+            record.history,
+            TensorView::from(Tensor::from([], vec![(record.number.clone(), record.index)]))
+        )
     }
 }
 
