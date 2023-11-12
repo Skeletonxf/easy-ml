@@ -11,6 +11,7 @@ use crate::tensors::views::{DataLayout, TensorMut, TensorRef, TensorRename, Tens
 use crate::tensors::{Dimension, Tensor};
 
 mod container_operations;
+pub mod iterators;
 
 /**
  * A pluralisation of [Record](crate::differentiation::Record) that groups together a

@@ -127,6 +127,20 @@ pub(crate) fn are_same_list<T: Primitive>(
     }
 }
 
+/// Compares two Options of WengertList references directly, returning false when exactly one is
+/// a constant.
+pub(crate) fn are_exact_same_list<T: Primitive>(
+    list_a: Option<&WengertList<T>>,
+    list_b: Option<&WengertList<T>>,
+) -> bool {
+    match (list_a, list_b) {
+        (None, None) => true,
+        (Some(_), None) => false,
+        (None, Some(_)) => false,
+        (Some(list_a), Some(list_b)) => same_lists(list_a, list_b),
+    }
+}
+
 /**
  * Addition for two records of the same type with both referenced and
  * both using the same WengertList.

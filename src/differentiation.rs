@@ -655,11 +655,11 @@ impl<'a, T: Numeric + Primitive> Record<'a, T> {
      * `Record::variable` / `RecordContainer::variables` would have to be manually added to the
      * correct Wengert list, and any arithmetic operations would also need tracking correctly.
      */
-    pub fn from_existing(numbers: (T, Index), history: Option<&'a WengertList<T>>) -> Record<'a, T> {
+    pub fn from_existing(number: (T, Index), history: Option<&'a WengertList<T>>) -> Record<'a, T> {
         Record {
-            number: numbers.0,
+            number: number.0,
             history,
-            index: numbers.1,
+            index: number.1,
         }
     }
 
