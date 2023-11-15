@@ -1,4 +1,4 @@
-/**
+/*!
  * Record container iterators, for manipulating iterators of Records and converting back to
  * Record containers.
  */
@@ -10,8 +10,16 @@ use crate::tensors::views::{TensorRef, TensorView};
 use crate::tensors::{Dimension, Tensor, InvalidShapeError};
 use crate::tensors::indexing::TensorIterator;
 
+use std::fmt;
+use std::fmt::Debug;
+use std::error::Error;
+
 // TODO: Make this play nice with WithIndex
 
+/**
+ * A wrapper around another iterator of record data and a history for that iterator's data
+ * that iterates though each element in the iterator as a [Record] instead.
+ */
 pub struct AsRecords<'a, I, T> {
     numbers: I,
     history: Option<&'a WengertList<T>>,
@@ -74,15 +82,58 @@ where
     }
 }
 
-// TODO: Implement traits, Error, Debug, Clone?
+/**
+ * An error due to an invalid record iterator. One of three cases
+ *
+ * - the iterator data didn't match the number of elements needed for a given shape to convert
+ * back into a record container
+ * - the iterator was empty, which is always an invalid length for any shape
+ * - the iterator contains inconsistent histories in its data and so cannot be converted into
+ * a record container because a record container can only have one history for all its data
+ */
+#[derive(Clone, Debug)]
 enum InvalidRecordIteratorError<'a, T, const D: usize> {
-    Shape(InvalidShapeError<D>),
+    Shape {
+        requested: InvalidShapeError<D>,
+        length: usize,
+    },
     Empty,
     InconsistentHistory {
         first: Option<&'a WengertList<T>>,
         later: Option<&'a WengertList<T>>,
     },
 }
+
+impl<'a, T, const D: usize> fmt::Display for InvalidRecordIteratorError<'a, T, D>
+where
+    T: Debug
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Shape { requested, length } => write!(
+                f,
+                "Shape {:?} does not match size of data {}",
+                requested.shape(),
+                length
+            ),
+            Self::Empty => write!(
+                f,
+                "Iterator was empty but all tensors and matrices must contain at least one element"
+            ),
+            Self::InconsistentHistory { first, later } => write!(
+                f,
+                "First history in iterator of records was {:?} but a later history in iterator was {:?}, record container cannot support different histories for a single tensor or matrix.",
+                first,
+                later,
+            )
+        }
+    }
+}
+
+impl<'a, T, const D: usize> Error for InvalidRecordIteratorError<'a, T, D>
+where
+    T: Debug
+{}
 
 impl<'a, T, const D: usize> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
@@ -98,6 +149,8 @@ where
      * However, since a RecordTensor only stores the WengertList once, this conversion will fail
      * if there are different histories in the iterator. It also fails if the iterator is empty
      * or doesn't match the number of elements for the shape.
+     *
+     * See also: [elements](crate::tensors::dimensions::elements)
      */
     fn from_iter<I>(
         iter: I,
@@ -130,7 +183,8 @@ where
             return Err(error);
         }
 
-        if numbers.is_empty() {
+        let data_length = numbers.len();
+        if data_length == 0 {
             return Err(InvalidRecordIteratorError::Empty);
         }
 
@@ -140,7 +194,12 @@ where
                 numbers,
             ) {
                 Ok(numbers) => numbers,
-                Err(invalid_shape) => return Err(InvalidRecordIteratorError::Shape(invalid_shape))
+                Err(invalid_shape) => return Err(
+                    InvalidRecordIteratorError::Shape {
+                        requested: invalid_shape,
+                        length: data_length,
+                    }
+                )
             }
         );
 
