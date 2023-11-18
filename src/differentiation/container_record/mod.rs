@@ -277,7 +277,7 @@ where
     #[track_caller]
     pub fn index_by(
         &self,
-        dimensions: [Dimension; D]
+        dimensions: [Dimension; D],
     ) -> TensorAccess<(T, Index), &RecordTensor<'a, T, S, D>, D> {
         TensorAccess::from(self, dimensions)
     }
@@ -2198,7 +2198,7 @@ where
     fn from(record: Record<'a, T>) -> RecordTensor<'a, T, Tensor<(T, Index), 0>, 0> {
         RecordTensor::from_existing(
             record.history,
-            TensorView::from(Tensor::from([], vec![(record.number, record.index)]))
+            TensorView::from(Tensor::from([], vec![(record.number, record.index)])),
         )
     }
 }
@@ -2216,7 +2216,10 @@ where
     fn from(record: &Record<'a, T>) -> RecordTensor<'a, T, Tensor<(T, Index), 0>, 0> {
         RecordTensor::from_existing(
             record.history,
-            TensorView::from(Tensor::from([], vec![(record.number.clone(), record.index)]))
+            TensorView::from(Tensor::from(
+                [],
+                vec![(record.number.clone(), record.index)],
+            )),
         )
     }
 }

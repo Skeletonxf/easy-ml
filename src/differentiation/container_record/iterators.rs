@@ -3,16 +3,16 @@
  * Record containers.
  */
 
+use crate::differentiation::{Index, Primitive, Record, WengertList};
+use crate::differentiation::{RecordContainer, RecordMatrix, RecordTensor};
 use crate::numeric::Numeric;
-use crate::differentiation::{WengertList, Index, Primitive, Record};
-use crate::differentiation::{RecordContainer, RecordTensor, RecordMatrix};
-use crate::tensors::views::{TensorRef, TensorView};
-use crate::tensors::{Dimension, Tensor, InvalidShapeError};
 use crate::tensors::indexing::TensorIterator;
+use crate::tensors::views::{TensorRef, TensorView};
+use crate::tensors::{Dimension, InvalidShapeError, Tensor};
 
+use std::error::Error;
 use std::fmt;
 use std::fmt::Debug;
-use std::error::Error;
 
 // TODO: Make this play nice with WithIndex
 
@@ -32,7 +32,8 @@ pub struct AsRecords<'a, I, T> {
 // doc example of Record variable elementwise with RecordContainer of constants to create
 // RecordContainer of variables
 
-impl<'a, 'b, T, S, const D: usize> AsRecords<'a, TensorIterator<'b, (T, Index), RecordTensor<'a, T, S, D>, D>, T>
+impl<'a, 'b, T, S, const D: usize>
+    AsRecords<'a, TensorIterator<'b, (T, Index), RecordTensor<'a, T, S, D>, D>, T>
 where
     T: Numeric + Primitive,
     S: TensorRef<(T, Index), D>,
@@ -59,10 +60,7 @@ where
      * Where possible, consider using [from_tensor](AsRecords::from_tensor) instead.
      */
     pub fn from(history: Option<&'a WengertList<T>>, numbers: I) -> Self {
-        AsRecords {
-            numbers,
-            history,
-        }
+        AsRecords { numbers, history }
     }
 }
 
@@ -78,7 +76,9 @@ where
     type Item = Record<'a, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.numbers.next().map(|number| Record::from_existing(number, self.history))
+        self.numbers
+            .next()
+            .map(|number| Record::from_existing(number, self.history))
     }
 }
 
@@ -106,7 +106,7 @@ enum InvalidRecordIteratorError<'a, T, const D: usize> {
 
 impl<'a, T, const D: usize> fmt::Display for InvalidRecordIteratorError<'a, T, D>
 where
-    T: Debug
+    T: Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -130,10 +130,7 @@ where
     }
 }
 
-impl<'a, T, const D: usize> Error for InvalidRecordIteratorError<'a, T, D>
-where
-    T: Debug
-{}
+impl<'a, T, const D: usize> Error for InvalidRecordIteratorError<'a, T, D> where T: Debug {}
 
 impl<'a, T, const D: usize> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
@@ -154,30 +151,33 @@ where
      */
     fn from_iter<I>(
         iter: I,
-        shape: [(Dimension, usize); D]
+        shape: [(Dimension, usize); D],
     ) -> Result<Self, InvalidRecordIteratorError<'a, T, D>>
     where
-        I: IntoIterator<Item = Record<'a, T>>
+        I: IntoIterator<Item = Record<'a, T>>,
     {
         use crate::differentiation::record_operations::are_exact_same_list;
 
         let mut history: Option<Option<&WengertList<T>>> = None;
         let mut error: Option<InvalidRecordIteratorError<'a, T, D>> = None;
 
-        let numbers: Vec<(T, Index)> = iter.into_iter().map(|record| {
-            match history {
-                None => history = Some(record.history),
-                Some(h) => {
-                    if !are_exact_same_list(h, record.history) {
-                        error = Some(InvalidRecordIteratorError::InconsistentHistory {
-                            first: h,
-                            later: record.history
-                        });
+        let numbers: Vec<(T, Index)> = iter
+            .into_iter()
+            .map(|record| {
+                match history {
+                    None => history = Some(record.history),
+                    Some(h) => {
+                        if !are_exact_same_list(h, record.history) {
+                            error = Some(InvalidRecordIteratorError::InconsistentHistory {
+                                first: h,
+                                later: record.history,
+                            });
+                        }
                     }
                 }
-            }
-            (record.number, record.index)
-        }).collect();
+                (record.number, record.index)
+            })
+            .collect();
 
         if let Some(error) = error {
             return Err(error);
@@ -188,20 +188,15 @@ where
             return Err(InvalidRecordIteratorError::Empty);
         }
 
-        let numbers = TensorView::from(
-            match Tensor::try_from(
-                shape,
-                numbers,
-            ) {
-                Ok(numbers) => numbers,
-                Err(invalid_shape) => return Err(
-                    InvalidRecordIteratorError::Shape {
-                        requested: invalid_shape,
-                        length: data_length,
-                    }
-                )
+        let numbers = TensorView::from(match Tensor::try_from(shape, numbers) {
+            Ok(numbers) => numbers,
+            Err(invalid_shape) => {
+                return Err(InvalidRecordIteratorError::Shape {
+                    requested: invalid_shape,
+                    length: data_length,
+                })
             }
-        );
+        });
 
         // We already checked if the iterator was empty so `history` is always `Some` here
         Ok(RecordTensor::from_existing(history.unwrap(), numbers))
