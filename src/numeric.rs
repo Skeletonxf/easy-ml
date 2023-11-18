@@ -12,7 +12,7 @@
 use std::cmp::PartialOrd;
 use std::iter::Sum;
 use std::marker::Sized;
-use std::num::Wrapping;
+use std::num::{Saturating, Wrapping};
 use std::ops::Add;
 use std::ops::Div;
 use std::ops::Mul;
@@ -41,7 +41,8 @@ pub trait NumericByValue<Rhs = Self, Output = Self>:
 /**
  * Anything which implements all the super traits will automatically implement this trait too.
  * This covers primitives such as f32, f64, signed integers and
- * [Wrapped unsigned integers](std::num::Wrapping)
+ * [Wrapped unsigned integers](std::num::Wrapping),
+ * [Saturating unsigned integers](std::num::Saturating),
  * as well as [Traces](super::differentiation::Trace) and
  * [Records](super::differentiation::Record) of those types.
  *
@@ -177,6 +178,17 @@ impl<T: ZeroOne> ZeroOne for Wrapping<T> {
     }
 }
 
+impl<T: ZeroOne> ZeroOne for Saturating<T> {
+    #[inline]
+    fn zero() -> Saturating<T> {
+        Saturating(T::zero())
+    }
+    #[inline]
+    fn one() -> Saturating<T> {
+        Saturating(T::one())
+    }
+}
+
 macro_rules! zero_one_integral {
     ($T:ty) => {
         impl ZeroOne for $T {
@@ -237,6 +249,12 @@ pub trait FromUsize: Sized {
 impl<T: FromUsize> FromUsize for Wrapping<T> {
     fn from_usize(n: usize) -> Option<Wrapping<T>> {
         Some(Wrapping(T::from_usize(n)?))
+    }
+}
+
+impl<T: FromUsize> FromUsize for Saturating<T> {
+    fn from_usize(n: usize) -> Option<Saturating<T>> {
+        Some(Saturating(T::from_usize(n)?))
     }
 }
 

@@ -1412,7 +1412,7 @@ impl<T> TryFrom<(Matrix<T>, [crate::tensors::Dimension; 2])> for crate::tensors:
  *
  * Note that unsigned integers are not Numeric because they do not
  * implement [Neg](std::ops::Neg). You must first
- * wrap unsigned integers via [Wrapping](std::num::Wrapping).
+ * wrap unsigned integers via [Wrapping](std::num::Wrapping) or [Saturating](std::num::Saturating).
  *
  * While these methods will all be defined on signed integer types as well, such as i16 or i32,
  * in many cases integers cannot be used sensibly in these computations. If you

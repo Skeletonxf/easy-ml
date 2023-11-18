@@ -6,7 +6,7 @@
  */
 
 use crate::differentiation::Primitive;
-use std::num::Wrapping;
+use std::num::{Saturating, Wrapping};
 
 macro_rules! impl_primitive {
     ($T:tt) => {
@@ -30,3 +30,4 @@ impl_primitive!(usize);
 impl_primitive!(isize);
 
 impl<T: Primitive> Primitive for Wrapping<T> {}
+impl<T: Primitive> Primitive for Saturating<T> {}
