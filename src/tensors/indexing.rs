@@ -749,6 +749,16 @@ where
     }
 }
 
+impl<'a, T, S, const D: usize> From<TensorIterator<'a, T, S, D>> for WithIndex<TensorIterator<'a, T, S, D>>
+where
+    T: Clone,
+    S: TensorRef<T, D>,
+{
+    fn from(iterator: TensorIterator<'a, T, S, D>) -> Self {
+        iterator.with_index()
+    }
+}
+
 impl<'a, T, S, const D: usize> Iterator for TensorIterator<'a, T, S, D>
 where
     T: Clone,
@@ -922,6 +932,15 @@ where
     }
 }
 
+impl<'a, T, S, const D: usize> From<TensorReferenceIterator<'a, T, S, D>> for WithIndex<TensorReferenceIterator<'a, T, S, D>>
+where
+    S: TensorRef<T, D>,
+{
+    fn from(iterator: TensorReferenceIterator<'a, T, S, D>) -> Self {
+        iterator.with_index()
+    }
+}
+
 impl<'a, T, S, const D: usize> Iterator for TensorReferenceIterator<'a, T, S, D>
 where
     S: TensorRef<T, D>,
@@ -1032,6 +1051,15 @@ where
      */
     pub fn with_index(self) -> WithIndex<Self> {
         WithIndex { iterator: self }
+    }
+}
+
+impl<'a, T, S, const D: usize> From<TensorReferenceMutIterator<'a, T, S, D>> for WithIndex<TensorReferenceMutIterator<'a, T, S, D>>
+where
+    S: TensorMut<T, D>,
+{
+    fn from(iterator: TensorReferenceMutIterator<'a, T, S, D>) -> Self {
+        iterator.with_index()
     }
 }
 
@@ -1180,6 +1208,15 @@ where
      */
     pub fn with_index(self) -> WithIndex<Self> {
         WithIndex { iterator: self }
+    }
+}
+
+impl<T, S, const D: usize> From<TensorOwnedIterator<T, S, D>> for WithIndex<TensorOwnedIterator<T, S, D>>
+where
+    S: TensorMut<T, D>,
+{
+    fn from(iterator: TensorOwnedIterator<T, S, D>) -> Self {
+        iterator.with_index()
     }
 }
 
