@@ -5,6 +5,7 @@
 
 use crate::differentiation::{Index, Primitive, Record, WengertList};
 use crate::differentiation::{RecordContainer, RecordMatrix, RecordTensor};
+use crate::matrices::iterators::WithIndex;
 use crate::numeric::Numeric;
 use crate::tensors::indexing::TensorIterator;
 use crate::tensors::views::{TensorRef, TensorView};
@@ -13,8 +14,7 @@ use crate::tensors::{Dimension, InvalidShapeError, Tensor};
 use std::error::Error;
 use std::fmt;
 use std::fmt::Debug;
-
-// TODO: Make this play nice with WithIndex
+use std::iter::{ExactSizeIterator, FusedIterator};
 
 /**
  * A wrapper around another iterator of record data and a history for that iterator's data
@@ -64,6 +64,60 @@ where
     }
 }
 
+impl<'a, I, T> AsRecords<'a, I, T>
+where
+    T: Numeric + Primitive,
+    I: Iterator<Item = (T, Index)> + Into<WithIndex<I>>,
+{
+    /**
+     * An iterator of Records that is created from an iterator which can provide the index for
+     * each element can also be coverted to a [WithIndex](WithIndex) iterator and provide the
+     * index for each record.
+     *
+     * WithIndex appears twice in the return type because the original iterator itself is wrapped
+     * in WithIndex to create an iterator that provides indexes, and AsRecords must also be
+     * wrapped in WithIndex to implement the iterator trait with indexes from the original
+     * iterator's implementation.
+     */
+    pub fn with_index(self) -> WithIndex<AsRecords<'a, WithIndex<I>, T>> {
+        WithIndex {
+            iterator: AsRecords {
+                numbers: self.numbers.into(),
+                history: self.history,
+            },
+        }
+    }
+}
+
+impl<'a, I, O, T> AsRecords<'a, I, T>
+where
+    T: Numeric + Primitive,
+    I: Iterator<Item = (O, (T, Index))>,
+{
+    /**
+     * Given the WengertList an iterator of indexes and record numbers are for, returns an
+     * iterator of indexes and Records
+     *
+     * **The inputs are not checked for validity**. It is possible to pass in the wrong Wengert
+     * list here or even numbers with indexes that aren't tracked on the WengertList.
+     *
+     * Where possible, consider using [with_index](AsRecords::with_index) instead.
+     */
+    pub fn from_with_index(history: Option<&'a WengertList<T>>, numbers: I) -> Self {
+        AsRecords { numbers, history }
+    }
+}
+
+impl<'a, I, T> From<AsRecords<'a, I, T>> for WithIndex<AsRecords<'a, WithIndex<I>, T>>
+where
+    T: Numeric + Primitive,
+    I: Iterator<Item = (T, Index)> + Into<WithIndex<I>>,
+{
+    fn from(iterator: AsRecords<'a, I, T>) -> Self {
+        iterator.with_index()
+    }
+}
+
 /**
  * AsRecords is an iterator of [Record](Record)s, merging the history together with each iterator
  * element.
@@ -80,6 +134,61 @@ where
             .next()
             .map(|number| Record::from_existing(number, self.history))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.numbers.size_hint()
+    }
+}
+
+impl<'a, I, T> FusedIterator for AsRecords<'a, I, T>
+where
+    T: Numeric + Primitive,
+    I: Iterator<Item = (T, Index)> + FusedIterator,
+{
+}
+
+impl<'a, I, T> ExactSizeIterator for AsRecords<'a, I, T>
+where
+    T: Numeric + Primitive,
+    I: Iterator<Item = (T, Index)> + ExactSizeIterator,
+{
+}
+
+/**
+ * When AsRecords contains an iterator `I` with the index `O` for each element, it is an iterator
+ * of `O` and [Record]s, merging the history together with each iterator element.
+ */
+impl<'a, I, O, T> Iterator for WithIndex<AsRecords<'a, I, T>>
+where
+    T: Numeric + Primitive,
+    I: Iterator<Item = (O, (T, Index))>,
+{
+    type Item = (O, Record<'a, T>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iterator
+            .numbers
+            .next()
+            .map(|(i, number)| (i, Record::from_existing(number, self.iterator.history)))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iterator.numbers.size_hint()
+    }
+}
+
+impl<'a, I, O, T> FusedIterator for WithIndex<AsRecords<'a, I, T>>
+where
+    T: Numeric + Primitive,
+    I: Iterator<Item = (O, (T, Index))> + FusedIterator,
+{
+}
+
+impl<'a, I, O, T> ExactSizeIterator for WithIndex<AsRecords<'a, I, T>>
+where
+    T: Numeric + Primitive,
+    I: Iterator<Item = (O, (T, Index))> + ExactSizeIterator,
+{
 }
 
 /**

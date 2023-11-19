@@ -409,7 +409,9 @@ impl<'a, T: Clone, S: MatrixRef<T>> ColumnMajorIterator<'a, T, S> {
     }
 }
 
-impl<'a, T: Clone, S: MatrixRef<T>> From<ColumnMajorIterator<'a, T, S>> for WithIndex<ColumnMajorIterator<'a, T, S>> {
+impl<'a, T: Clone, S: MatrixRef<T>> From<ColumnMajorIterator<'a, T, S>>
+    for WithIndex<ColumnMajorIterator<'a, T, S>>
+{
     fn from(iterator: ColumnMajorIterator<'a, T, S>) -> Self {
         iterator.with_index()
     }
@@ -583,7 +585,9 @@ impl<'a, T: Clone, S: MatrixRef<T>> RowMajorIterator<'a, T, S> {
     }
 }
 
-impl<'a, T: Clone, S: MatrixRef<T>> From<RowMajorIterator<'a, T, S>> for WithIndex<RowMajorIterator<'a, T, S>> {
+impl<'a, T: Clone, S: MatrixRef<T>> From<RowMajorIterator<'a, T, S>>
+    for WithIndex<RowMajorIterator<'a, T, S>>
+{
     fn from(iterator: RowMajorIterator<'a, T, S>) -> Self {
         iterator.with_index()
     }
@@ -866,7 +870,9 @@ impl<'a, T, S: MatrixRef<T>> ColumnMajorReferenceIterator<'a, T, S> {
     }
 }
 
-impl<'a, T, S: MatrixRef<T>> From<ColumnMajorReferenceIterator<'a, T, S>> for WithIndex<ColumnMajorReferenceIterator<'a, T, S>> {
+impl<'a, T, S: MatrixRef<T>> From<ColumnMajorReferenceIterator<'a, T, S>>
+    for WithIndex<ColumnMajorReferenceIterator<'a, T, S>>
+{
     fn from(iterator: ColumnMajorReferenceIterator<'a, T, S>) -> Self {
         iterator.with_index()
     }
@@ -983,7 +989,9 @@ impl<'a, T, S: MatrixRef<T>> RowMajorReferenceIterator<'a, T, S> {
     }
 }
 
-impl<'a, T, S: MatrixRef<T>> From<RowMajorReferenceIterator<'a, T, S>> for WithIndex<RowMajorReferenceIterator<'a, T, S>> {
+impl<'a, T, S: MatrixRef<T>> From<RowMajorReferenceIterator<'a, T, S>>
+    for WithIndex<RowMajorReferenceIterator<'a, T, S>>
+{
     fn from(iterator: RowMajorReferenceIterator<'a, T, S>) -> Self {
         iterator.with_index()
     }
@@ -1231,7 +1239,9 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ColumnMajorReferenceMutItera
     }
 }
 
-impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> From<ColumnMajorReferenceMutIterator<'a, T, S>> for WithIndex<ColumnMajorReferenceMutIterator<'a, T, S>> {
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> From<ColumnMajorReferenceMutIterator<'a, T, S>>
+    for WithIndex<ColumnMajorReferenceMutIterator<'a, T, S>>
+{
     fn from(iterator: ColumnMajorReferenceMutIterator<'a, T, S>) -> Self {
         iterator.with_index()
     }
@@ -1362,7 +1372,9 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> RowMajorReferenceMutIterator
     }
 }
 
-impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> From<RowMajorReferenceMutIterator<'a, T, S>> for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> From<RowMajorReferenceMutIterator<'a, T, S>>
+    for WithIndex<RowMajorReferenceMutIterator<'a, T, S>>
+{
     fn from(iterator: RowMajorReferenceMutIterator<'a, T, S>) -> Self {
         iterator.with_index()
     }
@@ -1539,7 +1551,9 @@ impl<T, S: MatrixMut<T> + NoInteriorMutability> ColumnMajorOwnedIterator<T, S> {
     }
 }
 
-impl<T, S: MatrixMut<T> + NoInteriorMutability> From<ColumnMajorOwnedIterator<T, S>> for WithIndex<ColumnMajorOwnedIterator<T, S>> {
+impl<T, S: MatrixMut<T> + NoInteriorMutability> From<ColumnMajorOwnedIterator<T, S>>
+    for WithIndex<ColumnMajorOwnedIterator<T, S>>
+{
     fn from(iterator: ColumnMajorOwnedIterator<T, S>) -> Self {
         iterator.with_index()
     }
@@ -1708,7 +1722,9 @@ impl<T, S: MatrixMut<T> + NoInteriorMutability> RowMajorOwnedIterator<T, S> {
     }
 }
 
-impl<T, S: MatrixMut<T> + NoInteriorMutability> From<RowMajorOwnedIterator<T, S>> for WithIndex<RowMajorOwnedIterator<T, S>> {
+impl<T, S: MatrixMut<T> + NoInteriorMutability> From<RowMajorOwnedIterator<T, S>>
+    for WithIndex<RowMajorOwnedIterator<T, S>>
+{
     fn from(iterator: RowMajorOwnedIterator<T, S>) -> Self {
         iterator.with_index()
     }

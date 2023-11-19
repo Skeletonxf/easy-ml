@@ -749,7 +749,8 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> From<TensorIterator<'a, T, S, D>> for WithIndex<TensorIterator<'a, T, S, D>>
+impl<'a, T, S, const D: usize> From<TensorIterator<'a, T, S, D>>
+    for WithIndex<TensorIterator<'a, T, S, D>>
 where
     T: Clone,
     S: TensorRef<T, D>,
@@ -932,7 +933,8 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> From<TensorReferenceIterator<'a, T, S, D>> for WithIndex<TensorReferenceIterator<'a, T, S, D>>
+impl<'a, T, S, const D: usize> From<TensorReferenceIterator<'a, T, S, D>>
+    for WithIndex<TensorReferenceIterator<'a, T, S, D>>
 where
     S: TensorRef<T, D>,
 {
@@ -1054,7 +1056,8 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> From<TensorReferenceMutIterator<'a, T, S, D>> for WithIndex<TensorReferenceMutIterator<'a, T, S, D>>
+impl<'a, T, S, const D: usize> From<TensorReferenceMutIterator<'a, T, S, D>>
+    for WithIndex<TensorReferenceMutIterator<'a, T, S, D>>
 where
     S: TensorMut<T, D>,
 {
@@ -1211,7 +1214,8 @@ where
     }
 }
 
-impl<T, S, const D: usize> From<TensorOwnedIterator<T, S, D>> for WithIndex<TensorOwnedIterator<T, S, D>>
+impl<T, S, const D: usize> From<TensorOwnedIterator<T, S, D>>
+    for WithIndex<TensorOwnedIterator<T, S, D>>
 where
     S: TensorMut<T, D>,
 {
