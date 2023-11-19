@@ -409,6 +409,12 @@ impl<'a, T: Clone, S: MatrixRef<T>> ColumnMajorIterator<'a, T, S> {
     }
 }
 
+impl<'a, T: Clone, S: MatrixRef<T>> From<ColumnMajorIterator<'a, T, S>> for WithIndex<ColumnMajorIterator<'a, T, S>> {
+    fn from(iterator: ColumnMajorIterator<'a, T, S>) -> Self {
+        iterator.with_index()
+    }
+}
+
 impl<'a, T: Clone, S: MatrixRef<T>> Iterator for ColumnMajorIterator<'a, T, S> {
     type Item = T;
 
@@ -574,6 +580,12 @@ impl<'a, T: Clone, S: MatrixRef<T>> RowMajorIterator<'a, T, S> {
      */
     pub fn with_index(self) -> WithIndex<Self> {
         WithIndex { iterator: self }
+    }
+}
+
+impl<'a, T: Clone, S: MatrixRef<T>> From<RowMajorIterator<'a, T, S>> for WithIndex<RowMajorIterator<'a, T, S>> {
+    fn from(iterator: RowMajorIterator<'a, T, S>) -> Self {
+        iterator.with_index()
     }
 }
 
@@ -854,6 +866,12 @@ impl<'a, T, S: MatrixRef<T>> ColumnMajorReferenceIterator<'a, T, S> {
     }
 }
 
+impl<'a, T, S: MatrixRef<T>> From<ColumnMajorReferenceIterator<'a, T, S>> for WithIndex<ColumnMajorReferenceIterator<'a, T, S>> {
+    fn from(iterator: ColumnMajorReferenceIterator<'a, T, S>) -> Self {
+        iterator.with_index()
+    }
+}
+
 impl<'a, T, S: MatrixRef<T>> Iterator for ColumnMajorReferenceIterator<'a, T, S> {
     type Item = &'a T;
 
@@ -962,6 +980,12 @@ impl<'a, T, S: MatrixRef<T>> RowMajorReferenceIterator<'a, T, S> {
      */
     pub fn with_index(self) -> WithIndex<Self> {
         WithIndex { iterator: self }
+    }
+}
+
+impl<'a, T, S: MatrixRef<T>> From<RowMajorReferenceIterator<'a, T, S>> for WithIndex<RowMajorReferenceIterator<'a, T, S>> {
+    fn from(iterator: RowMajorReferenceIterator<'a, T, S>) -> Self {
+        iterator.with_index()
     }
 }
 
@@ -1207,6 +1231,12 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ColumnMajorReferenceMutItera
     }
 }
 
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> From<ColumnMajorReferenceMutIterator<'a, T, S>> for WithIndex<ColumnMajorReferenceMutIterator<'a, T, S>> {
+    fn from(iterator: ColumnMajorReferenceMutIterator<'a, T, S>) -> Self {
+        iterator.with_index()
+    }
+}
+
 impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
     for ColumnMajorReferenceMutIterator<'a, T, S>
 {
@@ -1329,6 +1359,12 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> RowMajorReferenceMutIterator
      */
     pub fn with_index(self) -> WithIndex<Self> {
         WithIndex { iterator: self }
+    }
+}
+
+impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> From<RowMajorReferenceMutIterator<'a, T, S>> for WithIndex<RowMajorReferenceMutIterator<'a, T, S>> {
+    fn from(iterator: RowMajorReferenceMutIterator<'a, T, S>) -> Self {
+        iterator.with_index()
     }
 }
 
@@ -1503,6 +1539,12 @@ impl<T, S: MatrixMut<T> + NoInteriorMutability> ColumnMajorOwnedIterator<T, S> {
     }
 }
 
+impl<T, S: MatrixMut<T> + NoInteriorMutability> From<ColumnMajorOwnedIterator<T, S>> for WithIndex<ColumnMajorOwnedIterator<T, S>> {
+    fn from(iterator: ColumnMajorOwnedIterator<T, S>) -> Self {
+        iterator.with_index()
+    }
+}
+
 impl<T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnMajorOwnedIterator<T, S> {
     type Item = T;
 
@@ -1663,6 +1705,12 @@ impl<T, S: MatrixMut<T> + NoInteriorMutability> RowMajorOwnedIterator<T, S> {
      */
     pub fn with_index(self) -> WithIndex<Self> {
         WithIndex { iterator: self }
+    }
+}
+
+impl<T, S: MatrixMut<T> + NoInteriorMutability> From<RowMajorOwnedIterator<T, S>> for WithIndex<RowMajorOwnedIterator<T, S>> {
+    fn from(iterator: RowMajorOwnedIterator<T, S>) -> Self {
+        iterator.with_index()
     }
 }
 
