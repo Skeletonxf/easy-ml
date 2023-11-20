@@ -4,8 +4,10 @@
  */
 
 use crate::differentiation::{Index, Primitive, Record, WengertList};
-use crate::differentiation::{RecordContainer, RecordMatrix, RecordTensor};
-use crate::matrices::iterators::WithIndex;
+use crate::differentiation::{RecordMatrix, RecordTensor};
+use crate::matrices::iterators::{ColumnMajorIterator, RowMajorIterator, WithIndex};
+use crate::matrices::views::{MatrixRef, MatrixView, NoInteriorMutability};
+use crate::matrices::{Column, Matrix, Row};
 use crate::numeric::Numeric;
 use crate::tensors::indexing::TensorIterator;
 use crate::tensors::views::{TensorRef, TensorView};
@@ -40,9 +42,61 @@ where
 {
     /**
      * Given a record tensor returns an iterator of Records
+     *
+     * ```
+     * use easy_ml::differentiation::{WengertList, Record, RecordTensor};
+     * use easy_ml::tensors::Tensor;
+     *
+     * let history = WengertList::new();
+     * let X = RecordTensor::constants(
+     *     Tensor::from_fn([("r", 2), ("c", 2)], |[r, c]| (r + c) as f32)
+     * );
+     * let y = Record::variable(1.0, &history);
+     * let result = RecordTensor::from_iter(
+     *     [("r", 2), ("c", 2)],
+     *     // Here we create each variable z from the constant in X and the variable y.
+     *     // If we just did X + 1.0 we'd still have only constants, and we can't do X + y
+     *     // directly because those traits aren't implemented.
+     *     // `iter_as_records` is a shorthand for AsRecords::from_tensor
+     *     X.iter_as_records().map(|x| x + y)
+     * );
+     * // we can unwrap here because we know the iterator still contains 4 elements and they all
+     * // have the same WengertList so we can convert back to a RecordTensor
+     * let Z = result.unwrap();
+     * let Z_indexing = Z.index();
+     * assert_eq!(1.0, Z_indexing.get([0, 0]).0);
+     * assert_eq!(2.0, Z_indexing.get([0, 1]).0);
+     * assert_eq!(3.0, Z_indexing.get([1, 1]).0);
+     * ```
      */
     pub fn from_tensor(tensor: &'b RecordTensor<'a, T, S, D>) -> Self {
         AsRecords::from(tensor.history, TensorIterator::from(tensor))
+    }
+}
+
+impl<'a, 'b, T, S> AsRecords<'a, RowMajorIterator<'b, (T, Index), RecordMatrix<'a, T, S>>, T>
+where
+    T: Numeric + Primitive,
+    S: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    /**
+     * Given a record matrix returns a row major iterator of Records
+     */
+    pub fn from_matrix_row_major(matrix: &'b RecordMatrix<'a, T, S>) -> Self {
+        AsRecords::from(matrix.history, RowMajorIterator::from(matrix))
+    }
+}
+
+impl<'a, 'b, T, S> AsRecords<'a, ColumnMajorIterator<'b, (T, Index), RecordMatrix<'a, T, S>>, T>
+where
+    T: Numeric + Primitive,
+    S: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    /**
+     * Given a record matrix returns a column major iterator of Records
+     */
+    pub fn from_matrix_column_major(matrix: &'b RecordMatrix<'a, T, S>) -> Self {
+        AsRecords::from(matrix.history, ColumnMajorIterator::from(matrix))
     }
 }
 
@@ -201,7 +255,7 @@ where
  * a record container because a record container can only have one history for all its data
  */
 #[derive(Clone, Debug)]
-enum InvalidRecordIteratorError<'a, T, const D: usize> {
+pub enum InvalidRecordIteratorError<'a, T, const D: usize> {
     Shape {
         requested: InvalidShapeError<D>,
         length: usize,
@@ -241,16 +295,62 @@ where
 
 impl<'a, T, const D: usize> Error for InvalidRecordIteratorError<'a, T, D> where T: Debug {}
 
+/// Converts an iterator of Records into the shared, consistent, history and a vec of (T, Index)
+/// or fails if the history is not consistent or the iterator is empty.
+fn collect_into_components<'a, T, I, const D: usize>(
+    iter: I,
+) -> Result<(Option<&'a WengertList<T>>, Vec<(T, Index)>), InvalidRecordIteratorError<'a, T, D>>
+where
+    T: Numeric + Primitive,
+    I: IntoIterator<Item = Record<'a, T>>,
+{
+    use crate::differentiation::record_operations::are_exact_same_list;
+
+    let mut history: Option<Option<&WengertList<T>>> = None;
+    let mut error: Option<InvalidRecordIteratorError<'a, T, D>> = None;
+
+    let numbers: Vec<(T, Index)> = iter
+        .into_iter()
+        .map(|record| {
+            match history {
+                None => history = Some(record.history),
+                Some(h) => {
+                    if !are_exact_same_list(h, record.history) {
+                        error = Some(InvalidRecordIteratorError::InconsistentHistory {
+                            first: h,
+                            later: record.history,
+                        });
+                    }
+                }
+            }
+            (record.number, record.index)
+        })
+        .collect();
+
+    if let Some(error) = error {
+        return Err(error);
+    }
+
+    let data_length = numbers.len();
+    if data_length == 0 {
+        Err(InvalidRecordIteratorError::Empty)
+    } else {
+        // We already checked if the iterator was empty so `history` is always `Some` here
+        Ok((history.unwrap(), numbers))
+    }
+}
+
 impl<'a, T, const D: usize> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
 {
     /**
-     * Given an iterator of records and a matching shape, collects them back into a RecordTensor.
+     * Given an iterator of records and a matching shape, collects them back into a
+     * [RecordTensor](RecordTensor).
      *
-     * This should generally be preferred over converting the iterator to a vec of Records, since
-     * a vec of Records has to store the WengertList for each individual record whereas a
-     * RecordTensor only stores it once.
+     * This should generally be preferred over converting the iterator to a [Vec] of Records, since
+     * a Vec of Records has to store the [WengertList](WengertList) reference for each individual
+     * record whereas a RecordTensor only stores it once.
      *
      * However, since a RecordTensor only stores the WengertList once, this conversion will fail
      * if there are different histories in the iterator. It also fails if the iterator is empty
@@ -258,56 +358,63 @@ where
      *
      * See also: [elements](crate::tensors::dimensions::elements)
      */
-    fn from_iter<I>(
-        iter: I,
+    pub fn from_iter<I>(
         shape: [(Dimension, usize); D],
+        iter: I,
     ) -> Result<Self, InvalidRecordIteratorError<'a, T, D>>
     where
         I: IntoIterator<Item = Record<'a, T>>,
     {
-        use crate::differentiation::record_operations::are_exact_same_list;
-
-        let mut history: Option<Option<&WengertList<T>>> = None;
-        let mut error: Option<InvalidRecordIteratorError<'a, T, D>> = None;
-
-        let numbers: Vec<(T, Index)> = iter
-            .into_iter()
-            .map(|record| {
-                match history {
-                    None => history = Some(record.history),
-                    Some(h) => {
-                        if !are_exact_same_list(h, record.history) {
-                            error = Some(InvalidRecordIteratorError::InconsistentHistory {
-                                first: h,
-                                later: record.history,
-                            });
-                        }
-                    }
-                }
-                (record.number, record.index)
-            })
-            .collect();
-
-        if let Some(error) = error {
-            return Err(error);
-        }
-
+        let (history, numbers) = collect_into_components(iter)?;
         let data_length = numbers.len();
-        if data_length == 0 {
-            return Err(InvalidRecordIteratorError::Empty);
+        match Tensor::try_from(shape, numbers) {
+            Ok(numbers) => Ok(RecordTensor::from_existing(
+                history,
+                TensorView::from(numbers),
+            )),
+            Err(invalid_shape) => Err(InvalidRecordIteratorError::Shape {
+                requested: invalid_shape,
+                length: data_length,
+            }),
         }
+    }
+}
 
-        let numbers = TensorView::from(match Tensor::try_from(shape, numbers) {
-            Ok(numbers) => numbers,
-            Err(invalid_shape) => {
-                return Err(InvalidRecordIteratorError::Shape {
-                    requested: invalid_shape,
-                    length: data_length,
-                })
-            }
-        });
-
-        // We already checked if the iterator was empty so `history` is always `Some` here
-        Ok(RecordTensor::from_existing(history.unwrap(), numbers))
+impl<'a, T> RecordMatrix<'a, T, Matrix<(T, Index)>>
+where
+    T: Numeric + Primitive,
+{
+    /**
+     * Given an iterator of records and a matching size, collects them back into a
+     * [RecordMatrix](RecordMatrix).
+     *
+     * This should generally be preferred over converting the iterator to a [Vec] of Records, since
+     * a Vec of Records has to store the [WengertList](WengertList) reference for each individual
+     * record whereas a RecordMatrix only stores it once.
+     *
+     * However, since a RecordMatrix only stores the WengertList once, this conversion will fail
+     * if there are different histories in the iterator. It also fails if the iterator is empty
+     * or doesn't match the R x C number of elements expected.
+     */
+    pub fn from_iter<I>(
+        size: (Row, Column),
+        iter: I,
+    ) -> Result<Self, InvalidRecordIteratorError<'a, T, 2>>
+    where
+        I: IntoIterator<Item = Record<'a, T>>,
+    {
+        let (history, numbers) = collect_into_components(iter)?;
+        let data_length = numbers.len();
+        if data_length == size.0 * size.1 {
+            Ok(RecordMatrix::from_existing(
+                history,
+                MatrixView::from(Matrix::from_flat_row_major(size, numbers)),
+            ))
+        } else {
+            Err(InvalidRecordIteratorError::Shape {
+                requested: InvalidShapeError::new([("rows", size.0), ("columns", size.1)]),
+                length: data_length,
+            })
+        }
     }
 }

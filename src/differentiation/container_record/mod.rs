@@ -1,12 +1,13 @@
 use crate::differentiation::functions::{Division, FunctionDerivative, Multiplication};
+use crate::differentiation::iterators::AsRecords;
 use crate::differentiation::record_operations;
 use crate::differentiation::Record;
 use crate::differentiation::{Derivatives, Index, Primitive, WengertList};
-use crate::matrices::iterators::RowMajorOwnedIterator;
+use crate::matrices::iterators::{ColumnMajorIterator, RowMajorIterator, RowMajorOwnedIterator};
 use crate::matrices::views::{MatrixMut, MatrixRef, MatrixView, NoInteriorMutability};
 use crate::matrices::{Column, Matrix, Row};
 use crate::numeric::{Numeric, NumericRef};
-use crate::tensors::indexing::{TensorAccess, TensorOwnedIterator};
+use crate::tensors::indexing::{TensorAccess, TensorIterator, TensorOwnedIterator};
 use crate::tensors::views::{DataLayout, TensorMut, TensorRef, TensorRename, TensorView};
 use crate::tensors::{Dimension, Tensor};
 
@@ -50,8 +51,12 @@ pub mod iterators;
  * manipulating the shape of a record container, and are designed to be used only for moving data
  * around - you should put it back unchanged in a RecordContainer or Record before doing further
  * arithmetic that needs to be tracked on the WengertList.
+ *
+ * If you just want to manipulate the data in record containers as if they were Records you can
+ * use the iterator APIs of [AsRecords](AsRecords) instead and collect them back into containers
+ * when you're done.
  */
-// TODO: APIs for adjusting shape and docs on here for making shapes match up.
+// TODO: Docs on here for making shapes match up.
 #[derive(Debug)]
 pub struct RecordContainer<'a, T: Primitive, S, const D: usize> {
     // Opted to store the indexes alongside each number (T, Index) for a number of reasons, the
@@ -293,6 +298,19 @@ where
     pub fn index(&self) -> TensorAccess<(T, Index), &RecordTensor<'a, T, S, D>, D> {
         TensorAccess::from_source_order(self)
     }
+
+    /**
+     * Returns an iterator over this record tensor as [Record]s instead of the raw `(T, Index)`
+     * data. After manipulating the iterator it can be collected back into a RecordTensor with
+     * [RecordTensor::from_iter](RecordTensor::from_iter).
+     *
+     * This is a shorthand for `AsRecords::from(tensor.history(), TensorIterator::from(&tensor))`
+     */
+    pub fn iter_as_records<'b>(
+        &'b self,
+    ) -> AsRecords<'a, TensorIterator<'b, (T, Index), RecordTensor<'a, T, S, D>, D>, T> {
+        AsRecords::from_tensor(self)
+    }
 }
 
 impl<'a, T, S, const D: usize> RecordTensor<'a, T, S, D>
@@ -465,6 +483,33 @@ where
      */
     pub fn view(&self) -> MatrixView<(T, usize), &RecordMatrix<'a, T, S>> {
         MatrixView::from(self)
+    }
+
+    /**
+     * Returns an iterator over this record matrix as [Record]s instead of the raw `(T, Index)`
+     * data. After manipulating the iterator it can be collected back into a RecordMatrix with
+     * [RecordMatrix::from_iter](RecordMatrix::from_iter).
+     *
+     * This is a shorthand for `AsRecords::from(matrix.history(), RowMajorIterator::from(&matrix))`
+     */
+    pub fn iter_row_major_as_records<'b>(
+        &'b self,
+    ) -> AsRecords<'a, RowMajorIterator<'b, (T, Index), RecordMatrix<'a, T, S>>, T> {
+        AsRecords::from_matrix_row_major(self)
+    }
+
+    /**
+     * Returns an iterator over this record matrix as [Record]s instead of the raw `(T, Index)`
+     * data. After manipulating the iterator it can be collected back into a RecordMatrix with
+     * [RecordMatrix::from_iter](RecordMatrix::from_iter).
+     *
+     * This is a shorthand for
+     * `AsRecords::from(matrix.history(), ColumnMajorIterator::from(&matrix))`
+     */
+    pub fn iter_column_major_as_records<'b>(
+        &'b self,
+    ) -> AsRecords<'a, ColumnMajorIterator<'b, (T, Index), RecordMatrix<'a, T, S>>, T> {
+        AsRecords::from_matrix_column_major(self)
     }
 }
 
