@@ -29,10 +29,6 @@ pub struct AsRecords<'a, I, T> {
 
 // TODO: Helper methods on RecordContainer to convert to iterator of records
 // Doc example using zip to perform binary operation then collecting back?
-// From impls for RecordContainer?
-
-// doc example of Record variable elementwise with RecordContainer of constants to create
-// RecordContainer of variables
 
 impl<'a, 'b, T, S, const D: usize>
     AsRecords<'a, TensorIterator<'b, (T, Index), RecordTensor<'a, T, S, D>, D>, T>
@@ -61,7 +57,8 @@ where
      *     X.iter_as_records().map(|x| x + y)
      * );
      * // we can unwrap here because we know the iterator still contains 4 elements and they all
-     * // have the same WengertList so we can convert back to a RecordTensor
+     * // have the same WengertList so we can convert back to a RecordTensor (which is now
+     * // variables instead of constants)
      * let Z = result.unwrap();
      * let Z_indexing = Z.index();
      * assert_eq!(1.0, Z_indexing.get([0, 0]).0);
