@@ -107,7 +107,9 @@ where
      * **The inputs are not checked for validity**. It is possible to pass in the wrong Wengert
      * list here or even numbers with indexes that aren't tracked on the WengertList.
      *
-     * Where possible, consider using [from_tensor](AsRecords::from_tensor) instead.
+     * Where possible, consider using [from_tensor](AsRecords::from_tensor),
+     * [from_matrix_row_major](AsRecords::from_matrix_row_major) or
+     * [from_matrix_column_major](AsRecords::from_matrix_row_major) instead.
      */
     pub fn from(history: Option<&'a WengertList<T>>, numbers: I) -> Self {
         AsRecords { numbers, history }
@@ -129,6 +131,8 @@ where
      * wrapped in WithIndex to implement the iterator trait with indexes from the original
      * iterator's implementation.
      */
+    // TODO: Doc example here, this is kinda buried in traits so isn't super obvious how you use
+    // it
     pub fn with_index(self) -> WithIndex<AsRecords<'a, WithIndex<I>, T>> {
         WithIndex {
             iterator: AsRecords {
@@ -151,7 +155,8 @@ where
      * **The inputs are not checked for validity**. It is possible to pass in the wrong Wengert
      * list here or even numbers with indexes that aren't tracked on the WengertList.
      *
-     * Where possible, consider using [with_index](AsRecords::with_index) instead.
+     * Where possible, consider using [with_index](AsRecords::with_index) on an existing iterator
+     * instead.
      */
     pub fn from_with_index(history: Option<&'a WengertList<T>>, numbers: I) -> Self {
         AsRecords { numbers, history }
