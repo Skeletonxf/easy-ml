@@ -27,7 +27,6 @@ pub struct AsRecords<'a, I, T> {
     history: Option<&'a WengertList<T>>,
 }
 
-// TODO: Helper methods on RecordContainer to convert to iterator of records
 // Doc example using zip to perform binary operation then collecting back?
 
 impl<'a, 'b, T, S, const D: usize>
@@ -337,6 +336,77 @@ where
     }
 }
 
+/// Converts an iterator of an array of Records into n shared, consistent, histories and vecs of
+/// (T, Index) or fails individually if a history is not consistent or for all N if the iterator
+/// is empty.
+fn collect_into_n_components<'a, T, I, const D: usize, const N: usize>(
+    iter: I,
+) -> [Result<(Option<&'a WengertList<T>>, Vec<(T, Index)>), InvalidRecordIteratorError<'a, T, D>>; N]
+where
+    T: Numeric + Primitive,
+    I: IntoIterator<Item = [Record<'a, T>; N]>,
+{
+    use crate::differentiation::record_operations::are_exact_same_list;
+
+    let iter = iter.into_iter();
+
+    // We have N unique histories, potential errors, and vecs of numbers
+
+    let mut histories: [Option<Option<&WengertList<T>>>; N] = [None; N];
+
+    let mut errors: [Option<InvalidRecordIteratorError<'a, T, D>>; N] =
+        std::array::from_fn(|_| None);
+
+    let mut numbers: [Vec<(T, usize)>; N] =
+        std::array::from_fn(|_| Vec::with_capacity(iter.size_hint().0));
+
+    // The entire benefit to this method is still streaming all the record iterators without ever
+    // collecting more than one element's worth of records at a time, so we build up each vec
+    // of numbers together as we pass through the iterator and discard the duplicate histories
+    for records in iter {
+        for (n, record) in records.into_iter().enumerate() {
+            let history = &mut histories[n];
+            let error = &mut errors[n];
+            match history {
+                None => *history = Some(record.history),
+                Some(h) => {
+                    if !are_exact_same_list(*h, record.history) {
+                        *error = Some(InvalidRecordIteratorError::InconsistentHistory {
+                            first: *h,
+                            later: record.history,
+                        });
+                    }
+                }
+            }
+            numbers[n].push((record.number, record.index));
+        }
+    }
+
+    let mut histories = histories.into_iter();
+    let mut errors = errors.into_iter();
+    let mut numbers = numbers.into_iter();
+    std::array::from_fn(|_| {
+        // unwrap always succeeds because we're consuming 3 iterators each of length N a total of N
+        // times
+        let history = histories.next().unwrap();
+        let error = errors.next().unwrap();
+        let numbers = numbers.next().unwrap();
+        let data_length = numbers.len();
+        match error {
+            Some(error) => Err(error),
+            None => {
+                if data_length == 0 {
+                    Err(InvalidRecordIteratorError::Empty)
+                } else {
+                    // We already checked if the iterator was empty so `history` is always
+                    // `Some` here
+                    Ok((history.unwrap(), numbers))
+                }
+            }
+        }
+    })
+}
+
 impl<'a, T, const D: usize> RecordTensor<'a, T, Tensor<(T, Index), D>, D>
 where
     T: Numeric + Primitive,
@@ -374,6 +444,49 @@ where
                 length: data_length,
             }),
         }
+    }
+
+    /**
+     * Given an iterator of N record pairs and a matching shape, collects them back into N
+     * [RecordTensor](RecordTensor)s.
+     *
+     * This should generally be preferred over converting the iterator to N [Vec]s of Records,
+     * since a Vec of Records has to store the [WengertList](WengertList) reference for each
+     * individual record whereas a RecordTensor only stores it once.
+     *
+     * However, since a RecordTensor only stores the WengertList once, this conversion will fail
+     * if there are different histories in the iterator. It also fails if the iterator is empty
+     * or doesn't match the number of elements for the shape. Each failure due to different
+     * histories is seperate, if the ith elements in the records of the iterator have a
+     * consistent history but the jth elements do not then the ith result will be Ok but the
+     * jth will be Err.
+     *
+     * See also: [elements](crate::tensors::dimensions::elements)
+     */
+    pub fn from_iters<I, const N: usize>(
+        shape: [(Dimension, usize); D],
+        iter: I,
+    ) -> [Result<Self, InvalidRecordIteratorError<'a, T, D>>; N]
+    where
+        I: IntoIterator<Item = [Record<'a, T>; N]>,
+    {
+        let mut components = collect_into_n_components(iter).into_iter();
+        std::array::from_fn(|_| match components.next().unwrap() {
+            Err(error) => Err(error),
+            Ok((history, numbers)) => {
+                let data_length = numbers.len();
+                match Tensor::try_from(shape, numbers) {
+                    Ok(numbers) => Ok(RecordTensor::from_existing(
+                        history,
+                        TensorView::from(numbers),
+                    )),
+                    Err(invalid_shape) => Err(InvalidRecordIteratorError::Shape {
+                        requested: invalid_shape,
+                        length: data_length,
+                    }),
+                }
+            }
+        })
     }
 }
 
@@ -413,5 +526,49 @@ where
                 length: data_length,
             })
         }
+    }
+
+    /**
+     * Given an iterator of N record pairs and a matching shape, collects them back into N
+     * [RecordMatrix](RecordMatrix)s.
+     *
+     * This should generally be preferred over converting the iterator to N [Vec]s of Records,
+     * since a Vec of Records has to store the [WengertList](WengertList) reference for each
+     * individual record whereas a RecordMatrix only stores it once.
+     *
+     * However, since a RecordMatrix only stores the WengertList once, this conversion will fail
+     * if there are different histories in the iterator. It also fails if the iterator is empty
+     * or doesn't match the R x C number of elements expected. Each failure due to different
+     * histories is seperate, if the ith elements in the records of the iterator have a
+     * consistent history but the jth elements do not then the ith result will be Ok but the
+     * jth will be Err.
+     *
+     * See also: [elements](crate::tensors::dimensions::elements)
+     */
+    pub fn from_iters<I, const N: usize>(
+        size: (Row, Column),
+        iter: I,
+    ) -> [Result<Self, InvalidRecordIteratorError<'a, T, 2>>; N]
+    where
+        I: IntoIterator<Item = [Record<'a, T>; N]>,
+    {
+        let mut components = collect_into_n_components(iter).into_iter();
+        std::array::from_fn(|_| match components.next().unwrap() {
+            Err(error) => Err(error),
+            Ok((history, numbers)) => {
+                let data_length = numbers.len();
+                if data_length == size.0 * size.1 {
+                    Ok(RecordMatrix::from_existing(
+                        history,
+                        MatrixView::from(Matrix::from_flat_row_major(size, numbers)),
+                    ))
+                } else {
+                    Err(InvalidRecordIteratorError::Shape {
+                        requested: InvalidShapeError::new([("rows", size.0), ("columns", size.1)]),
+                        length: data_length,
+                    })
+                }
+            }
+        })
     }
 }
