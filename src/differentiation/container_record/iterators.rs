@@ -29,6 +29,36 @@ pub struct AsRecords<'a, I, T> {
 
 // Doc example using zip to perform binary operation then collecting back?
 
+/**
+ * AsRecords can be created from a RecordTensor to manipulate the data as an iterator of Records
+ * then streamed back into a RecordTensor with [from_iter](RecordTensor::from_iter)
+ *
+ * ```
+ * use easy_ml::differentiation::{WengertList, Record, RecordTensor};
+ * use easy_ml::tensors::Tensor;
+ *
+ * let history = WengertList::new();
+ * let X = RecordTensor::constants(
+ *     Tensor::from_fn([("r", 2), ("c", 2)], |[r, c]| (r + c) as f32)
+ * );
+ * let y = Record::variable(1.0, &history);
+ * let result = RecordTensor::from_iter(
+ *     [("r", 2), ("c", 2)],
+ *     // Here we create each variable z from the constant in X and the variable y.
+ *     // If we just did X + 1.0 we'd still have only constants, and we can't do X + y
+ *     // directly because those traits aren't implemented.
+ *     X.iter_as_records().map(|x| x + y)
+ * );
+ * // we can unwrap here because we know the iterator still contains 4 elements and they all
+ * // have the same WengertList so we can convert back to a RecordTensor (which is now
+ * // variables instead of constants)
+ * let Z = result.unwrap();
+ * let Z_indexing = Z.index();
+ * assert_eq!(1.0, Z_indexing.get([0, 0]).0);
+ * assert_eq!(2.0, Z_indexing.get([0, 1]).0);
+ * assert_eq!(3.0, Z_indexing.get([1, 1]).0);
+ * ```
+ */
 impl<'a, 'b, T, S, const D: usize>
     AsRecords<'a, TensorIterator<'b, (T, Index), RecordTensor<'a, T, S, D>, D>, T>
 where
@@ -40,29 +70,16 @@ where
      *
      * ```
      * use easy_ml::differentiation::{WengertList, Record, RecordTensor};
+     * use easy_ml::differentiation::iterators::AsRecords;
      * use easy_ml::tensors::Tensor;
      *
      * let history = WengertList::new();
-     * let X = RecordTensor::constants(
+     * let X = RecordTensor::variables(
+     *     &history,
      *     Tensor::from_fn([("r", 2), ("c", 2)], |[r, c]| (r + c) as f32)
      * );
-     * let y = Record::variable(1.0, &history);
-     * let result = RecordTensor::from_iter(
-     *     [("r", 2), ("c", 2)],
-     *     // Here we create each variable z from the constant in X and the variable y.
-     *     // If we just did X + 1.0 we'd still have only constants, and we can't do X + y
-     *     // directly because those traits aren't implemented.
-     *     // `iter_as_records` is a shorthand for AsRecords::from_tensor
-     *     X.iter_as_records().map(|x| x + y)
-     * );
-     * // we can unwrap here because we know the iterator still contains 4 elements and they all
-     * // have the same WengertList so we can convert back to a RecordTensor (which is now
-     * // variables instead of constants)
-     * let Z = result.unwrap();
-     * let Z_indexing = Z.index();
-     * assert_eq!(1.0, Z_indexing.get([0, 0]).0);
-     * assert_eq!(2.0, Z_indexing.get([0, 1]).0);
-     * assert_eq!(3.0, Z_indexing.get([1, 1]).0);
+     * let iter = X.iter_as_records(); // shorthand helper method
+     * let also_iter = AsRecords::from_tensor(&X);
      * ```
      */
     pub fn from_tensor(tensor: &'b RecordTensor<'a, T, S, D>) -> Self {
@@ -70,6 +87,37 @@ where
     }
 }
 
+/**
+ * AsRecords can be created from a RecordMatrix to manipulate the data as an iterator of Records
+ * then streamed back into a RecordMatrix with [from_iter](RecordMatrix::from_iter)
+ *
+ * ```
+ * use easy_ml::differentiation::{WengertList, Record, RecordMatrix};
+ * use easy_ml::matrices::Matrix;
+ * use easy_ml::matrices::views::MatrixView;
+ *
+ * let history = WengertList::new();
+ * let X = RecordMatrix::constants(
+ *     Matrix::from_fn((2, 2), |(r, c)| (r + c) as f32)
+ * );
+ * let y = Record::variable(1.0, &history);
+ * let result = RecordMatrix::from_iter(
+ *     (2, 2),
+ *     // Here we create each variable z from the constant in X and the variable y.
+ *     // If we just did X + 1.0 we'd still have only constants, and we can't do X + y
+ *     // directly because those traits aren't implemented.
+ *     X.iter_row_major_as_records().map(|x| x + y)
+ * );
+ * // we can unwrap here because we know the iterator still contains 4 elements and they all
+ * // have the same WengertList so we can convert back to a RecordMatrix (which is now
+ * // variables instead of constants)
+ * let Z = result.unwrap();
+ * let Z_view = MatrixView::from(&Z);
+ * assert_eq!(1.0, Z_view.get(0, 0).0);
+ * assert_eq!(2.0, Z_view.get(0, 1).0);
+ * assert_eq!(3.0, Z_view.get(1, 1).0);
+ * ```
+ */
 impl<'a, 'b, T, S> AsRecords<'a, RowMajorIterator<'b, (T, Index), RecordMatrix<'a, T, S>>, T>
 where
     T: Numeric + Primitive,
@@ -77,6 +125,20 @@ where
 {
     /**
      * Given a record matrix returns a row major iterator of Records
+     *
+     * ```
+     * use easy_ml::differentiation::{WengertList, Record, RecordMatrix};
+     * use easy_ml::differentiation::iterators::AsRecords;
+     * use easy_ml::matrices::Matrix;
+     *
+     * let history = WengertList::new();
+     * let X = RecordMatrix::variables(
+     *     &history,
+     *     Matrix::from_fn((2, 2), |(r, c)| (r + c) as f32)
+     * );
+     * let iter = X.iter_row_major_as_records(); // shorthand helper method
+     * let also_iter = AsRecords::from_matrix_row_major(&X);
+     * ```
      */
     pub fn from_matrix_row_major(matrix: &'b RecordMatrix<'a, T, S>) -> Self {
         AsRecords::from(matrix.history, RowMajorIterator::from(matrix))
@@ -212,6 +274,11 @@ where
 /**
  * When AsRecords contains an iterator `I` with the index `O` for each element, it is an iterator
  * of `O` and [Record]s, merging the history together with each iterator element.
+ *
+ * Depending on what iterator and `with_index` implementation was used, `O` might be the tuple
+ * indexes for a matrix or the `const D: usize` length array of indexes for a tensor. In either
+ * case the iterator implementation for `WithIndex<AsRecords<..>>` just forwards the `O` values
+ * unchanged so it works with both.
  */
 impl<'a, I, O, T> Iterator for WithIndex<AsRecords<'a, I, T>>
 where
@@ -249,11 +316,12 @@ where
 /**
  * An error due to an invalid record iterator. One of three cases
  *
- * - the iterator data didn't match the number of elements needed for a given shape to convert
- * back into a record container
- * - the iterator was empty, which is always an invalid length for any shape
- * - the iterator contains inconsistent histories in its data and so cannot be converted into
- * a record container because a record container can only have one history for all its data
+ * - `Shape`: the iterator data didn't match the number of elements needed for a given shape to
+ * convert back into a record container
+ * - `Empty`: the iterator was empty, which is always an invalid length for any shape
+ * - `InconsistentHistory`: the iterator contains inconsistent histories in its data and so cannot
+ * be converted into a record container because a record container can only have one history for
+ * all its data
  */
 #[derive(Clone, Debug)]
 pub enum InvalidRecordIteratorError<'a, T, const D: usize> {
