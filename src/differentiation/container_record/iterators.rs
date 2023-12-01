@@ -94,7 +94,6 @@ where
  * ```
  * use easy_ml::differentiation::{WengertList, Record, RecordMatrix};
  * use easy_ml::matrices::Matrix;
- * use easy_ml::matrices::views::MatrixView;
  *
  * let history = WengertList::new();
  * let X = RecordMatrix::constants(
@@ -112,7 +111,7 @@ where
  * // have the same WengertList so we can convert back to a RecordMatrix (which is now
  * // variables instead of constants)
  * let Z = result.unwrap();
- * let Z_view = MatrixView::from(&Z);
+ * let Z_view = Z.view();
  * assert_eq!(1.0, Z_view.get(0, 0).0);
  * assert_eq!(2.0, Z_view.get(0, 1).0);
  * assert_eq!(3.0, Z_view.get(1, 1).0);
@@ -192,9 +191,30 @@ where
      * in WithIndex to create an iterator that provides indexes, and AsRecords must also be
      * wrapped in WithIndex to implement the iterator trait with indexes from the original
      * iterator's implementation.
+     *
+     * ```
+     * use easy_ml::differentiation::{WengertList, Record, RecordTensor};
+     * use easy_ml::tensors::Tensor;
+     *
+     * let history = WengertList::new();
+     * let X = RecordTensor::variables(
+     *     &history,
+     *     Tensor::from([("r", 2), ("c", 2)], vec![ 0.5, 1.5, 2.5, 3.5 ])
+     * );
+     * let Y = RecordTensor::from_iter(
+     *     [("r", 2), ("c", 2)],
+     *     // Most Easy ML matrix and tensor iterators implement Into<WithIndex<Self>>, so we can
+     *     // call with_index after creating the iterator
+     *     X.iter_as_records().with_index().map(|([r, c], x)| x + ((r + (2 * c)) as f32))
+     * ).unwrap(); // we can unwrap here because we know the iterator is still 4 elements
+     * // so matches the shape and we added constants to each Record element so the history
+     * // is still consistent
+     * assert_eq!(
+     *     Tensor::from([("r", 2), ("c", 2)], vec![ 0.5, 3.5, 3.5, 6.5 ]),
+     *     Y.view().map(|(x, _)| x)
+     * );
+     * ```
      */
-    // TODO: Doc example here, this is kinda buried in traits so isn't super obvious how you use
-    // it
     pub fn with_index(self) -> WithIndex<AsRecords<'a, WithIndex<I>, T>> {
         WithIndex {
             iterator: AsRecords {
