@@ -49,6 +49,9 @@ impl<T: std::fmt::Display + Primitive> std::fmt::Display for Trace<T> {
     }
 }
 
+/**
+ * Trace implements ZeroOne by returning constants.
+ */
 impl<T: Numeric + Primitive> ZeroOne for Trace<T> {
     #[inline]
     fn zero() -> Trace<T> {

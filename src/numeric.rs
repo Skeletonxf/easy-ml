@@ -142,6 +142,7 @@ pub trait Numeric:
  *
  * This covers primitives such as f32, f64, signed integers and
  * [Wrapped unsigned integers](std::num::Wrapping),
+ * [Saturating unsigned integers](std::num::Saturating),
  * as well as [Traces](super::differentiation::Trace) and
  * [Records](super::differentiation::Record) of those types.
  */

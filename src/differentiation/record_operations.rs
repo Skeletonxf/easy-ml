@@ -53,6 +53,9 @@ impl<'a, T: std::fmt::Display + Primitive> std::fmt::Display for Record<'a, T> {
     }
 }
 
+/**
+ * Record implements ZeroOne by returning constants.
+ */
 impl<'a, T: Numeric + Primitive> ZeroOne for Record<'a, T> {
     #[inline]
     fn zero() -> Record<'a, T> {
