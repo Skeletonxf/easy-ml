@@ -1,5 +1,7 @@
 use crate::differentiation::functions::{Division, FunctionDerivative, Multiplication};
-use crate::differentiation::iterators::AsRecords;
+use crate::differentiation::iterators::{
+    AsRecords, InconsistentHistory, InvalidRecordIteratorError,
+};
 use crate::differentiation::record_operations;
 use crate::differentiation::Record;
 use crate::differentiation::{Derivatives, Index, Primitive, WengertList};
@@ -969,6 +971,110 @@ where
     }
 
     /**
+     * Creates a new RecordContainer from a reference to an existing RecordContainer by applying
+     * some unary function on `Record<T>` to `Record<T>` to every element in the container. This
+     * will fail if the function would create records with inconsistent histories.
+     *
+     * When used with pure functions that can't return different histories for different inputs
+     * unwrapping with always succeed.
+     *
+     * This API can allow you to call a generic function that operates on
+     * [Numeric](crate::numeric::Numeric) numbers and apply all the correct derivative tracking
+     * during the intermediate calculations for you, without having to resort to storing the
+     * Record types.
+     *
+     * ```
+     * use easy_ml::numeric::Numeric;
+     * use easy_ml::numeric::extra::Real;
+     * use easy_ml::tensors::Tensor;
+     * use easy_ml::differentiation::{RecordTensor, WengertList};
+     *
+     * fn sigmoid<T: Numeric + Real+ Copy>(x: T) -> T {
+     *     T::one() / (T::one() + (-x).exp())
+     * }
+     *
+     * let history = WengertList::new();
+     * let layer = RecordTensor::variables(&history, Tensor::from([("x", 2)], vec![ 0.2, 0.6 ]));
+     * let after = layer.map(sigmoid).unwrap(); // sigmoid can't introduce inconsistent histories
+     * ```
+     *
+     * NB: Mapping a RecordTensor of constants to variables is not inconsistent, the history
+     * after mapping doesn't have to be the same as before, only must be the same for every
+     * mapped element.
+     */
+    #[track_caller]
+    pub fn map(
+        &self,
+        fx: impl Fn(Record<'a, T>) -> Record<'a, T>,
+    ) -> Result<RecordTensor<'a, T, Tensor<(T, Index), D>, D>, InconsistentHistory<'a, T>> {
+        let result = RecordTensor::from_iter(self.shape(), self.iter_as_records().map(fx));
+        RecordTensor::<'a, T, S, D>::map_collection(result, self.shape())
+    }
+
+    /**
+     * Creates a new RecordContainer from a reference to an existing RecordContainer by applying
+     * some unary function on `Record<T>` and each index of that position in the Record to
+     * `Record<T>` to every element in the container. This will fail if the function would create
+     * records with inconsistent histories.
+     *
+     * When used with pure functions that can't return different histories for different inputs
+     * unwrapping with always succeed.
+     *
+     * This API can allow you to call a generic function that operates on
+     * [Numeric](crate::numeric::Numeric) numbers and apply all the correct derivative tracking
+     * during the intermediate calculations for you, without having to resort to storing the
+     * Record types.
+     *
+     * NB: Mapping a RecordTensor of constants to variables is not inconsistent, the history
+     * after mapping doesn't have to be the same as before, only must be the same for every
+     * mapped element.
+     */
+    #[track_caller]
+    pub fn map_with_index(
+        &self,
+        fx: impl Fn([usize; D], Record<'a, T>) -> Record<'a, T>,
+    ) -> Result<RecordTensor<'a, T, Tensor<(T, Index), D>, D>, InconsistentHistory<'a, T>> {
+        let result = RecordTensor::from_iter(
+            self.shape(),
+            self.iter_as_records().with_index().map(|(i, x)| fx(i, x)),
+        );
+        RecordTensor::<'a, T, S, D>::map_collection(result, self.shape())
+    }
+
+    #[track_caller]
+    fn map_collection(
+        result: Result<
+            RecordTensor<'a, T, Tensor<(T, usize), D>, D>,
+            InvalidRecordIteratorError<'a, T, D>,
+        >,
+        shape: [(Dimension, usize); D],
+    ) -> Result<RecordTensor<'a, T, Tensor<(T, usize), D>, D>, InconsistentHistory<'a, T>> {
+        use InvalidRecordIteratorError as Error;
+        match result {
+            Ok(tensor) => Ok(tensor),
+            Err(error) => match error {
+                // These first two should be 100% impossible but provide a sensible error just
+                // in case some weird things break our invariants
+                Error::Empty => panic!(
+                    "Illegal state, record tensor was empty {:?}",
+                    shape
+                ),
+                Error::Shape { requested, length } => panic!(
+                    "Illegal state, record tensor shape was inconsistent: requested: {:?}, length of data: {:?}",
+                    requested,
+                    length
+                ),
+                // This one is theoretically possible but in practise shouldn't happen by accident
+                // However, it can't implement Debug unless T is debug so to avoid having to
+                // restrict our function signature we return a Result anyway - this also encourages
+                // the user to make sure their function isn't going to cause this case, which
+                // with some of the other variants like with_index might come up more easily
+                Error::InconsistentHistory(h) => Err(h),
+            }
+        }
+    }
+
+    /**
      * For each record in the container, peforms a backward pass up its WengertList from it
      * as the output, computing all the derivatives for the inputs involving this output.
      *
@@ -1625,6 +1731,112 @@ where
                     numbers: MatrixView::from(Matrix::from_flat_row_major(shape, zs)),
                     history: Some(history),
                 }
+            }
+        }
+    }
+
+    /**
+     * Creates a new RecordContainer from a reference to an existing RecordContainer by applying
+     * some unary function on `Record<T>` to `Record<T>` to every element in the container. This
+     * will fail if the function would create records with inconsistent histories.
+     *
+     * When used with pure functions that can't return different histories for different inputs
+     * unwrapping with always succeed.
+     *
+     * This API can allow you to call a generic function that operates on
+     * [Numeric](crate::numeric::Numeric) numbers and apply all the correct derivative tracking
+     * during the intermediate calculations for you, without having to resort to storing the
+     * Record types.
+     *
+     * ```
+     * use easy_ml::numeric::Numeric;
+     * use easy_ml::numeric::extra::Real;
+     * use easy_ml::matrices::Matrix;
+     * use easy_ml::differentiation::{RecordMatrix, WengertList};
+     *
+     * fn sigmoid<T: Numeric + Real+ Copy>(x: T) -> T {
+     *     T::one() / (T::one() + (-x).exp())
+     * }
+     *
+     * let history = WengertList::new();
+     * let layer = RecordMatrix::variables(&history, Matrix::from(vec![vec![ 0.2, 0.6 ]]));
+     * let after = layer.map(sigmoid).unwrap(); // sigmoid can't introduce inconsistent histories
+     * ```
+     *
+     * NB: Mapping a RecordMatrix of constants to variables is not inconsistent, the history
+     * after mapping doesn't have to be the same as before, only must be the same for every
+     * mapped element.
+     */
+    #[track_caller]
+    pub fn map(
+        &self,
+        fx: impl Fn(Record<'a, T>) -> Record<'a, T>,
+    ) -> Result<RecordMatrix<'a, T, Matrix<(T, Index)>>, InconsistentHistory<'a, T>> {
+        let result = RecordMatrix::from_iter(self.size(), self.iter_row_major_as_records().map(fx));
+        RecordMatrix::<'a, T, S>::map_collection(result, self.size())
+    }
+
+    /**
+     * Creates a new RecordContainer from a reference to an existing RecordContainer by applying
+     * some unary function on `Record<T>` and each index of that position in the Record to
+     * `Record<T>` to every element in the container. This will fail if the function would
+     * create records with inconsistent histories.
+     *
+     * When used with pure functions that can't return different histories for different inputs
+     * unwrapping with always succeed.
+     *
+     * This API can allow you to call a generic function that operates on
+     * [Numeric](crate::numeric::Numeric) numbers and apply all the correct derivative tracking
+     * during the intermediate calculations for you, without having to resort to storing the
+     * Record types.
+     *
+     * NB: Mapping a RecordMatrix of constants to variables is not inconsistent, the history
+     * after mapping doesn't have to be the same as before, only must be the same for every
+     * mapped element.
+     */
+    #[track_caller]
+    pub fn map_with_index(
+        &self,
+        fx: impl Fn(Record<'a, T>, Row, Column) -> Record<'a, T>,
+    ) -> Result<RecordMatrix<'a, T, Matrix<(T, Index)>>, InconsistentHistory<'a, T>> {
+        let result = RecordMatrix::from_iter(
+            self.size(),
+            self.iter_row_major_as_records()
+                .with_index()
+                .map(|((r, c), x)| fx(x, r, c)),
+        );
+        RecordMatrix::<'a, T, S>::map_collection(result, self.size())
+    }
+
+    #[track_caller]
+    fn map_collection(
+        result: Result<
+            RecordMatrix<'a, T, Matrix<(T, usize)>>,
+            InvalidRecordIteratorError<'a, T, 2>,
+        >,
+        size: (Row, Column),
+    ) -> Result<RecordMatrix<'a, T, Matrix<(T, usize)>>, InconsistentHistory<'a, T>> {
+        use InvalidRecordIteratorError as Error;
+        match result {
+            Ok(matrix) => Ok(matrix),
+            Err(error) => match error {
+                // These first two should be 100% impossible but provide a sensible error just
+                // in case some weird things break our invariants
+                Error::Empty => panic!(
+                    "Illegal state, record matrix was empty {:?}",
+                    size
+                ),
+                Error::Shape { requested, length } => panic!(
+                    "Illegal state, record matrix shape was inconsistent: requested: {:?}, length of data: {:?}",
+                    requested,
+                    length
+                ),
+                // This one is theoretically possible but in practise shouldn't happen by accident
+                // However, it can't implement Debug unless T is debug so to avoid having to
+                // restrict our function signature we return a Result anyway - this also encourages
+                // the user to make sure their function isn't going to cause this case, which
+                // with some of the other variants like with_index might come up more easily
+                Error::InconsistentHistory(h) => Err(h),
             }
         }
     }

@@ -350,10 +350,13 @@ pub enum InvalidRecordIteratorError<'a, T, const D: usize> {
         length: usize,
     },
     Empty,
-    InconsistentHistory {
-        first: Option<&'a WengertList<T>>,
-        later: Option<&'a WengertList<T>>,
-    },
+    InconsistentHistory(InconsistentHistory<'a, T>),
+}
+
+#[derive(Clone, Debug)]
+pub struct InconsistentHistory<'a, T> {
+    pub first: Option<&'a WengertList<T>>,
+    pub later: Option<&'a WengertList<T>>,
 }
 
 impl<'a, T, const D: usize> fmt::Display for InvalidRecordIteratorError<'a, T, D>
@@ -372,17 +375,33 @@ where
                 f,
                 "Iterator was empty but all tensors and matrices must contain at least one element"
             ),
-            Self::InconsistentHistory { first, later } => write!(
+            Self::InconsistentHistory(h) => write!(
                 f,
                 "First history in iterator of records was {:?} but a later history in iterator was {:?}, record container cannot support different histories for a single tensor or matrix.",
-                first,
-                later,
+                h.first,
+                h.later,
             )
         }
     }
 }
 
+impl<'a, T> fmt::Display for InconsistentHistory<'a, T>
+where
+    T: Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+           f,
+           "First history was {:?} but a later history in iterator was {:?}, record container cannot support different histories for a single tensor or matrix.",
+           self.first,
+           self.later,
+       )
+    }
+}
+
 impl<'a, T, const D: usize> Error for InvalidRecordIteratorError<'a, T, D> where T: Debug {}
+
+impl<'a, T> Error for InconsistentHistory<'a, T> where T: Debug {}
 
 /// Converts an iterator of Records into the shared, consistent, history and a vec of (T, Index)
 /// or fails if the history is not consistent or the iterator is empty.
@@ -405,10 +424,12 @@ where
                 None => history = Some(record.history),
                 Some(h) => {
                     if !are_exact_same_list(h, record.history) {
-                        error = Some(InvalidRecordIteratorError::InconsistentHistory {
-                            first: h,
-                            later: record.history,
-                        });
+                        error = Some(InvalidRecordIteratorError::InconsistentHistory(
+                            InconsistentHistory {
+                                first: h,
+                                later: record.history,
+                            },
+                        ));
                     }
                 }
             }
@@ -464,10 +485,12 @@ where
                 None => *history = Some(record.history),
                 Some(h) => {
                     if !are_exact_same_list(*h, record.history) {
-                        *error = Some(InvalidRecordIteratorError::InconsistentHistory {
-                            first: *h,
-                            later: record.history,
-                        });
+                        *error = Some(InvalidRecordIteratorError::InconsistentHistory(
+                            InconsistentHistory {
+                                first: *h,
+                                later: record.history,
+                            },
+                        ));
                     }
                 }
             }
