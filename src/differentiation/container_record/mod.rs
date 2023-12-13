@@ -5,7 +5,9 @@ use crate::differentiation::iterators::{
 use crate::differentiation::record_operations;
 use crate::differentiation::Record;
 use crate::differentiation::{Derivatives, Index, Primitive, WengertList};
-use crate::matrices::iterators::{ColumnMajorIterator, RowMajorIterator, RowMajorOwnedIterator};
+use crate::matrices::iterators::{
+    ColumnMajorIterator, RowMajorIterator, RowMajorOwnedIterator, RowMajorReferenceMutIterator,
+};
 use crate::matrices::views::{MatrixMut, MatrixRef, MatrixView, NoInteriorMutability};
 use crate::matrices::{Column, Matrix, Row};
 use crate::numeric::{Numeric, NumericRef};
@@ -1433,7 +1435,7 @@ where
      * during the intermediate calculations for you, without having to resort to storing the
      * Record types.
      *
-     * NB: Mapping a RecordMatrix of constants to variables is not inconsistent, the history
+     * NB: Mapping a RecordTensor of constants to variables is not inconsistent, the history
      * after mapping doesn't have to be the same as before, only must be the same for every
      * mapped element.
      */
@@ -1444,15 +1446,13 @@ where
         fx: impl Fn(Record<'a, T>) -> Record<'a, T>,
     ) -> Result<(), InconsistentHistory<'a, T>> {
         let history = self.history;
-        let new_history = RecordTensor::<'a, T, S, D>::map_mut_base(
-            TensorReferenceMutIterator::from(self),
-            |x| {
+        let new_history =
+            map_mut_base::<'a, T, _, _>(TensorReferenceMutIterator::from(self), |x| {
                 let record = Record::from_existing(x.clone(), history);
                 let result = fx(record);
                 *x = (result.number, result.index);
                 result.history
-            },
-        )?;
+            })?;
         self.history = new_history;
         Ok(())
     }
@@ -1476,7 +1476,7 @@ where
      * during the intermediate calculations for you, without having to resort to storing the
      * Record types.
      *
-     * NB: Mapping a RecordMatrix of constants to variables is not inconsistent, the history
+     * NB: Mapping a RecordTensor of constants to variables is not inconsistent, the history
      * after mapping doesn't have to be the same as before, only must be the same for every
      * mapped element.
      */
@@ -1486,7 +1486,7 @@ where
         fx: impl Fn([usize; D], Record<'a, T>) -> Record<'a, T>,
     ) -> Result<(), InconsistentHistory<'a, T>> {
         let history = self.history;
-        let new_history = RecordTensor::<'a, T, S, D>::map_mut_base(
+        let new_history = map_mut_base::<'a, T, _, _>(
             TensorReferenceMutIterator::from(self).with_index(),
             |(i, x)| {
                 let record = Record::from_existing(x.clone(), history);
@@ -1498,32 +1498,33 @@ where
         self.history = new_history;
         Ok(())
     }
+}
 
-    #[track_caller]
-    fn map_mut_base<I, X>(
-        mut iter: I,
-        fx: impl Fn(X) -> Option<&'a WengertList<T>>,
-    ) -> Result<Option<&'a WengertList<T>>, InconsistentHistory<'a, T>>
-    where
-        I: Iterator<Item = X>,
-    {
-        use crate::differentiation::record_operations::are_exact_same_list;
-
-        let first_history = fx(iter.next().expect("Illegal state, record tensor was empty"));
-        let mut different_history: Option<Option<&WengertList<T>>> = None;
-        for x in iter {
-            let history = fx(x);
-            if !are_exact_same_list(history, first_history) {
-                different_history = Some(history);
-            }
+#[track_caller]
+fn map_mut_base<'a, T, I, X>(
+    mut iter: I,
+    fx: impl Fn(X) -> Option<&'a WengertList<T>>,
+) -> Result<Option<&'a WengertList<T>>, InconsistentHistory<'a, T>>
+where
+    I: Iterator<Item = X>,
+    T: Primitive,
+{
+    use crate::differentiation::record_operations::are_exact_same_list;
+    #[rustfmt::skip]
+    let first_history = fx(iter.next().expect("Illegal state, record container was empty"));
+    let mut different_history: Option<Option<&WengertList<T>>> = None;
+    for x in iter {
+        let history = fx(x);
+        if !are_exact_same_list(history, first_history) {
+            different_history = Some(history);
         }
-        match different_history {
-            None => Ok(first_history),
-            Some(h) => Err(InconsistentHistory {
-                first: first_history,
-                later: h,
-            }),
-        }
+    }
+    match different_history {
+        None => Ok(first_history),
+        Some(h) => Err(InconsistentHistory {
+            first: first_history,
+            later: h,
+        }),
     }
 }
 
@@ -2219,6 +2220,89 @@ where
     {
         self.binary_left_assign(rhs, fxy, dfxy_dx, dfxy_dy);
         self
+    }
+
+    /**
+     * Updates this RecordContainer in place by applying some unary function on `Record<T>` to
+     * `Record<T>` to every element in the container. This will fail if the function would create
+     * records with inconsistent histories.
+     *
+     * When used with pure functions that can't return different histories for different inputs
+     * unwrapping with always succeed.
+     *
+     * Since this updates the container in place, if Err is returned then the data in this
+     * RecordContainer is still available but it has been corrupted - at least one of the elements
+     * should have a different history than what it will have because the mapping function created
+     * inconsistent histories that couldn't be represented by the container as it only stores
+     * one.
+     *
+     * This API can allow you to call a generic function that operates on
+     * [Numeric](crate::numeric::Numeric) numbers and apply all the correct derivative tracking
+     * during the intermediate calculations for you, without having to resort to storing the
+     * Record types.
+     *
+     * NB: Mapping a RecordMatrix of constants to variables is not inconsistent, the history
+     * after mapping doesn't have to be the same as before, only must be the same for every
+     * mapped element.
+     */
+    // TODO: Example
+    #[track_caller]
+    pub fn map_mut(
+        &mut self,
+        fx: impl Fn(Record<'a, T>) -> Record<'a, T>,
+    ) -> Result<(), InconsistentHistory<'a, T>> {
+        let history = self.history;
+        let new_history =
+            map_mut_base::<'a, T, _, _>(RowMajorReferenceMutIterator::from(self), |x| {
+                let record = Record::from_existing(x.clone(), history);
+                let result = fx(record);
+                *x = (result.number, result.index);
+                result.history
+            })?;
+        self.history = new_history;
+        Ok(())
+    }
+
+    /**
+     * Updates this RecordContainer in place by applying some unary function on `Record<T>` and
+     * each index of that position in the Record to `Record<T>` to every element in the container.
+     * This will fail if the function would create records with inconsistent histories.
+     *
+     * When used with pure functions that can't return different histories for different inputs
+     * unwrapping with always succeed.
+     *
+     * Since this updates the container in place, if Err is returned then the data in this
+     * RecordContainer is still available but it has been corrupted - at least one of the elements
+     * should have a different history than what it will have because the mapping function created
+     * inconsistent histories that couldn't be represented by the container as it only stores
+     * one.
+     *
+     * This API can allow you to call a generic function that operates on
+     * [Numeric](crate::numeric::Numeric) numbers and apply all the correct derivative tracking
+     * during the intermediate calculations for you, without having to resort to storing the
+     * Record types.
+     *
+     * NB: Mapping a RecordMatrix of constants to variables is not inconsistent, the history
+     * after mapping doesn't have to be the same as before, only must be the same for every
+     * mapped element.
+     */
+    #[track_caller]
+    pub fn map_mut_with_index(
+        &mut self,
+        fx: impl Fn(Record<'a, T>, Row, Column) -> Record<'a, T>,
+    ) -> Result<(), InconsistentHistory<'a, T>> {
+        let history = self.history;
+        let new_history = map_mut_base::<'a, T, _, _>(
+            RowMajorReferenceMutIterator::from(self).with_index(),
+            |((r, c), x)| {
+                let record = Record::from_existing(x.clone(), history);
+                let result = fx(record, r, c);
+                *x = (result.number, result.index);
+                result.history
+            },
+        )?;
+        self.history = new_history;
+        Ok(())
     }
 }
 
