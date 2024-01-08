@@ -1438,8 +1438,37 @@ where
      * NB: Mapping a RecordTensor of constants to variables is not inconsistent, the history
      * after mapping doesn't have to be the same as before, only must be the same for every
      * mapped element.
+     *
+     * You might also use this function at the end of a training loop to update all the weights
+     * to reduce their loss.
+     *
+     * ```
+     * use easy_ml::numeric::Numeric;
+     * use easy_ml::tensors::Tensor;
+     * use easy_ml::differentiation::{Record, RecordTensor, WengertList};
+     *
+     * let history = WengertList::new();
+     * let mut weights = RecordTensor::variables(
+     *     &history,
+     *     Tensor::from([("w1", 4)], vec![ 0.3, 0.2, -1.2, -0.4 ])
+     * );
+     * let error = {
+     *     // this is over-simplified for brevity, obviously in a real scenario we wouldn't have a
+     *     // function that calculates the error like this or we wouldn't be doing machine learning
+     *     // to fit it in the first place
+     *     let mut loss = Record::variable(0.0, &history);
+     *     for r in weights.iter_as_records() {
+     *         loss = loss + r;
+     *     }
+     *     loss
+     * };
+     * let derivatives = error.derivatives();
+     * let learning_rate = 0.1;
+     * // update the weights to contain less error than they did before
+     * let result = weights.map_mut(|x| x - (derivatives[&x] * learning_rate));
+     * assert!(result.is_ok()); // we know we didn't introduce an inconsistent history just updating the weights
+     * ```
      */
-    // TODO: Example
     #[track_caller]
     pub fn map_mut(
         &mut self,
@@ -2244,8 +2273,37 @@ where
      * NB: Mapping a RecordMatrix of constants to variables is not inconsistent, the history
      * after mapping doesn't have to be the same as before, only must be the same for every
      * mapped element.
+     *
+     * You might also use this function at the end of a training loop to update all the weights
+     * to reduce their loss.
+     *
+     * ```
+     * use easy_ml::numeric::Numeric;
+     * use easy_ml::matrices::Matrix;
+     * use easy_ml::differentiation::{Record, RecordMatrix, WengertList};
+     *
+     * let history = WengertList::new();
+     * let mut weights = RecordMatrix::variables(
+     *     &history,
+     *     Matrix::from(vec![vec![ 0.3, 0.2, -1.2, -0.4 ]])
+     * );
+     * let error = {
+     *     // this is over-simplified for brevity, obviously in a real scenario we wouldn't have a
+     *     // function that calculates the error like this or we wouldn't be doing machine learning
+     *     // to fit it in the first place
+     *     let mut loss = Record::variable(0.0, &history);
+     *     for r in weights.iter_row_major_as_records() {
+     *         loss = loss + r;
+     *     }
+     *     loss
+     * };
+     * let derivatives = error.derivatives();
+     * let learning_rate = 0.1;
+     * // update the weights to contain less error than they did before
+     * let result = weights.map_mut(|x| x - (derivatives[&x] * learning_rate));
+     * assert!(result.is_ok()); // we know we didn't introduce an inconsistent history just updating the weights
+     * ```
      */
-    // TODO: Example
     #[track_caller]
     pub fn map_mut(
         &mut self,
