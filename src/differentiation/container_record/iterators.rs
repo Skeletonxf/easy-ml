@@ -21,17 +21,51 @@ use std::iter::{ExactSizeIterator, FusedIterator};
 /**
  * A wrapper around another iterator of record data and a history for that iterator's data
  * that iterates though each element in the iterator as a [Record] instead.
+ *
+ * The main purpose of this representation is to allow manipulating one or more
+ * [RecordContainer](crate::differentiation::RecordContainer)s as iterators of Records then
+ * collect the iterator back into a RecordContainer so containers of Records with a shared history
+ * don't have to store the history for each element but the richer Record API can be used for
+ * operations anyway.
+ *
+ * ```
+ * use easy_ml::differentiation::{WengertList, Record, RecordTensor};
+ * use easy_ml::tensors::Tensor;
+ * use easy_ml::numeric::Numeric;
+ * use easy_ml::numeric::extra::Real;
+ *
+ * let history = WengertList::new();
+ * let A = RecordTensor::variables(
+ *     &history,
+ *     Tensor::from_fn([("r", 3), ("c", 2)], |[r, c]| ((5 * r) + c) as f32)
+ * );
+ * let B = RecordTensor::variables(
+ *     &history,
+ *     Tensor::from([("x", 6)], vec![ 0.2, 0.1, 0.5, 0.3, 0.7, 0.9 ])
+ * );
+ *
+ * fn power<T: Numeric + Real+ Copy>(x: T, y: T) -> T {
+ *     x.pow(y)
+ * }
+ *
+ * let result: RecordTensor<_, _, 2> = RecordTensor::from_iter(
+ *     A.shape(),
+ *     // iterators of records don't need to have matching shapes as long as the number
+ *     // of elements matches the final shape
+ *     A.iter_as_records().zip(B.iter_as_records()).map(|(x, y)| power(x, y))
+ * ).expect("result should have 6 elements");
+ * ```
  */
 pub struct AsRecords<'a, I, T> {
     numbers: I,
     history: Option<&'a WengertList<T>>,
 }
 
-// Doc example using zip to perform binary operation then collecting back?
-
 /**
  * AsRecords can be created from a RecordTensor to manipulate the data as an iterator of Records
  * then streamed back into a RecordTensor with [from_iter](RecordTensor::from_iter)
+ *
+ * See also: [map](RecordTensor::map), [map_mut](RecordTensor::map_mut)
  *
  * ```
  * use easy_ml::differentiation::{WengertList, Record, RecordTensor};
@@ -90,6 +124,8 @@ where
 /**
  * AsRecords can be created from a RecordMatrix to manipulate the data as an iterator of Records
  * then streamed back into a RecordMatrix with [from_iter](RecordMatrix::from_iter)
+ *
+ * See also: [map](RecordMatrix::map), [map_mut](RecordMatrix::map_mut)
  *
  * ```
  * use easy_ml::differentiation::{WengertList, Record, RecordMatrix};

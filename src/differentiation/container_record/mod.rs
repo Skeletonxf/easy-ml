@@ -60,7 +60,8 @@ pub mod iterators;
  *
  * If you just want to manipulate the data in record containers as if they were Records you can
  * use the iterator APIs of [AsRecords](AsRecords) instead and collect them back into containers
- * when you're done.
+ * when you're done, or to manipulate a single container, the [map](RecordContainer::map) and
+ * [map_mut](RecordContainer::map_mut) methods.
  */
 // TODO: Docs on here for making shapes match up.
 #[derive(Debug)]
@@ -1005,6 +1006,8 @@ where
      * NB: Mapping a RecordTensor of constants to variables is not inconsistent, the history
      * after mapping doesn't have to be the same as before, only must be the same for every
      * mapped element.
+     *
+     * See also: [AsRecords](AsRecords)
      */
     #[track_caller]
     pub fn map(
@@ -1910,6 +1913,8 @@ where
      * NB: Mapping a RecordMatrix of constants to variables is not inconsistent, the history
      * after mapping doesn't have to be the same as before, only must be the same for every
      * mapped element.
+     *
+     * See also: [AsRecords](AsRecords)
      */
     #[track_caller]
     pub fn map(
