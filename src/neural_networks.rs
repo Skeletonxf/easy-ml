@@ -141,7 +141,7 @@ let inputs = vec![
     Matrix::row(vec![ 1.0, 1.0, 1.0 ]).map(|x| Record::constant(x))
 ];
 // define XOR outputs which will be used as labels
-let labels = vec![ 0.0, 1.0, 1.0, 0.0 ].drain(..).map(|x| Record::constant(x)).collect();
+let labels = vec![ 0.0, 1.0, 1.0, 0.0 ].into_iter().map(|x| Record::constant(x)).collect();
 let learning_rate = 0.2;
 let epochs = 4000;
 
@@ -337,7 +337,7 @@ let inputs = Tensor::from([("sample", 4), ("r", 1), ("c", 3)], vec![
 ])
     .map(|x| Record::constant(x));
 // define XOR outputs which will be used as labels
-let labels = vec![ 0.0, 1.0, 1.0, 0.0 ].drain(..).map(|x| Record::constant(x)).collect();
+let labels = vec![ 0.0, 1.0, 1.0, 0.0 ].into_iter().map(|x| Record::constant(x)).collect();
 let learning_rate = 0.2;
 let epochs = 4000;
 

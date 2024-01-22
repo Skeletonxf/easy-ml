@@ -530,8 +530,8 @@ fn generate_permutations<T: Clone>(list: &mut Vec<T>) -> Vec<(Vec<T>, bool)> {
 
 /*
  * In place version of generate_permutations which calls the consumer on
- * each permuted list without performing any copies (ie each permuted list)
- * is the same list before and after permutation.
+ * each permuted list without performing any copies (ie each permuted list
+ * is the same list before and after permutation).
  */
 fn with_each_permutation<T: Clone, F>(list: &mut Vec<T>, consumer: &mut F)
 where
@@ -883,14 +883,14 @@ pub fn variance<I, T: Numeric>(data: I) -> T
 where
     I: Iterator<Item = T>,
 {
-    let mut list = data.collect::<Vec<T>>();
+    let list = data.collect::<Vec<T>>();
     assert!(!list.is_empty(), "Provided iterator must not be empty");
 
     // copy the list as we need to keep it as well as getting the mean
     let m = mean(list.iter().cloned());
     // use drain here as we no longer need to keep list
     mean(
-        list.drain(..)
+        list.into_iter()
             .map(|x| (x.clone() - m.clone()) * (x - m.clone())),
     )
 }
@@ -1382,7 +1382,7 @@ where
     let v_column = Tensor::from([(names[0], rows), (names[1], 1)], v.iter().collect());
     let v_row = Tensor::from([(names[0], 1), (names[1], rows)], v.iter().collect());
     // I - 2 v v^T
-    identity - (v_column * v_row).map(|e| e * &two)
+    identity - ((v_column * v_row) * two)
 }
 
 /**

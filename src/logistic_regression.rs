@@ -279,15 +279,12 @@ assert!(
 
 /**
  * A utility function to plot the decision boundry of the model. As the terminal plotting
- * library doesn't support colored plotting at the time of writing this is a little challenging
- * to do given we have two dimensions of inputs and one dimension of output which is also real
- * valued as logistic regression computes probability. This could best be done with a 3d
+ * library doesn't support colored plotting when showing unit test output this is a little
+ * challenging to do given we have two dimensions of inputs and one dimension of output which is
+ * also real valued as logistic regression computes probability. This could best be done with a 3d
  * plot or a heatmap, but is done with this function by taking 0.5 as the cutoff for
  * classification, generating a grid of points in the two dimensional space and classifying all
  * of them, then plotting the ones classified as class 1.
- *
- * TODO: work out how to retrieve a line from these points so the decision boundry is easier
- * to see
  */
 fn decision_boundry(weights: &Matrix<f64>) {
     // compute a matrix of coordinate pairs from (-8.0, -8.0) to (8.0, 8.0)
@@ -515,7 +512,7 @@ let mut log_likelihood_progress = Vec::with_capacity(25);
 // you would stop once the updates for the weights become 0 or very close to 0.
 for i in 0..25 {
     let update = update_function(&weights, &class1_inputs, &class2_inputs);
-    weights = weights + (update.map(|w| w * learning_rate));
+    weights = weights + (update * learning_rate);
     log_likelihood_progress.push(
         (i as f32, log_likelihood(&weights, &class1_inputs, &class2_inputs) as f32)
     );
@@ -545,15 +542,12 @@ assert!(
 
 /**
  * A utility function to plot the decision boundry of the model. As the terminal plotting
- * library doesn't support colored plotting at the time of writing this is a little challenging
- * to do given we have two dimensions of inputs and one dimension of output which is also real
- * valued as logistic regression computes probability. This could best be done with a 3d
+ * library doesn't support colored plotting when showing unit test output this is a little
+ * challenging to do given we have two dimensions of inputs and one dimension of output which is
+ * also real valued as logistic regression computes probability. This could best be done with a 3d
  * plot or a heatmap, but is done with this function by taking 0.5 as the cutoff for
  * classification, generating a grid of points in the two dimensional space and classifying all
  * of them, then plotting the ones classified as class 1.
- *
- * TODO: work out how to retrieve a line from these points so the decision boundry is easier
- * to see
  */
 fn decision_boundry(weights: &Tensor<f64, 1>) {
     // compute a matrix of coordinate pairs from (-8.0, -8.0) to (8.0, 8.0)
