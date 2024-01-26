@@ -20,15 +20,46 @@ mod swapped;
 /**
  * A record container is displayed by showing its number components.
  */
+// FIXME: As (T, usize) doesn't implement Display this is kinda useless because S here always
+// is a matrix or tensor view of (T, usize) which doesn't implement Display
+// We need to have a way to create a view by appling a lazy transform function so we can
+// call into the shared display formatter without performing a copy by first applying a function
+// that discards the indexes from the tuples
 impl<'a, T, S, const D: usize> std::fmt::Display for RecordContainer<'a, T, S, D>
 where
-    T: std::fmt::Display + Primitive,
+     T: std::fmt::Display + Primitive,
     S: std::fmt::Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.numbers)
     }
 }
+
+// /**
+//  * A record container is displayed by showing its number components.
+//  */
+// impl<'a, T, S> std::fmt::Display for RecordMatrix<'a, T, S>
+// where
+//     T: std::fmt::Display + Primitive,
+//     S: MatrixRef<(T, Index)>,
+// {
+//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//         write!(f, "{}", self.numbers)
+//     }
+// }
+//
+// /**
+//  * A record container is displayed by showing its number components.
+//  */
+// impl<'a, T, S, const D: usize> std::fmt::Display for RecordTensor<'a, T, S, D>
+// where
+//     T: std::fmt::Display + Primitive,
+//     S: TensorRef<(T, Index), D>,
+// {
+//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//         write!(f, "{}", self.numbers)
+//     }
+// }
 
 /**
  * Any record container of a Cloneable type implements clone
