@@ -22,12 +22,14 @@ use crate::tensors::indexing::{
 use crate::tensors::{Dimension, Tensor};
 
 mod indexes;
+mod map;
 mod ranges;
 mod renamed;
 pub mod traits;
 mod zip;
 
 pub use indexes::*;
+pub(crate) use map::*;
 pub use ranges::*;
 pub use renamed::*;
 pub use zip::*;

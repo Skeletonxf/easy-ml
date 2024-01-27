@@ -21,10 +21,12 @@ use crate::matrices::iterators::*;
 use crate::matrices::{Column, Matrix, Row};
 
 pub mod erased;
+mod map;
 mod partitions;
 mod ranges;
 pub mod traits;
 
+pub(crate) use map::*;
 pub use partitions::*;
 pub use ranges::*;
 

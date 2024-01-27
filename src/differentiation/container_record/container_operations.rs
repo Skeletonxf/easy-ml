@@ -5,61 +5,95 @@ use crate::differentiation::functions::{
 use crate::differentiation::record_operations::are_same_list;
 use crate::differentiation::{Index, Primitive, WengertList};
 use crate::differentiation::{RecordContainer, RecordMatrix, RecordTensor};
-use crate::matrices::views::{MatrixRef, NoInteriorMutability};
-use crate::matrices::Matrix;
+use crate::matrices::views::{DataLayout, MatrixMap, MatrixRef, MatrixView, NoInteriorMutability};
+use crate::matrices::{Column, Matrix, Row};
 use crate::numeric::{Numeric, NumericRef};
-use crate::tensors::views::TensorRef;
+use crate::tensors::views::{TensorMap, TensorRef, TensorView};
 use crate::tensors::Tensor;
 
 use crate::numeric::extra::{Cos, Exp, Ln, Pow, Real, RealRef, Sin, Sqrt};
 
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
+use std::marker::PhantomData;
+
 mod swapped;
 
-/**
- * A record container is displayed by showing its number components.
- */
-// FIXME: As (T, usize) doesn't implement Display this is kinda useless because S here always
-// is a matrix or tensor view of (T, usize) which doesn't implement Display
-// We need to have a way to create a view by appling a lazy transform function so we can
-// call into the shared display formatter without performing a copy by first applying a function
-// that discards the indexes from the tuples
-impl<'a, T, S, const D: usize> std::fmt::Display for RecordContainer<'a, T, S, D>
+struct MatrixRefRef<'a, T, S> {
+    source: &'a S,
+    _type: PhantomData<T>,
+}
+
+// # Safety
+//
+// Since the MatrixRef we own must implement MatrixRef correctly, so do we by delegating to it,
+// as we don't introduce any interior mutability.
+// TODO: Make this redundant in version 2.0 and replace with blanket impls for & and &mut versions
+// of types that implement MatrixRef like we have for TensorRef
+unsafe impl<'a, T, S> MatrixRef<T> for MatrixRefRef<'a, T, S>
 where
-     T: std::fmt::Display + Primitive,
-    S: std::fmt::Display,
+    S: MatrixRef<T>,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.numbers)
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        self.source.try_get_reference(row, column)
+    }
+
+    fn view_rows(&self) -> Row {
+        self.source.view_rows()
+    }
+
+    fn view_columns(&self) -> Column {
+        self.source.view_columns()
+    }
+
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        self.source.get_reference_unchecked(row, column)
+    }
+
+    fn data_layout(&self) -> DataLayout {
+        self.source.data_layout()
     }
 }
 
-// /**
-//  * A record container is displayed by showing its number components.
-//  */
-// impl<'a, T, S> std::fmt::Display for RecordMatrix<'a, T, S>
-// where
-//     T: std::fmt::Display + Primitive,
-//     S: MatrixRef<(T, Index)>,
-// {
-//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//         write!(f, "{}", self.numbers)
-//     }
-// }
-//
-// /**
-//  * A record container is displayed by showing its number components.
-//  */
-// impl<'a, T, S, const D: usize> std::fmt::Display for RecordTensor<'a, T, S, D>
-// where
-//     T: std::fmt::Display + Primitive,
-//     S: TensorRef<(T, Index), D>,
-// {
-//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//         write!(f, "{}", self.numbers)
-//     }
-// }
+/**
+ * A record matrix is displayed by showing its number components.
+ */
+impl<'a, T, S> std::fmt::Display for RecordMatrix<'a, T, S>
+where
+    T: std::fmt::Display + Primitive,
+    S: MatrixRef<(T, Index)>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            MatrixView::from(MatrixMap::from(
+                MatrixRefRef {
+                    source: self.numbers.source_ref(),
+                    _type: PhantomData
+                },
+                |(x, _)| x
+            ))
+        )
+    }
+}
+
+/**
+ * A record tensor is displayed by showing its number components.
+ */
+impl<'a, T, S, const D: usize> std::fmt::Display for RecordTensor<'a, T, S, D>
+where
+    T: std::fmt::Display + Primitive,
+    S: TensorRef<(T, Index), D>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            TensorView::from(TensorMap::from(self.numbers.source_ref(), |(x, _)| x))
+        )
+    }
+}
 
 /**
  * Any record container of a Cloneable type implements clone
@@ -1108,7 +1142,7 @@ where
     S2: TensorRef<(T, Index), 2>,
 {
     use crate::tensors::indexing::TensorReferenceIterator;
-    use crate::tensors::views::{TensorIndex, TensorView};
+    use crate::tensors::views::TensorIndex;
 
     assert!(
         are_same_list(lhs.history, rhs.history),
@@ -1283,7 +1317,6 @@ where
     S2: MatrixRef<(T, Index)> + NoInteriorMutability,
 {
     use crate::matrices::iterators::{ColumnReferenceIterator, RowReferenceIterator};
-    use crate::matrices::views::MatrixView;
     // LxM * MxN -> LxN
     assert!(
         lhs.view_columns() == rhs.view_rows(),
