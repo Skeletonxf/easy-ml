@@ -447,6 +447,20 @@ where
     }
 
     /**
+     * Gets the number of rows visible to this matrix container.
+     */
+    pub fn rows(&self) -> Row {
+        self.numbers.rows()
+    }
+
+    /**
+     * Gets the number of columns visible to this matrix container.
+     */
+    pub fn columns(&self) -> Column {
+        self.numbers.columns()
+    }
+
+    /**
      * Creates a container from constants/variables directly, most likely obtained by getting a
      * matrix view of an existing container. **The inputs are not checked for validity**. It is
      * possible to pass in the wrong Wengert list here or even numbers with indexes that aren't
