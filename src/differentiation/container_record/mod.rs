@@ -3,8 +3,7 @@ use crate::differentiation::iterators::{
     AsRecords, InconsistentHistory, InvalidRecordIteratorError,
 };
 use crate::differentiation::record_operations;
-use crate::differentiation::Record;
-use crate::differentiation::{Derivatives, Index, Primitive, WengertList};
+use crate::differentiation::{Derivatives, Index, Primitive, Record, WengertList};
 use crate::matrices::iterators::{
     ColumnMajorIterator, RowMajorIterator, RowMajorOwnedIterator, RowMajorReferenceMutIterator,
 };
@@ -270,7 +269,7 @@ where
      * [Record](Record)s with [`Record::from_existing`](Record::from_existing) to continue tracking
      * numerical operations on the data.
      */
-    pub fn view(&self) -> TensorView<(T, usize), &RecordTensor<'a, T, S, D>, D> {
+    pub fn view(&self) -> TensorView<(T, Index), &RecordTensor<'a, T, S, D>, D> {
         TensorView::from(self)
     }
 
@@ -300,7 +299,23 @@ where
      * also the index for that record's entry in the WengertList. These can be parsed back into
      * a RecordTensor with [`from_existing`](RecordTensor::from_existing) or individually into
      * [Record](Record)s with [`Record::from_existing`](Record::from_existing) to continue tracking
-     * numerical operations on the data.. See [TensorAccess::from_source_order].
+     * numerical operations on the data.
+     *
+     * See [TensorAccess::from_source_order], [get_as_record](TensorAccess::get_as_record).
+     *
+     * ```
+     * use easy_ml::differentiation::RecordTensor;
+     * use easy_ml::differentiation::WengertList;
+     * use easy_ml::tensors::Tensor;
+     *
+     * let list = WengertList::new();
+     * let X = RecordTensor::variables(
+     *     &list,
+     *     Tensor::from([("a", 3)], vec![ 3.0, 4.0, 5.0 ])
+     * );
+     * let x = X.index().get_as_record([0]);
+     * assert_eq!(x.number, 3.0);
+     * ```
      */
     pub fn index(&self) -> TensorAccess<(T, Index), &RecordTensor<'a, T, S, D>, D> {
         TensorAccess::from_source_order(self)
@@ -502,7 +517,7 @@ where
      * [Record](Record)s with [`Record::from_existing`](Record::from_existing) to continue tracking
      * numerical operations on the data.
      */
-    pub fn view(&self) -> MatrixView<(T, usize), &RecordMatrix<'a, T, S>> {
+    pub fn view(&self) -> MatrixView<(T, Index), &RecordMatrix<'a, T, S>> {
         MatrixView::from(self)
     }
 
@@ -531,6 +546,39 @@ where
         &'b self,
     ) -> AsRecords<'a, ColumnMajorIterator<'b, (T, Index), RecordMatrix<'a, T, S>>, T> {
         AsRecords::from_matrix_column_major(self)
+    }
+
+    /**
+     * Returns a copy of the data at the index as a Record. If you need to access all the data
+     * as records instead of just a specific index you should probably use one of the iterator
+     * APIs instead.
+     *
+     * See also: [iter_row_major_as_records](RecordMatrix::iter_row_major_as_records),
+     * [iter_column_major_as_records](RecordMatrix::iter_column_major_as_records)
+     *
+     * # Panics
+     *
+     * If the index is out of range.
+     *
+     * For a non panicking API see [try_get_as_record](RecordMatrix::try_get_as_record)
+     */
+    #[track_caller]
+    pub fn get_as_record(&self, row: Row, column: Column) -> Record<'a, T> {
+        Record::from_existing(self.numbers.get(row, column), self.history)
+    }
+
+    /**
+     * Returns a copy of the data at the index as a Record, or None if the index is
+     * out of range. If you need to access all the data as records instead of just a specific
+     * index you should probably use one of the iterator APIs instead.
+     *
+     * See also: [iter_row_major_as_records](RecordMatrix::iter_row_major_as_records),
+     * [iter_column_major_as_records](RecordMatrix::iter_column_major_as_records)
+     */
+    pub fn try_get_as_record(&self, row: Row, column: Column) -> Option<Record<'a, T>> {
+        self.numbers
+            .try_get_reference(row, column)
+            .map(|r| Record::from_existing(r.clone(), self.history))
     }
 }
 

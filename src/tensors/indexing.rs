@@ -34,6 +34,8 @@
  * the dimensions are stored as.
  */
 
+use crate::differentiation::{Index, Primitive, Record, RecordTensor};
+use crate::numeric::Numeric;
 use crate::tensors::dimensions;
 use crate::tensors::dimensions::DimensionMappings;
 use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
@@ -442,6 +444,146 @@ where
         self.iter_reference_mut()
             .with_index()
             .for_each(|(i, x)| *x = mapping_function(i, x.clone()));
+    }
+}
+
+impl<'a, T, S, const D: usize> TensorAccess<(T, Index), &RecordTensor<'a, T, S, D>, D>
+where
+    T: Numeric + Primitive,
+    S: TensorRef<(T, Index), D>,
+{
+    /**
+     * Using the dimension ordering of the TensorAccess, returns a copy of the data at the index
+     * as a Record if the index is in range, panicking if the index is out of range.
+     *
+     * If you need to access all the data as records instead of just a specific index you should
+     * probably use one of the iterator APIs instead.
+     *
+     * See also: [iter_as_records](RecordTensor::iter_as_records)
+     *
+     * # Panics
+     *
+     * If the index is out of range.
+     *
+     * For a non panicking API see [try_get_as_record](TensorAccess::try_get_as_record)
+     *
+     * ```
+     * use easy_ml::differentiation::RecordTensor;
+     * use easy_ml::differentiation::WengertList;
+     * use easy_ml::tensors::Tensor;
+     *
+     * let list = WengertList::new();
+     * let X = RecordTensor::variables(
+     *     &list,
+     *     Tensor::from(
+     *         [("r", 2), ("c", 3)],
+     *         vec![
+     *             3.0, 4.0, 5.0,
+     *             1.0, 4.0, 9.0,
+     *         ]
+     *     )
+     * );
+     * let x = X.index_by(["c", "r"]).get_as_record([2, 0]);
+     * assert_eq!(x.number, 5.0);
+     * ```
+     */
+    #[track_caller]
+    pub fn get_as_record(&self, indexes: [usize; D]) -> Record<'a, T> {
+        Record::from_existing(self.get(indexes), self.source.history())
+    }
+
+    /**
+     * Using the dimension ordering of the TensorAccess, returns a copy of the data at the index
+     * as a Record if the index is in range. Otherwise returns None.
+     *
+     * If you need to access all the data as records instead of just a specific index you should
+     * probably use one of the iterator APIs instead.
+     *
+     * See also: [iter_as_records](RecordTensor::iter_as_records)
+     */
+    pub fn try_get_as_record(&self, indexes: [usize; D]) -> Option<Record<'a, T>> {
+        self.try_get_reference(indexes)
+            .map(|r| Record::from_existing(r.clone(), self.source.history()))
+    }
+}
+
+impl<'a, T, S, const D: usize> TensorAccess<(T, Index), RecordTensor<'a, T, S, D>, D>
+where
+    T: Numeric + Primitive,
+    S: TensorRef<(T, Index), D>,
+{
+    /**
+     * Using the dimension ordering of the TensorAccess, returns a copy of the data at the index
+     * as a Record if the index is in range, panicking if the index is out of range.
+     *
+     * If you need to access all the data as records instead of just a specific index you should
+     * probably use one of the iterator APIs instead.
+     *
+     * See also: [iter_as_records](RecordTensor::iter_as_records)
+     *
+     * # Panics
+     *
+     * If the index is out of range.
+     *
+     * For a non panicking API see [try_get_as_record](TensorAccess::try_get_as_record)
+     */
+    #[track_caller]
+    pub fn get_as_record(&self, indexes: [usize; D]) -> Record<'a, T> {
+        Record::from_existing(self.get(indexes), self.source.history())
+    }
+
+    /**
+     * Using the dimension ordering of the TensorAccess, returns a copy of the data at the index
+     * as a Record if the index is in range. Otherwise returns None.
+     *
+     * If you need to access all the data as records instead of just a specific index you should
+     * probably use one of the iterator APIs instead.
+     *
+     * See also: [iter_as_records](RecordTensor::iter_as_records)
+     */
+    pub fn try_get_as_record(&self, indexes: [usize; D]) -> Option<Record<'a, T>> {
+        self.try_get_reference(indexes)
+            .map(|r| Record::from_existing(r.clone(), self.source.history()))
+    }
+}
+
+impl<'a, T, S, const D: usize> TensorAccess<(T, Index), &mut RecordTensor<'a, T, S, D>, D>
+where
+    T: Numeric + Primitive,
+    S: TensorRef<(T, Index), D>,
+{
+    /**
+     * Using the dimension ordering of the TensorAccess, returns a copy of the data at the index
+     * as a Record if the index is in range, panicking if the index is out of range.
+     *
+     * If you need to access all the data as records instead of just a specific index you should
+     * probably use one of the iterator APIs instead.
+     *
+     * See also: [iter_as_records](RecordTensor::iter_as_records)
+     *
+     * # Panics
+     *
+     * If the index is out of range.
+     *
+     * For a non panicking API see [try_get_as_record](TensorAccess::try_get_as_record)
+     */
+    #[track_caller]
+    pub fn get_as_record(&self, indexes: [usize; D]) -> Record<'a, T> {
+        Record::from_existing(self.get(indexes), self.source.history())
+    }
+
+    /**
+     * Using the dimension ordering of the TensorAccess, returns a copy of the data at the index
+     * as a Record if the index is in range. Otherwise returns None.
+     *
+     * If you need to access all the data as records instead of just a specific index you should
+     * probably use one of the iterator APIs instead.
+     *
+     * See also: [iter_as_records](RecordTensor::iter_as_records)
+     */
+    pub fn try_get_as_record(&self, indexes: [usize; D]) -> Option<Record<'a, T>> {
+        self.try_get_reference(indexes)
+            .map(|r| Record::from_existing(r.clone(), self.source.history()))
     }
 }
 
