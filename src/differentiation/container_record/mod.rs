@@ -2599,6 +2599,39 @@ where
 {
 }
 
+// TODO: Soft removing this trait in v2 anyway, but need to blanket impl these things to avoid
+// generic code getting tripped up.
+
+// # Safety
+//
+// Our inner `numbers` matrix has to implement NoInteriorMutability correctly so by delegating to
+// it without introducing interior mutability, we implement NoInteriorMutability
+// correctly as well.
+/**
+ * RecordMatrix implements NoInteriorMutability when the source does.
+ */
+unsafe impl<'a, T, S> NoInteriorMutability for &RecordMatrix<'a, T, S>
+where
+    T: Primitive,
+    S: NoInteriorMutability,
+{
+}
+
+// # Safety
+//
+// Our inner `numbers` matrix has to implement NoInteriorMutability correctly so by delegating to
+// it without introducing interior mutability, we implement NoInteriorMutability
+// correctly as well.
+/**
+ * RecordMatrix implements NoInteriorMutability when the source does.
+ */
+unsafe impl<'a, T, S> NoInteriorMutability for &mut RecordMatrix<'a, T, S>
+where
+    T: Primitive,
+    S: NoInteriorMutability,
+{
+}
+
 // # Safety
 //
 // Our inner `numbers` matrix has to implement MatrixMut correctly so by delegating to it
