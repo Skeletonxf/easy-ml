@@ -4,6 +4,13 @@
 
 Still in development
 
+## Versions 1.9.2, 1.8.4 and 1.7.3
+
+Will contain a fix for an internal indexing method on Matrix that did not
+correctly check for inputs being within bounds.
+
+Version 1.10 will also include this backported bugfix.
+
 ## Versions 1.9.1 and 1.8.3
 
 Both versions contain a fix for the `WithIndex` matrix row/column major
