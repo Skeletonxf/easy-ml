@@ -267,7 +267,7 @@ impl <T> Matrix<T> {
      * that calls this.
      */
     pub(crate) fn _try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
-        if row < self.rows() || column < self.columns() {
+        if row < self.rows() && column < self.columns() {
             Some(&self.data[self.get_index(row, column)])
         } else {
             None
@@ -303,7 +303,7 @@ impl <T> Matrix<T> {
      * that calls this.
      */
     pub(crate) fn _try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
-        if row < self.rows() || column < self.columns() {
+        if row < self.rows() && column < self.columns() {
             let index = self.get_index(row, column);
             // borrow for get_index ends
             Some(&mut self.data[index])
