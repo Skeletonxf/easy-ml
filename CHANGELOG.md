@@ -6,8 +6,12 @@ Still in development
 
 ## Versions 1.9.2, 1.8.4 and 1.7.3
 
-Will contain a fix for an internal indexing method on Matrix that did not
-correctly check for inputs being within bounds.
+Each contain a fix for an internal indexing method on Matrix that did not
+correctly check for inputs being within bounds. Code that was already using
+valid indexes was unaffected, this bug however made it possible for indexing
+to erroneously panic instead of returning `None` when using the `try_` methods
+on Matrix that return an Option if exactly one of the two indexes provided
+was out of bounds.
 
 Version 1.10 will also include this backported bugfix.
 
