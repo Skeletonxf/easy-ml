@@ -17,15 +17,11 @@ of the network or trying different activation functions like ReLu or tanh.
 Note that the gradients recorded in each epoch must be cleared before training in
 the next one.
 
-Also note that the calls to `model` and `mean_squared_loss` use the rust turbofish syntax
-to tell the compiler explicitly what type we're monomorphising, as otherwise the rust
-compiler gets confused trying to infer the type.
-
 ## Matrix APIs
 
 ```
 use easy_ml::matrices::Matrix;
-use easy_ml::matrices::views::{MatrixRange, MatrixView, MatrixRef, NoInteriorMutability};
+use easy_ml::matrices::views::{MatrixRange, MatrixView, MatrixRef, NoInteriorMutability, IndexRange};
 use easy_ml::numeric::Numeric;
 use easy_ml::numeric::extra::Real;
 use easy_ml::differentiation::{Record, RecordMatrix, WengertList, Index};
@@ -110,19 +106,24 @@ fn mean_squared_loss_training<'a>(
     let rows = inputs.rows();
     let columns = inputs.columns();
     let history = w1.history();
-    let mut loss = Record::constant(0.0);
-    for r in 0..rows {
-        // TODO: MatrixRange here would be way tidier and closer to non training variant
-        let input = RecordMatrix::from_iter(
-            (1, columns),
-            inputs.iter_row_major_as_records().skip(columns * r).take(columns)
-        ).expect("Splitting inputs into RecordMatrix for each row should match expected size");
-        let correct = labels.get_as_record(0, r);
+    (0..rows).map(|r| {
+        // take each row as its own RecordMatrix input
+        (r, RecordMatrix::from_existing(
+            history,
+            MatrixView::from(
+                MatrixRange::from(
+                    inputs,
+                    IndexRange::new(r, 1),
+                    IndexRange::new(0, columns),
+                )
+            )
+        ))
+    }).fold(Record::constant(0.0), |acc, (r, input)| {
         let output = model_training(&input, w1, w2, w3);
+        let correct = labels.get_as_record(0, r);
         // sum up the squared loss
-        loss = loss + ((correct - output) * (correct - output));
-    }
-    loss / (rows as f32)
+        acc + ((correct - output) * (correct - output))
+    }) / (rows as f32)
 }
 
 /**
