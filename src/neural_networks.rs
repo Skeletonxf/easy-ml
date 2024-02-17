@@ -26,8 +26,8 @@ compiler gets confused trying to infer the type.
 ```
 use easy_ml::matrices::Matrix;
 use easy_ml::matrices::views::{MatrixRange, MatrixView, MatrixRef, NoInteriorMutability};
-use easy_ml::numeric::{Numeric, NumericRef};
-use easy_ml::numeric::extra::{Real, RealRef, Exp};
+use easy_ml::numeric::Numeric;
+use easy_ml::numeric::extra::Real;
 use easy_ml::differentiation::{Record, RecordMatrix, WengertList, Index};
 
 use rand::{Rng, SeedableRng};
@@ -55,18 +55,18 @@ fn sigmoid<T: Numeric + Real + Copy>(x: T) -> T {
 
 /**
  * A simple three layer neural network that outputs a scalar.
- *
- * This is written for a generic type, so it can be used with records and also
- * with normal floats.
  */
-fn model<T: Numeric + Real + Copy>(
-    input: &Matrix<T>, w1: &Matrix<T>, w2: &Matrix<T>, w3: &Matrix<T>
-) -> T
-where for<'a> &'a T: NumericRef<T> + RealRef<T> {
+fn model(
+    input: &Matrix<f32>, w1: &Matrix<f32>, w2: &Matrix<f32>, w3: &Matrix<f32>
+) -> f32 {
     (((input * w1).map(sigmoid) * w2).map(sigmoid) * w3).scalar()
 }
 
-fn model_2<'a, I>(
+/**
+ * A simple three layer neural network that outputs a scalar, using RecordMatrix types for the
+ * inputs to track derivatives.
+ */
+fn model_training<'a, I>(
     input: &RecordMatrix<'a, f32, I>,
     w1: &RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
     w2: &RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
@@ -80,45 +80,45 @@ where
 
 /**
  * Computes mean squared loss of the network against all the training data.
- *
- * This is written for a generic type, so it can be used with records and also
- * with normal floats.
  */
-fn mean_squared_loss<T: Numeric + Real + Copy, I>(
-   inputs: &Vec<Matrix<T>>,
-   w1: &Matrix<T>,
-   w2: &Matrix<T>,
-   w3: &Matrix<T>,
-   labels: &Vec<T>
-) -> T
-where for<'a> &'a T: NumericRef<T> + RealRef<T> {
-    inputs.iter().enumerate().fold(T::zero(), |acc, (i, input)| {
-        let output = model::<T>(input, w1, w2, w3);
+fn mean_squared_loss(
+   inputs: &Vec<Matrix<f32>>,
+   w1: &Matrix<f32>,
+   w2: &Matrix<f32>,
+   w3: &Matrix<f32>,
+   labels: &Vec<f32>
+) -> f32 {
+    inputs.iter().enumerate().fold(0.0, |acc, (i, input)| {
+        let output = model(input, w1, w2, w3);
         let correct = labels[i];
         // sum up the squared loss
         acc + ((correct - output) * (correct - output))
-    }) / T::from_usize(inputs.len()).unwrap()
+    }) / inputs.len() as f32
 }
 
-fn mean_squared_loss_2<'a>(
+/**
+ * Computes mean squared loss of the network against all the training data, using RecordMatrix
+ * types for the inputs to track derivatives.
+ */
+fn mean_squared_loss_training<'a>(
     inputs: &RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
     w1: &mut RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
     w2: &mut RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
     w3: &mut RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
     labels: &RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
-) -> Record<'a, f32>
-{
+) -> Record<'a, f32> {
     let rows = inputs.rows();
     let columns = inputs.columns();
     let history = w1.history();
     let mut loss = Record::constant(0.0);
     for r in 0..rows {
+        // TODO: MatrixRange here would be way tidier and closer to non training variant
         let input = RecordMatrix::from_iter(
             (1, columns),
             inputs.iter_row_major_as_records().skip(columns * r).take(columns)
         ).expect("Splitting inputs into RecordMatrix for each row should match expected size");
         let correct = labels.get_as_record(0, r);
-        let output = model_2(&input, w1, w2, w3);
+        let output = model_training(&input, w1, w2, w3);
         // sum up the squared loss
         loss = loss + ((correct - output) * (correct - output));
     }
@@ -128,8 +128,8 @@ fn mean_squared_loss_2<'a>(
 /**
  * Updates the weight matrices to step the gradient by one step.
  *
- * Note that here we are no longer generic over the type, we need the methods
- * defined on Record to do backprop.
+ * Note that here we need the methods defined on Record / RecordMatrix to do backprop. There is
+ * no non-training version of this we can define without deriative tracking.
  */
 fn step_gradient<'a>(
     inputs: &RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
@@ -139,9 +139,8 @@ fn step_gradient<'a>(
     labels: &RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
     learning_rate: f32,
     list: &'a WengertList<f32>
-) -> f32
-{
-    let loss = mean_squared_loss_2(inputs, w1, w2, w3, labels);
+) -> f32 {
+    let loss = mean_squared_loss_training(inputs, w1, w2, w3, labels);
     let derivatives = loss.derivatives();
     // update each element in the weight matrices by the derivatives
     w1.map_mut(|x| x - (derivatives[&x] * learning_rate));
@@ -255,10 +254,10 @@ let row_4 = RecordMatrix::from_existing(
     Some(&list),
     MatrixView::from(MatrixRange::from(&inputs, 3..4, 0..3))
 );
-println!("0 0: {:?}", model_2(&row_1, &w1, &w2, &w3).number);
-println!("0 1: {:?}", model_2(&row_2, &w1, &w2, &w3).number);
-println!("1 0: {:?}", model_2(&row_3, &w1, &w2, &w3).number);
-println!("1 1: {:?}", model_2(&row_4, &w1, &w2, &w3).number);
+println!("0 0: {:?}", model_training(&row_1, &w1, &w2, &w3).number);
+println!("0 1: {:?}", model_training(&row_2, &w1, &w2, &w3).number);
+println!("1 0: {:?}", model_training(&row_3, &w1, &w2, &w3).number);
+println!("1 1: {:?}", model_training(&row_4, &w1, &w2, &w3).number);
 assert!(losses[epochs - 1] < 0.02);
 
 // we can also extract the learned weights once done with training and avoid the memory
@@ -266,10 +265,10 @@ assert!(losses[epochs - 1] < 0.02);
 let w1_final = w1.view().map(|(x, _)| x);
 let w2_final = w2.view().map(|(x, _)| x);
 let w3_final = w3.view().map(|(x, _)| x);
-println!("0 0: {:?}", model::<f32>(&row_1.view().map(|(x, _)| x), &w1_final, &w2_final, &w3_final));
-println!("0 1: {:?}", model::<f32>(&row_2.view().map(|(x, _)| x), &w1_final, &w2_final, &w3_final));
-println!("1 0: {:?}", model::<f32>(&row_3.view().map(|(x, _)| x), &w1_final, &w2_final, &w3_final));
-println!("1 1: {:?}", model::<f32>(&row_4.view().map(|(x, _)| x), &w1_final, &w2_final, &w3_final));
+println!("0 0: {:?}", model(&row_1.view().map(|(x, _)| x), &w1_final, &w2_final, &w3_final));
+println!("0 1: {:?}", model(&row_2.view().map(|(x, _)| x), &w1_final, &w2_final, &w3_final));
+println!("1 0: {:?}", model(&row_3.view().map(|(x, _)| x), &w1_final, &w2_final, &w3_final));
+println!("1 1: {:?}", model(&row_4.view().map(|(x, _)| x), &w1_final, &w2_final, &w3_final));
 ```
 
 ## Tensor APIs
