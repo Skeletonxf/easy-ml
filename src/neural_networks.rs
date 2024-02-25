@@ -279,7 +279,7 @@ use easy_ml::tensors::Tensor;
 use easy_ml::tensors::views::{TensorView, TensorRef};
 use easy_ml::numeric::{Numeric, NumericRef};
 use easy_ml::numeric::extra::{Real, RealRef, Exp};
-use easy_ml::differentiation::{Record, WengertList};
+use easy_ml::differentiation::{Record, RecordTensor, WengertList, Index};
 
 use rand::{Rng, SeedableRng};
 use rand::distributions::Standard;
@@ -323,6 +323,24 @@ where
 }
 
 /**
+ * A simple three layer neural network that outputs a scalar, using RecordTensor types for
+ * the inputs to track derivatives.
+ */
+fn model_training<'a, I>(
+    input: &RecordTensor<'a, f32, I, 2>,
+    w1: &RecordTensor<'a, f32, Tensor<(f32, Index), 2>, 2>,
+    w2: &RecordTensor<'a, f32, Tensor<(f32, Index), 2>, 2>,
+    w3: &RecordTensor<'a, f32, Tensor<(f32, Index), 2>, 2>,
+) -> Record<'a, f32>
+where
+    I: TensorRef<(f32, Index), 2>,
+{
+    (((input * w1).map(sigmoid).unwrap() * w2).map(sigmoid).unwrap() * w3)
+        .index()
+        .get_as_record([0, 0])
+}
+
+/**
  * Computes mean squared loss of the network against all the training data.
  *
  * This is written for a generic type, so it can be used with records and also
@@ -352,6 +370,38 @@ where
             sum = sum + ((correct - output) * (correct - output));
         }
         sum / T::from_usize(number_of_samples).unwrap()
+    }
+}
+
+/**
+ * Computes mean squared loss of the network against all the training data, using RecordTensor
+ * types for the inputs to track derivatives.
+ */
+fn mean_squared_loss_training<'a>(
+   inputs: &RecordTensor<'a, f32, Tensor<(f32, Index), 3>, 3>,
+   w1: &RecordTensor<'a, f32, Tensor<(f32, Index), 2>, 2>,
+   w2: &RecordTensor<'a, f32, Tensor<(f32, Index), 2>, 2>,
+   w3: &RecordTensor<'a, f32, Tensor<(f32, Index), 2>, 2>,
+   labels: &RecordTensor<'a, f32, Tensor<(f32, Index), 1>, 1>,
+) -> Record<'a, f32> {
+    let inputs_shape = inputs.shape();
+    let number_of_samples = inputs_shape[0].1;
+    let samples_name = inputs_shape[0].0;
+    let history = w1.history();
+    {
+        let mut sum = Record::constant(0.0);
+        for i in 0..number_of_samples {
+            let input = inputs.view();
+            let input = RecordTensor::from_existing(
+                history,
+                input.select([(samples_name, i)])
+            );
+            let output = model_training(&input, w1, w2, w3);
+            let correct = labels.index().get_as_record([i]);
+            // sum up the squared loss
+            sum = sum + ((correct - output) * (correct - output));
+        }
+        sum / number_of_samples as f32
     }
 }
 
