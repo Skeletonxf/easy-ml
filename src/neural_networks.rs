@@ -98,9 +98,9 @@ fn mean_squared_loss(
  */
 fn mean_squared_loss_training<'a>(
     inputs: &RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
-    w1: &mut RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
-    w2: &mut RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
-    w3: &mut RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
+    w1: &RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
+    w2: &RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
+    w3: &RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
     labels: &RecordMatrix<'a, f32, Matrix<(f32, Index)>>,
 ) -> Record<'a, f32> {
     let rows = inputs.rows();
@@ -144,14 +144,15 @@ fn step_gradient<'a>(
     let loss = mean_squared_loss_training(inputs, w1, w2, w3, labels);
     let derivatives = loss.derivatives();
     // update each element in the weight matrices by the derivatives
-    w1.map_mut(|x| x - (derivatives[&x] * learning_rate));
-    w2.map_mut(|x| x - (derivatives[&x] * learning_rate));
-    w3.map_mut(|x| x - (derivatives[&x] * learning_rate));
+    // unwrapping here is fine because we're not changing the history of any variables
+    w1.map_mut(|x| x - (derivatives[&x] * learning_rate)).unwrap();
+    w2.map_mut(|x| x - (derivatives[&x] * learning_rate)).unwrap();
+    w3.map_mut(|x| x - (derivatives[&x] * learning_rate)).unwrap();
     // reset gradients
     list.clear();
-    w1.map_mut(Record::do_reset);
-    w2.map_mut(Record::do_reset);
-    w3.map_mut(Record::do_reset);
+    w1.reset();
+    w2.reset();
+    w3.reset();
     // return the loss
     loss.number
 }
@@ -348,7 +349,7 @@ fn mean_squared_loss(
    w1: &Tensor<f32, 2>,
    w2: &Tensor<f32, 2>,
    w3: &Tensor<f32, 2>,
-   labels: &Vec<f32>,
+   labels: &Tensor<f32, 1>,
 ) -> f32 {
     let inputs_shape = inputs.shape();
     let number_of_samples = inputs_shape[0].1;
@@ -358,7 +359,7 @@ fn mean_squared_loss(
         for i in 0..number_of_samples {
             let input = inputs.select([(samples_name, i)]);
             let output = model(&input, w1, w2, w3);
-            let correct = labels[i];
+            let correct = labels.index().get([i]);
             // sum up the squared loss
             sum = sum + ((correct - output) * (correct - output));
         }
@@ -416,14 +417,15 @@ fn step_gradient<'a>(
     let loss = mean_squared_loss_training(inputs, w1, w2, w3, labels);
     let derivatives = loss.derivatives();
     // update each element in the weight matrices by the derivatives
-    w1.map_mut(|x| x - (derivatives[&x] * learning_rate));
-    w2.map_mut(|x| x - (derivatives[&x] * learning_rate));
-    w3.map_mut(|x| x - (derivatives[&x] * learning_rate));
+    // unwrapping here is fine because we're not changing the history of any variables
+    w1.map_mut(|x| x - (derivatives[&x] * learning_rate)).unwrap();
+    w2.map_mut(|x| x - (derivatives[&x] * learning_rate)).unwrap();
+    w3.map_mut(|x| x - (derivatives[&x] * learning_rate)).unwrap();
     // reset gradients
     list.clear();
-    w1.map_mut(Record::do_reset);
-    w2.map_mut(Record::do_reset);
-    w3.map_mut(Record::do_reset);
+    w1.reset();
+    w2.reset();
+    w3.reset();
     // return the loss
     loss.number
 }

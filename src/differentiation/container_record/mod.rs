@@ -343,6 +343,8 @@ where
     /**
      * Resets all of the records to place them back on the WengertList, for use
      * in performing another derivation after clearing the WengertList.
+     *
+     * This is also a preferred shorthand for `map_mut(Record::do_reset)` that can't fail
      */
     pub fn reset(&mut self) {
         match self.history {
@@ -590,6 +592,8 @@ where
     /**
      * Resets all of the records to place them back on the WengertList, for use
      * in performing another derivation after clearing the WengertList.
+     *
+     * This is also a preferred shorthand for `map_mut(Record::do_reset)` that can't fail
      */
     pub fn reset(&mut self) {
         match self.history {
