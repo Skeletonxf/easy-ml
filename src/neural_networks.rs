@@ -304,20 +304,20 @@ fn sigmoid<T: Numeric + Real + Copy>(x: T) -> T {
     T::one() / (T::one() + (-x).exp())
 }
 
-
 /**
  * A simple three layer neural network that outputs a scalar.
  *
  * This is written for a generic type, so it can be used with records and also
  * with normal floats.
  */
-fn model<T, I>(
-    input: &TensorView<T, I, 2>, w1: &Tensor<T, 2>, w2: &Tensor<T, 2>, w3: &Tensor<T, 2>
-) -> T
+fn model<I>(
+    input: &TensorView<f32, I, 2>,
+    w1: &Tensor<f32, 2>,
+    w2: &Tensor<f32, 2>,
+    w3: &Tensor<f32, 2>,
+) -> f32
 where
-    T: Numeric + Real + Copy,
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
-    I: TensorRef<T, 2>,
+    I: TensorRef<f32, 2>,
 {
     (((input * w1).map(sigmoid) * w2).map(sigmoid) * w3).first()
 }
@@ -342,34 +342,27 @@ where
 
 /**
  * Computes mean squared loss of the network against all the training data.
- *
- * This is written for a generic type, so it can be used with records and also
- * with normal floats.
  */
-fn mean_squared_loss<T>(
-   inputs: &Tensor<T, 3>,
-   w1: &Tensor<T, 2>,
-   w2: &Tensor<T, 2>,
-   w3: &Tensor<T, 2>,
-   labels: &Vec<T>,
-) -> T
-where
-    T: Numeric + Real + Copy,
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
-{
+fn mean_squared_loss(
+   inputs: &Tensor<f32, 3>,
+   w1: &Tensor<f32, 2>,
+   w2: &Tensor<f32, 2>,
+   w3: &Tensor<f32, 2>,
+   labels: &Vec<f32>,
+) -> f32 {
     let inputs_shape = inputs.shape();
     let number_of_samples = inputs_shape[0].1;
     let samples_name = inputs_shape[0].0;
     {
-        let mut sum = T::zero();
+        let mut sum = 0.0;
         for i in 0..number_of_samples {
             let input = inputs.select([(samples_name, i)]);
-            let output = model::<T, _>(&input, w1, w2, w3);
+            let output = model(&input, w1, w2, w3);
             let correct = labels[i];
             // sum up the squared loss
             sum = sum + ((correct - output) * (correct - output));
         }
-        sum / T::from_usize(number_of_samples).unwrap()
+        sum / number_of_samples as f32
     }
 }
 
@@ -408,19 +401,19 @@ fn mean_squared_loss_training<'a>(
 /**
  * Updates the weight matrices to step the gradient by one step.
  *
- * Note that here we are no longer generic over the type, we need the methods
- * defined on Record to do backprop.
+ * Note that here we need the methods defined on Record / RecordTensor to do backprop. There is
+ * no non-training version of this we can define without deriative tracking.
  */
-fn step_gradient(
-    inputs: &Tensor<Record<f32>, 3>,
-    w1: &mut Tensor<Record<f32>, 2>,
-    w2: &mut Tensor<Record<f32>, 2>,
-    w3: &mut Tensor<Record<f32>, 2>,
-    labels: &Vec<Record<f32>>,
+fn step_gradient<'a>(
+    inputs: &RecordTensor<'a, f32, Tensor<(f32, Index), 3>, 3>,
+    w1: &mut RecordTensor<'a, f32, Tensor<(f32, Index), 2>, 2>,
+    w2: &mut RecordTensor<'a, f32, Tensor<(f32, Index), 2>, 2>,
+    w3: &mut RecordTensor<'a, f32, Tensor<(f32, Index), 2>, 2>,
+    labels: &RecordTensor<'a, f32, Tensor<(f32, Index), 1>, 1>,
     learning_rate: f32,
-    list: &WengertList<f32>
+    list: &'a WengertList<f32>
 ) -> f32 {
-    let loss = mean_squared_loss::<Record<f32>>(inputs, w1, w2, w3, labels);
+    let loss = mean_squared_loss_training(inputs, w1, w2, w3, labels);
     let derivatives = loss.derivatives();
     // update each element in the weight matrices by the derivatives
     w1.map_mut(|x| x - (derivatives[&x] * learning_rate));
@@ -441,35 +434,44 @@ let mut random_generator = rand_chacha::ChaCha8Rng::seed_from_u64(25);
 // randomly initalise the weights using the fixed seed generator for reproducibility
 let list = WengertList::new();
 // w1 will be a 3x3 matrix
-let mut w1 = Tensor::from([("r", 3), ("c", 3)], n_random_numbers(&mut random_generator, 9))
-    .map(|x| Record::variable(x, &list));
+let mut w1 = RecordTensor::variables(
+    &list,
+    Tensor::from([("r", 3), ("c", 3)], n_random_numbers(&mut random_generator, 9))
+);
 // w2 will be a 3x3 matrix
-let mut w2 = Tensor::from([("r", 3), ("c", 3)], n_random_numbers(&mut random_generator, 9))
-    .map(|x| Record::variable(x, &list));
+let mut w2 = RecordTensor::variables(
+    &list,
+    Tensor::from([("r", 3), ("c", 3)], n_random_numbers(&mut random_generator, 9))
+);
 // w3 will be a 3x1 column matrix
 // Note: We keep the shape here as 3x1 instead of just a 3 length vector to keep matrix
 // multiplication simple like the Matrix example
-let mut w3 = Tensor::from([("r", 3), ("c", 1)], n_random_numbers(&mut random_generator, 3))
-    .map(|x| Record::variable(x, &list));
+let mut w3 = RecordTensor::variables(
+    &list,
+    Tensor::from([("r", 3), ("c", 1)], n_random_numbers(&mut random_generator, 3))
+);
 println!("w1 {}", w1);
 println!("w2 {}", w2);
 println!("w3 {}", w3);
 
 // define XOR inputs, with biases added to the inputs
 // again, it keeps the matrix multiplication easier if we stick to row matrices
-// than vectors here
-let inputs = Tensor::from([("sample", 4), ("r", 1), ("c", 3)], vec![
-    0.0, 0.0, 1.0,
+// instead of actual vectors here
+let inputs = RecordTensor::constants(
+    Tensor::from([("sample", 4), ("r", 1), ("c", 3)], vec![
+        0.0, 0.0, 1.0,
 
-    0.0, 1.0, 1.0,
+        0.0, 1.0, 1.0,
 
-    1.0, 0.0, 1.0,
+        1.0, 0.0, 1.0,
 
-    1.0, 1.0, 1.0
-])
-    .map(|x| Record::constant(x));
+        1.0, 1.0, 1.0
+    ])
+);
 // define XOR outputs which will be used as labels
-let labels = vec![ 0.0, 1.0, 1.0, 0.0 ].into_iter().map(|x| Record::constant(x)).collect();
+let labels = RecordTensor::constants(
+    Tensor::from([("sample", 4)], vec![ 0.0, 1.0, 1.0, 0.0 ])
+);
 let learning_rate = 0.2;
 let epochs = 4000;
 
@@ -503,45 +505,54 @@ println!("w1 {}", w1);
 println!("w2 {}", w2);
 println!("w3 {}", w3);
 // check that the network has learned XOR properly
-println!(
-    "0 0: {:?}",
-    model::<Record<f32>, _>(&inputs.select([("sample", 0)]), &w1, &w2, &w3).number
-);
-println!(
-    "0 1: {:?}",
-    model::<Record<f32>, _>(&inputs.select([("sample", 1)]), &w1, &w2, &w3).number
-);
-println!(
-    "1 0: {:?}",
-    model::<Record<f32>, _>(&inputs.select([("sample", 2)]), &w1, &w2, &w3).number
-);
-println!(
-    "1 1: {:?}",
-    model::<Record<f32>, _>(&inputs.select([("sample", 3)]), &w1, &w2, &w3).number
-);
+
+{
+    let inputs = inputs.view();
+    let row_1 = RecordTensor::from_existing(
+        Some(&list),
+        inputs.select([("sample", 0)])
+    );
+    let row_2 = RecordTensor::from_existing(
+        Some(&list),
+        inputs.select([("sample", 1)])
+    );
+    let row_3 = RecordTensor::from_existing(
+        Some(&list),
+        inputs.select([("sample", 2)])
+    );
+    let row_4 = RecordTensor::from_existing(
+        Some(&list),
+        inputs.select([("sample", 3)])
+    );
+
+    println!("0 0: {:?}", model_training(&row_1, &w1, &w2, &w3).number);
+    println!("0 1: {:?}", model_training(&row_2, &w1, &w2, &w3).number);
+    println!("1 0: {:?}", model_training(&row_3, &w1, &w2, &w3).number);
+    println!("1 1: {:?}", model_training(&row_4, &w1, &w2, &w3).number);
+}
 assert!(losses[epochs - 1] < 0.02);
 
 // we can also extract the learned weights once done with training and avoid the memory
 // overhead of Record
-let w1_final = w1.map(|x| x.number);
-let w2_final = w2.map(|x| x.number);
-let w3_final = w3.map(|x| x.number);
-let inputs_final = inputs.map(|x| x.number);
+let w1_final = w1.view().map(|(x, _)| x);
+let w2_final = w2.view().map(|(x, _)| x);
+let w3_final = w3.view().map(|(x, _)| x);
+let inputs_final = inputs.view().map(|(x, _)| x);
 println!(
     "0 0: {:?}",
-    model::<f32, _>(&inputs_final.select([("sample", 0)]), &w1_final, &w2_final, &w3_final)
+    model(&inputs_final.select([("sample", 0)]), &w1_final, &w2_final, &w3_final)
 );
 println!(
     "0 1: {:?}",
-    model::<f32, _>(&inputs_final.select([("sample", 1)]), &w1_final, &w2_final, &w3_final)
+    model(&inputs_final.select([("sample", 1)]), &w1_final, &w2_final, &w3_final)
 );
 println!(
     "1 0: {:?}",
-    model::<f32, _>(&inputs_final.select([("sample", 2)]), &w1_final, &w2_final, &w3_final)
+    model(&inputs_final.select([("sample", 2)]), &w1_final, &w2_final, &w3_final)
 );
 println!(
     "1 1: {:?}",
-    model::<f32, _>(&inputs_final.select([("sample", 3)]), &w1_final, &w2_final, &w3_final)
+    model(&inputs_final.select([("sample", 3)]), &w1_final, &w2_final, &w3_final)
 );
 ```
 
