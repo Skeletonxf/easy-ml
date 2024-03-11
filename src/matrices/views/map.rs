@@ -9,7 +9,7 @@ use std::marker::PhantomData;
  * The provided function lazily transforms the data in the matrix for the MatrixRef
  * implementation.
  */
-// TODO: Is there any way this can be extened to work for MatrixMut too without requiring user
+// TODO: Is there any way this can be extended to work for MatrixMut too without requiring user
 // to provide two nearly identical tranformation functions that differ only on & vs &mut inputs
 // and outputs?
 #[derive(Clone, Debug)]

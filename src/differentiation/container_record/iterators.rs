@@ -389,6 +389,11 @@ pub enum InvalidRecordIteratorError<'a, T, const D: usize> {
     InconsistentHistory(InconsistentHistory<'a, T>),
 }
 
+/**
+ * An error due to trying to create a RecordContainer with record data that has more than one
+ * history. Since RecordContainer stores the history once for all records it contains, it cannot
+ * support constants + variables or variables from multiple WengertLists.
+ */
 #[derive(Clone, Debug)]
 pub struct InconsistentHistory<'a, T> {
     pub first: Option<&'a WengertList<T>>,

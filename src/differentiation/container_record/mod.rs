@@ -62,7 +62,6 @@ pub mod iterators;
  * when you're done, or to manipulate a single container, the [map](RecordContainer::map) and
  * [map_mut](RecordContainer::map_mut) methods.
  */
-// TODO: Docs on here for making shapes match up.
 #[derive(Debug)]
 pub struct RecordContainer<'a, T: Primitive, S, const D: usize> {
     // Opted to store the indexes alongside each number (T, Index) for a number of reasons, the
