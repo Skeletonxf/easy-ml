@@ -327,6 +327,7 @@ where
      *
      * This is a shorthand for `AsRecords::from(tensor.history(), TensorIterator::from(&tensor))`
      */
+    #[allow(clippy::type_complexity)]
     pub fn iter_as_records<'b>(
         &'b self,
     ) -> AsRecords<'a, TensorIterator<'b, (T, Index), RecordTensor<'a, T, S, D>, D>, T> {
@@ -529,6 +530,7 @@ where
      *
      * This is a shorthand for `AsRecords::from(matrix.history(), RowMajorIterator::from(&matrix))`
      */
+    #[allow(clippy::type_complexity)]
     pub fn iter_row_major_as_records<'b>(
         &'b self,
     ) -> AsRecords<'a, RowMajorIterator<'b, (T, Index), RecordMatrix<'a, T, S>>, T> {
@@ -543,6 +545,7 @@ where
      * This is a shorthand for
      * `AsRecords::from(matrix.history(), ColumnMajorIterator::from(&matrix))`
      */
+    #[allow(clippy::type_complexity)]
     pub fn iter_column_major_as_records<'b>(
         &'b self,
     ) -> AsRecords<'a, ColumnMajorIterator<'b, (T, Index), RecordMatrix<'a, T, S>>, T> {

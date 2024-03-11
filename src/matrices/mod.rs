@@ -781,7 +781,7 @@ impl<T> Matrix<T> {
             .into_iter()
             .map(|slices| {
                 let rows = slices.len();
-                let columns = slices.get(0).map(|columns| columns.len()).unwrap_or(0);
+                let columns = slices.first().map(|columns| columns.len()).unwrap_or(0);
                 if columns == 0 {
                     // We may have allocated N rows but if each column in that row has no size
                     // our actual size is 0x0
