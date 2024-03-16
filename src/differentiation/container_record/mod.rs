@@ -1077,6 +1077,7 @@ where
      *
      * See also: [AsRecords](AsRecords)
      */
+    #[allow(clippy::type_complexity)]
     #[track_caller]
     pub fn map(
         &self,
@@ -1104,6 +1105,7 @@ where
      * after mapping doesn't have to be the same as before, only must be the same for every
      * mapped element.
      */
+    #[allow(clippy::type_complexity)]
     #[track_caller]
     pub fn map_with_index(
         &self,
@@ -1117,6 +1119,7 @@ where
     }
 
     #[track_caller]
+    #[allow(clippy::type_complexity)]
     fn map_collection(
         result: Result<
             RecordTensor<'a, T, Tensor<(T, usize), D>, D>,
@@ -1984,6 +1987,7 @@ where
      *
      * See also: [AsRecords](AsRecords)
      */
+    #[allow(clippy::type_complexity)]
     #[track_caller]
     pub fn map(
         &self,
@@ -2011,6 +2015,7 @@ where
      * after mapping doesn't have to be the same as before, only must be the same for every
      * mapped element.
      */
+    #[allow(clippy::type_complexity)]
     #[track_caller]
     pub fn map_with_index(
         &self,
@@ -2025,6 +2030,7 @@ where
         RecordMatrix::<'a, T, S>::map_collection(result, self.size())
     }
 
+    #[allow(clippy::type_complexity)]
     #[track_caller]
     fn map_collection(
         result: Result<

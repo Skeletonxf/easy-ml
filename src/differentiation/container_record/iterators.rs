@@ -444,11 +444,16 @@ impl<'a, T, const D: usize> Error for InvalidRecordIteratorError<'a, T, D> where
 
 impl<'a, T> Error for InconsistentHistory<'a, T> where T: Debug {}
 
+struct RecordContainerComponents<'a, T> {
+    history: Option<&'a WengertList<T>>,
+    numbers: Vec<(T, Index)>,
+}
+
 /// Converts an iterator of Records into the shared, consistent, history and a vec of (T, Index)
 /// or fails if the history is not consistent or the iterator is empty.
 fn collect_into_components<'a, T, I, const D: usize>(
     iter: I,
-) -> Result<(Option<&'a WengertList<T>>, Vec<(T, Index)>), InvalidRecordIteratorError<'a, T, D>>
+) -> Result<RecordContainerComponents<'a, T>, InvalidRecordIteratorError<'a, T, D>>
 where
     T: Numeric + Primitive,
     I: IntoIterator<Item = Record<'a, T>>,
@@ -487,7 +492,10 @@ where
         Err(InvalidRecordIteratorError::Empty)
     } else {
         // We already checked if the iterator was empty so `history` is always `Some` here
-        Ok((history.unwrap(), numbers))
+        Ok(RecordContainerComponents {
+            history: history.unwrap(),
+            numbers,
+        })
     }
 }
 
@@ -496,7 +504,7 @@ where
 /// is empty.
 fn collect_into_n_components<'a, T, I, const D: usize, const N: usize>(
     iter: I,
-) -> [Result<(Option<&'a WengertList<T>>, Vec<(T, Index)>), InvalidRecordIteratorError<'a, T, D>>; N]
+) -> [Result<RecordContainerComponents<'a, T>, InvalidRecordIteratorError<'a, T, D>>; N]
 where
     T: Numeric + Primitive,
     I: IntoIterator<Item = [Record<'a, T>; N]>,
@@ -557,7 +565,10 @@ where
                 } else {
                     // We already checked if the iterator was empty so `history` is always
                     // `Some` here
-                    Ok((history.unwrap(), numbers))
+                    Ok(RecordContainerComponents {
+                        history: history.unwrap(),
+                        numbers,
+                    })
                 }
             }
         }
@@ -589,7 +600,7 @@ where
     where
         I: IntoIterator<Item = Record<'a, T>>,
     {
-        let (history, numbers) = collect_into_components(iter)?;
+        let RecordContainerComponents { history, numbers } = collect_into_components(iter)?;
         let data_length = numbers.len();
         match Tensor::try_from(shape, numbers) {
             Ok(numbers) => Ok(RecordTensor::from_existing(
@@ -630,7 +641,7 @@ where
         let mut components = collect_into_n_components(iter).into_iter();
         std::array::from_fn(|_| match components.next().unwrap() {
             Err(error) => Err(error),
-            Ok((history, numbers)) => {
+            Ok(RecordContainerComponents { history, numbers }) => {
                 let data_length = numbers.len();
                 match Tensor::try_from(shape, numbers) {
                     Ok(numbers) => Ok(RecordTensor::from_existing(
@@ -670,7 +681,7 @@ where
     where
         I: IntoIterator<Item = Record<'a, T>>,
     {
-        let (history, numbers) = collect_into_components(iter)?;
+        let RecordContainerComponents { history, numbers } = collect_into_components(iter)?;
         let data_length = numbers.len();
         if data_length == size.0 * size.1 {
             Ok(RecordMatrix::from_existing(
@@ -712,7 +723,7 @@ where
         let mut components = collect_into_n_components(iter).into_iter();
         std::array::from_fn(|_| match components.next().unwrap() {
             Err(error) => Err(error),
-            Ok((history, numbers)) => {
+            Ok(RecordContainerComponents { history, numbers }) => {
                 let data_length = numbers.len();
                 if data_length == size.0 * size.1 {
                     Ok(RecordMatrix::from_existing(

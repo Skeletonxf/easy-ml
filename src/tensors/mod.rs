@@ -432,7 +432,10 @@ where
      * Returns a copy of the sole element in the 0 dimensional tensor.
      */
     pub fn scalar(&self) -> T {
-        self.data.first().expect("Tensors always have at least 1 element").clone()
+        self.data
+            .first()
+            .expect("Tensors always have at least 1 element")
+            .clone()
     }
 }
 
