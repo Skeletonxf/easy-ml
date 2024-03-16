@@ -2,7 +2,30 @@
 
 ## Version 1.10
 
-Still in development
+Released new `RecordContainer` APIs to avoid storing the `WengertList` multiple
+times when manipulating tensors or matrices of Records. There is no such
+container type for `Trace`s because they do not hold a reference to a history so
+there is no penalty to going Array of Structs with them. In some cases the
+Struct of Arrays approach with `RecordContainer` will have to either convert to
+Array of Structs or at least pretend to, which is where all the new iterator and
+`from_existing` APIs will hopefully make that less painful.
+
+Added several more operator trait impls to fill gaps and discrepancies between
+`Matrix` and `Tensor`. Also added a `from_fn` constructor for both types
+mirrored after the standard library.
+
+Introduced owned iterator variants that use `std::mem::replace` to yield values
+from their source without making copies, which do not require `T: Clone`.
+These may also be more performant for containers of non primitive types where
+the `Default` implementation is substantially cheaper than cloning.
+
+Updated several test libraries, in particular some examples now utilise the
+multi-colour plotting from textplots.
+
+Added impls for the new standard library `Saturating` wrapper type where
+`Wrapping` ones already existed.
+
+Version 1.10 also includes all backported bugfixes since version 1.9.0
 
 ## Versions 1.9.2, 1.8.4 and 1.7.3
 
@@ -12,8 +35,6 @@ valid indexes was unaffected, this bug however made it possible for indexing
 to erroneously panic instead of returning `None` when using the `try_` methods
 on Matrix that return an Option if exactly one of the two indexes provided
 was out of bounds.
-
-Version 1.10 will also include this backported bugfix.
 
 ## Versions 1.9.1 and 1.8.3
 
@@ -30,8 +51,6 @@ Additionally version 1.9.1 includes `TensorView` implementing `Clone` where
 applicable. On earlier versions `map` with a no-op closure can be used as a
 partial workaround to return a `Tensor` with cloned data, which if needed could
 be converted back to a `TensorView` with `from`.
-
-Version 1.10 will also include both of these backported bugfixes.
 
 ## Version 1.9
 
