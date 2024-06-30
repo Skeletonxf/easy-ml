@@ -1,4 +1,4 @@
-use crate::matrices::views::{DataLayout, MatrixRef};
+use crate::matrices::views::{DataLayout, MatrixRef, NoInteriorMutability};
 use crate::matrices::{Column, Row};
 
 use std::marker::PhantomData;
@@ -62,6 +62,11 @@ where
         &mut self.source
     }
 }
+
+unsafe impl<T, U, S, F> NoInteriorMutability for MatrixMap<T, U, S, F>
+where
+    S: NoInteriorMutability,
+{}
 
 // # Safety
 //

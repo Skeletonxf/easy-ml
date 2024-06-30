@@ -5,8 +5,8 @@ use crate::differentiation::functions::{
 use crate::differentiation::record_operations::are_same_list;
 use crate::differentiation::{Index, Primitive, WengertList};
 use crate::differentiation::{RecordContainer, RecordMatrix, RecordTensor};
-use crate::matrices::views::{DataLayout, MatrixMap, MatrixRef, MatrixView, NoInteriorMutability};
-use crate::matrices::{Column, Matrix, Row};
+use crate::matrices::views::{MatrixMap, MatrixRef, MatrixView, NoInteriorMutability};
+use crate::matrices::Matrix;
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::views::{TensorMap, TensorRef, TensorView};
 use crate::tensors::Tensor;
@@ -15,45 +15,7 @@ use crate::numeric::extra::{Cos, Exp, Ln, Pow, Real, RealRef, Sin, Sqrt};
 
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-use std::marker::PhantomData;
-
 mod swapped;
-
-struct MatrixRefRef<'a, T, S> {
-    source: &'a S,
-    _type: PhantomData<T>,
-}
-
-// # Safety
-//
-// Since the MatrixRef we own must implement MatrixRef correctly, so do we by delegating to it,
-// as we don't introduce any interior mutability.
-// TODO: Make this redundant in version 2.0 and replace with blanket impls for & and &mut versions
-// of types that implement MatrixRef like we have for TensorRef
-unsafe impl<'a, T, S> MatrixRef<T> for MatrixRefRef<'a, T, S>
-where
-    S: MatrixRef<T>,
-{
-    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
-        self.source.try_get_reference(row, column)
-    }
-
-    fn view_rows(&self) -> Row {
-        self.source.view_rows()
-    }
-
-    fn view_columns(&self) -> Column {
-        self.source.view_columns()
-    }
-
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
-        self.source.get_reference_unchecked(row, column)
-    }
-
-    fn data_layout(&self) -> DataLayout {
-        self.source.data_layout()
-    }
-}
 
 /**
  * A record matrix is displayed by showing its number components.
@@ -68,10 +30,7 @@ where
             f,
             "{}",
             MatrixView::from(MatrixMap::from(
-                MatrixRefRef {
-                    source: self.numbers.source_ref(),
-                    _type: PhantomData
-                },
+                self.numbers.source_ref(),
                 |(x, _)| x
             ))
         )

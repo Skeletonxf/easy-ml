@@ -22,26 +22,30 @@ use crate::matrices::{Column, Matrix, Row};
 
 // # Safety
 //
-// Since we hold a shared reference to a Matrix and Matrix does not implement interior mutability
-// we know it is not possible to mutate the size of the matrix out from under us.
+// The type implementing MatrixRef must implement it correctly, so by delegating to it
+// without changing any indexes or introducing interior mutability, we implement MatrixRef
+// correctly as well.
 /**
- * A shared reference to a Matrix implements MatrixRef.
+ * If some type implements MatrixRef, then a reference to it implements MatrixRef as well
  */
-unsafe impl<'source, T> MatrixRef<T> for &'source Matrix<T> {
+unsafe impl<'source, T, S> MatrixRef<T> for &'source S
+where
+    S: MatrixRef<T>,
+{
     fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
-        Matrix::_try_get_reference(self, row, column)
+        MatrixRef::try_get_reference(*self, row, column)
     }
 
     fn view_rows(&self) -> Row {
-        Matrix::rows(self)
+        MatrixRef::view_rows(*self)
     }
 
     fn view_columns(&self) -> Column {
-        Matrix::columns(self)
+        MatrixRef::view_columns(*self)
     }
 
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
-        Matrix::_get_reference_unchecked(self, row, column)
+        MatrixRef::get_reference_unchecked(*self, row, column)
     }
 
     fn data_layout(&self) -> DataLayout {
@@ -51,34 +55,48 @@ unsafe impl<'source, T> MatrixRef<T> for &'source Matrix<T> {
 
 // # Safety
 //
-// We promise to never implement interior mutability for Matrix.
+// The type implementing NoInteriorMutability must implement it correctly, so by delegating to it
+// without changing any indexes or introducing interior mutability, we implement
+// NoInteriorMutability correctly as well.
 /**
- * A shared reference to a Matrix implements NoInteriorMutability.
+ * If some type implements NoInteriorMutability, then a reference to it implements
+ * NoInteriorMutability as well. The reverse would not be true, since a type that does
+ * have interior mutability would remain interiorly mutable behind a shared reference. However,
+ * since this type promises not to have interior mutability, taking a shared reference can't
+ * introduce any.
  */
-unsafe impl<'source, T> NoInteriorMutability for &'source Matrix<T> {}
+unsafe impl<'source, S> NoInteriorMutability for &'source S
+where
+    S: NoInteriorMutability,
+{}
 
 // # Safety
 //
-// Since we hold an exclusive reference to a Matrix we know it is not possible to mutate
-// the size of the matrix out from under us.
+// The type implementing MatrixRef must implement it correctly, so by delegating to it
+// without changing any indexes or introducing interior mutability, we implement MatrixRef
+// correctly as well.
 /**
- * An exclusive reference to a Matrix implements MatrixRef.
+ * If some type implements MatrixRef, then an exclusive reference to it implements MatrixRef
+ * as well
  */
-unsafe impl<'source, T> MatrixRef<T> for &'source mut Matrix<T> {
+unsafe impl<'source, T, S> MatrixRef<T> for &'source mut S
+where
+    S: MatrixRef<T>,
+{
     fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
-        Matrix::_try_get_reference(self, row, column)
+        MatrixRef::try_get_reference(*self, row, column)
     }
 
     fn view_rows(&self) -> Row {
-        Matrix::rows(self)
+        MatrixRef::view_rows(*self)
     }
 
     fn view_columns(&self) -> Column {
-        Matrix::columns(self)
+        MatrixRef::view_columns(*self)
     }
 
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
-        Matrix::_get_reference_unchecked(self, row, column)
+        MatrixRef::get_reference_unchecked(*self, row, column)
     }
 
     fn data_layout(&self) -> DataLayout {
@@ -88,35 +106,46 @@ unsafe impl<'source, T> MatrixRef<T> for &'source mut Matrix<T> {
 
 // # Safety
 //
-// Since we hold an exclusive reference to a Matrix we know it is not possible to mutate
-// the size of the matrix out from under us.
+// The type implementing MatrixMut must implement it correctly, so by delegating to it
+// without changing any indexes or introducing interior mutability, we implement MatrixMut
+// correctly as well.
 /**
- * An exclusive reference to a Matrix implements MatrixMut.
+ * If some type implements MatrixMut, then an exclusive reference to it implements MatrixMut
+ * as well
  */
-unsafe impl<'source, T> MatrixMut<T> for &'source mut Matrix<T> {
+unsafe impl<'source, T, S> MatrixMut<T> for &'source mut S
+where
+    S: MatrixMut<T>,
+{
     fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
-        Matrix::_try_get_reference_mut(self, row, column)
+        MatrixMut::try_get_reference_mut(*self, row, column)
     }
 
     unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
-        Matrix::_get_reference_unchecked_mut(self, row, column)
+        MatrixMut::get_reference_unchecked_mut(*self, row, column)
     }
 }
 
 // # Safety
 //
-// We promise to never implement interior mutability for Matrix.
+// The type implementing NoInteriorMutability must implement it correctly, so by delegating to it
+// without changing any indexes or introducing interior mutability, we implement
+// NoInteriorMutability correctly as well.
 /**
- * An exclusive reference to a Matrix implements NoInteriorMutability.
+ * If some type implements NoInteriorMutability, then an exclusive reference to it implements
+ * NoInteriorMutability as well. The reverse would not be true, since a type that does
+ * have interior mutability would remain interiorly mutable behind an exclusive reference. However,
+ * since this type promises not to have interior mutability, taking an exclusive reference can't
+ * introduce any.
  */
-unsafe impl<'source, T> NoInteriorMutability for &'source mut Matrix<T> {}
+unsafe impl<'source, S> NoInteriorMutability for &'source mut S {}
 
 // # Safety
 //
 // Since we hold an owned Matrix we know it is not possible to mutate the size of the matrix
 // out from under us.
 /**
- * An owned Matrix implements MatrixRef.
+ * A Matrix implements MatrixRef.
  */
 unsafe impl<T> MatrixRef<T> for Matrix<T> {
     fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
@@ -145,7 +174,7 @@ unsafe impl<T> MatrixRef<T> for Matrix<T> {
 // Since we hold an owned Matrix we know it is not possible to mutate the size of the matrix
 // out from under us.
 /**
- * An owned Matrix implements MatrixMut.
+ * A Matrix implements MatrixMut.
  */
 unsafe impl<T> MatrixMut<T> for Matrix<T> {
     fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
@@ -161,7 +190,7 @@ unsafe impl<T> MatrixMut<T> for Matrix<T> {
 //
 // We promise to never implement interior mutability for Matrix.
 /**
- * An owned Matrix implements NoInteriorMutability.
+ * A Matrix implements NoInteriorMutability.
  */
 unsafe impl<T> NoInteriorMutability for Matrix<T> {}
 
@@ -307,3 +336,21 @@ unsafe impl<T> MatrixMut<T> for Box<dyn MatrixMut<T>> {
  * A box of a dynamic NoInteriorMutability also implements NoInteriorMutability
  */
 unsafe impl NoInteriorMutability for Box<dyn NoInteriorMutability> {}
+
+// # Safety
+//
+// Box doesn't introduce any interior mutability, so we can implement if it the type we box does.
+/**
+ * A box of a dynamic MatrixRef also implements NoInteriorMutability, since NoInteriorMutability
+ * is supertrait of MatrixRef
+ */
+unsafe impl<T> NoInteriorMutability for Box<dyn MatrixRef<T>> {}
+
+// # Safety
+//
+// Box doesn't introduce any interior mutability, so we can implement if it the type we box does.
+/**
+ * A box of a dynamic MatrixMut also implements NoInteriorMutability, since NoInteriorMutability
+ * is supertrait of MatrixMut
+ */
+unsafe impl<T> NoInteriorMutability for Box<dyn MatrixMut<T>> {}

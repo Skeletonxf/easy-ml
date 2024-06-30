@@ -48,31 +48,30 @@ pub use ranges::*;
 * 1 - Any valid index as described in Indexing will yield a safe reference when calling
 * `get_reference_unchecked` and `get_reference_unchecked_mut`.
 *
-* 2 - Either the `view_rows`/`view_columns` that define which indexes are valid may not
-* be changed by a shared reference to the MatrixRef implementation, or `get_reference_unchecked`
-* and `get_reference_unchecked_mut` must panic if the index is invalid.
+* 2 - The `view_rows`/`view_columns` that define which indexes are valid may not
+* be changed by a shared reference to the MatrixRef implementation. ie, the matrix may
+* not be resized may not be resized while a mutable reference is held to it, except by that
+* reference.
 *
-* If a type implements both MatrixRef and [`NoInteriorMutability`] #2
-* becomes just 'the `view_rows`/`view_columns` that define which indexes are valid may not
-* be changed by a shared reference to the MatrixRef implementation'. ie, the matrix
-* may not be resized while a mutable reference is held to it, except by that reference.
+* **NB: Version 2 of Easy ML makes NoInteriorMutability a supertrait of MatrixRef.** It is
+* no longer possible to implement MatrixRef with interior mutability, which matches the
+* 1.x TensorRef trait requirements. In a future major version, NoInteriorMutability will be removed
+* and folded into the documentation on MatrixRef.
 *
 * Essentially, interior mutability causes problems, since code looping through the range of valid
 * indexes in a MatrixRef needs to be able to rely on that range of valid indexes not changing.
 * This is trivially the case by default since a [Matrix] does not have any form of
 * interior mutability, and therefore an iterator holding a shared reference to a Matrix prevents
-* that matrix being resized. However, a type implementing MatrixRef could introduce interior
-* mutability by putting the Matrix in an `Arc<Mutex<>>` which would allow another thread to
-* resize a matrix while an iterator was looping through previously valid indexes on a different
-* thread. For an implementation of MatrixRef which allows such interior mutability, it must *not*
-* implement `NoInteriorMutability`, and must ensure that invalid indexes for
-* `get_reference_unchecked` and `get_reference_unchecked_mut` panic to prevent undefined behavior.
+* that matrix being resized. However, a type *wrongly* implementing MatrixRef could introduce
+* interior mutability by putting the Matrix in an `Arc<Mutex<>>` which would allow another thread
+* to resize a matrix while an iterator was looping through previously valid indexes on a different
+* thread.
 *
 * Note that it is okay to be able to resize any MatrixRef implementation if that always requires
 * an exclusive reference to the MatrixRef/Matrix, since the exclusivity prevents the above
 * scenario.
 */
-pub unsafe trait MatrixRef<T> {
+pub unsafe trait MatrixRef<T>: NoInteriorMutability {
     /**
      * Gets a reference to the value at the index if the index is in range. Otherwise returns None.
      */
@@ -149,7 +148,7 @@ pub unsafe trait MatrixMut<T>: MatrixRef<T> {
  * When combined with [MatrixRef] or [MatrixMut], other code can rely on
  * the type not being resizable or otherwise mutated through a shared reference.
  *
- * NB: In a future 2.0 release, this requirement will become mandatory to implement MatrixView.
+ * NB: This requirement is mandatory from Easy ML 2.0 to implement MatrixView.
  *
  * # Safety
  *
