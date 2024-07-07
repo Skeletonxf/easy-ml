@@ -749,33 +749,16 @@ where
      * modifying the source in place.
      */
     pub fn map_mut_with_index(&mut self, mapping_function: impl Fn(T, Row, Column) -> T) {
-        // TODO: For version 2, reuse mut iterator implementations
-        // match self.data_layout() {
-        //     DataLayout::ColumnMajor => {
-        //         self.column_major_reference_mut_iter().with_index().for_each(|((i, j), x)| {
-        //             *x = mapping_function(x.clone(), i, j);
-        //         });
-        //     }
-        //     _ => {
-        //         self.row_major_reference_mut_iter().with_index().for_each(|((i, j), x)| {
-        //             *x = mapping_function(x.clone(), i, j);
-        //         });
-        //     }
-        // }
         match self.data_layout() {
             DataLayout::ColumnMajor => {
-                for j in 0..self.columns() {
-                    for i in 0..self.rows() {
-                        self.set(i, j, mapping_function(self.get(i, j), i, j))
-                    }
-                }
+                self.column_major_reference_mut_iter().with_index().for_each(|((i, j), x)| {
+                    *x = mapping_function(x.clone(), i, j);
+                });
             }
             _ => {
-                for i in 0..self.rows() {
-                    for j in 0..self.columns() {
-                        self.set(i, j, mapping_function(self.get(i, j), i, j))
-                    }
-                }
+                self.row_major_reference_mut_iter().with_index().for_each(|((i, j), x)| {
+                    *x = mapping_function(x.clone(), i, j);
+                });
             }
         }
     }
