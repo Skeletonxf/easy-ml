@@ -1,5 +1,19 @@
 # Changelog
 
+## Version 2.0
+
+Version 2.0 will contain multiple breaking changes:
+- MatrixRef now has NoInteriorMutability as a supertrait. This will ensure
+consumers migrating from 1.x versions see compile errors where the new
+requirements will have been added. It is no longer possible to implement a
+MatrixRef type that does not conform to the no interior mutability contract.
+- Added blanket impls for & and &mut references to MatrixRef and MatrixMut. Any
+manual implementations of reference types implementing these traits need to
+be deleted as they are now longer required and conflict with the blanket impls.
+
+Further trait inheritance changes are planned as detailed at
+https://github.com/Skeletonxf/easy-ml/issues/1 but not yet implemented.
+
 ## Version 1.10
 
 Released new `RecordContainer` APIs to avoid storing the `WengertList` multiple
