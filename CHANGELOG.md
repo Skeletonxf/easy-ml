@@ -10,6 +10,7 @@ MatrixRef type that does not conform to the no interior mutability contract.
 - Added blanket impls for & and &mut references to MatrixRef and MatrixMut. Any
 manual implementations of reference types implementing these traits need to
 be deleted as they are now longer required and conflict with the blanket impls.
+- Numeric now requires implementing types to implement Debug.
 
 Further trait inheritance changes are planned as detailed at
 https://github.com/Skeletonxf/easy-ml/issues/1 but not yet implemented.

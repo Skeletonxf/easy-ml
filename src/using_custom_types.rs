@@ -23,6 +23,9 @@ use easy_ml::matrices::Matrix;
 use num_bigint::{BigInt, ToBigInt, Sign};
 use num_traits::{Zero, One};
 
+/**
+ * We can derive a number of traits, Clone and Debug are required to implement Numeric
+ */
 #[derive(Clone, Eq, PartialEq, PartialOrd, Debug)]
 struct BigIntWrapper(BigInt);
 

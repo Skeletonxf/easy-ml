@@ -18,6 +18,7 @@ use std::ops::Div;
 use std::ops::Mul;
 use std::ops::Neg;
 use std::ops::Sub;
+use std::fmt::Debug;
 
 /**
  * A trait defining what a numeric type is in terms of by value
@@ -134,7 +135,8 @@ pub trait Numeric:
     + ZeroOne
     + FromUsize
     + Sum
-    + PartialOrd {}
+    + PartialOrd
+    + Debug {}
 
 /**
  * All types implemeting the operations in NumericByValue with a right hand
@@ -154,6 +156,7 @@ impl<T> Numeric for T where
         + FromUsize
         + Sum
         + PartialOrd
+        + Debug
 {
 }
 
