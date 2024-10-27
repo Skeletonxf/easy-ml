@@ -670,6 +670,10 @@ while absolute_changes == -1.0 || absolute_changes > CHANGE_THRESHOLD {
             // so we know when to stop updating the clusters
             absolute_changes += (previous_mean - new_means[feature]).abs();
 
+            println!(
+                "Cluster {:?} mean for feature {:?} is now {:?} was {:?}",
+                cluster, feature, new_means[feature], previous_mean
+            );
             clusters.set(cluster, feature, new_means[feature]);
         }
     }
@@ -678,7 +682,7 @@ while absolute_changes == -1.0 || absolute_changes > CHANGE_THRESHOLD {
 println!(
     "Denormalised clusters at convergence:\n{:?}\n{:.3}",
     vec![ "H", "C", "T", "M", "S" ],
-    clusters.map_with_index(|x, _, feature| {
+    clusters.map_with_index(|x, _cluster, feature| {
         let mean = means_and_variances.get(feature, 0);
         let variance = means_and_variances.get(feature, 1);
         (x * variance) + mean
@@ -1313,13 +1317,17 @@ while absolute_changes == -1.0 || absolute_changes > CHANGE_THRESHOLD {
         };
 
         // update each new mean for the cluster
-        for feature in 0..CLUSTERS {
+        for feature in 0..FEATURES {
             let mut clusters_indexing = clusters.index_mut();
             let previous_mean = clusters_indexing.get([cluster, feature]);
             // track the absolute difference between the new mean and the old one
             // so we know when to stop updating the clusters
             absolute_changes += (previous_mean - new_means[feature]).abs();
 
+            println!(
+                "Cluster {:?} mean for feature {:?} is now {:?} was {:?}",
+                cluster, feature, new_means[feature], previous_mean
+            );
             *clusters_indexing.get_ref_mut([cluster, feature]) = new_means[feature];
         }
     }
