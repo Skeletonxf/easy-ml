@@ -347,7 +347,7 @@ in the subset because our data has many dimensions.
 
 ```
 use easy_ml::matrices::Matrix;
-use easy_ml::matrices::slices::{Slice2D, Slice};
+use easy_ml::matrices::views::{MatrixView, MatrixRange};
 use easy_ml::linear_algebra;
 use easy_ml::distributions::Gaussian;
 
@@ -541,11 +541,8 @@ let unlabelled_dataset = {
  */
 
 // Create a subset of the first 30 samples from the full dataset to use for clustering
-// TODO: Try to make this use MatrixRange here
-let unlabelled_subset = unlabelled_dataset.retain(
-    Slice2D::new()
-    .columns(Slice::All())
-    .rows(Slice::Range(0..30))
+let unlabelled_subset = MatrixView::from(
+    MatrixRange::from(&unlabelled_dataset, 0..30, 0..unlabelled_dataset.columns())
 );
 
 // We normalise all the features to 0 mean and 1 standard deviation because
@@ -558,7 +555,7 @@ let mut means_and_variances = Vec::with_capacity(unlabelled_subset.columns());
 // The normalised subset is computed taking the mean and variance from the subset,
 // these means and variances will be needed later to apply to the rest of the data.
 let mut normalised_subset = {
-    let mut normalised_subset = unlabelled_subset;
+    let mut normalised_subset = unlabelled_subset.map(|x| x);
     for feature in 0..normalised_subset.columns() {
         let mean = linear_algebra::mean(normalised_subset.column_iter(feature));
         let variance = linear_algebra::variance(normalised_subset.column_iter(feature));

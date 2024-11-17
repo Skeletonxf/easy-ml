@@ -85,7 +85,6 @@ The update rule:
 // class as the False case that the model should predict <0.5 probability for.
 
 use easy_ml::matrices::Matrix;
-use easy_ml::matrices::slices::{Slice2D, Slice};
 use easy_ml::distributions::MultivariateGaussian;
 
 use rand::{Rng, SeedableRng};

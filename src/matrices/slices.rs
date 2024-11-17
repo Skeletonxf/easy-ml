@@ -1,10 +1,9 @@
 /*!
  * Ways to transform and access matrices
  *
- * At the moment slicing is not very usable and can only be used to downsize
- * matrices with [retain](super::Matrix::retain()) and
- * [retain_mut](super::Matrix::retain_mut()). In the future it will be available
- * for iterating through matrices and indexing into matrices to get values.
+ * Slicing can only be used to downsize matrices with [retain](super::Matrix::retain()) and
+ * [retain_mut](super::Matrix::retain_mut()). In the future it may be available
+ * for further use with the views APIs, which can already apply many more transformations.
  *
  * See also
  * - [views](crate::matrices::views)
