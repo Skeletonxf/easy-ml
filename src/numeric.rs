@@ -307,6 +307,7 @@ from_usize_integral!(isize);
  * Additional traits for more complex numerical operations on real numbers.
  */
 pub mod extra {
+    use crate::numeric::{Numeric, NumericByValue};
 
     /**
      * A type which can be square rooted.
@@ -568,6 +569,7 @@ pub mod extra {
         + Sin<Output = Output>
         + Cos<Output = Output>
         + Sized
+        + NumericByValue<Rhs, Output>
     {
     }
 
@@ -585,6 +587,7 @@ pub mod extra {
             + Sin<Output = Output>
             + Cos<Output = Output>
             + Sized
+            + NumericByValue<Rhs, Output>
     {
     }
 
@@ -650,7 +653,8 @@ pub mod extra {
     RealByValue
     // T op &T -> T
     + for<'a> RealByValue<&'a Self>
-    + Pi {}
+    + Pi
+    + Numeric {}
 
     /**
      * All types implemeting the operations in RealByValue with a right hand
@@ -660,5 +664,5 @@ pub mod extra {
      * [Traces](super::super::differentiation::Trace) and
      * [Records](super::super::differentiation::Record) of those types.
      */
-    impl<T> Real for T where T: RealByValue + for<'a> RealByValue<&'a T> + Pi {}
+    impl<T> Real for T where T: RealByValue + for<'a> RealByValue<&'a T> + Pi + Numeric {}
 }
