@@ -44,7 +44,7 @@ fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f32> {
  * This is written for a generic type, so it can be used with records and also
  * with normal floats.
  */
-fn sigmoid<T: Numeric + Real + Copy>(x: T) -> T {
+fn sigmoid<T: Real + Copy>(x: T) -> T {
     // 1 / (1 + e^-x)
     T::one() / (T::one() + (-x).exp())
 }
@@ -300,7 +300,7 @@ fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f32> {
  * This is written for a generic type, so it can be used with records and also
  * with normal floats.
  */
-fn sigmoid<T: Numeric + Real + Copy>(x: T) -> T {
+fn sigmoid<T: Real + Copy>(x: T) -> T {
     // 1 / (1 + e^-x)
     T::one() / (T::one() + (-x).exp())
 }

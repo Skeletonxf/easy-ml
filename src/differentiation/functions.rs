@@ -121,8 +121,8 @@ pub struct Power<T> {
 
 impl<T> FunctionDerivative<T> for Power<T>
 where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    T: Real + Primitive,
+    for<'t> &'t T: RealRef<T>,
 {
     /// `x ^ y`
     fn function(x: T, y: T) -> T {
@@ -166,8 +166,8 @@ pub struct Sine<T> {
 
 impl<T> UnaryFunctionDerivative<T> for Sine<T>
 where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    T: Real + Primitive,
+    for<'t> &'t T: RealRef<T>,
 {
     /// `sin(x)`
     fn function(x: T) -> T {
@@ -186,8 +186,8 @@ pub struct Cosine<T> {
 
 impl<T> UnaryFunctionDerivative<T> for Cosine<T>
 where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    T: Real + Primitive,
+    for<'t> &'t T: RealRef<T>,
 {
     /// `cos(x)`
     fn function(x: T) -> T {
@@ -206,8 +206,8 @@ pub struct Exponential<T> {
 
 impl<T> UnaryFunctionDerivative<T> for Exponential<T>
 where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    T: Real + Primitive,
+    for<'t> &'t T: RealRef<T>,
 {
     /// `e^x`
     fn function(x: T) -> T {
@@ -226,8 +226,8 @@ pub struct NaturalLogarithm<T> {
 
 impl<T> UnaryFunctionDerivative<T> for NaturalLogarithm<T>
 where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    T: Real + Primitive,
+    for<'t> &'t T: RealRef<T>,
 {
     /// `ln(x)`
     fn function(x: T) -> T {
@@ -246,8 +246,8 @@ pub struct SquareRoot<T> {
 
 impl<T> UnaryFunctionDerivative<T> for SquareRoot<T>
 where
-    T: Numeric + Real + Primitive,
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    T: Real + Primitive,
+    for<'t> &'t T: RealRef<T>,
 {
     /// `sqrt(x)`
     fn function(x: T) -> T {

@@ -918,7 +918,7 @@ where
  * This function will also fail if the length of the iterator or sum of all the values
  * in the iterator exceeds the maximum or minimum number the type can represent.
  */
-pub fn softmax<I, T: Numeric + Real>(data: I) -> Vec<T>
+pub fn softmax<I, T: Real>(data: I) -> Vec<T>
 where
     I: Iterator<Item = T>,
 {
@@ -1340,12 +1340,12 @@ impl<T> QRDecomposition<T> {
     }
 }
 
-fn householder_matrix_tensor<T: Numeric + Real>(
+fn householder_matrix_tensor<T: Real>(
     vector: Vec<T>,
     names: [Dimension; 2],
 ) -> Tensor<T, 2>
 where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    for<'a> &'a T: RealRef<T>,
 {
     // The computation steps are outlined nicely at https://en.wikipedia.org/wiki/QR_decomposition#Using_Householder_reflections
     // Supporting reference implementations are on Rosettacode https://rosettacode.org/wiki/QR_decomposition
@@ -1398,15 +1398,15 @@ where
  *
  * With some uses of this function the Rust compiler gets confused about what type `T`
  * should be and you will get the error:
- * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::RealByValue<_, _>`
  *
  * In this case you need to manually specify the type of T by using the
  * turbofish syntax like:
  * `linear_algebra::qr_decomposition::<f32>(&matrix)`
  */
-pub fn qr_decomposition<T: Numeric + Real>(matrix: &Matrix<T>) -> Option<QRDecomposition<T>>
+pub fn qr_decomposition<T: Real>(matrix: &Matrix<T>) -> Option<QRDecomposition<T>>
 where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    for<'a> &'a T: RealRef<T>,
 {
     let decomposition = qr_decomposition_less_generic::<T, _>(&TensorView::from(
         crate::interop::TensorRefMatrix::from(matrix).ok()?,
@@ -1467,7 +1467,7 @@ impl<T> QRDecompositionTensor<T> {
  *
  * With some uses of this function the Rust compiler gets confused about what type `T`
  * should be and you will get the error:
- * > overflow evaluating the requirement `&'a _: easy_ml::numeric::NumericByValue<_, _>`
+ * > overflow evaluating the requirement `&'a _: easy_ml::numeric::RealByValue<_, _>`
  *
  * In this case you need to manually specify the type of T by using the
  * turbofish syntax like:
@@ -1475,8 +1475,8 @@ impl<T> QRDecompositionTensor<T> {
  */
 pub fn qr_decomposition_tensor<T, S, I>(tensor: I) -> Option<QRDecompositionTensor<T>>
 where
-    T: Numeric + Real,
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    T: Real,
+    for<'a> &'a T: RealRef<T>,
     I: Into<TensorView<T, S, 2>>,
     S: TensorRef<T, 2>,
 {
@@ -1487,8 +1487,8 @@ fn qr_decomposition_less_generic<T, S>(
     tensor: &TensorView<T, S, 2>,
 ) -> Option<QRDecompositionTensor<T>>
 where
-    T: Numeric + Real,
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    T: Real,
+    for<'a> &'a T: RealRef<T>,
     S: TensorRef<T, 2>,
 {
     let shape = tensor.shape();

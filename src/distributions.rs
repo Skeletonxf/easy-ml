@@ -104,8 +104,6 @@ let mut random_numbers = EndlessRandomGenerator { rng: random_generator };
  */
 
 use crate::numeric::extra::{Real, RealRef};
-use crate::numeric::{Numeric, NumericRef};
-//use crate::numeric::extra::{Sqrt, Pi, Exp, Pow, Ln, Sin, Cos};
 use crate::linear_algebra;
 use crate::matrices::Matrix;
 use crate::tensors::views::{TensorRef, TensorView};
@@ -121,7 +119,7 @@ use std::fmt;
  * See: [https://en.wikipedia.org/wiki/Gaussian_function](https://en.wikipedia.org/wiki/Gaussian_function)
  */
 #[derive(Clone, Debug)]
-pub struct Gaussian<T: Numeric + Real> {
+pub struct Gaussian<T: Real> {
     /**
      * The mean is the expected value of this gaussian.
      */
@@ -133,7 +131,7 @@ pub struct Gaussian<T: Numeric + Real> {
     pub variance: T,
 }
 
-impl<T: Numeric + Real> Gaussian<T> {
+impl<T: Real> Gaussian<T> {
     pub fn new(mean: T, variance: T) -> Gaussian<T> {
         Gaussian { mean, variance }
     }
@@ -163,9 +161,9 @@ impl<T: Numeric + Real> Gaussian<T> {
     }
 }
 
-impl<T: Numeric + Real> Gaussian<T>
+impl<T: Real> Gaussian<T>
 where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    for<'a> &'a T: RealRef<T>,
 {
     /**
      * Computes g(x) for some x, the probability density of a normally
@@ -262,8 +260,9 @@ where
  * covariance matrix.
  */
 #[derive(Clone, Debug)]
-pub struct MultivariateGaussian<T: Numeric + Real> {
-    // TODO: Make these non public so we don't have to check them again each time we call `draw()`
+pub struct MultivariateGaussian<T: Real> {
+    // TODO: Make these non public in 2.0 so we don't have to check them again each time we call
+    // `draw()`
     /**
      * The mean is a column vector of expected values in each dimension
      */
@@ -290,7 +289,7 @@ pub struct MultivariateGaussian<T: Numeric + Real> {
     pub covariance: Matrix<T>,
 }
 
-impl<T: Numeric + Real> MultivariateGaussian<T> {
+impl<T: Real> MultivariateGaussian<T> {
     /**
      * Constructs a new multivariate Gaussian distribution from
      * a Nx1 column vector of means and a NxN covariance matrix
@@ -320,9 +319,9 @@ impl<T: Numeric + Real> MultivariateGaussian<T> {
     }
 }
 
-impl<T: Numeric + Real> MultivariateGaussian<T>
+impl<T: Real> MultivariateGaussian<T>
 where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    for<'a> &'a T: RealRef<T>,
 {
     /**
      * Draws samples from this multivariate distribution, provided that the covariance
@@ -380,7 +379,7 @@ where
  * See: [https://en.wikipedia.org/wiki/Multivariate_normal_distribution](https://en.wikipedia.org/wiki/Multivariate_normal_distribution)
  */
 #[derive(Clone, Debug)]
-pub struct MultivariateGaussianTensor<T: Numeric + Real> {
+pub struct MultivariateGaussianTensor<T: Real> {
     mean: Tensor<T, 1>,
     covariance: Tensor<T, 2>,
 }
@@ -417,7 +416,7 @@ impl<T: fmt::Debug> fmt::Display for MultivariateGaussianError<T> {
 
 impl<T: fmt::Debug> Error for MultivariateGaussianError<T> {}
 
-impl<T: Numeric + Real> MultivariateGaussianTensor<T> {
+impl<T: Real> MultivariateGaussianTensor<T> {
     /**
      * Constructs a new multivariate Gaussian distribution from
      * a N length vector of means and a NxN covariance matrix
@@ -497,8 +496,8 @@ fn draw_tensor_samples<T, S1, S2, I>(
     features: Dimension,
 ) -> Option<Tensor<T, 2>>
 where
-    T: Numeric + Real,
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    T: Real,
+    for<'a> &'a T: RealRef<T>,
     I: Iterator<Item = T>,
     S1: TensorRef<T, 1>,
     S2: TensorRef<T, 2>,
@@ -546,9 +545,9 @@ where
     Some(drawn_samples)
 }
 
-impl<T: Numeric + Real> MultivariateGaussianTensor<T>
+impl<T: Real> MultivariateGaussianTensor<T>
 where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    for<'a> &'a T: RealRef<T>,
 {
     /**
      * Draws samples from this multivariate distribution, provided that the covariance

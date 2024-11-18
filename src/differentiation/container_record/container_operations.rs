@@ -330,8 +330,8 @@ macro_rules! record_real_tensor_operator_impl_unary {
          */
         impl<'a, T, S, const D: usize> $op for RecordTensor<'a, T, S, D>
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: TensorRef<(T, Index), D>,
         {
             type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
@@ -346,8 +346,8 @@ macro_rules! record_real_tensor_operator_impl_unary {
          */
         impl<'a, T, S, const D: usize> $op for &RecordTensor<'a, T, S, D>
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: TensorRef<(T, Index), D>,
         {
             type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
@@ -366,8 +366,8 @@ macro_rules! record_real_matrix_operator_impl_unary {
          */
         impl<'a, T, S> $op for RecordMatrix<'a, T, S>
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: MatrixRef<(T, Index)> + NoInteriorMutability,
         {
             type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
@@ -382,8 +382,8 @@ macro_rules! record_real_matrix_operator_impl_unary {
          */
         impl<'a, T, S> $op for &RecordMatrix<'a, T, S>
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: MatrixRef<(T, Index)> + NoInteriorMutability,
         {
             type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
@@ -403,8 +403,8 @@ macro_rules! record_real_tensor_operator_impl_scalar {
          */
         impl<'a, T, S, const D: usize> $op<T> for RecordTensor<'a, T, S, D>
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: TensorRef<(T, Index), D>,
         {
             type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
@@ -423,8 +423,8 @@ macro_rules! record_real_tensor_operator_impl_scalar {
          */
         impl<'a, T, S, const D: usize> $op<T> for &RecordTensor<'a, T, S, D>
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: TensorRef<(T, Index), D>,
         {
             type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
@@ -443,8 +443,8 @@ macro_rules! record_real_tensor_operator_impl_scalar {
          */
         impl<'a, T, S, const D: usize> $op<&T> for RecordTensor<'a, T, S, D>
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: TensorRef<(T, Index), D>,
         {
             type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
@@ -463,8 +463,8 @@ macro_rules! record_real_tensor_operator_impl_scalar {
          */
         impl<'a, T, S, const D: usize> $op<&T> for &RecordTensor<'a, T, S, D>
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: TensorRef<(T, Index), D>,
         {
             type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
@@ -487,8 +487,8 @@ macro_rules! record_real_tensor_operator_impl_scalar_no_orphan_rule {
          */
         impl<'a, T, S, const D: usize> $op<RecordTensor<'a, T, S, D>> for T
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: TensorRef<(T, Index), D>,
         {
             type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
@@ -509,8 +509,8 @@ macro_rules! record_real_tensor_operator_impl_scalar_no_orphan_rule {
          */
         impl<'a, T, S, const D: usize> $op<&RecordTensor<'a, T, S, D>> for T
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: TensorRef<(T, Index), D>,
         {
             type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
@@ -531,8 +531,8 @@ macro_rules! record_real_tensor_operator_impl_scalar_no_orphan_rule {
          */
         impl<'a, T, S, const D: usize> $op<RecordTensor<'a, T, S, D>> for &T
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: TensorRef<(T, Index), D>,
         {
             type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
@@ -554,8 +554,8 @@ macro_rules! record_real_tensor_operator_impl_scalar_no_orphan_rule {
          */
         impl<'a, T, S, const D: usize> $op<&RecordTensor<'a, T, S, D>> for &T
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: TensorRef<(T, Index), D>,
         {
             type Output = RecordTensor<'a, T, Tensor<(T, Index), D>, D>;
@@ -580,8 +580,8 @@ macro_rules! record_real_matrix_operator_impl_scalar {
          */
         impl<'a, T, S> $op<T> for RecordMatrix<'a, T, S>
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: MatrixRef<(T, Index)> + NoInteriorMutability,
         {
             type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
@@ -600,8 +600,8 @@ macro_rules! record_real_matrix_operator_impl_scalar {
          */
         impl<'a, T, S> $op<T> for &RecordMatrix<'a, T, S>
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: MatrixRef<(T, Index)> + NoInteriorMutability,
         {
             type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
@@ -620,8 +620,8 @@ macro_rules! record_real_matrix_operator_impl_scalar {
          */
         impl<'a, T, S> $op<&T> for RecordMatrix<'a, T, S>
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: MatrixRef<(T, Index)> + NoInteriorMutability,
         {
             type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
@@ -640,8 +640,8 @@ macro_rules! record_real_matrix_operator_impl_scalar {
          */
         impl<'a, T, S> $op<&T> for &RecordMatrix<'a, T, S>
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: MatrixRef<(T, Index)> + NoInteriorMutability,
         {
             type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
@@ -664,8 +664,8 @@ macro_rules! record_real_matrix_operator_impl_scalar_no_orphan_rule {
          */
         impl<'a, T, S> $op<RecordMatrix<'a, T, S>> for T
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: MatrixRef<(T, Index)> + NoInteriorMutability,
         {
             type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
@@ -686,8 +686,8 @@ macro_rules! record_real_matrix_operator_impl_scalar_no_orphan_rule {
          */
         impl<'a, T, S> $op<&RecordMatrix<'a, T, S>> for T
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: MatrixRef<(T, Index)> + NoInteriorMutability,
         {
             type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
@@ -708,8 +708,8 @@ macro_rules! record_real_matrix_operator_impl_scalar_no_orphan_rule {
          */
         impl<'a, T, S> $op<RecordMatrix<'a, T, S>> for &T
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: MatrixRef<(T, Index)> + NoInteriorMutability,
         {
             type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
@@ -731,8 +731,8 @@ macro_rules! record_real_matrix_operator_impl_scalar_no_orphan_rule {
          */
         impl<'a, T, S> $op<&RecordMatrix<'a, T, S>> for &T
         where
-            T: Numeric + Real + Primitive,
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            T: Real + Primitive,
+            for<'t> &'t T: RealRef<T>,
             S: MatrixRef<(T, Index)> + NoInteriorMutability,
         {
             type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;

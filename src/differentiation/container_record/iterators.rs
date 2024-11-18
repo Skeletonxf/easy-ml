@@ -31,7 +31,6 @@ use std::iter::{ExactSizeIterator, FusedIterator};
  * ```
  * use easy_ml::differentiation::{WengertList, Record, RecordTensor};
  * use easy_ml::tensors::Tensor;
- * use easy_ml::numeric::Numeric;
  * use easy_ml::numeric::extra::Real;
  *
  * let history = WengertList::new();
@@ -44,7 +43,7 @@ use std::iter::{ExactSizeIterator, FusedIterator};
  *     Tensor::from([("x", 6)], vec![ 0.2, 0.1, 0.5, 0.3, 0.7, 0.9 ])
  * );
  *
- * fn power<T: Numeric + Real+ Copy>(x: T, y: T) -> T {
+ * fn power<T: Real+ Copy>(x: T, y: T) -> T {
  *     x.pow(y)
  * }
  *

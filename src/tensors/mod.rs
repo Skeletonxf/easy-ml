@@ -1566,9 +1566,9 @@ impl<T> Tensor<T, 2> {
  * Third party fixed precision and infinite precision decimal types should
  * be able to implement all of the methods for [Real] and then utilise these functions.
  */
-impl<T: Numeric + Real> Tensor<T, 1>
+impl<T: Real> Tensor<T, 1>
 where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    for<'a> &'a T: RealRef<T>,
 {
     /**
      * Computes the [L2 norm](https://en.wikipedia.org/wiki/Euclidean_vector#Length)

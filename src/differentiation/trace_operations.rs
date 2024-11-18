@@ -464,9 +464,9 @@ where
 /**
  * Sine of a Trace by reference.
  */
-impl<T: Numeric + Real + Primitive> Sin for &Trace<T>
+impl<T: Real + Primitive> Sin for &Trace<T>
 where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    for<'a> &'a T: RealRef<T>,
 {
     type Output = Trace<T>;
     #[inline]
@@ -484,9 +484,9 @@ macro_rules! trace_real_operator_impl_value {
         /**
          * Operation for a trace by value.
          */
-        impl<T: Numeric + Real + Primitive> $op for Trace<T>
+        impl<T: Real + Primitive> $op for Trace<T>
         where
-            for<'a> &'a T: NumericRef<T> + RealRef<T>,
+            for<'a> &'a T: RealRef<T>,
         {
             type Output = Trace<T>;
             #[inline]
@@ -502,9 +502,9 @@ trace_real_operator_impl_value!(impl Sin for Trace { fn sin });
 /**
  * Cosine of a Trace by reference.
  */
-impl<T: Numeric + Real + Primitive> Cos for &Trace<T>
+impl<T: Real + Primitive> Cos for &Trace<T>
 where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    for<'a> &'a T: RealRef<T>,
 {
     type Output = Trace<T>;
     #[inline]
@@ -522,9 +522,9 @@ trace_real_operator_impl_value!(impl Cos for Trace { fn cos });
 /**
  * Exponential, ie e<sup>x</sup> of a Trace by reference.
  */
-impl<T: Numeric + Real + Primitive> Exp for &Trace<T>
+impl<T: Real + Primitive> Exp for &Trace<T>
 where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    for<'a> &'a T: RealRef<T>,
 {
     type Output = Trace<T>;
     #[inline]
@@ -542,9 +542,9 @@ trace_real_operator_impl_value!(impl Exp for Trace { fn exp });
 /**
  * Natural logarithm, ie ln(x) of a Trace by reference.
  */
-impl<T: Numeric + Real + Primitive> Ln for &Trace<T>
+impl<T: Real + Primitive> Ln for &Trace<T>
 where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    for<'a> &'a T: RealRef<T>,
 {
     type Output = Trace<T>;
     #[inline]
@@ -562,9 +562,9 @@ trace_real_operator_impl_value!(impl Ln for Trace { fn ln });
 /**
  * Square root of a Trace by reference.
  */
-impl<T: Numeric + Real + Primitive> Sqrt for &Trace<T>
+impl<T: Real + Primitive> Sqrt for &Trace<T>
 where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    for<'a> &'a T: RealRef<T>,
 {
     type Output = Trace<T>;
     #[inline]
@@ -586,9 +586,9 @@ trace_real_operator_impl_value!(impl Sqrt for Trace { fn sqrt });
  * Power of one Trace to another, ie self^rhs for two traces of
  * the same type with both referenced.
  */
-impl<'l, 'r, T: Numeric + Real + Primitive> Pow<&'r Trace<T>> for &'l Trace<T>
+impl<'l, 'r, T: Real + Primitive> Pow<&'r Trace<T>> for &'l Trace<T>
 where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    for<'a> &'a T: RealRef<T>,
 {
     type Output = Trace<T>;
     #[inline]
@@ -613,9 +613,9 @@ macro_rules! trace_real_operator_impl_value_value {
         /**
          * Operation for two traces of the same type.
          */
-        impl<T: Numeric + Real + Primitive> $op for Trace<T>
+        impl<T: Real + Primitive> $op for Trace<T>
         where
-            for<'a> &'a T: NumericRef<T> + RealRef<T>,
+            for<'a> &'a T: RealRef<T>,
         {
             type Output = Trace<T>;
             #[inline]
@@ -631,9 +631,9 @@ macro_rules! trace_real_operator_impl_value_reference {
         /**
          * Operation for two traces of the same type with the right referenced.
          */
-        impl<T: Numeric + Real + Primitive> $op<&Trace<T>> for Trace<T>
+        impl<T: Real + Primitive> $op<&Trace<T>> for Trace<T>
         where
-            for<'a> &'a T: NumericRef<T> + RealRef<T>,
+            for<'a> &'a T: RealRef<T>,
         {
             type Output = Trace<T>;
             #[inline]
@@ -649,9 +649,9 @@ macro_rules! trace_real_operator_impl_reference_value {
         /**
          * Operation for two traces of the same type with the left referenced.
          */
-        impl<T: Numeric + Real + Primitive> $op<Trace<T>> for &Trace<T>
+        impl<T: Real + Primitive> $op<Trace<T>> for &Trace<T>
         where
-            for<'a> &'a T: NumericRef<T> + RealRef<T>,
+            for<'a> &'a T: RealRef<T>,
         {
             type Output = Trace<T>;
             #[inline]
@@ -669,9 +669,9 @@ trace_real_operator_impl_value_reference!(impl Pow for Trace { fn pow });
 /**
  * Power of a trace to a constant of the same type with both referenced.
  */
-impl<T: Numeric + Real + Primitive> Pow<&T> for &Trace<T>
+impl<T: Real + Primitive> Pow<&T> for &Trace<T>
 where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    for<'a> &'a T: RealRef<T>,
 {
     type Output = Trace<T>;
     #[allow(clippy::double_parens)]
@@ -694,9 +694,9 @@ macro_rules! trace_real_number_operator_impl_value_value {
         /**
          * Operation for a trace and a constant of the same type.
          */
-        impl<T: Numeric + Real + Primitive> $op<T> for Trace<T>
+        impl<T: Real + Primitive> $op<T> for Trace<T>
         where
-            for<'a> &'a T: NumericRef<T> + RealRef<T>,
+            for<'a> &'a T: RealRef<T>,
         {
             type Output = Trace<T>;
             #[inline]
@@ -712,9 +712,9 @@ macro_rules! trace_real_number_operator_impl_value_reference {
         /**
          * Operation for a trace and a constant of the same type with the right referenced.
          */
-        impl<T: Numeric + Real + Primitive> $op<&T> for Trace<T>
+        impl<T: Real + Primitive> $op<&T> for Trace<T>
         where
-            for<'a> &'a T: NumericRef<T> + RealRef<T>,
+            for<'a> &'a T: RealRef<T>,
         {
             type Output = Trace<T>;
             #[inline]
@@ -730,9 +730,9 @@ macro_rules! trace_real_number_operator_impl_reference_value {
         /**
          * Operation for a trace and a constant of the same type with the left referenced.
          */
-        impl<T: Numeric + Real + Primitive> $op<T> for &Trace<T>
+        impl<T: Real + Primitive> $op<T> for &Trace<T>
         where
-            for<'a> &'a T: NumericRef<T> + RealRef<T>,
+            for<'a> &'a T: RealRef<T>,
         {
             type Output = Trace<T>;
             #[inline]
@@ -750,9 +750,9 @@ trace_real_number_operator_impl_value_reference!(impl Pow for Trace { fn pow });
 /**
  * Power of a constant to a trace of the same type with both referenced.
  */
-impl<T: Numeric + Real + Primitive> Pow<&Trace<T>> for &T
+impl<T: Real + Primitive> Pow<&Trace<T>> for &T
 where
-    for<'a> &'a T: NumericRef<T> + RealRef<T>,
+    for<'a> &'a T: RealRef<T>,
 {
     type Output = Trace<T>;
     #[allow(clippy::double_parens)]
@@ -775,9 +775,9 @@ macro_rules! real_number_trace_operator_impl_value_value {
         /**
          * Operation for a trace and a constant of the same type.
          */
-        impl<T: Numeric + Real + Primitive> $op<Trace<T>> for T
+        impl<T: Real + Primitive> $op<Trace<T>> for T
         where
-            for<'a> &'a T: NumericRef<T> + RealRef<T>,
+            for<'a> &'a T: RealRef<T>,
         {
             type Output = Trace<T>;
             #[inline]
@@ -793,9 +793,9 @@ macro_rules! real_number_trace_operator_impl_value_reference {
         /**
          * Operation for a trace and a constant of the same type with the right referenced.
          */
-        impl<T: Numeric + Real + Primitive> $op<&Trace<T>> for T
+        impl<T: Real + Primitive> $op<&Trace<T>> for T
         where
-            for<'a> &'a T: NumericRef<T> + RealRef<T>,
+            for<'a> &'a T: RealRef<T>,
         {
             type Output = Trace<T>;
             #[inline]
@@ -811,9 +811,9 @@ macro_rules! real_number_trace_operator_impl_reference_value {
         /**
          * Operation for a trace and a constant of the same type with the left referenced.
          */
-        impl<T: Numeric + Real + Primitive> $op<Trace<T>> for &T
+        impl<T: Real + Primitive> $op<Trace<T>> for &T
         where
-            for<'a> &'a T: NumericRef<T> + RealRef<T>,
+            for<'a> &'a T: RealRef<T>,
         {
             type Output = Trace<T>;
             #[inline]
@@ -828,7 +828,7 @@ real_number_trace_operator_impl_value_value!(impl Pow for Trace { fn pow });
 real_number_trace_operator_impl_reference_value!(impl Pow for Trace { fn pow });
 real_number_trace_operator_impl_value_reference!(impl Pow for Trace { fn pow });
 
-impl<T: Numeric + Real + Primitive> Pi for Trace<T> {
+impl<T: Real + Primitive> Pi for Trace<T> {
     #[inline]
     fn pi() -> Trace<T> {
         Trace::constant(T::pi())

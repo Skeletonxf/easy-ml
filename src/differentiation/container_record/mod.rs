@@ -1052,17 +1052,16 @@ where
      * unwrapping with always succeed.
      *
      * This API can allow you to call a generic function that operates on
-     * [Numeric](crate::numeric::Numeric) numbers and apply all the correct derivative tracking
-     * during the intermediate calculations for you, without having to resort to storing the
-     * Record types.
+     * [Numeric](crate::numeric::Numeric) or [Real](crate::numeric::extra::Real) numbers and
+     * apply all the correct derivative tracking during the intermediate calculations for you,
+     * without having to resort to storing the Record types.
      *
      * ```
-     * use easy_ml::numeric::Numeric;
      * use easy_ml::numeric::extra::Real;
      * use easy_ml::tensors::Tensor;
      * use easy_ml::differentiation::{RecordTensor, WengertList};
      *
-     * fn sigmoid<T: Numeric + Real+ Copy>(x: T) -> T {
+     * fn sigmoid<T: Real+ Copy>(x: T) -> T {
      *     T::one() / (T::one() + (-x).exp())
      * }
      *
@@ -1962,17 +1961,16 @@ where
      * unwrapping with always succeed.
      *
      * This API can allow you to call a generic function that operates on
-     * [Numeric](crate::numeric::Numeric) numbers and apply all the correct derivative tracking
-     * during the intermediate calculations for you, without having to resort to storing the
-     * Record types.
+     * [Numeric](crate::numeric::Numeric) or [Real](crate::numeric::extra::Real) numbers and
+     * apply all the correct derivative tracking during the intermediate calculations for you,
+     * without having to resort to storing the Record types.
      *
      * ```
-     * use easy_ml::numeric::Numeric;
      * use easy_ml::numeric::extra::Real;
      * use easy_ml::matrices::Matrix;
      * use easy_ml::differentiation::{RecordMatrix, WengertList};
      *
-     * fn sigmoid<T: Numeric + Real+ Copy>(x: T) -> T {
+     * fn sigmoid<T: Real+ Copy>(x: T) -> T {
      *     T::one() / (T::one() + (-x).exp())
      * }
      *

@@ -7,6 +7,8 @@
  * additionally adds some additional constraints only needed by value on an implementing
  * type such as `PartialOrd`, [`ZeroOne`] and
  * [`FromUsize`].
+ *
+ * For additional operations for real valued numbers see [Real](crate::numeric::extra::Real)
  */
 
 use std::cmp::PartialOrd;
@@ -559,7 +561,7 @@ pub mod extra {
      * numerical operations needed on top of operations defined by Numeric
      * for some functions.
      *
-     * The requirements are Sqrt, Exp, Pow, Ln, Sin, Cos and Sized.
+     * The requirements on top of [Numeric] are Sqrt, Exp, Pow, Ln, Sin, Cos and Sized.
      */
     pub trait RealByValue<Rhs = Self, Output = Self>:
         Sqrt<Output = Output>
@@ -637,16 +639,34 @@ pub mod extra {
      * operations using the following syntax:
      *
      * ```ignore
+     * fn function_name<T: Real>()
+     * where for<'a> &'a T: RealRef<T> {
+     *
+     * }
+     * ```
+     *
+     * This pair of constraints is used where any real number type is needed, so although this
+     * trait does not require reference type methods by itself, in practise you won’t be able to
+     * call many functions in this library with a real type that doesn’t.
+     *
+     * In version 2.0 of Easy ML it now inherits from [Numeric] directly, old code depending on a
+     * previous version of Easy ML that also specified the Numeric traits such as:
+     *
+     * ```ignore
      * fn function_name<T: Numeric + Real>()
      * where for<'a> &'a T: NumericRef<T> + RealRef<T> {
      *
      * }
      * ```
      *
-     * This pair of constraints is used where any real number type is needed, so although
-     * this trait does not require reference type methods by itself, or re-require
-     * what is in Numeric, in practise you won't be able to call many
-     * functions in this library with a real type that doesn't.
+     * can be updated when using Easy ML 2.0 or later to the following:
+     *
+     * ```ignore
+     * fn function_name<T: Real>()
+     * where for<'a> &'a T: RealRef<T> {
+     *
+     * }
+     * ```
      */
     pub trait Real:
     // T op T -> T

@@ -143,9 +143,8 @@
  *
  * ```
  * use easy_ml::differentiation::{Trace, Record, WengertList};
- * use crate::easy_ml::numeric::Numeric;
  * use crate::easy_ml::numeric::extra::{Real};
- * fn cartesian<T: Numeric + Real + Copy>(r: T, angle: T) -> (T, T) {
+ * fn cartesian<T: Real + Copy>(r: T, angle: T) -> (T, T) {
  *     let x = r * angle.cos();
  *     let y = r * angle.sin();
  *     (x, y)

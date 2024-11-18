@@ -11,6 +11,18 @@ MatrixRef type that does not conform to the no interior mutability contract.
 manual implementations of reference types implementing these traits need to
 be deleted as they are now longer required and conflict with the blanket impls.
 - Numeric now requires implementing types to implement Debug.
+- Real and RealByValue now inherit from the corresponding Numeric and
+NumericByValue traits. This means old code depending on a previous version of
+Easy ML that also specified the Numeric traits such as:
+```rust
+fn function_name<T: Numeric + Real>()
+where for<'a> &'a T: NumericRef<T> + RealRef<T> {}
+```
+can be updated when using Easy ML 2.0 or later to the following:
+```rust
+fn function_name<T: Real>()
+where for<'a> &'a T: RealRef<T> {}
+```
 
 Further trait inheritance changes are planned as detailed at
 https://github.com/Skeletonxf/easy-ml/issues/1 but not yet implemented.

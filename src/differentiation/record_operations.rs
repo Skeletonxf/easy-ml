@@ -888,9 +888,9 @@ impl<'a, T: Numeric + Primitive> Sum for Record<'a, T> {
 /**
  * Sine of a Record by reference.
  */
-impl<'a, T: Numeric + Real + Primitive> Sin for &Record<'a, T>
+impl<'a, T: Real + Primitive> Sin for &Record<'a, T>
 where
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    for<'t> &'t T: RealRef<T>,
 {
     type Output = Record<'a, T>;
     #[inline]
@@ -916,9 +916,9 @@ macro_rules! record_real_operator_impl_value {
         /**
          * Operation for a record by value.
          */
-        impl<'a, T: Numeric + Real + Primitive> $op for Record<'a, T>
+        impl<'a, T: Real + Primitive> $op for Record<'a, T>
         where
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            for<'t> &'t T: RealRef<T>,
         {
             type Output = Record<'a, T>;
             #[inline]
@@ -934,9 +934,9 @@ record_real_operator_impl_value!(impl Sin for Record { fn sin });
 /**
  * Cosine of a Record by reference.
  */
-impl<'a, T: Numeric + Real + Primitive> Cos for &Record<'a, T>
+impl<'a, T: Real + Primitive> Cos for &Record<'a, T>
 where
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    for<'t> &'t T: RealRef<T>,
 {
     type Output = Record<'a, T>;
     #[inline]
@@ -962,9 +962,9 @@ record_real_operator_impl_value!(impl Cos for Record { fn cos });
 /**
  * Exponential, ie e<sup>x</sup> of a Record by reference.
  */
-impl<'a, T: Numeric + Real + Primitive> Exp for &Record<'a, T>
+impl<'a, T: Real + Primitive> Exp for &Record<'a, T>
 where
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    for<'t> &'t T: RealRef<T>,
 {
     type Output = Record<'a, T>;
     #[inline]
@@ -992,9 +992,9 @@ record_real_operator_impl_value!(impl Exp for Record { fn exp });
 /**
  * Natural logarithm, ie ln(x) of a Record by reference.
  */
-impl<'a, T: Numeric + Real + Primitive> Ln for &Record<'a, T>
+impl<'a, T: Real + Primitive> Ln for &Record<'a, T>
 where
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    for<'t> &'t T: RealRef<T>,
 {
     type Output = Record<'a, T>;
     #[inline]
@@ -1022,9 +1022,9 @@ record_real_operator_impl_value!(impl Ln for Record { fn ln });
 /**
  * Square root of a Record by reference.
  */
-impl<'a, T: Numeric + Real + Primitive> Sqrt for &Record<'a, T>
+impl<'a, T: Real + Primitive> Sqrt for &Record<'a, T>
 where
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    for<'t> &'t T: RealRef<T>,
 {
     type Output = Record<'a, T>;
     #[inline]
@@ -1053,9 +1053,9 @@ record_real_operator_impl_value!(impl Sqrt for Record { fn sqrt });
  * Power of one Record to another, ie self^rhs for two records of
  * the same type with both referenced and both using the same WengertList.
  */
-impl<'a, 'l, 'r, T: Numeric + Real + Primitive> Pow<&'r Record<'a, T>> for &'l Record<'a, T>
+impl<'a, 'l, 'r, T: Real + Primitive> Pow<&'r Record<'a, T>> for &'l Record<'a, T>
 where
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    for<'t> &'t T: RealRef<T>,
 {
     type Output = Record<'a, T>;
     #[inline]
@@ -1093,9 +1093,9 @@ macro_rules! record_real_operator_impl_value_value {
         /**
          * Operation for two records of the same type.
          */
-        impl<'a, T: Numeric + Real + Primitive> $op for Record<'a, T>
+        impl<'a, T: Real + Primitive> $op for Record<'a, T>
         where
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            for<'t> &'t T: RealRef<T>,
         {
             type Output = Record<'a, T>;
             #[track_caller]
@@ -1112,9 +1112,9 @@ macro_rules! record_real_operator_impl_value_reference {
         /**
          * Operation for two records of the same type with the right referenced.
          */
-        impl<'a, T: Numeric + Real + Primitive> $op<&Record<'a, T>> for Record<'a, T>
+        impl<'a, T: Real + Primitive> $op<&Record<'a, T>> for Record<'a, T>
         where
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            for<'t> &'t T: RealRef<T>,
         {
             type Output = Record<'a, T>;
             #[track_caller]
@@ -1131,9 +1131,9 @@ macro_rules! record_real_operator_impl_reference_value {
         /**
          * Operation for two records of the same type with the left referenced.
          */
-        impl<'a, T: Numeric + Real + Primitive> $op<Record<'a, T>> for &Record<'a, T>
+        impl<'a, T: Real + Primitive> $op<Record<'a, T>> for &Record<'a, T>
         where
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            for<'t> &'t T: RealRef<T>,
         {
             type Output = Record<'a, T>;
             #[track_caller]
@@ -1152,9 +1152,9 @@ record_real_operator_impl_value_reference!(impl Pow for Record { fn pow });
 /**
  * Power of one Record to a constant of the same type with both referenced.
  */
-impl<'a, T: Numeric + Real + Primitive> Pow<&T> for &Record<'a, T>
+impl<'a, T: Real + Primitive> Pow<&T> for &Record<'a, T>
 where
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    for<'t> &'t T: RealRef<T>,
 {
     type Output = Record<'a, T>;
     #[inline]
@@ -1180,9 +1180,9 @@ where
 /**
  * Power of a constant to a Record of the same type with both referenced.
  */
-impl<'a, T: Numeric + Real + Primitive> Pow<&Record<'a, T>> for &T
+impl<'a, T: Real + Primitive> Pow<&Record<'a, T>> for &T
 where
-    for<'t> &'t T: NumericRef<T> + RealRef<T>,
+    for<'t> &'t T: RealRef<T>,
 {
     type Output = Record<'a, T>;
     #[inline]
@@ -1214,9 +1214,9 @@ macro_rules! record_real_number_operator_impl_value_value {
         /**
          * Operation for a record and a constant of the same type.
          */
-        impl<'a, T: Numeric + Real + Primitive> $op<T> for Record<'a, T>
+        impl<'a, T: Real + Primitive> $op<T> for Record<'a, T>
         where
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            for<'t> &'t T: RealRef<T>,
         {
             type Output = Record<'a, T>;
             #[inline]
@@ -1232,9 +1232,9 @@ macro_rules! record_real_number_operator_impl_value_reference {
         /**
          * Operation for a record and a constant of the same type with the right referenced.
          */
-        impl<'a, T: Numeric + Real + Primitive> $op<&T> for Record<'a, T>
+        impl<'a, T: Real + Primitive> $op<&T> for Record<'a, T>
         where
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            for<'t> &'t T: RealRef<T>,
         {
             type Output = Record<'a, T>;
             #[inline]
@@ -1250,9 +1250,9 @@ macro_rules! record_real_number_operator_impl_reference_value {
         /**
          * Operation for a record and a constant of the same type with the left referenced.
          */
-        impl<'a, T: Numeric + Real + Primitive> $op<T> for &Record<'a, T>
+        impl<'a, T: Real + Primitive> $op<T> for &Record<'a, T>
         where
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            for<'t> &'t T: RealRef<T>,
         {
             type Output = Record<'a, T>;
             #[inline]
@@ -1272,9 +1272,9 @@ macro_rules! real_number_record_operator_impl_value_value {
         /**
          * Operation for a constant and a record of the same type.
          */
-        impl<'a, T: Numeric + Real + Primitive> $op<Record<'a, T>> for T
+        impl<'a, T: Real + Primitive> $op<Record<'a, T>> for T
         where
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            for<'t> &'t T: RealRef<T>,
         {
             type Output = Record<'a, T>;
             #[inline]
@@ -1290,9 +1290,9 @@ macro_rules! real_number_record_operator_impl_value_reference {
         /**
          * Operation for a constant and a record of the same type with the right referenced.
          */
-        impl<'a, T: Numeric + Real + Primitive> $op<&Record<'a, T>> for T
+        impl<'a, T: Real + Primitive> $op<&Record<'a, T>> for T
         where
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            for<'t> &'t T: RealRef<T>,
         {
             type Output = Record<'a, T>;
             #[inline]
@@ -1308,9 +1308,9 @@ macro_rules! real_number_record_operator_impl_reference_value {
         /**
          * Operation for a constant and a record of the same type with the left referenced.
          */
-        impl<'a, T: Numeric + Real + Primitive> $op<Record<'a, T>> for &T
+        impl<'a, T: Real + Primitive> $op<Record<'a, T>> for &T
         where
-            for<'t> &'t T: NumericRef<T> + RealRef<T>,
+            for<'t> &'t T: RealRef<T>,
         {
             type Output = Record<'a, T>;
             #[inline]
@@ -1325,7 +1325,7 @@ real_number_record_operator_impl_value_value!(impl Pow for Record { fn pow });
 real_number_record_operator_impl_reference_value!(impl Pow for Record { fn pow });
 real_number_record_operator_impl_value_reference!(impl Pow for Record { fn pow });
 
-impl<'a, T: Numeric + Real + Primitive> Pi for Record<'a, T> {
+impl<'a, T: Real + Primitive> Pi for Record<'a, T> {
     #[inline]
     fn pi() -> Record<'a, T> {
         Record::constant(T::pi())
