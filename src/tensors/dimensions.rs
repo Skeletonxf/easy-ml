@@ -52,6 +52,30 @@ pub fn contains<const D: usize>(shape: &[(Dimension, usize); D], dimension: Dime
     shape.iter().any(|(d, _)| d == &dimension)
 }
 
+/**
+ * Returns the length of the dimension name provided, if one is present in the shape.
+ */
+pub fn length_of<const D: usize>(
+    shape: &[(Dimension, usize); D],
+    dimension: Dimension
+) -> Option<usize> {
+    shape.iter().find(|(d, _)| *d == dimension).map(|(_, length)| length.clone())
+}
+
+/**
+ * Returns the last index of the dimension name provided, if one is present in the shape.
+ *
+ * This is always 1 less than the length, the 'index' in this sense is based on what the
+ * shape is, not any implementation index. If for some reason a shape with a 0
+ * length was given, the last index will saturate at 0.
+ */
+pub fn last_index_of<const D: usize>(
+    shape: &[(Dimension, usize); D],
+    dimension: Dimension
+) -> Option<usize> {
+    length_of(shape, dimension).map(|length| length.saturating_sub(1))
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct DimensionMappings<const D: usize> {
     source_to_requested: [usize; D],

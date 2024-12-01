@@ -20,6 +20,7 @@ use crate::tensors::indexing::{
     TensorReferenceMutIterator, TensorTranspose,
 };
 use crate::tensors::{Dimension, Tensor};
+use crate::tensors::dimensions;
 
 mod indexes;
 mod map;
@@ -314,6 +315,31 @@ where
      */
     pub fn shape(&self) -> [(Dimension, usize); D] {
         self.source.view_shape()
+    }
+
+    /**
+     * Returns the length of the dimension name provided, if one is present in the tensor view.
+     *
+     * See also
+     * - [dimensions]
+     * - [indexing]
+     */
+    pub fn length_of(&self, dimension: Dimension) -> Option<usize> {
+        dimensions::length_of(&self.source.view_shape(), dimension)
+    }
+
+    /**
+     * Returns the last index of the dimension name provided, if one is present in the tensor view.
+     *
+     * This is always 1 less than the length, the 'index' in this sense is based on what the
+     * Tensor's shape is, not any implementation index.
+     *
+     * See also
+     * - [dimensions]
+     * - [indexing]
+     */
+    pub fn last_index_of(&self, dimension: Dimension) -> Option<usize> {
+        dimensions::last_index_of(&self.source.view_shape(), dimension)
     }
 
     /**

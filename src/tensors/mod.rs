@@ -339,6 +339,31 @@ impl<T, const D: usize> Tensor<T, D> {
     }
 
     /**
+     * Returns the length of the dimension name provided, if one is present in the Tensor.
+     *
+     * See also
+     * - [dimensions]
+     * - [indexing]
+     */
+    pub fn length_of(&self, dimension: Dimension) -> Option<usize> {
+        dimensions::length_of(&self.shape, dimension)
+    }
+
+    /**
+     * Returns the last index of the dimension name provided, if one is present in the Tensor.
+     *
+     * This is always 1 less than the length, the 'index' in this sense is based on what the
+     * Tensor's shape is, not any implementation index.
+     *
+     * See also
+     * - [dimensions]
+     * - [indexing]
+     */
+    pub fn last_index_of(&self, dimension: Dimension) -> Option<usize> {
+        dimensions::last_index_of(&self.shape, dimension)
+    }
+
+    /**
      * A non panicking version of [from](Tensor::from) which returns `Result::Err` if the input
      * is invalid.
      *
