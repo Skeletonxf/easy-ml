@@ -168,8 +168,8 @@ mod distributions {
             .draw(&mut random_source.into_iter(), max_samples)
             .unwrap();
 
-        let mean = &function.mean;
-        let covariance = &function.covariance;
+        let mean = function.mean();
+        let covariance = function.covariance();
 
         // the mean of the drawn samples should be very close to our mean vector
         // check the mean of the samples are within 1 standard deviation

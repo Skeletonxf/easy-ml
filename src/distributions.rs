@@ -261,32 +261,8 @@ where
  */
 #[derive(Clone, Debug)]
 pub struct MultivariateGaussian<T: Real> {
-    // TODO: Make these non public in 2.0 so we don't have to check them again each time we call
-    // `draw()`
-    /**
-     * The mean is a column vector of expected values in each dimension
-     */
-    pub mean: Matrix<T>,
-    /**
-     * The covariance matrix is a NxN matrix where N is the number of dimensions for
-     * this Gaussian. A covariance matrix must always be symmetric, that is `C[i,j] = C[j,i]`.
-     *
-     * The covariance matrix is a measure of how much values from each dimension vary
-     * from their expected value with respect to each other.
-     *
-     * For a 2 dimensional multivariate Gaussian the covariance matrix could be the 2x2 identity
-     * matrix:
-     *
-     * ```ignore
-     * [
-     *   1.0, 0.0
-     *   0.0, 1.0
-     * ]
-     * ```
-     *
-     * In which case the two dimensions are completely uncorrelated as `C[0,1] = C[1,0] = 0`.
-     */
-    pub covariance: Matrix<T>,
+    mean: Matrix<T>,
+    covariance: Matrix<T>,
 }
 
 impl<T: Real> MultivariateGaussian<T> {
@@ -317,6 +293,33 @@ impl<T: Real> MultivariateGaussian<T> {
         );
         MultivariateGaussian { mean, covariance }
     }
+
+    /**
+     * The mean is a column vector of expected values in each dimension
+     */
+    pub fn mean(&self) -> &Matrix<T> {
+        &self.mean
+    }
+
+    /**
+     * The covariance matrix is a measure of how much values from each dimension vary
+     * from their expected value with respect to each other.
+     *
+     * For a 2 dimensional multivariate Gaussian the covariance matrix could be the 2x2 identity
+     * matrix:
+     *
+     * ```ignore
+     * [
+     *   1.0, 0.0
+     *   0.0, 1.0
+     * ]
+     * ```
+     *
+     * In which case the two dimensions are completely uncorrelated as `C[0,1] = C[1,0] = 0`.
+     */
+    pub fn covariance(&self) -> &Matrix<T> {
+        &self.covariance
+    }
 }
 
 impl<T: Real> MultivariateGaussian<T>
@@ -344,17 +347,9 @@ where
     where
         I: Iterator<Item = T>,
     {
-        // Since both our fields are public, we have to recheck they're still meeting our
-        // invariants before doing any calculations.
-        if self.mean.columns() != 1
-            || self.covariance.rows() != self.covariance.columns()
-            || self.mean.rows() != self.covariance.rows()
-        {
-            return None;
-        }
         use crate::interop::{DimensionNames, RowAndColumn, TensorRefMatrix};
-        // Since we already validated our state, we wouldn't expect these conversions to fail
-        // but if they do return None
+        // Since we already validated our state on construction, we wouldn't expect these
+        // conversions to fail but if they do return None
         // Convert the column vector to a 1 dimensional tensor by selecting the sole column
         let mean = crate::tensors::views::TensorIndex::from(
             TensorRefMatrix::from(&self.mean).ok()?,

@@ -23,6 +23,11 @@ can be updated when using Easy ML 2.0 or later to the following:
 fn function_name<T: Real>()
 where for<'a> &'a T: RealRef<T> {}
 ```
+- The public properties `mean` and `covariance` on the MultivariateGaussian
+struct were made private and methods with the same names were added to return
+references to the vector and matrix. This allows the `draw` method to not have
+to recheck invariants every time it is called, now matching the
+MultivariateGaussianTensor version.
 
 Further trait inheritance changes are planned as detailed at
 https://github.com/Skeletonxf/easy-ml/issues/1 but not yet implemented.
