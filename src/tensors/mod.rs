@@ -14,7 +14,7 @@ use crate::tensors::indexing::{
 };
 use crate::tensors::views::{
     DataLayout, IndexRange, IndexRangeValidationError, TensorExpansion, TensorIndex, TensorMask,
-    TensorMut, TensorRange, TensorRef, TensorRename, TensorView,
+    TensorMut, TensorRange, TensorRef, TensorRename, TensorView, TensorReverse,
 };
 
 use std::error::Error;
@@ -773,7 +773,7 @@ impl<T, const D: usize> Tensor<T, D> {
      *
      * # Panics
      *
-     * If a dimension name is not unique
+     * - If a dimension name is not unique
      */
     #[track_caller]
     pub fn rename_view(
@@ -994,6 +994,81 @@ impl<T, const D: usize> Tensor<T, D> {
         R: Into<IndexRange>,
     {
         TensorMask::from(self, masks).map(|mask| TensorView::from(mask))
+    }
+
+    /**
+     * Returns a TensorView with the dimension names provided of the shape reversed in iteration
+     * order. The data of this tensor and the dimension lengths remain unchanged.
+     *
+     * This is a shorthand for constructing the TensorView from this Tensor.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * use easy_ml::tensors::views::{TensorView, TensorReverse};
+     * let ab = Tensor::from([("a", 2), ("b", 3)], (0..6).collect());
+     * let reversed = ab.reverse(&["a"]);
+     * let also_reversed = TensorView::from(TensorReverse::from(&ab, &["a"]));
+     * assert_eq!(reversed, also_reversed);
+     * assert_eq!(
+     *     reversed,
+     *     Tensor::from(
+     *         [("a", 2), ("b", 3)],
+     *         vec![
+     *             3, 4, 5,
+     *             0, 1, 2,
+     *         ]
+     *     )
+     * );
+     * ```
+     *
+     * # Panics
+     *
+     * - If a dimension name is not in the tensor's shape or is repeated.
+     */
+    #[track_caller]
+    pub fn reverse(
+        &self,
+        dimensions: &[Dimension],
+    ) -> TensorView<T, TensorReverse<T, &Tensor<T, D>, D>, D> {
+        TensorView::from(TensorReverse::from(self, dimensions))
+    }
+
+    /**
+     * Returns a TensorView with the dimension names provided of the shape reversed in iteration
+     * order. The data of this tensor and the dimension lengths remain unchanged. The TensorReverse
+     * mutably borrows this Tensor, and can therefore mutate it
+     *
+     * This is a shorthand for constructing the TensorView from this Tensor.
+     *
+     * # Panics
+     *
+     * - If a dimension name is not in the tensor's shape or is repeated.
+     */
+    #[track_caller]
+    pub fn reverse_mut(
+        &mut self,
+        dimensions: &[Dimension],
+    ) -> TensorView<T, TensorReverse<T, &mut Tensor<T, D>, D>, D> {
+        TensorView::from(TensorReverse::from(self, dimensions))
+    }
+
+    /**
+     * Returns a TensorView with the dimension names provided of the shape reversed in iteration
+     * order. The data of this tensor and the dimension lengths remain unchanged. The TensorReverse
+     * takes ownership of this Tensor, and can therefore mutate it
+     *
+     * This is a shorthand for constructing the TensorView from this Tensor.
+     *
+     * # Panics
+     *
+     * - If a dimension name is not in the tensor's shape or is repeated.
+     */
+    #[track_caller]
+    pub fn reverse_owned(
+        self,
+        dimensions: &[Dimension],
+    ) -> TensorView<T, TensorReverse<T, Tensor<T, D>, D>, D> {
+        TensorView::from(TensorReverse::from(self, dimensions))
     }
 
     /**

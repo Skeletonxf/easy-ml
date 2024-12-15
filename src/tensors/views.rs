@@ -28,12 +28,14 @@ mod ranges;
 mod renamed;
 pub mod traits;
 mod zip;
+mod reverse;
 
 pub use indexes::*;
 pub(crate) use map::*;
 pub use ranges::*;
 pub use renamed::*;
 pub use zip::*;
+pub use reverse::*;
 
 /**
 * A shared/immutable reference to a tensor (or a portion of it) of some type and number of
@@ -90,7 +92,7 @@ pub unsafe trait TensorRef<T, const D: usize> {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T>;
 
     /**
-     * The shape this tensor has. See [dimensions](crate::tensors::dimensions) for an overview.
+     * The shape this tensor has. See [dimensions] for an overview.
      * The product of the lengths in the pairs define how many elements are in the tensor
      * (or the portion of it that is visible).
      */
@@ -310,7 +312,7 @@ where
      * elements from the shape, or exposing [false ones](TensorExpansion).
      *
      * See also
-     * - [dimensions](crate::tensors::dimensions)
+     * - [dimensions]
      * - [indexing](crate::tensors::indexing)
      */
     pub fn shape(&self) -> [(Dimension, usize); D] {
@@ -322,7 +324,7 @@ where
      *
      * See also
      * - [dimensions]
-     * - [indexing]
+     * - [indexing](crate::tensors::indexing)
      */
     pub fn length_of(&self, dimension: Dimension) -> Option<usize> {
         dimensions::length_of(&self.source.view_shape(), dimension)
@@ -336,7 +338,7 @@ where
      *
      * See also
      * - [dimensions]
-     * - [indexing]
+     * - [indexing](crate::tensors::indexing)
      */
     pub fn last_index_of(&self, dimension: Dimension) -> Option<usize> {
         dimensions::last_index_of(&self.source.view_shape(), dimension)
@@ -427,7 +429,7 @@ where
      *
      * # Panics
      *
-     * If a dimension name is not unique
+     * - If a dimension name is not unique
      */
     #[track_caller]
     pub fn rename_view(
@@ -541,6 +543,65 @@ where
         R: Into<IndexRange>,
     {
         TensorMask::from(self.source, masks).map(|mask| TensorView::from(mask))
+    }
+
+    /**
+     * Returns a TensorView with the dimension names provided of the shape reversed in iteration
+     * order. The data of this tensor and the dimension lengths remain unchanged.
+     *
+     * This is a shorthand for constructing the TensorView from this TensorView. See
+     * [`Tensor::reverse`](Tensor::reverse).
+     *
+     * # Panics
+     *
+     * - If a dimension name is not in the tensor's shape or is repeated.
+     */
+    #[track_caller]
+    pub fn reverse(
+        &self,
+        dimensions: &[Dimension],
+    ) -> TensorView<T, TensorReverse<T, &S, D>, D> {
+        TensorView::from(TensorReverse::from(&self.source, dimensions))
+    }
+
+    /**
+     * Returns a TensorView with the dimension names provided of the shape reversed in iteration
+     * order. The data of this tensor and the dimension lengths remain unchanged. The TensorReverse
+     * mutably borrows the source, and can therefore mutate it if it implements TensorMut.
+     *
+     * This is a shorthand for constructing the TensorView from this TensorView. See
+     * [`Tensor::reverse`](Tensor::reverse).
+     *
+     * # Panics
+     *
+     * - If a dimension name is not in the tensor's shape or is repeated.
+     */
+    #[track_caller]
+    pub fn reverse_mut(
+        &mut self,
+        dimensions: &[Dimension],
+    ) -> TensorView<T, TensorReverse<T, &mut S, D>, D> {
+        TensorView::from(TensorReverse::from(&mut self.source, dimensions))
+    }
+
+    /**
+     * Returns a TensorView with the dimension names provided of the shape reversed in iteration
+     * order. The data of this tensor and the dimension lengths remain unchanged. The TensorReverse
+     * takes ownership of the source, and can therefore mutate it if it implements TensorMut.
+     *
+     * This is a shorthand for constructing the TensorView from this TensorView. See
+     * [`Tensor::reverse`](Tensor::reverse).
+     *
+     * # Panics
+     *
+     * - If a dimension name is not in the tensor's shape or is repeated.
+     */
+    #[track_caller]
+    pub fn reverse_owned(
+        self,
+        dimensions: &[Dimension],
+    ) -> TensorView<T, TensorReverse<T, S, D>, D> {
+        TensorView::from(TensorReverse::from(self.source, dimensions))
     }
 
     /**
