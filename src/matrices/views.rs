@@ -24,11 +24,13 @@ pub mod erased;
 mod map;
 mod partitions;
 mod ranges;
+mod reverse;
 pub mod traits;
 
 pub(crate) use map::*;
 pub use partitions::*;
 pub use ranges::*;
+pub use reverse::*;
 
 /**
 * A shared/immutable reference to a matrix (or a portion of it) of some type.
@@ -79,13 +81,13 @@ pub unsafe trait MatrixRef<T>: NoInteriorMutability {
 
     /**
      * The number of rows that this reference can view. This may be less than the actual number of
-     * rows stored in the matrix.
+     * rows of data stored in the matrix implementation, but must be at least 1.
      */
     fn view_rows(&self) -> Row;
 
     /**
      * The number of columns that this reference can view. This may be less than the actual number
-     * of columns stored in the matrix.
+     * of columns of data stored in the matrix implementation, but must be at least 1.
      */
     fn view_columns(&self) -> Column;
 

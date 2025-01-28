@@ -92,7 +92,7 @@ where
     }
 }
 
-fn reverse_indexes<const D: usize>(
+pub(crate) fn reverse_indexes<const D: usize>(
     indexes: &[usize; D],
     shape: &[(Dimension, usize); D],
     reversed: &[bool; D]
