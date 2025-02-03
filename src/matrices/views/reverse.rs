@@ -32,8 +32,7 @@ where
     /**
      * Creates a MatrixReverse from a source and a struct for which dimensions to reverse the
      * order of iteration for. If either or both of rows and columns in [Reverse] are set to false
-     * the iteration order for that dimension will be will continue to iterate in its normal
-     * order.
+     * the iteration order for that dimension will continue to iterate in its normal order.
      */
     pub fn from(source: S, reverse: Reverse) -> MatrixReverse<T, S> {
         MatrixReverse {
@@ -95,6 +94,13 @@ where
     S: MatrixRef<T>,
 {
     fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        // If the Matrix has 0 length rows or columns the Tensor reverse_indexes function
+        // would reach out of bounds as it does not need to handle this case for tensors.
+        // Since the caller can expect to be able to query a 0x0 matrix and get None for
+        // any index, we must ensure this out of bounds calculation doesn't happen.
+        if self.source.view_rows() == 0 || self.source.view_columns() == 0 {
+            return None;
+        }
         let [row, column] = reverse_indexes(
             &[row, column],
             &[("row", row), ("column", column)],
@@ -112,10 +118,11 @@ where
     }
 
     unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
-        // Matrices must always be at least 1x1, this was not as explicitly stated on the
-        // MatrixRef trait prior to 2.0 but clearly mentioned on the Matrix struct and implied by
-        // the documentation about indexing. Given we can assume the matrix is at least 1x1, this
-        // calculation will return a new index which is also in range if the input was, so we won't
+        // It is the caller's responsibiltiy to call this unsafe function with only valid
+        // indexes. If the source matrix is not at least 1x1, there are no valid indexes and hence
+        // the caller must not call this function.
+        // Given we can assume the matrix is at least 1x1 if we're being called, this calculation
+        // will return a new index which is also in range if the input was, so we won't
         // introduce any out of bounds reads.
         let [row, column] = reverse_indexes(
             &[row, column],
@@ -147,6 +154,13 @@ where
     S: MatrixMut<T>,
 {
     fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
+        // If the Matrix has 0 length rows or columns the Tensor reverse_indexes function
+        // would reach out of bounds as it does not need to handle this case for tensors.
+        // Since the caller can expect to be able to query a 0x0 matrix and get None for
+        // any index, we must ensure this out of bounds calculation doesn't happen.
+        if self.source.view_rows() == 0 || self.source.view_columns() == 0 {
+            return None;
+        }
         let [row, column] = reverse_indexes(
             &[row, column],
             &[("row", row), ("column", column)],
@@ -156,10 +170,11 @@ where
     }
 
     unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
-        // Matrices must always be at least 1x1, this was not as explicitly stated on the
-        // MatrixRef trait prior to 2.0 but clearly mentioned on the Matrix struct and implied by
-        // the documentation about indexing. Given we can assume the matrix is at least 1x1, this
-        // calculation will return a new index which is also in range if the input was, so we won't
+        // It is the caller's responsibiltiy to call this unsafe function with only valid
+        // indexes. If the source matrix is not at least 1x1, there are no valid indexes and hence
+        // the caller must not call this function.
+        // Given we can assume the matrix is at least 1x1 if we're being called, this calculation
+        // will return a new index which is also in range if the input was, so we won't
         // introduce any out of bounds reads.
         let [row, column] = reverse_indexes(
             &[row, column],

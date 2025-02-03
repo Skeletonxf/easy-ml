@@ -53,8 +53,7 @@ pub use reverse::*;
 *
 * 2 - The `view_rows`/`view_columns` that define which indexes are valid may not
 * be changed by a shared reference to the MatrixRef implementation. ie, the matrix may
-* not be resized may not be resized while a mutable reference is held to it, except by that
-* reference.
+* not be resized while a mutable reference is held to it, except by that reference.
 *
 * **NB: Version 2 of Easy ML makes NoInteriorMutability a supertrait of MatrixRef.** It is
 * no longer possible to implement MatrixRef with interior mutability, which matches the
