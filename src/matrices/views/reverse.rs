@@ -4,6 +4,30 @@ use crate::tensors::views::reverse_indexes;
 
 use std::marker::PhantomData;
 
+/**
+ * A view over a matrix where some or all of the rows and columns are iterated in reverse order.
+ *
+ * ```
+ * use easy_ml::matrices::Matrix;
+ * use easy_ml::matrices::views::{MatrixView, MatrixReverse, Reverse};
+ * let ab = Matrix::from(vec![
+ *     vec![ 0, 1, 2 ],
+ *     vec![ 3, 4, 5 ]
+ * ]);
+ * let reversed = ab.reverse(Reverse { rows: true, ..Default::default() });
+ * let also_reversed = MatrixView::from(
+ *     MatrixReverse::from(&ab, Reverse { rows: true, columns: false })
+ * );
+ * assert_eq!(reversed, also_reversed);
+ * assert_eq!(
+ *     reversed,
+ *     Matrix::from(vec![
+ *         vec![ 3, 4, 5 ],
+ *         vec![ 0, 1, 2 ]
+ *     ])
+ * );
+ * ```
+ */
 #[derive(Clone, Debug)]
 pub struct MatrixReverse<T, S> {
     source: S,
@@ -19,10 +43,10 @@ pub struct MatrixReverse<T, S> {
  * length-1, and the last index length-1 becomes 0
  */
 // NB: Default impl for bool is false, which is what we want here
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 pub struct Reverse {
-    rows: bool,
-    columns: bool,
+    pub rows: bool,
+    pub columns: bool,
 }
 
 impl<T, S> MatrixReverse<T, S>

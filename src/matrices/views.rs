@@ -362,6 +362,47 @@ where
     pub fn diagonal_reference_iter(&self) -> DiagonalReferenceIterator<T, S> {
         DiagonalReferenceIterator::from(&self.source)
     }
+
+    // TODO: Helper methods for MatrixRange here
+
+    /**
+     * Returns a MatrixView with the rows and columns specified reversed in iteration
+     * order. The data of this matrix and the dimension lengths remain unchanged.
+     *
+     * This is a shorthand for constructing the MatrixView from this Matrix. See
+     * [`Matrix::reverse`](Matrix::reverse).
+     */
+    pub fn reverse(&self, reverse: Reverse) -> MatrixView<T, MatrixReverse<T, &S>> {
+        MatrixView::from(MatrixReverse::from(&self.source, reverse))
+    }
+
+    /**
+     * Returns a MatrixView with the rows and columns specified reversed in iteration
+     * order. The data of this matrix and the dimension lengths remain unchanged. The MatrixReverse
+     * mutably borrows the source, and can therefore mutate it
+     *
+     * This is a shorthand for constructing the MatrixView from this Tensor.
+     */
+    pub fn reverse_mut(
+        &mut self,
+        reverse: Reverse
+    ) -> MatrixView<T, MatrixReverse<T, &mut S>> {
+        MatrixView::from(MatrixReverse::from(&mut self.source, reverse))
+    }
+
+    /**
+     * Returns a MatrixView with the rows and columns specified reversed in iteration
+     * order. The data of this matrix and the dimension lengths remain unchanged. The MatrixReverse
+     * takes ownership of the source, and can therefore mutate it
+     *
+     * This is a shorthand for constructing the MatrixView from this Tensor.
+     */
+    pub fn reverse_owned(
+        self,
+        reverse: Reverse
+    ) -> MatrixView<T, MatrixReverse<T, S>> {
+        MatrixView::from(MatrixReverse::from(self.source, reverse))
+    }
 }
 
 /**

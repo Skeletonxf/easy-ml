@@ -19,7 +19,7 @@ pub use errors::ScalarConversionError;
 use crate::linear_algebra;
 use crate::matrices::iterators::*;
 use crate::matrices::slices::Slice2D;
-use crate::matrices::views::{MatrixPart, MatrixQuadrants, MatrixView};
+use crate::matrices::views::{MatrixPart, MatrixQuadrants, MatrixView, MatrixReverse, Reverse};
 use crate::numeric::extra::{Real, RealRef};
 use crate::numeric::{Numeric, NumericRef};
 
@@ -849,6 +849,67 @@ impl<T> Matrix<T> {
             bottom_left: parts.next().unwrap(),
             bottom_right: parts.next().unwrap(),
         }
+    }
+
+    // TODO: Helper methods for MatrixRange here
+
+    /**
+     * Returns a MatrixView with the rows and columns specified reversed in iteration
+     * order. The data of this matrix and the dimension lengths remain unchanged.
+     *
+     * This is a shorthand for constructing the MatrixView from this Matrix.
+     *
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * use easy_ml::matrices::views::{MatrixView, MatrixReverse, Reverse};
+     * let ab = Matrix::from(vec![
+     *     vec![ 0, 1, 2 ],
+     *     vec![ 3, 4, 5 ]
+     * ]);
+     * let reversed = ab.reverse(Reverse { rows: true, ..Default::default() });
+     * let also_reversed = MatrixView::from(
+     *     MatrixReverse::from(&ab, Reverse { rows: true, columns: false })
+     * );
+     * assert_eq!(reversed, also_reversed);
+     * assert_eq!(
+     *     reversed,
+     *     Matrix::from(vec![
+     *         vec![ 3, 4, 5 ],
+     *         vec![ 0, 1, 2 ]
+     *     ])
+     * );
+     * ```
+     */
+    pub fn reverse(&self, reverse: Reverse) -> MatrixView<T, MatrixReverse<T, &Matrix<T>>> {
+        MatrixView::from(MatrixReverse::from(self, reverse))
+    }
+
+    /**
+     * Returns a MatrixView with the rows and columns specified reversed in iteration
+     * order. The data of this matrix and the dimension lengths remain unchanged. The MatrixReverse
+     * mutably borrows this Matrix, and can therefore mutate it
+     *
+     * This is a shorthand for constructing the MatrixView from this Tensor.
+     */
+    pub fn reverse_mut(
+        &mut self,
+        reverse: Reverse
+    ) -> MatrixView<T, MatrixReverse<T, &mut Matrix<T>>> {
+        MatrixView::from(MatrixReverse::from(self, reverse))
+    }
+
+    /**
+     * Returns a MatrixView with the rows and columns specified reversed in iteration
+     * order. The data of this matrix and the dimension lengths remain unchanged. The MatrixReverse
+     * takes ownership of this Matrix, and can therefore mutate it
+     *
+     * This is a shorthand for constructing the MatrixView from this Tensor.
+     */
+    pub fn reverse_owned(
+        self,
+        reverse: Reverse
+    ) -> MatrixView<T, MatrixReverse<T, Matrix<T>>> {
+        MatrixView::from(MatrixReverse::from(self, reverse))
     }
 
     /**
