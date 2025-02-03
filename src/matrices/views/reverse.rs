@@ -103,7 +103,7 @@ where
         }
         let [row, column] = reverse_indexes(
             &[row, column],
-            &[("row", row), ("column", column)],
+            &[("row", self.source.view_rows()), ("column", self.source.view_columns())],
             &[self.rows, self.columns]
         );
         self.source.try_get_reference(row, column)
@@ -126,7 +126,7 @@ where
         // introduce any out of bounds reads.
         let [row, column] = reverse_indexes(
             &[row, column],
-            &[("row", row), ("column", column)],
+            &[("row", self.source.view_rows()), ("column", self.source.view_columns())],
             &[self.rows, self.columns]
         );
         self.source.get_reference_unchecked(row, column)
@@ -163,7 +163,7 @@ where
         }
         let [row, column] = reverse_indexes(
             &[row, column],
-            &[("row", row), ("column", column)],
+            &[("row", self.source.view_rows()), ("column", self.source.view_columns())],
             &[self.rows, self.columns]
         );
         self.source.try_get_reference_mut(row, column)
@@ -178,7 +178,7 @@ where
         // introduce any out of bounds reads.
         let [row, column] = reverse_indexes(
             &[row, column],
-            &[("row", row), ("column", column)],
+            &[("row", self.source.view_rows()), ("column", self.source.view_columns())],
             &[self.rows, self.columns]
         );
         self.source.get_reference_unchecked_mut(row, column)
