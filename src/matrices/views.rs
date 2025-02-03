@@ -40,7 +40,8 @@ pub use reverse::*;
 * Valid indexes into a MatrixRef range from 0 inclusive to `view_rows` exclusive for rows and
 * from 0 inclusive to `view_columns` exclusive for columns. Even if a 4x4 matrix creates some
 * 2x2 MatrixRef that can view only its center, the indexes used on the MatrixRef would be
-* 0,0 to 1,1, not 1,1 to 2,2 as corresponding on the matrix.
+* 0,0 to 1,1, not 1,1 to 2,2 as corresponding on the matrix. If the view_rows or view_columns are
+* 0 then the MatrixRef has no valid indexes.
 *
 * # Safety
 *
@@ -81,13 +82,13 @@ pub unsafe trait MatrixRef<T>: NoInteriorMutability {
 
     /**
      * The number of rows that this reference can view. This may be less than the actual number of
-     * rows of data stored in the matrix implementation, but must be at least 1.
+     * rows of data stored in the matrix implementation, and could be 0.
      */
     fn view_rows(&self) -> Row;
 
     /**
      * The number of columns that this reference can view. This may be less than the actual number
-     * of columns of data stored in the matrix implementation, but must be at least 1.
+     * of columns of data stored in the matrix implementation, and could be 0.
      */
     fn view_columns(&self) -> Column;
 
