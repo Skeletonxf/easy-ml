@@ -363,13 +363,55 @@ where
         DiagonalReferenceIterator::from(&self.source)
     }
 
-    // TODO: Helper methods for MatrixRange here
+    /**
+     * Returns a MatrixView giving a view of only the data within the row and column
+     * [IndexRange]s.
+     *
+     * This is a shorthand for constructing the MatrixView from this MatrixView. See
+     * [`Matrix::range`](Matrix::range).
+     */
+    pub fn range<R>(&self, rows: R, columns: R) -> MatrixView<T, MatrixRange<T, &S>>
+    where
+        R: Into<IndexRange>,
+    {
+        MatrixView::from(MatrixRange::from(&self.source, rows, columns))
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data within the row and column
+     * [IndexRange]s. The MatrixRange mutably borrows the source, and can therefore
+     * mutate it.
+     *
+     * This is a shorthand for constructing the MatrixView from this MatrixView. See
+     * [`Matrix::range`](Matrix::range).
+     */
+    pub fn range_mut<R>(&mut self, rows: R, columns: R) -> MatrixView<T, MatrixRange<T, &mut S>>
+    where
+        R: Into<IndexRange>,
+    {
+        MatrixView::from(MatrixRange::from(&mut self.source, rows, columns))
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data within the row and column
+     * [IndexRange]s. The MatrixRange takes ownership of the source, and
+     * can therefore mutate it
+     *
+     * This is a shorthand for constructing the MatrixView from this MatrixView. See
+     * [`Matrix::range`](Matrix::range).
+     */
+    pub fn range_owned<R>(self, rows: R, columns: R) -> MatrixView<T, MatrixRange<T, S>>
+    where
+        R: Into<IndexRange>,
+    {
+        MatrixView::from(MatrixRange::from(self.source, rows, columns))
+    }
 
     /**
      * Returns a MatrixView with the rows and columns specified reversed in iteration
      * order. The data of this matrix and the dimension lengths remain unchanged.
      *
-     * This is a shorthand for constructing the MatrixView from this Matrix. See
+     * This is a shorthand for constructing the MatrixView from this matrix. See
      * [`Matrix::reverse`](Matrix::reverse).
      */
     pub fn reverse(&self, reverse: Reverse) -> MatrixView<T, MatrixReverse<T, &S>> {
@@ -381,7 +423,8 @@ where
      * order. The data of this matrix and the dimension lengths remain unchanged. The MatrixReverse
      * mutably borrows the source, and can therefore mutate it
      *
-     * This is a shorthand for constructing the MatrixView from this Tensor.
+     * This is a shorthand for constructing the MatrixView from this MatrixView. See
+     * [`Matrix::reverse`](Matrix::reverse).
      */
     pub fn reverse_mut(
         &mut self,
@@ -395,7 +438,8 @@ where
      * order. The data of this matrix and the dimension lengths remain unchanged. The MatrixReverse
      * takes ownership of the source, and can therefore mutate it
      *
-     * This is a shorthand for constructing the MatrixView from this Tensor.
+     * This is a shorthand for constructing the MatrixView from this MatrixView. See
+     * [`Matrix::reverse`](Matrix::reverse).
      */
     pub fn reverse_owned(
         self,

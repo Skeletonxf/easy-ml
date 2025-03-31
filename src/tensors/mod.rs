@@ -219,7 +219,7 @@ fn test_send() {
  * supports 2 dimensions, and vectors are represented in Matrix by making either the rows or
  * columns have a length of one, [Tensor] supports an arbitary number of dimensions,
  * with 0 through 6 having full API support. A `Tensor<T, 2>` is very similar to a `Matrix<T>`
- * except that this type associates each dimension with a name, and favor names to refer to
+ * except that this type associates each dimension with a name, and favors names to refer to
  * dimensions instead of index order.
  *
  * Like Matrix, the type of the data in this Tensor may implement no traits, in which case the

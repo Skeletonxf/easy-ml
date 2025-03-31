@@ -19,7 +19,7 @@ pub use errors::ScalarConversionError;
 use crate::linear_algebra;
 use crate::matrices::iterators::*;
 use crate::matrices::slices::Slice2D;
-use crate::matrices::views::{MatrixPart, MatrixQuadrants, MatrixView, MatrixReverse, Reverse};
+use crate::matrices::views::{MatrixPart, MatrixQuadrants, MatrixView, MatrixReverse, Reverse, MatrixRange, IndexRange};
 use crate::numeric::extra::{Real, RealRef};
 use crate::numeric::{Numeric, NumericRef};
 
@@ -688,8 +688,7 @@ impl<T> Matrix<T> {
      *
      * **This function is much like a hammer you should be careful to not overuse. If you don't need
      * to mutate the parts of the matrix data individually it will be much easier and less error
-     * prone to create immutable views into the matrix using [MatrixRange](views::MatrixRange)
-     * instead.**
+     * prone to create immutable views into the matrix using [MatrixRange] instead.**
      *
      * Parts are returned in row major order, forming a grid of slices into the Matrix data that
      * can be mutated independently.
@@ -851,7 +850,71 @@ impl<T> Matrix<T> {
         }
     }
 
-    // TODO: Helper methods for MatrixRange here
+    /**
+     * Returns a MatrixView giving a view of only the data within the row and column
+     * [IndexRange]s.
+     *
+     * This is a shorthand for constructing the MatrixView from this Matrix.
+     *
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * use easy_ml::matrices::views::{MatrixView, MatrixRange, IndexRange};
+     * let ab = Matrix::from(vec![
+     *     vec![ 0, 1, 2, 0 ],
+     *     vec![ 3, 4, 5, 1 ]
+     * ]);
+     * let shorter = ab.range(0..2, 1..3);
+     * assert_eq!(
+     *     shorter,
+     *     Matrix::from(vec![
+     *        vec![ 1, 2 ],
+     *        vec![ 4, 5 ]
+     *     ])
+     * );
+     * ```
+     */
+    pub fn range<R>(&self, rows: R, columns: R) -> MatrixView<T, MatrixRange<T, &Matrix<T>>>
+    where
+        R: Into<IndexRange>,
+    {
+        MatrixView::from(MatrixRange::from(self, rows, columns))
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data within the row and column
+     * [IndexRange]s. The MatrixReverse mutably borrows this Matrix, and can
+     * therefore mutate it.
+     *
+     * This is a shorthand for constructing the MatrixView from this Matrix.
+     */
+    pub fn range_mut<R>(
+        &mut self,
+        rows: R,
+        columns: R
+    ) -> MatrixView<T, MatrixRange<T, &mut Matrix<T>>>
+    where
+        R: Into<IndexRange>,
+    {
+        MatrixView::from(MatrixRange::from(self, rows, columns))
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data within the row and column
+     * [IndexRange]s. The MatrixReverse takes ownership of this Matrix, and can
+     * therefore mutate it.
+     *
+     * This is a shorthand for constructing the MatrixView from this Matrix.
+     */
+    pub fn range_owned<R>(
+        self,
+        rows: R,
+        columns: R
+    ) -> MatrixView<T, MatrixRange<T, Matrix<T>>>
+    where
+        R: Into<IndexRange>,
+    {
+        MatrixView::from(MatrixRange::from(self, rows, columns))
+    }
 
     /**
      * Returns a MatrixView with the rows and columns specified reversed in iteration
@@ -889,7 +952,7 @@ impl<T> Matrix<T> {
      * order. The data of this matrix and the dimension lengths remain unchanged. The MatrixReverse
      * mutably borrows this Matrix, and can therefore mutate it
      *
-     * This is a shorthand for constructing the MatrixView from this Tensor.
+     * This is a shorthand for constructing the MatrixView from this Matrix.
      */
     pub fn reverse_mut(
         &mut self,
@@ -903,7 +966,7 @@ impl<T> Matrix<T> {
      * order. The data of this matrix and the dimension lengths remain unchanged. The MatrixReverse
      * takes ownership of this Matrix, and can therefore mutate it
      *
-     * This is a shorthand for constructing the MatrixView from this Tensor.
+     * This is a shorthand for constructing the MatrixView from this Matrix.
      */
     pub fn reverse_owned(
         self,
