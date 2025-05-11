@@ -79,7 +79,8 @@ where
      * Creates a TensorRefMatrix wrapping a MatrixRef type and defaulting the dimension names
      * to "row" and "column" respectively.
      *
-     * Result::Err is returned if the matrix dimension lengths are not at least 1x1.
+     * Result::Err is returned if the matrix dimension lengths are not at least 1x1. This is
+     * allowed for MatrixRef but not for TensorRef and hence cannot be converted.
      */
     pub fn from(source: S) -> Result<TensorRefMatrix<T, S, RowAndColumn>, InvalidShapeError<2>> {
         TensorRefMatrix::with_names(source, RowAndColumn)
@@ -95,7 +96,8 @@ where
      * Creates a TensorRefMatrix wrapping a MatrixRef type and provided dimension names.
      *
      * Result::Err is returned if the provided dimension names are not unique, or the matrix
-     * dimension lengths are not at least 1x1.
+     * dimension lengths are not at least 1x1. This is allowed for MatrixRef but not for
+     * TensorRef and hence cannot be converted.
      *
      * ```
      * use easy_ml::matrices::Matrix;

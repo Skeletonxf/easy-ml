@@ -633,7 +633,7 @@ where
     }
 
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
-        // It is the caller's responsibiltiy to always call with indexes in range,
+        // It is the caller's responsibility to always call with indexes in range,
         // therefore the unwrap() case should never happen because on an arbitary TensorRef
         // it would be undefined behavior.
         // TODO: Can we use unwrap_unchecked here?
@@ -667,7 +667,7 @@ where
     }
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
-        // It is the caller's responsibiltiy to always call with indexes in range,
+        // It is the caller's responsibility to always call with indexes in range,
         // therefore the unwrap() case should never happen because on an arbitary TensorMut
         // it would be undefined behavior.
         // TODO: Can we use unwrap_unchecked here?
@@ -713,7 +713,7 @@ where
     }
 
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
-        // It is the caller's responsibiltiy to always call with indexes in range,
+        // It is the caller's responsibility to always call with indexes in range,
         // therefore out of bounds lookups created by map_indexes_by_mask should never happen.
         self.source
             .get_reference_unchecked(map_indexes_by_mask(indexes, &self.mask))
@@ -744,7 +744,7 @@ where
     }
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
-        // It is the caller's responsibiltiy to always call with indexes in range,
+        // It is the caller's responsibility to always call with indexes in range,
         // therefore out of bounds lookups created by map_indexes_by_mask should never happen.
         self.source
             .get_reference_unchecked_mut(map_indexes_by_mask(indexes, &self.mask))

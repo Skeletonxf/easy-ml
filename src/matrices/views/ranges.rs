@@ -5,16 +5,34 @@ use std::marker::PhantomData;
 use std::ops::Range;
 
 /**
- * A 2 dimensional range over a matrix, hiding the rest of the matrix data from view.
+ * A 2 dimensional range over a matrix, hiding the values **outside** the range from view.
  *
  * The entire source is still owned by the MatrixRange however, so this does not permit
  * creating multiple mutable ranges into a single matrix even if they wouldn't overlap.
  *
  * For non overlapping mutable ranges into a single matrix see
  * [`partition`](crate::matrices::Matrix::partition).
+ *
+ * See also: [MatrixMask](MatrixMask)
  */
 #[derive(Clone, Debug)]
 pub struct MatrixRange<T, S> {
+    source: S,
+    rows: IndexRange,
+    columns: IndexRange,
+    _type: PhantomData<T>,
+}
+
+/**
+ * A 2 dimensional mask over a matrix, hiding the values **inside** the range from view.
+ *
+ * The entire source is still owned by the MatrixMask however, so this does not permit
+ * creating multiple mutable masks into a single matrix even if they wouldn't overlap.
+ *
+ * See also: [MatrixRange](MatrixRange)
+ */
+#[derive(Clone, Debug)]
+pub struct MatrixMask<T, S> {
     source: S,
     rows: IndexRange,
     columns: IndexRange,
@@ -72,6 +90,69 @@ where
         let max_rows = source.view_rows();
         let max_columns = source.view_columns();
         MatrixRange {
+            source,
+            rows: {
+                let mut rows = rows.into();
+                rows.clip(max_rows);
+                rows
+            },
+            columns: {
+                let mut columns = columns.into();
+                columns.clip(max_columns);
+                columns
+            },
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<T, S> MatrixMask<T, S>
+where
+    S: MatrixRef<T>,
+{
+    /**
+     * Creates a new MatrixMask giving a view of only the data outside the row and column
+     * [IndexRange](IndexRange)s. If the index range given for rows or columns exceeds the
+     * size of the matrix, they will be clipped to fit the actual size without an error.
+     *
+     * # Examples
+     *
+     * Creating a view and manipulating a matrix from it.
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * use easy_ml::matrices::views::{MatrixView, MatrixMask};
+     * let mut matrix = Matrix::from(vec![
+     *     vec![ 2, 3, 4 ],
+     *     vec![ 5, 1, 8 ]]);
+     * {
+     *     let mut view = MatrixView::from(MatrixMask::from(&mut matrix, 0..1, 2..3));
+     *     assert_eq!(vec![5, 1], view.row_major_iter().collect::<Vec<_>>());
+     *     view.map_mut(|x| x + 10);
+     * }
+     * assert_eq!(matrix, Matrix::from(vec![
+     *     vec![ 2,   3,  4 ],
+     *     vec![ 15, 11,  8 ]]));
+     * ```
+     *
+     * Various ways to construct a MatrixMask
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * use easy_ml::matrices::views::{IndexRange, MatrixMask};
+     * let matrix = Matrix::from(vec![vec![1]]);
+     * let index_range = MatrixMask::from(&matrix, IndexRange::new(0, 4), IndexRange::new(1, 3));
+     * let tuple = MatrixMask::from(&matrix, (0, 4), (1, 3));
+     * let array = MatrixMask::from(&matrix, [0, 4], [1, 3]);
+     * // Note std::ops::Range is start..end not start and length!
+     * let range = MatrixMask::from(&matrix, 0..4, 1..4);
+     * ```
+     */
+    pub fn from<R>(source: S, rows: R, columns: R) -> MatrixMask<T, S>
+    where
+        R: Into<IndexRange>,
+    {
+        let max_rows = source.view_rows();
+        let max_columns = source.view_columns();
+        MatrixMask {
             source,
             rows: {
                 let mut rows = rows.into();
@@ -289,7 +370,7 @@ where
     }
 
     unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
-        // It is the caller's responsibiltiy to always call with row/column indexes in range,
+        // It is the caller's responsibility to always call with row/column indexes in range,
         // therefore the unwrap() case should never happen because on an arbitary MatrixRef
         // it would be undefined behavior.
         let row = self.rows.map(row).unwrap();
@@ -317,3 +398,84 @@ fn test_matrix_range_shape_clips() {
     assert_eq!(2, range.rows.length);
     assert_eq!(2, range.columns.length);
 }
+
+// # Safety
+//
+// Since the MatrixRef we own must implement MatrixRef correctly, so do we by delegating to it,
+// as we don't introduce any interior mutability.
+/**
+ * A MatrixMask of a MatrixRef type implements MatrixRef.
+ */
+unsafe impl<T, S> MatrixRef<T> for MatrixMask<T, S>
+where
+    S: MatrixRef<T>,
+{
+    fn try_get_reference(&self, row: Row, column: Column) -> Option<&T> {
+        let row = self.rows.mask(row);
+        let column = self.columns.mask(column);
+        self.source.try_get_reference(row, column)
+    }
+
+    fn view_rows(&self) -> Row {
+        // We enforce in the constructor that the mask is clipped to the size of our actual
+        // matrix, hence the mask cannot be longer than our data in either dimension. If the
+        // mask is the same length as our data, we'd return 0 which for MatrixRef is allowed.
+        self.source.view_rows() - self.rows.length
+    }
+
+    fn view_columns(&self) -> Column {
+        // We enforce in the constructor that the mask is clipped to the size of our actual
+        // matrix, hence the mask cannot be longer than our data in either dimension. If the
+        // mask is the same length as our data, we'd return 0 which for MatrixRef is allowed.
+        self.source.view_columns() - self.columns.length
+    }
+
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        // It is the caller's responsibility to always call with row/column indexes in range,
+        // therefore calling get_reference_unchecked with indexes beyond the size of the matrix
+        // should never happen because on an arbitary MatrixRef it would be undefined behavior.
+        let row = self.rows.mask(row);
+        let column = self.columns.mask(column);
+        self.source.get_reference_unchecked(row, column)
+    }
+
+    fn data_layout(&self) -> DataLayout {
+        self.source.data_layout()
+    }
+}
+
+// # Safety
+//
+// Since the MatrixMut we own must implement MatrixMut correctly, so do we by delegating to it,
+// as we don't introduce any interior mutability.
+/**
+ * A MatrixMask of a MatrixMut type implements MatrixMut.
+ */
+unsafe impl<T, S> MatrixMut<T> for MatrixMask<T, S>
+where
+    S: MatrixMut<T>,
+{
+    fn try_get_reference_mut(&mut self, row: Row, column: Column) -> Option<&mut T> {
+        let row = self.rows.mask(row);
+        let column = self.columns.mask(column);
+        self.source.try_get_reference_mut(row, column)
+    }
+
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+        // It is the caller's responsibility to always call with row/column indexes in range,
+        // therefore calling get_reference_unchecked with indexes beyond the size of the matrix
+        // should never happen because on an arbitary MatrixRef it would be undefined behavior.
+        let row = self.rows.mask(row);
+        let column = self.columns.mask(column);
+        self.source.get_reference_unchecked_mut(row, column)
+    }
+}
+
+// # Safety
+//
+// Since the NoInteriorMutability we own must implement NoInteriorMutability correctly, so
+// do we by delegating to it, as we don't introduce any interior mutability.
+/**
+ * A MatrixMask of a NoInteriorMutability type implements NoInteriorMutability.
+ */
+unsafe impl<T, S> NoInteriorMutability for MatrixMask<T, S> where S: NoInteriorMutability {}
