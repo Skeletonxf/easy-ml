@@ -1340,10 +1340,7 @@ impl<T> QRDecomposition<T> {
     }
 }
 
-fn householder_matrix_tensor<T: Real>(
-    vector: Vec<T>,
-    names: [Dimension; 2],
-) -> Tensor<T, 2>
+fn householder_matrix_tensor<T: Real>(vector: Vec<T>, names: [Dimension; 2]) -> Tensor<T, 2>
 where
     for<'a> &'a T: RealRef<T>,
 {

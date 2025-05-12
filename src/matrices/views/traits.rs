@@ -65,10 +65,7 @@ where
  * since this type promises not to have interior mutability, taking a shared reference can't
  * introduce any.
  */
-unsafe impl<'source, S> NoInteriorMutability for &'source S
-where
-    S: NoInteriorMutability,
-{}
+unsafe impl<'source, S> NoInteriorMutability for &'source S where S: NoInteriorMutability {}
 
 // # Safety
 //

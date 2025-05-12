@@ -56,8 +56,7 @@ where
         if let Some(dimension) = dimensions.iter().find(|d| !dimensions::contains(&shape, d)) {
             panic!(
                 "Dimension names to reverse must be in the source: {:?} is not in {:?}",
-                dimension,
-                shape
+                dimension, shape
             );
         }
         let reversed = std::array::from_fn(|i| dimensions.contains(&shape[i].0));
@@ -95,7 +94,7 @@ where
 pub(crate) fn reverse_indexes<const D: usize>(
     indexes: &[usize; D],
     shape: &[(Dimension, usize); D],
-    reversed: &[bool; D]
+    reversed: &[bool; D],
 ) -> [usize; D] {
     std::array::from_fn(|d| {
         if reversed[d] {
@@ -125,9 +124,11 @@ where
     S: TensorRef<T, D>,
 {
     fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
-        self.source.get_reference(
-            reverse_indexes(&indexes, &self.view_shape(), &self.reversed)
-        )
+        self.source.get_reference(reverse_indexes(
+            &indexes,
+            &self.view_shape(),
+            &self.reversed,
+        ))
     }
 
     fn view_shape(&self) -> [(Dimension, usize); D] {
@@ -135,9 +136,11 @@ where
     }
 
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
-        self.source.get_reference_unchecked(
-            reverse_indexes(&indexes, &self.view_shape(), &self.reversed)
-        )
+        self.source.get_reference_unchecked(reverse_indexes(
+            &indexes,
+            &self.view_shape(),
+            &self.reversed,
+        ))
     }
 
     fn data_layout(&self) -> DataLayout<D> {
@@ -162,15 +165,19 @@ where
     S: TensorMut<T, D>,
 {
     fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
-        self.source.get_reference_mut(
-            reverse_indexes(&indexes, &self.view_shape(), &self.reversed)
-        )
+        self.source.get_reference_mut(reverse_indexes(
+            &indexes,
+            &self.view_shape(),
+            &self.reversed,
+        ))
     }
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
-        self.source.get_reference_unchecked_mut(
-            reverse_indexes(&indexes, &self.view_shape(), &self.reversed)
-        )
+        self.source.get_reference_unchecked_mut(reverse_indexes(
+            &indexes,
+            &self.view_shape(),
+            &self.reversed,
+        ))
     }
 }
 
@@ -178,7 +185,13 @@ where
 fn test_reversed_tensors() {
     use crate::tensors::Tensor;
     let tensor = Tensor::from([("a", 2), ("b", 3), ("c", 2)], (0..12).collect());
-    assert_eq!(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], tensor.iter().collect::<Vec<_>>());
+    assert_eq!(
+        vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+        tensor.iter().collect::<Vec<_>>()
+    );
     let reversed = tensor.reverse_owned(&["a", "c"]);
-    assert_eq!(vec![7, 6, 9, 8, 11, 10, 1, 0, 3, 2, 5, 4], reversed.iter().collect::<Vec<_>>());
+    assert_eq!(
+        vec![7, 6, 9, 8, 11, 10, 1, 0, 3, 2, 5, 4],
+        reversed.iter().collect::<Vec<_>>()
+    );
 }

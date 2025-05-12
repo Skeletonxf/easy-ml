@@ -12,6 +12,7 @@
  */
 
 use std::cmp::PartialOrd;
+use std::fmt::Debug;
 use std::iter::Sum;
 use std::marker::Sized;
 use std::num::{Saturating, Wrapping};
@@ -20,7 +21,6 @@ use std::ops::Div;
 use std::ops::Mul;
 use std::ops::Neg;
 use std::ops::Sub;
-use std::fmt::Debug;
 
 /**
  * A trait defining what a numeric type is in terms of by value

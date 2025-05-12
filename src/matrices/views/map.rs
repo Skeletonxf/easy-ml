@@ -63,10 +63,7 @@ where
     }
 }
 
-unsafe impl<T, U, S, F> NoInteriorMutability for MatrixMap<T, U, S, F>
-where
-    S: NoInteriorMutability,
-{}
+unsafe impl<T, U, S, F> NoInteriorMutability for MatrixMap<T, U, S, F> where S: NoInteriorMutability {}
 
 // # Safety
 //

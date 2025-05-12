@@ -14,7 +14,7 @@ use crate::tensors::indexing::{
 };
 use crate::tensors::views::{
     DataLayout, IndexRange, IndexRangeValidationError, TensorExpansion, TensorIndex, TensorMask,
-    TensorMut, TensorRange, TensorRef, TensorRename, TensorView, TensorReverse,
+    TensorMut, TensorRange, TensorRef, TensorRename, TensorReverse, TensorView,
 };
 
 use std::error::Error;

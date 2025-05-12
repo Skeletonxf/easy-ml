@@ -470,10 +470,7 @@ where
      * This is a shorthand for constructing the MatrixView from this MatrixView. See
      * [`Matrix::reverse`](Matrix::reverse).
      */
-    pub fn reverse_mut(
-        &mut self,
-        reverse: Reverse
-    ) -> MatrixView<T, MatrixReverse<T, &mut S>> {
+    pub fn reverse_mut(&mut self, reverse: Reverse) -> MatrixView<T, MatrixReverse<T, &mut S>> {
         MatrixView::from(MatrixReverse::from(&mut self.source, reverse))
     }
 
@@ -485,10 +482,7 @@ where
      * This is a shorthand for constructing the MatrixView from this MatrixView. See
      * [`Matrix::reverse`](Matrix::reverse).
      */
-    pub fn reverse_owned(
-        self,
-        reverse: Reverse
-    ) -> MatrixView<T, MatrixReverse<T, S>> {
+    pub fn reverse_owned(self, reverse: Reverse) -> MatrixView<T, MatrixReverse<T, S>> {
         MatrixView::from(MatrixReverse::from(self.source, reverse))
     }
 }
@@ -882,14 +876,18 @@ where
     pub fn map_mut_with_index(&mut self, mapping_function: impl Fn(T, Row, Column) -> T) {
         match self.data_layout() {
             DataLayout::ColumnMajor => {
-                self.column_major_reference_mut_iter().with_index().for_each(|((i, j), x)| {
-                    *x = mapping_function(x.clone(), i, j);
-                });
+                self.column_major_reference_mut_iter()
+                    .with_index()
+                    .for_each(|((i, j), x)| {
+                        *x = mapping_function(x.clone(), i, j);
+                    });
             }
             _ => {
-                self.row_major_reference_mut_iter().with_index().for_each(|((i, j), x)| {
-                    *x = mapping_function(x.clone(), i, j);
-                });
+                self.row_major_reference_mut_iter()
+                    .with_index()
+                    .for_each(|((i, j), x)| {
+                        *x = mapping_function(x.clone(), i, j);
+                    });
             }
         }
     }

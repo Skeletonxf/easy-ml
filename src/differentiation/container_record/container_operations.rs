@@ -29,10 +29,7 @@ where
         write!(
             f,
             "{}",
-            MatrixView::from(MatrixMap::from(
-                self.numbers.source_ref(),
-                |(x, _)| x
-            ))
+            MatrixView::from(MatrixMap::from(self.numbers.source_ref(), |(x, _)| x))
         )
     }
 }

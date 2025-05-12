@@ -19,7 +19,10 @@ pub use errors::ScalarConversionError;
 use crate::linear_algebra;
 use crate::matrices::iterators::*;
 use crate::matrices::slices::Slice2D;
-use crate::matrices::views::{MatrixPart, MatrixQuadrants, MatrixView, MatrixReverse, Reverse, MatrixRange, MatrixMask, IndexRange};
+use crate::matrices::views::{
+    IndexRange, MatrixMask, MatrixPart, MatrixQuadrants, MatrixRange, MatrixReverse, MatrixView,
+    Reverse,
+};
 use crate::numeric::extra::{Real, RealRef};
 use crate::numeric::{Numeric, NumericRef};
 
@@ -890,7 +893,7 @@ impl<T> Matrix<T> {
     pub fn range_mut<R>(
         &mut self,
         rows: R,
-        columns: R
+        columns: R,
     ) -> MatrixView<T, MatrixRange<T, &mut Matrix<T>>>
     where
         R: Into<IndexRange>,
@@ -905,11 +908,7 @@ impl<T> Matrix<T> {
      *
      * This is a shorthand for constructing the MatrixView from this Matrix.
      */
-    pub fn range_owned<R>(
-        self,
-        rows: R,
-        columns: R
-    ) -> MatrixView<T, MatrixRange<T, Matrix<T>>>
+    pub fn range_owned<R>(self, rows: R, columns: R) -> MatrixView<T, MatrixRange<T, Matrix<T>>>
     where
         R: Into<IndexRange>,
     {
@@ -955,7 +954,7 @@ impl<T> Matrix<T> {
     pub fn mask_mut<R>(
         &mut self,
         rows: R,
-        columns: R
+        columns: R,
     ) -> MatrixView<T, MatrixMask<T, &mut Matrix<T>>>
     where
         R: Into<IndexRange>,
@@ -970,11 +969,7 @@ impl<T> Matrix<T> {
      *
      * This is a shorthand for constructing the MatrixView from this Matrix.
      */
-    pub fn mask_owned<R>(
-        self,
-        rows: R,
-        columns: R
-    ) -> MatrixView<T, MatrixMask<T, Matrix<T>>>
+    pub fn mask_owned<R>(self, rows: R, columns: R) -> MatrixView<T, MatrixMask<T, Matrix<T>>>
     where
         R: Into<IndexRange>,
     {
@@ -1021,7 +1016,7 @@ impl<T> Matrix<T> {
      */
     pub fn reverse_mut(
         &mut self,
-        reverse: Reverse
+        reverse: Reverse,
     ) -> MatrixView<T, MatrixReverse<T, &mut Matrix<T>>> {
         MatrixView::from(MatrixReverse::from(self, reverse))
     }
@@ -1033,10 +1028,7 @@ impl<T> Matrix<T> {
      *
      * This is a shorthand for constructing the MatrixView from this Matrix.
      */
-    pub fn reverse_owned(
-        self,
-        reverse: Reverse
-    ) -> MatrixView<T, MatrixReverse<T, Matrix<T>>> {
+    pub fn reverse_owned(self, reverse: Reverse) -> MatrixView<T, MatrixReverse<T, Matrix<T>>> {
         MatrixView::from(MatrixReverse::from(self, reverse))
     }
 

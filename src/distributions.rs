@@ -103,9 +103,9 @@ let mut random_numbers = EndlessRandomGenerator { rng: random_generator };
 [See web_assembly module for Example of creating an infinite iterator for web assembly targets](super::web_assembly)
  */
 
-use crate::numeric::extra::{Real, RealRef};
 use crate::linear_algebra;
 use crate::matrices::Matrix;
+use crate::numeric::extra::{Real, RealRef};
 use crate::tensors::views::{TensorRef, TensorView};
 use crate::tensors::{Dimension, Tensor};
 

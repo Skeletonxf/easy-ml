@@ -57,9 +57,12 @@ pub fn contains<const D: usize>(shape: &[(Dimension, usize); D], dimension: Dime
  */
 pub fn length_of<const D: usize>(
     shape: &[(Dimension, usize); D],
-    dimension: Dimension
+    dimension: Dimension,
 ) -> Option<usize> {
-    shape.iter().find(|(d, _)| *d == dimension).map(|(_, length)| length.clone())
+    shape
+        .iter()
+        .find(|(d, _)| *d == dimension)
+        .map(|(_, length)| length.clone())
 }
 
 /**
@@ -71,7 +74,7 @@ pub fn length_of<const D: usize>(
  */
 pub fn last_index_of<const D: usize>(
     shape: &[(Dimension, usize); D],
-    dimension: Dimension
+    dimension: Dimension,
 ) -> Option<usize> {
     length_of(shape, dimension).map(|length| length.saturating_sub(1))
 }

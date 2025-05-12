@@ -15,27 +15,27 @@ use std::marker::PhantomData;
 
 use crate::linear_algebra;
 use crate::numeric::{Numeric, NumericRef};
+use crate::tensors::dimensions;
 use crate::tensors::indexing::{
     TensorAccess, TensorIterator, TensorOwnedIterator, TensorReferenceIterator,
     TensorReferenceMutIterator, TensorTranspose,
 };
 use crate::tensors::{Dimension, Tensor};
-use crate::tensors::dimensions;
 
 mod indexes;
 mod map;
 mod ranges;
 mod renamed;
+mod reverse;
 pub mod traits;
 mod zip;
-mod reverse;
 
 pub use indexes::*;
 pub(crate) use map::*;
 pub use ranges::*;
 pub use renamed::*;
-pub use zip::*;
 pub use reverse::*;
+pub use zip::*;
 
 /**
 * A shared/immutable reference to a tensor (or a portion of it) of some type and number of
@@ -557,10 +557,7 @@ where
      * - If a dimension name is not in the tensor's shape or is repeated.
      */
     #[track_caller]
-    pub fn reverse(
-        &self,
-        dimensions: &[Dimension],
-    ) -> TensorView<T, TensorReverse<T, &S, D>, D> {
+    pub fn reverse(&self, dimensions: &[Dimension]) -> TensorView<T, TensorReverse<T, &S, D>, D> {
         TensorView::from(TensorReverse::from(&self.source, dimensions))
     }
 

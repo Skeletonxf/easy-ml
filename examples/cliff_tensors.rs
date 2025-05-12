@@ -212,7 +212,12 @@ impl GridWorld {
         let actions = Direction::actions();
         let mut state = self.agent;
         let mut action = policy.choose(&actions.map(|d| (d, self.q(state, d))));
-        while self.tiles.index_by(["x", "y"]).get([self.agent.0, self.agent.1]) != Cell::Goal {
+        while self
+            .tiles
+            .index_by(["x", "y"])
+            .get([self.agent.0, self.agent.1])
+            != Cell::Goal
+        {
             let reward = self.take_action(action);
             self.reward += reward;
             let new_state = self.agent;
@@ -270,6 +275,7 @@ fn index(position: Position, direction: Direction, width: usize, directions: usi
 }
 
 fn main() {
+    #[rustfmt::skip]
     let mut grid_world = GridWorld {
         tiles: {
             use Cell::Cliff as C;
