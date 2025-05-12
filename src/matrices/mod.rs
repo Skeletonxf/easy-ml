@@ -19,7 +19,7 @@ pub use errors::ScalarConversionError;
 use crate::linear_algebra;
 use crate::matrices::iterators::*;
 use crate::matrices::slices::Slice2D;
-use crate::matrices::views::{MatrixPart, MatrixQuadrants, MatrixView, MatrixReverse, Reverse, MatrixRange, IndexRange};
+use crate::matrices::views::{MatrixPart, MatrixQuadrants, MatrixView, MatrixReverse, Reverse, MatrixRange, MatrixMask, IndexRange};
 use crate::numeric::extra::{Real, RealRef};
 use crate::numeric::{Numeric, NumericRef};
 
@@ -882,7 +882,7 @@ impl<T> Matrix<T> {
 
     /**
      * Returns a MatrixView giving a view of only the data within the row and column
-     * [IndexRange]s. The MatrixReverse mutably borrows this Matrix, and can
+     * [IndexRange]s. The MatrixRange mutably borrows this Matrix, and can
      * therefore mutate it.
      *
      * This is a shorthand for constructing the MatrixView from this Matrix.
@@ -900,7 +900,7 @@ impl<T> Matrix<T> {
 
     /**
      * Returns a MatrixView giving a view of only the data within the row and column
-     * [IndexRange]s. The MatrixReverse takes ownership of this Matrix, and can
+     * [IndexRange]s. The MatrixRange takes ownership of this Matrix, and can
      * therefore mutate it.
      *
      * This is a shorthand for constructing the MatrixView from this Matrix.
@@ -914,6 +914,71 @@ impl<T> Matrix<T> {
         R: Into<IndexRange>,
     {
         MatrixView::from(MatrixRange::from(self, rows, columns))
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data outside the row and column
+     * [IndexRange]s.
+     *
+     * This is a shorthand for constructing the MatrixView from this Matrix.
+     *
+     * ```
+     * use easy_ml::matrices::Matrix;
+     * use easy_ml::matrices::views::{MatrixView, MatrixMask, IndexRange};
+     * let ab = Matrix::from(vec![
+     *     vec![ 0, 1, 2, 0 ],
+     *     vec![ 3, 4, 5, 1 ]
+     * ]);
+     * let shorter = ab.mask(0..1, 1..3);
+     * assert_eq!(
+     *     shorter,
+     *     Matrix::from(vec![
+     *        vec![ 3, 1 ]
+     *     ])
+     * );
+     * ```
+     */
+    pub fn mask<R>(&self, rows: R, columns: R) -> MatrixView<T, MatrixMask<T, &Matrix<T>>>
+    where
+        R: Into<IndexRange>,
+    {
+        MatrixView::from(MatrixMask::from(self, rows, columns))
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data outside the row and column
+     * [IndexRange]s. The MatrixMask mutably borrows this Matrix, and can
+     * therefore mutate it.
+     *
+     * This is a shorthand for constructing the MatrixView from this Matrix.
+     */
+    pub fn mask_mut<R>(
+        &mut self,
+        rows: R,
+        columns: R
+    ) -> MatrixView<T, MatrixMask<T, &mut Matrix<T>>>
+    where
+        R: Into<IndexRange>,
+    {
+        MatrixView::from(MatrixMask::from(self, rows, columns))
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data outside the row and column
+     * [IndexRange]s. The MatrixMask takes ownership of this Matrix, and can
+     * therefore mutate it.
+     *
+     * This is a shorthand for constructing the MatrixView from this Matrix.
+     */
+    pub fn mask_owned<R>(
+        self,
+        rows: R,
+        columns: R
+    ) -> MatrixView<T, MatrixMask<T, Matrix<T>>>
+    where
+        R: Into<IndexRange>,
+    {
+        MatrixView::from(MatrixMask::from(self, rows, columns))
     }
 
     /**

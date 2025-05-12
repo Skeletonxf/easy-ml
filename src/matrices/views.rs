@@ -408,6 +408,50 @@ where
     }
 
     /**
+     * Returns a MatrixView giving a view of only the data outside the row and column
+     * [IndexRange]s.
+     *
+     * This is a shorthand for constructing the MatrixView from this MatrixView. See
+     * [`Matrix::mask`](Matrix::mask).
+     */
+    pub fn mask<R>(&self, rows: R, columns: R) -> MatrixView<T, MatrixMask<T, &S>>
+    where
+        R: Into<IndexRange>,
+    {
+        MatrixView::from(MatrixMask::from(&self.source, rows, columns))
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data outside the row and column
+     * [IndexRange]s. The MatrixMask mutably borrows the source, and can therefore
+     * mutate it.
+     *
+     * This is a shorthand for constructing the MatrixView from this MatrixView. See
+     * [`Matrix::mask`](Matrix::mask).
+     */
+    pub fn mask_mut<R>(&mut self, rows: R, columns: R) -> MatrixView<T, MatrixMask<T, &mut S>>
+    where
+        R: Into<IndexRange>,
+    {
+        MatrixView::from(MatrixMask::from(&mut self.source, rows, columns))
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data outside the row and column
+     * [IndexRange]s. The MatrixMask takes ownership of the source, and
+     * can therefore mutate it
+     *
+     * This is a shorthand for constructing the MatrixView from this MatrixView. See
+     * [`Matrix::mask`](Matrix::mask).
+     */
+    pub fn mask_owned<R>(self, rows: R, columns: R) -> MatrixView<T, MatrixMask<T, S>>
+    where
+        R: Into<IndexRange>,
+    {
+        MatrixView::from(MatrixMask::from(self.source, rows, columns))
+    }
+
+    /**
      * Returns a MatrixView with the rows and columns specified reversed in iteration
      * order. The data of this matrix and the dimension lengths remain unchanged.
      *
