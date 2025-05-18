@@ -561,7 +561,7 @@ pub(crate) fn compute_strides<const D: usize>(shape: &[(Dimension, usize); D]) -
 
 /// returns the 1 dimensional index to use to get the requested index into some tensor
 #[inline]
-fn get_index_direct<const D: usize>(
+pub(crate) fn get_index_direct<const D: usize>(
     // indexes to use
     indexes: &[usize; D],
     // strides for indexing into the tensor

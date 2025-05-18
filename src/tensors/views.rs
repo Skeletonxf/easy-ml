@@ -26,6 +26,7 @@ mod indexes;
 mod map;
 mod ranges;
 mod renamed;
+mod reshape;
 mod reverse;
 pub mod traits;
 mod zip;
@@ -34,6 +35,7 @@ pub use indexes::*;
 pub(crate) use map::*;
 pub use ranges::*;
 pub use renamed::*;
+pub use reshape::*;
 pub use reverse::*;
 pub use zip::*;
 
