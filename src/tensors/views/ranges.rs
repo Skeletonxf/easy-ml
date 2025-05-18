@@ -405,6 +405,28 @@ where
             )),
         }
     }
+
+    /**
+     * Consumes the TensorRange, yielding the source it was created from.
+     */
+    #[allow(dead_code)]
+    pub fn source(self) -> S {
+        self.source
+    }
+
+    /**
+     * Gives a reference to the TensorRange's source (in which the data is not clipped).
+     */
+    // # Safety
+    //
+    // Giving out a mutable reference to our source could allow it to be changed out from under us
+    // and make our range checks invalid. However, since the source implements TensorRef
+    // interior mutability is not allowed, so we can give out shared references without breaking
+    // our own integrity.
+    #[allow(dead_code)]
+    pub fn source_ref(&self) -> &S {
+        &self.source
+    }
 }
 
 fn range_exceeds_bounds<const D: usize>(
@@ -566,6 +588,28 @@ where
                 IndexRangeValidationError::InvalidShape(invalid_shape),
             )),
         }
+    }
+
+    /**
+     * Consumes the TensorMask, yielding the source it was created from.
+     */
+    #[allow(dead_code)]
+    pub fn source(self) -> S {
+        self.source
+    }
+
+    /**
+     * Gives a reference to the TensorMask's source (in which the data is not masked).
+     */
+    // # Safety
+    //
+    // Giving out a mutable reference to our source could allow it to be changed out from under us
+    // and make our mask checks invalid. However, since the source implements TensorRef
+    // interior mutability is not allowed, so we can give out shared references without breaking
+    // our own integrity.
+    #[allow(dead_code)]
+    pub fn source_ref(&self) -> &S {
+        &self.source
     }
 }
 

@@ -69,6 +69,13 @@ where
      * Gives a mutable reference to the TensorRename's source (in which the dimension names may be
      * different).
      */
+    // # Safety
+    //
+    // Although we're giving out a mutable reference here and thus the Tensor could be modified
+    // by the caller, it's impossible to change the dimensionality of the source due to this
+    // being determind at compile time by const generics, so as we only need our names to
+    // match the dimensionality of the source after any modifications we don't have any edge
+    // cases that could make them invalid.
     pub fn source_ref_mut(&mut self) -> &mut S {
         &mut self.source
     }

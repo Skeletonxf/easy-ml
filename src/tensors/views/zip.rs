@@ -121,6 +121,9 @@ where
         }
     }
 
+    /**
+     * Consumes the TensorStack, yielding the sources it was created from in the same order.
+     */
     pub fn sources(self) -> [S; N] {
         self.sources
     }
@@ -131,10 +134,16 @@ where
     // us and make our shape invalid. However, since the sources implement TensorRef interior
     // mutability is not allowed, so we can give out shared references without breaking our own
     // integrity.
+    /**
+     * Gives a reference to all the TensorStack's sources it was created from in the same order
+     */
     pub fn sources_ref(&self) -> &[S; N] {
         &self.sources
     }
 
+    /**
+     * Returns the shape of each of the matching sources the TensorStack was created from.
+     */
     fn source_view_shape(&self) -> [(Dimension, usize); D] {
         self.sources[0].view_shape()
     }
@@ -183,6 +192,9 @@ where
         }
     }
 
+    /**
+     * Consumes the TensorStack, yielding the sources it was created from in the same order.
+     */
     pub fn sources(self) -> (S1, S2) {
         self.sources
     }
@@ -193,10 +205,16 @@ where
     // us and make our shape invalid. However, since the sources implement TensorRef interior
     // mutability is not allowed, so we can give out shared references without breaking our own
     // integrity.
+    /**
+     * Gives a reference to all the TensorStack's sources it was created from in the same order
+     */
     pub fn sources_ref(&self) -> &(S1, S2) {
         &self.sources
     }
 
+    /**
+     * Returns the shape of each of the matching sources the TensorStack was created from.
+     */
     fn source_view_shape(&self) -> [(Dimension, usize); D] {
         self.sources.0.view_shape()
     }
@@ -253,6 +271,9 @@ where
         }
     }
 
+    /**
+     * Consumes the TensorStack, yielding the sources it was created from in the same order.
+     */
     pub fn sources(self) -> (S1, S2, S3) {
         self.sources
     }
@@ -263,10 +284,16 @@ where
     // us and make our shape invalid. However, since the sources implement TensorRef interior
     // mutability is not allowed, so we can give out shared references without breaking our own
     // integrity.
+    /**
+     * Gives a reference to all the TensorStack's sources it was created from in the same order
+     */
     pub fn sources_ref(&self) -> &(S1, S2, S3) {
         &self.sources
     }
 
+    /**
+     * Returns the shape of each of the matching sources the TensorStack was created from.
+     */
     fn source_view_shape(&self) -> [(Dimension, usize); D] {
         self.sources.0.view_shape()
     }
@@ -325,6 +352,9 @@ where
         }
     }
 
+    /**
+     * Consumes the TensorStack, yielding the sources it was created from in the same order.
+     */
     pub fn sources(self) -> (S1, S2, S3, S4) {
         self.sources
     }
@@ -335,10 +365,16 @@ where
     // us and make our shape invalid. However, since the sources implement TensorRef interior
     // mutability is not allowed, so we can give out shared references without breaking our own
     // integrity.
+    /**
+     * Gives a reference to all the TensorStack's sources it was created from in the same order
+     */
     pub fn sources_ref(&self) -> &(S1, S2, S3, S4) {
         &self.sources
     }
 
+    /**
+     * Returns the shape of each of the matching sources the TensorStack was created from.
+     */
     fn source_view_shape(&self) -> [(Dimension, usize); D] {
         self.sources.0.view_shape()
     }
@@ -878,6 +914,9 @@ where
         }
     }
 
+    /**
+     * Consumes the TensorChain, yielding the sources it was created from in the same order.
+     */
     pub fn sources(self) -> [S; N] {
         self.sources
     }
@@ -888,6 +927,9 @@ where
     // us and make our shape invalid. However, since the sources implement TensorRef interior
     // mutability is not allowed, so we can give out shared references without breaking our own
     // integrity.
+    /**
+     * Gives a reference to all the TensorChain's sources it was created from in the same order
+     */
     pub fn sources_ref(&self) -> &[S; N] {
         &self.sources
     }
@@ -934,6 +976,9 @@ where
         }
     }
 
+    /**
+     * Consumes the TensorChain, yielding the sources it was created from in the same order.
+     */
     pub fn sources(self) -> (S1, S2) {
         self.sources
     }
@@ -944,6 +989,9 @@ where
     // us and make our shape invalid. However, since the sources implement TensorRef interior
     // mutability is not allowed, so we can give out shared references without breaking our own
     // integrity.
+    /**
+     * Gives a reference to all the TensorChain's sources it was created from in the same order
+     */
     pub fn sources_ref(&self) -> &(S1, S2) {
         &self.sources
     }
@@ -996,6 +1044,9 @@ where
         }
     }
 
+    /**
+     * Consumes the TensorChain, yielding the sources it was created from in the same order.
+     */
     pub fn sources(self) -> (S1, S2, S3) {
         self.sources
     }
@@ -1006,6 +1057,9 @@ where
     // us and make our shape invalid. However, since the sources implement TensorRef interior
     // mutability is not allowed, so we can give out shared references without breaking our own
     // integrity.
+    /**
+     * Gives a reference to all the TensorChain's sources it was created from in the same order
+     */
     pub fn sources_ref(&self) -> &(S1, S2, S3) {
         &self.sources
     }
@@ -1060,6 +1114,9 @@ where
         }
     }
 
+    /**
+     * Consumes the TensorChain, yielding the sources it was created from in the same order.
+     */
     pub fn sources(self) -> (S1, S2, S3, S4) {
         self.sources
     }
@@ -1070,6 +1127,9 @@ where
     // us and make our shape invalid. However, since the sources implement TensorRef interior
     // mutability is not allowed, so we can give out shared references without breaking our own
     // integrity.
+    /**
+     * Gives a reference to all the TensorChain's sources it was created from in the same order
+     */
     pub fn sources_ref(&self) -> &(S1, S2, S3, S4) {
         &self.sources
     }

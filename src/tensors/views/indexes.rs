@@ -80,10 +80,17 @@ where
         }
     }
 
+    /**
+     * Consumes the TensorIndex, yielding the source it was created from.
+     */
     pub fn source(self) -> S {
         self.source
     }
 
+    /**
+     * Gives a reference to the TensorIndex's source (in which the data is not reduced in
+     * dimensionality).
+     */
     // # Safety
     //
     // Giving out a mutable reference to our source could allow it to be changed out from under us
@@ -345,10 +352,17 @@ where
         }
     }
 
+    /**
+     * Consumes the TensorExpansion, yielding the source it was created from.
+     */
     pub fn source(self) -> S {
         self.source
     }
 
+    /**
+     * Gives a reference to the TensorExpansion's source (in which the data is not increased in
+     * dimensionality).
+     */
     // # Safety
     //
     // Giving out a mutable reference to our source could allow it to be changed out from under us
