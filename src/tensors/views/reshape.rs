@@ -1,6 +1,5 @@
 use crate::tensors;
 use crate::tensors::dimensions;
-use crate::tensors::indexing::ShapeIterator;
 use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
 use crate::tensors::Dimension;
 use std::marker::PhantomData;
@@ -13,16 +12,29 @@ use std::marker::PhantomData;
  *
  * If you just need to rename dimensions without changing them, see
  * [TensorRename](tensors::views::TensorRename)
+ *
+ * This types' generics can be read as a TensorReshape is generic over some element of type T
+ * from an existing source of type S of dimensionality D, and this tensor has dimensionality D2,
+ * which might be different to D, but will have the same total number of elements.
+ *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ * use easy_ml::tensors::views::{TensorReshape, TensorView};
+ * let tensor = Tensor::from([("a", 2), ("b", 2)], (0..4).collect());
+ * let flat = TensorView::from(TensorReshape::from(tensor, [("i", 4)]));
+ * assert_eq!(flat, Tensor::from([("i", 4)], (0..4).collect()));
+ * ```
  */
 #[derive(Clone, Debug)]
-pub struct TensorReshape<T, S, const D: usize> {
+pub struct TensorReshape<T, S, const D: usize, const D2: usize> {
     source: S,
-    shape: [(Dimension, usize); D],
-    strides: [usize; D],
+    shape: [(Dimension, usize); D2],
+    strides: [usize; D2],
+    source_strides: [usize; D],
     _type: PhantomData<T>,
 }
 
-impl<T, S, const D: usize> TensorReshape<T, S, D>
+impl<T, S, const D: usize, const D2: usize> TensorReshape<T, S, D, D2>
 where
     S: TensorRef<T, D>,
 {
@@ -41,7 +53,10 @@ where
      * - If the new shape has duplicate dimension names
      */
     #[track_caller]
-    pub fn from(source: S, shape: [(Dimension, usize); D]) -> TensorReshape<T, S, D> {
+    pub fn from(
+        source: S,
+        shape: [(Dimension, usize); D2]
+    ) -> TensorReshape<T, S, D, D2> {
         if dimensions::has_duplicates(&shape) {
             panic!("Dimension names must all be unique: {:?}", &shape);
         }
@@ -56,10 +71,12 @@ where
                 &source.view_shape()
             );
         }
+        let source_strides = tensors::compute_strides(&source.view_shape());
         TensorReshape {
             source,
             shape,
             strides: tensors::compute_strides(&shape),
+            source_strides,
             _type: PhantomData,
         }
     }
@@ -91,6 +108,80 @@ where
     }
 }
 
+fn unflatten<const D: usize>(
+    nth: usize,
+    strides: &[usize; D],
+) -> [usize; D] {
+    let mut steps_remaining = nth;
+    let mut index = [0; D];
+    for d in 0..D {
+        let stride = strides[d];
+        // If the stride was 20, then 0-19 for indexes would be 0, 20-39 would be 1
+        // and so on
+        index[d] = steps_remaining / stride;
+        // Given such a stride of 20, we then need to look at what was rounded off
+        // An index of 0 or 20 into such a stride would mean we're done, 1 or 21 would
+        // mean we have 1 step left and so on
+        steps_remaining = steps_remaining % stride;
+    }
+    index
+}
+
+#[test]
+fn unflatten_produces_indices_in_n_dimensions() {
+    let strides = tensors::compute_strides(&[("x", 2), ("y", 2)]);
+    assert_eq!([0, 0], unflatten(0, &strides));
+    assert_eq!([0, 1], unflatten(1, &strides));
+    assert_eq!([1, 0], unflatten(2, &strides));
+    assert_eq!([1, 1], unflatten(3, &strides));
+
+    let strides = tensors::compute_strides(&[("x", 3), ("y", 2)]);
+    assert_eq!([0, 0], unflatten(0, &strides));
+    assert_eq!([0, 1], unflatten(1, &strides));
+    assert_eq!([1, 0], unflatten(2, &strides));
+    assert_eq!([1, 1], unflatten(3, &strides));
+    assert_eq!([2, 0], unflatten(4, &strides));
+    assert_eq!([2, 1], unflatten(5, &strides));
+
+    let strides = tensors::compute_strides(&[("x", 2), ("y", 3)]);
+    assert_eq!([0, 0], unflatten(0, &strides));
+    assert_eq!([0, 1], unflatten(1, &strides));
+    assert_eq!([0, 2], unflatten(2, &strides));
+    assert_eq!([1, 0], unflatten(3, &strides));
+    assert_eq!([1, 1], unflatten(4, &strides));
+    assert_eq!([1, 2], unflatten(5, &strides));
+
+    let strides = tensors::compute_strides(&[("x", 2), ("y", 3), ("z", 1)]);
+    assert_eq!([0, 0, 0], unflatten(0, &strides));
+    assert_eq!([0, 1, 0], unflatten(1, &strides));
+    assert_eq!([0, 2, 0], unflatten(2, &strides));
+    assert_eq!([1, 0, 0], unflatten(3, &strides));
+    assert_eq!([1, 1, 0], unflatten(4, &strides));
+    assert_eq!([1, 2, 0], unflatten(5, &strides));
+
+    let strides = tensors::compute_strides(&[("batch", 1), ("x", 2), ("y", 3)]);
+    assert_eq!([0, 0, 0], unflatten(0, &strides));
+    assert_eq!([0, 0, 1], unflatten(1, &strides));
+    assert_eq!([0, 0, 2], unflatten(2, &strides));
+    assert_eq!([0, 1, 0], unflatten(3, &strides));
+    assert_eq!([0, 1, 1], unflatten(4, &strides));
+    assert_eq!([0, 1, 2], unflatten(5, &strides));
+
+    let strides = tensors::compute_strides(&[("x", 2), ("y", 3), ("z", 2)]);
+    assert_eq!([0, 0, 0], unflatten(0, &strides));
+    assert_eq!([0, 0, 1], unflatten(1, &strides));
+    assert_eq!([0, 1, 0], unflatten(2, &strides));
+    assert_eq!([0, 1, 1], unflatten(3, &strides));
+    assert_eq!([0, 2, 0], unflatten(4, &strides));
+    assert_eq!([0, 2, 1], unflatten(5, &strides));
+    assert_eq!([1, 0, 0], unflatten(6, &strides));
+    assert_eq!([1, 0, 1], unflatten(7, &strides));
+    assert_eq!([1, 1, 0], unflatten(8, &strides));
+    assert_eq!([1, 1, 1], unflatten(9, &strides));
+    assert_eq!([1, 2, 0], unflatten(10, &strides));
+    assert_eq!([1, 2, 1], unflatten(11, &strides));
+}
+
 // # Safety
 //
 // The type implementing TensorRef must implement it correctly, so by delegating to it
@@ -101,36 +192,33 @@ where
  * A TensorReshape implements TensorRef, with the data iterated in the same order as the
  * original source.
  */
-unsafe impl<T, S, const D: usize> TensorRef<T, D> for TensorReshape<T, S, D>
+unsafe impl<T, S, const D: usize, const D2: usize> TensorRef<T, D2> for TensorReshape<T, S, D, D2>
 where
     S: TensorRef<T, D>,
 {
-    fn get_reference(&self, indexes: [usize; D]) -> Option<&T> {
+    fn get_reference(&self, indexes: [usize; D2]) -> Option<&T> {
         let one_dimensional_index =
             tensors::get_index_direct(&indexes, &self.strides, &self.shape)?;
-        // TODO: Is there a more efficient way to do this?
         self.source.get_reference(
-            ShapeIterator::from(self.source.view_shape()).nth(one_dimensional_index)?,
+            unflatten(one_dimensional_index, &self.source_strides)
         )
     }
 
-    fn view_shape(&self) -> [(Dimension, usize); D] {
+    fn view_shape(&self) -> [(Dimension, usize); D2] {
         self.shape
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D2]) -> &T {
         // It is the caller's responsibility to always call with indexes in range,
         // therefore out of bounds lookups created by get_index_direct_unchecked should never
         // happen.
         let one_dimensional_index = tensors::get_index_direct_unchecked(&indexes, &self.strides);
         self.source.get_reference_unchecked(
-            ShapeIterator::from(self.source.view_shape())
-                .nth(one_dimensional_index)
-                .unwrap(),
+            unflatten(one_dimensional_index, &self.source_strides),
         )
     }
 
-    fn data_layout(&self) -> DataLayout<D> {
+    fn data_layout(&self) -> DataLayout<D2> {
         // There might be some cases where assigning a new shape maintains a linear order
         // but it seems like a lot of effort to maintain a correct mapping from the original
         // linear order to the new one, given we can change even dimensionality in this mapping.
@@ -142,28 +230,25 @@ where
  * A TensorReshape implements TensorMut, with the data iterated in the same order as the
  * original source.
  */
-unsafe impl<T, S, const D: usize> TensorMut<T, D> for TensorReshape<T, S, D>
+unsafe impl<T, S, const D: usize, const D2: usize> TensorMut<T, D2> for TensorReshape<T, S, D, D2>
 where
     S: TensorMut<T, D>,
 {
-    fn get_reference_mut(&mut self, indexes: [usize; D]) -> Option<&mut T> {
+    fn get_reference_mut(&mut self, indexes: [usize; D2]) -> Option<&mut T> {
         let one_dimensional_index =
             tensors::get_index_direct(&indexes, &self.strides, &self.shape)?;
-        // TODO: Is there a more efficient way to do this?
         self.source.get_reference_mut(
-            ShapeIterator::from(self.source.view_shape()).nth(one_dimensional_index)?,
+            unflatten(one_dimensional_index, &self.source_strides)
         )
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D2]) -> &mut T {
         // It is the caller's responsibility to always call with indexes in range,
         // therefore out of bounds lookups created by get_index_direct_unchecked should never
         // happen.
         let one_dimensional_index = tensors::get_index_direct_unchecked(&indexes, &self.strides);
         self.source.get_reference_unchecked_mut(
-            ShapeIterator::from(self.source.view_shape())
-                .nth(one_dimensional_index)
-                .unwrap(),
+            unflatten(one_dimensional_index, &self.source_strides)
         )
     }
 }
