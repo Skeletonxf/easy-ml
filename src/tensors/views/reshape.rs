@@ -45,6 +45,8 @@ where
      *
      * If you just need to rename dimensions without changing them, see
      * [TensorRename](tensors::views::TensorRename)
+     * If you don't need to change the dimensionality, see
+     * [from](TensorReshape::from_existing_dimensions)
      *
      * # Panics
      *
@@ -81,10 +83,6 @@ where
         }
     }
 
-    // TODO: Consider helper function here for when caller only wants to change dimension
-    // lengths and is fine to use existing dimensionality and dimension names, which
-    // removes a lot of potential errors.
-
     /**
      * Consumes the TensorReshape, yielding the source it was created from.
      */
@@ -105,6 +103,53 @@ where
     #[allow(dead_code)]
     pub fn source_ref(&self) -> &S {
         &self.source
+    }
+}
+
+impl<T, S, const D: usize> TensorReshape<T, S, D, D>
+where
+    S: TensorRef<T, D>,
+{
+    /**
+     * Creates a TensorReshape from a source and new dimension lengths with the same dimensionality
+     * as the source to override the view_shape with. The new shape must correspond to the same
+     * number of total elements, but it need not match on individual dimension lengths.
+     *
+     * If you just need to rename dimensions without changing them, see
+     * [TensorRename](tensors::views::TensorRename)
+     * If you need to change the dimensionality, see [from](TensorReshape::from)
+     *
+     * # Panics
+     *
+     * - If the new shape has a different number of elements to the existing
+     * shape in the source
+     */
+    #[track_caller]
+    pub fn from_existing_dimensions(
+        source: S,
+        lengths: [usize; D]
+    ) -> TensorReshape<T, S, D, D> {
+        let previous_shape = source.view_shape();
+        let shape = std::array::from_fn(|n| (previous_shape[n].0, lengths[0]));
+        let existing_one_dimensional_length = dimensions::elements(&source.view_shape());
+        let given_one_dimensional_length = dimensions::elements(&shape);
+        if given_one_dimensional_length != existing_one_dimensional_length {
+            panic!(
+                "Number of elements required by provided shape {:?} are {:?} but number of elements in source are: {:?} due to shape of {:?}",
+                &shape,
+                &given_one_dimensional_length,
+                &existing_one_dimensional_length,
+                &source.view_shape()
+            );
+        }
+        let source_strides = tensors::compute_strides(&source.view_shape());
+        TensorReshape {
+            source,
+            shape,
+            strides: tensors::compute_strides(&shape),
+            source_strides,
+            _type: PhantomData,
+        }
     }
 }
 
