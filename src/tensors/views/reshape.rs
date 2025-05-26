@@ -7,8 +7,8 @@ use std::marker::PhantomData;
 /**
  * A new shape to override indexing an existing tensor. The dimensionality and individual
  * dimension lengths can be changed, but the total number of elements in the new shape must
- * match the existing tensor's shape. Elements are still iterated in the same order as the
- * source tensor.
+ * match the existing tensor's shape. Elements are still in the same order as the source tensor,
+ * none of the data is moved around.
  *
  * If you just need to rename dimensions without changing them, see
  * [TensorRename](tensors::views::TensorRename)
@@ -21,7 +21,7 @@ use std::marker::PhantomData;
  * use easy_ml::tensors::Tensor;
  * use easy_ml::tensors::views::{TensorReshape, TensorView};
  * let tensor = Tensor::from([("a", 2), ("b", 2)], (0..4).collect());
- * let flat = TensorView::from(TensorReshape::from(tensor, [("i", 4)]));
+ * let flat = TensorView::from(TensorReshape::from(tensor, [("i", 4)])); // or use tensor.reshape_view_owned
  * assert_eq!(flat, Tensor::from([("i", 4)], (0..4).collect()));
  * ```
  */
@@ -55,10 +55,7 @@ where
      * - If the new shape has duplicate dimension names
      */
     #[track_caller]
-    pub fn from(
-        source: S,
-        shape: [(Dimension, usize); D2]
-    ) -> TensorReshape<T, S, D, D2> {
+    pub fn from(source: S, shape: [(Dimension, usize); D2]) -> TensorReshape<T, S, D, D2> {
         if dimensions::has_duplicates(&shape) {
             panic!("Dimension names must all be unique: {:?}", &shape);
         }
@@ -125,10 +122,7 @@ where
      * shape in the source
      */
     #[track_caller]
-    pub fn from_existing_dimensions(
-        source: S,
-        lengths: [usize; D]
-    ) -> TensorReshape<T, S, D, D> {
+    pub fn from_existing_dimensions(source: S, lengths: [usize; D]) -> TensorReshape<T, S, D, D> {
         let previous_shape = source.view_shape();
         let shape = std::array::from_fn(|n| (previous_shape[n].0, lengths[0]));
         let existing_one_dimensional_length = dimensions::elements(&source.view_shape());
@@ -153,10 +147,7 @@ where
     }
 }
 
-fn unflatten<const D: usize>(
-    nth: usize,
-    strides: &[usize; D],
-) -> [usize; D] {
+fn unflatten<const D: usize>(nth: usize, strides: &[usize; D]) -> [usize; D] {
     let mut steps_remaining = nth;
     let mut index = [0; D];
     for d in 0..D {
@@ -234,8 +225,7 @@ fn unflatten_produces_indices_in_n_dimensions() {
 // it back into the source dimensionality and not introducing interior mutability, we implement
 // TensorRef correctly as well.
 /**
- * A TensorReshape implements TensorRef, with the data iterated in the same order as the
- * original source.
+ * A TensorReshape implements TensorRef, with the data in the same order as the original source.
  */
 unsafe impl<T, S, const D: usize, const D2: usize> TensorRef<T, D2> for TensorReshape<T, S, D, D2>
 where
@@ -244,9 +234,8 @@ where
     fn get_reference(&self, indexes: [usize; D2]) -> Option<&T> {
         let one_dimensional_index =
             tensors::get_index_direct(&indexes, &self.strides, &self.shape)?;
-        self.source.get_reference(
-            unflatten(one_dimensional_index, &self.source_strides)
-        )
+        self.source
+            .get_reference(unflatten(one_dimensional_index, &self.source_strides))
     }
 
     fn view_shape(&self) -> [(Dimension, usize); D2] {
@@ -258,9 +247,8 @@ where
         // therefore out of bounds lookups created by get_index_direct_unchecked should never
         // happen.
         let one_dimensional_index = tensors::get_index_direct_unchecked(&indexes, &self.strides);
-        self.source.get_reference_unchecked(
-            unflatten(one_dimensional_index, &self.source_strides),
-        )
+        self.source
+            .get_reference_unchecked(unflatten(one_dimensional_index, &self.source_strides))
     }
 
     fn data_layout(&self) -> DataLayout<D2> {
@@ -272,8 +260,7 @@ where
 }
 
 /**
- * A TensorReshape implements TensorMut, with the data iterated in the same order as the
- * original source.
+ * A TensorReshape implements TensorMut, with the data in the same order as the original source.
  */
 unsafe impl<T, S, const D: usize, const D2: usize> TensorMut<T, D2> for TensorReshape<T, S, D, D2>
 where
@@ -282,9 +269,8 @@ where
     fn get_reference_mut(&mut self, indexes: [usize; D2]) -> Option<&mut T> {
         let one_dimensional_index =
             tensors::get_index_direct(&indexes, &self.strides, &self.shape)?;
-        self.source.get_reference_mut(
-            unflatten(one_dimensional_index, &self.source_strides)
-        )
+        self.source
+            .get_reference_mut(unflatten(one_dimensional_index, &self.source_strides))
     }
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D2]) -> &mut T {
@@ -292,8 +278,7 @@ where
         // therefore out of bounds lookups created by get_index_direct_unchecked should never
         // happen.
         let one_dimensional_index = tensors::get_index_direct_unchecked(&indexes, &self.strides);
-        self.source.get_reference_unchecked_mut(
-            unflatten(one_dimensional_index, &self.source_strides)
-        )
+        self.source
+            .get_reference_unchecked_mut(unflatten(one_dimensional_index, &self.source_strides))
     }
 }

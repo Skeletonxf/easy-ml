@@ -442,6 +442,70 @@ where
     }
 
     /**
+     * Returns a TensorView with the dimensions changed to the provided shape without moving any
+     * data around. The new Tensor may also have a different number of dimensions.
+     *
+     * This is a shorthand for constructing the TensorView from this TensorView. See
+     * [`Tensor::reshape_view`](Tensor::reshape_view).
+     *
+     * # Panics
+     *
+     * - If the number of provided elements in the new shape does not match the product of the
+     * dimension lengths in the existing tensor's shape.
+     * - If a dimension name is not unique
+     */
+    pub fn reshape<const D2: usize>(
+        &self,
+        shape: [(Dimension, usize); D2],
+    ) -> TensorView<T, TensorReshape<T, &S, D, D2>, D2> {
+        TensorView::from(TensorReshape::from(&self.source, shape))
+    }
+
+    /**
+     * Returns a TensorView with the dimensions changed to the provided shape without moving any
+     * data around. The new Tensor may also have a different number of dimensions. The
+     * TensorReshape mutably borrows the source, and can therefore mutate it if it implements
+     * TensorMut.
+     *
+     * This is a shorthand for constructing the TensorView from this TensorView. See
+     * [`Tensor::reshape_view`](Tensor::reshape_view).
+     *
+     * # Panics
+     *
+     * - If the number of provided elements in the new shape does not match the product of the
+     * dimension lengths in the existing tensor's shape.
+     * - If a dimension name is not unique
+     */
+    pub fn reshape_mut<const D2: usize>(
+        &mut self,
+        shape: [(Dimension, usize); D2],
+    ) -> TensorView<T, TensorReshape<T, &mut S, D, D2>, D2> {
+        TensorView::from(TensorReshape::from(&mut self.source, shape))
+    }
+
+    /**
+     * Returns a TensorView with the dimensions changed to the provided shape without moving any
+     * data around. The new Tensor may also have a different number of dimensions. The
+     * TensorReshape takes ownership of the source, and can therefore mutate it if it implements
+     * TensorMut.
+     *
+     * This is a shorthand for constructing the TensorView from this TensorView. See
+     * [`Tensor::reshape_view`](Tensor::reshape_view).
+     *
+     * # Panics
+     *
+     * - If the number of provided elements in the new shape does not match the product of the
+     * dimension lengths in the existing tensor's shape.
+     * - If a dimension name is not unique
+     */
+    pub fn reshape_owned<const D2: usize>(
+        self,
+        shape: [(Dimension, usize); D2],
+    ) -> TensorView<T, TensorReshape<T, S, D, D2>, D2> {
+        TensorView::from(TensorReshape::from(self.source, shape))
+    }
+
+    /**
      * Returns a TensorView with a range taken in P dimensions, hiding the values **outside** the
      * range from view. Error cases are documented on [TensorRange].
      *

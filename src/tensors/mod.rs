@@ -14,7 +14,7 @@ use crate::tensors::indexing::{
 };
 use crate::tensors::views::{
     DataLayout, IndexRange, IndexRangeValidationError, TensorExpansion, TensorIndex, TensorMask,
-    TensorMut, TensorRange, TensorRef, TensorRename, TensorReverse, TensorView,
+    TensorMut, TensorRange, TensorRef, TensorRename, TensorReshape, TensorReverse, TensorView,
 };
 
 use std::error::Error;
@@ -821,7 +821,6 @@ impl<T, const D: usize> Tensor<T, D> {
      * - If the number of provided elements in the new shape does not match the product of the
      * dimension lengths in the existing tensor's shape.
      * - If a dimension name is not unique
-     * - If any dimension has 0 elements
      *
      * ```
      * use easy_ml::tensors::Tensor;
@@ -832,11 +831,83 @@ impl<T, const D: usize> Tensor<T, D> {
      * let flattened = tensor.reshape_owned([("image", 4)]);
      * assert_eq!(flattened, Tensor::from([("image", 4)], vec![ 1, 2, 3, 4 ]));
      * ```
+     *
+     * See also [reshape_view_owned](Tensor::reshape_view_owned)
      */
-    // TODO: View version
     #[track_caller]
     pub fn reshape_owned<const D2: usize>(self, shape: [(Dimension, usize); D2]) -> Tensor<T, D2> {
         Tensor::from(shape, self.data)
+    }
+
+    /**
+     * Returns a TensorView with the dimensions changed to the provided shape without moving any
+     * data around. The new Tensor may also have a different number of dimensions.
+     *
+     * This is a shorthand for constructing the TensorView from this Tensor.
+     *
+     * # Panics
+     *
+     * - If the number of provided elements in the new shape does not match the product of the
+     * dimension lengths in the existing tensor's shape.
+     * - If a dimension name is not unique
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * let tensor = Tensor::from([("width", 2), ("height", 2)], vec![
+     *     1, 2,
+     *     3, 4
+     * ]);
+     * let flattened = tensor.reshape_view([("image", 4)]);
+     * assert_eq!(flattened, Tensor::from([("image", 4)], vec![ 1, 2, 3, 4 ]));
+     * ```
+     */
+    pub fn reshape_view<const D2: usize>(
+        &self,
+        shape: [(Dimension, usize); D2],
+    ) -> TensorView<T, TensorReshape<T, &Tensor<T, D>, D, D2>, D2> {
+        TensorView::from(TensorReshape::from(self, shape))
+    }
+
+    /**
+     * Returns a TensorView with the dimensions changed to the provided shape without moving any
+     * data around. The new Tensor may also have a different number of dimensions.
+     *
+     * This is a shorthand for constructing the TensorView from this Tensor. The TensorReshape
+     * mutably borrows this Tensor, and can therefore mutate it
+     *
+     * # Panics
+     *
+     * - If the number of provided elements in the new shape does not match the product of the
+     * dimension lengths in the existing tensor's shape.
+     * - If a dimension name is not unique
+     */
+    pub fn reshape_view_mut<const D2: usize>(
+        &mut self,
+        shape: [(Dimension, usize); D2],
+    ) -> TensorView<T, TensorReshape<T, &mut Tensor<T, D>, D, D2>, D2> {
+        TensorView::from(TensorReshape::from(self, shape))
+    }
+
+    /**
+     * Returns a TensorView with the dimensions changed to the provided shape without moving any
+     * data around. The new Tensor may also have a different number of dimensions.
+     *
+     * This is a shorthand for constructing the TensorView from this Tensor. The TensorReshape
+     * takes ownership of this Tensor, and can therefore mutate it
+     *
+     * # Panics
+     *
+     * - If the number of provided elements in the new shape does not match the product of the
+     * dimension lengths in the existing tensor's shape.
+     * - If a dimension name is not unique
+     *
+     * See also [reshape_owned](Tensor::reshape_owned)
+     */
+    pub fn reshape_view_owned<const D2: usize>(
+        self,
+        shape: [(Dimension, usize); D2],
+    ) -> TensorView<T, TensorReshape<T, Tensor<T, D>, D, D2>, D2> {
+        TensorView::from(TensorReshape::from(self, shape))
     }
 
     /**
