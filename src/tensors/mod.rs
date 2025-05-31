@@ -952,10 +952,7 @@ impl<T, const D: usize> Tensor<T, D> {
      * Given the dimension name, returns a new tensor reshaped to one dimension
      * with a length equal to the number of elements in this tensor.
      */
-    pub fn flatten(
-        self,
-        dimension: Dimension,
-    ) -> Tensor<T, 1> {
+    pub fn flatten(self, dimension: Dimension) -> Tensor<T, 1> {
         let length = dimensions::elements(&self.shape);
         self.reshape_owned([(dimension, length)])
     }

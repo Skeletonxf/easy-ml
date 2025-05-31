@@ -2,8 +2,8 @@ extern crate easy_ml;
 
 #[cfg(test)]
 mod tensors {
-    use easy_ml::tensors::Tensor;
     use easy_ml::tensors::views::TensorView;
+    use easy_ml::tensors::Tensor;
 
     #[test]
     #[rustfmt::skip]
@@ -817,38 +817,62 @@ Data Layout = Linear(["a", "b", "c"])"#,
         let mut identity = Tensor::diagonal([("a", 3), ("b", 3)], 1.0);
         assert_eq!(
             identity.flatten_view("x"),
-            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+            Tensor::from(
+                [("x", 9)],
+                vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+            )
         );
         assert_eq!(
             identity.flatten_view_mut("x"),
-            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+            Tensor::from(
+                [("x", 9)],
+                vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+            )
         );
         assert_eq!(
             identity.flatten_view_owned("x"),
-            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+            Tensor::from(
+                [("x", 9)],
+                vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+            )
         );
         let identity = Tensor::diagonal([("a", 3), ("b", 3)], 1.0);
         assert_eq!(
             identity.flatten("x"),
-            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+            Tensor::from(
+                [("x", 9)],
+                vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+            )
         );
         let mut identity = TensorView::from(Tensor::diagonal([("a", 3), ("b", 3)], 1.0));
         assert_eq!(
             identity.flatten("x"),
-            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+            Tensor::from(
+                [("x", 9)],
+                vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+            )
         );
         assert_eq!(
             identity.flatten_mut("x"),
-            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+            Tensor::from(
+                [("x", 9)],
+                vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+            )
         );
         assert_eq!(
             identity.flatten_owned("x"),
-            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+            Tensor::from(
+                [("x", 9)],
+                vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+            )
         );
         let identity = TensorView::from(Tensor::diagonal([("a", 3), ("b", 3)], 1.0));
         assert_eq!(
             identity.flatten_into_tensor("x"),
-            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+            Tensor::from(
+                [("x", 9)],
+                vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+            )
         );
     }
 }

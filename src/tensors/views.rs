@@ -509,10 +509,7 @@ where
      * Given the dimension name, returns a view of this tensor reshaped to one dimension
      * with a length equal to the number of elements in this tensor.
      */
-    pub fn flatten(
-        &self,
-        dimension: Dimension,
-    ) -> TensorView<T, TensorReshape<T, &S, D, 1>, 1> {
+    pub fn flatten(&self, dimension: Dimension) -> TensorView<T, TensorReshape<T, &S, D, 1>, 1> {
         self.reshape([(dimension, dimensions::elements(&self.shape()))])
     }
 
@@ -548,11 +545,9 @@ where
      * with a length equal to the number of elements in this tensor and all elements
      * copied into the new tensor.
      */
-    pub fn flatten_into_tensor(
-        self,
-        dimension: Dimension,
-    ) -> Tensor<T, 1>
-    where T: Clone,
+    pub fn flatten_into_tensor(self, dimension: Dimension) -> Tensor<T, 1>
+    where
+        T: Clone,
     {
         // TODO: Want a specialisation here to use Tensor::reshape_owned when we
         // know that our source type is Tensor
