@@ -3,6 +3,7 @@ extern crate easy_ml;
 #[cfg(test)]
 mod tensors {
     use easy_ml::tensors::Tensor;
+    use easy_ml::tensors::views::TensorView;
 
     #[test]
     #[rustfmt::skip]
@@ -809,5 +810,45 @@ Data Layout = Linear(["a", "b", "c"])"#,
         // original tensor is now drained of its values so should be set to 0 as that's the
         // default value substituted.
         assert_eq!(tensor, Tensor::empty([("x", 2), ("y", 2)], 0));
+    }
+
+    #[test]
+    fn test_flattening() {
+        let mut identity = Tensor::diagonal([("a", 3), ("b", 3)], 1.0);
+        assert_eq!(
+            identity.flatten_view("x"),
+            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+        );
+        assert_eq!(
+            identity.flatten_view_mut("x"),
+            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+        );
+        assert_eq!(
+            identity.flatten_view_owned("x"),
+            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+        );
+        let identity = Tensor::diagonal([("a", 3), ("b", 3)], 1.0);
+        assert_eq!(
+            identity.flatten("x"),
+            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+        );
+        let mut identity = TensorView::from(Tensor::diagonal([("a", 3), ("b", 3)], 1.0));
+        assert_eq!(
+            identity.flatten("x"),
+            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+        );
+        assert_eq!(
+            identity.flatten_mut("x"),
+            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+        );
+        assert_eq!(
+            identity.flatten_owned("x"),
+            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+        );
+        let identity = TensorView::from(Tensor::diagonal([("a", 3), ("b", 3)], 1.0));
+        assert_eq!(
+            identity.flatten_into_tensor("x"),
+            Tensor::from([("x", 9)], vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+        );
     }
 }

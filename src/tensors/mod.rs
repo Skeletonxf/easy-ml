@@ -911,6 +911,56 @@ impl<T, const D: usize> Tensor<T, D> {
     }
 
     /**
+     * Given the dimension name, returns a view of this tensor reshaped to one dimension
+     * with a length equal to the number of elements in this tensor.
+     */
+    pub fn flatten_view(
+        &self,
+        dimension: Dimension,
+    ) -> TensorView<T, TensorReshape<T, &Tensor<T, D>, D, 1>, 1> {
+        self.reshape_view([(dimension, dimensions::elements(&self.shape))])
+    }
+
+    /**
+     * Given the dimension name, returns a view of this tensor reshaped to one dimension
+     * with a length equal to the number of elements in this tensor.
+     */
+    pub fn flatten_view_mut(
+        &mut self,
+        dimension: Dimension,
+    ) -> TensorView<T, TensorReshape<T, &mut Tensor<T, D>, D, 1>, 1> {
+        self.reshape_view_mut([(dimension, dimensions::elements(&self.shape))])
+    }
+
+    /**
+     * Given the dimension name, returns a view of this tensor reshaped to one dimension
+     * with a length equal to the number of elements in this tensor.
+     *
+     * If you intend to query the tensor a lot after creating the view, consider
+     * using [flatten](Tensor::flatten) instead as it will have less overhead to
+     * index after creation.
+     */
+    pub fn flatten_view_owned(
+        self,
+        dimension: Dimension,
+    ) -> TensorView<T, TensorReshape<T, Tensor<T, D>, D, 1>, 1> {
+        let length = dimensions::elements(&self.shape);
+        self.reshape_view_owned([(dimension, length)])
+    }
+
+    /**
+     * Given the dimension name, returns a new tensor reshaped to one dimension
+     * with a length equal to the number of elements in this tensor.
+     */
+    pub fn flatten(
+        self,
+        dimension: Dimension,
+    ) -> Tensor<T, 1> {
+        let length = dimensions::elements(&self.shape);
+        self.reshape_owned([(dimension, length)])
+    }
+
+    /**
      * Returns a TensorView with a range taken in P dimensions, hiding the values **outside** the
      * range from view. Error cases are documented on [TensorRange].
      *

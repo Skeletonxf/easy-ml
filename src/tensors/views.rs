@@ -506,6 +506,61 @@ where
     }
 
     /**
+     * Given the dimension name, returns a view of this tensor reshaped to one dimension
+     * with a length equal to the number of elements in this tensor.
+     */
+    pub fn flatten(
+        &self,
+        dimension: Dimension,
+    ) -> TensorView<T, TensorReshape<T, &S, D, 1>, 1> {
+        self.reshape([(dimension, dimensions::elements(&self.shape()))])
+    }
+
+    /**
+     * Given the dimension name, returns a view of this tensor reshaped to one dimension
+     * with a length equal to the number of elements in this tensor.
+     */
+    pub fn flatten_mut(
+        &mut self,
+        dimension: Dimension,
+    ) -> TensorView<T, TensorReshape<T, &mut S, D, 1>, 1> {
+        self.reshape_mut([(dimension, dimensions::elements(&self.shape()))])
+    }
+
+    /**
+     * Given the dimension name, returns a view of this tensor reshaped to one dimension
+     * with a length equal to the number of elements in this tensor.
+     *
+     * If you intend to query the tensor a lot after creating the view, consider
+     * using [flatten_into_tensor](TensorView::flatten_into_tensor) instead as it will have
+     * less overhead to index after creation.
+     */
+    pub fn flatten_owned(
+        self,
+        dimension: Dimension,
+    ) -> TensorView<T, TensorReshape<T, S, D, 1>, 1> {
+        let length = dimensions::elements(&self.shape());
+        self.reshape_owned([(dimension, length)])
+    }
+
+    /**
+     * Given the dimension name, returns a new tensor reshaped to one dimension
+     * with a length equal to the number of elements in this tensor and all elements
+     * copied into the new tensor.
+     */
+    pub fn flatten_into_tensor(
+        self,
+        dimension: Dimension,
+    ) -> Tensor<T, 1>
+    where T: Clone,
+    {
+        // TODO: Want a specialisation here to use Tensor::reshape_owned when we
+        // know that our source type is Tensor
+        let length = dimensions::elements(&self.shape());
+        Tensor::from([(dimension, length)], self.iter().collect())
+    }
+
+    /**
      * Returns a TensorView with a range taken in P dimensions, hiding the values **outside** the
      * range from view. Error cases are documented on [TensorRange].
      *
