@@ -32,6 +32,12 @@ MultivariateGaussianTensor version.
 Further trait inheritance changes are planned as detailed at
 https://github.com/Skeletonxf/easy-ml/issues/1 but not yet implemented.
 
+As of the 2.0.0-dev.2 prerelease, the only planned additional breaking API
+changes are to the TensorRef and MatrixRef traits. If you are not writing your
+own implementations for these traits, I do not expect any further work prior
+to the 2.0.0 release to be breaking, so you may want to consider updating
+to the pre-release instead of waiting longer for the 2.0.0 release.
+
 ## Version 1.10
 
 Released new `RecordContainer` APIs to avoid storing the `WengertList` multiple
