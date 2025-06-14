@@ -441,11 +441,11 @@ macro_rules! tensor_stack_ref_impl {
                     view_shape_impl(self.source_view_shape(), self.along, Self::number_of_sources())
                 }
 
-                unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T {
+                unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T { unsafe {
                     let (source, indexes) = indexing(indexes, self.along);
                     // TODO: Can we use get_unchecked here?
                     self.sources.get(source).unwrap().get_reference_unchecked(indexes)
-                }
+                }}
 
                 fn data_layout(&self) -> DataLayout<{ $d + 1 }> {
                     // Our stacked shapes means the view shape no longer matches up to a single
@@ -463,11 +463,11 @@ macro_rules! tensor_stack_ref_impl {
                     self.sources.get_mut(source)?.get_reference_mut(indexes)
                 }
 
-                unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + 1]) -> &mut T {
+                unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + 1]) -> &mut T { unsafe {
                     let (source, indexes) = indexing(indexes, self.along);
                     // TODO: Can we use get_unchecked here?
                     self.sources.get_mut(source).unwrap().get_reference_unchecked_mut(indexes)
-                }
+                }}
             }
 
             unsafe impl<T, S1, S2> TensorRef<T, { $d + 1 }> for TensorStack<T, (S1, S2), $d>
@@ -488,7 +488,7 @@ macro_rules! tensor_stack_ref_impl {
                     view_shape_impl(self.source_view_shape(), self.along, Self::number_of_sources())
                 }
 
-                unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T {
+                unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T { unsafe {
                     let (source, indexes) = indexing(indexes, self.along);
                     match source {
                         0 => self.sources.0.get_reference_unchecked(indexes),
@@ -498,7 +498,7 @@ macro_rules! tensor_stack_ref_impl {
                             "Invalid index should never be given to get_reference_unchecked"
                         )
                     }
-                }
+                }}
 
                 fn data_layout(&self) -> DataLayout<{ $d + 1 }> {
                     // Our stacked shapes means the view shape no longer matches up to a single
@@ -521,7 +521,7 @@ macro_rules! tensor_stack_ref_impl {
                     }
                 }
 
-                unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + 1]) -> &mut T {
+                unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + 1]) -> &mut T { unsafe {
                     let (source, indexes) = indexing(indexes, self.along);
                     match source {
                         0 => self.sources.0.get_reference_unchecked_mut(indexes),
@@ -531,7 +531,7 @@ macro_rules! tensor_stack_ref_impl {
                             "Invalid index should never be given to get_reference_unchecked"
                         )
                     }
-                }
+                }}
             }
 
             unsafe impl<T, S1, S2, S3> TensorRef<T, { $d + 1 }> for TensorStack<T, (S1, S2, S3), $d>
@@ -554,7 +554,7 @@ macro_rules! tensor_stack_ref_impl {
                     view_shape_impl(self.source_view_shape(), self.along, Self::number_of_sources())
                 }
 
-                unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T {
+                unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T { unsafe {
                     let (source, indexes) = indexing(indexes, self.along);
                     match source {
                         0 => self.sources.0.get_reference_unchecked(indexes),
@@ -565,7 +565,7 @@ macro_rules! tensor_stack_ref_impl {
                             "Invalid index should never be given to get_reference_unchecked"
                         )
                     }
-                }
+                }}
 
                 fn data_layout(&self) -> DataLayout<{ $d + 1 }> {
                     // Our stacked shapes means the view shape no longer matches up to a single
@@ -590,7 +590,7 @@ macro_rules! tensor_stack_ref_impl {
                     }
                 }
 
-                unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + 1]) -> &mut T {
+                unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + 1]) -> &mut T { unsafe {
                     let (source, indexes) = indexing(indexes, self.along);
                     match source {
                         0 => self.sources.0.get_reference_unchecked_mut(indexes),
@@ -601,7 +601,7 @@ macro_rules! tensor_stack_ref_impl {
                             "Invalid index should never be given to get_reference_unchecked"
                         )
                     }
-                }
+                }}
             }
 
             unsafe impl<T, S1, S2, S3, S4> TensorRef<T, { $d + 1 }> for TensorStack<T, (S1, S2, S3, S4), $d>
@@ -626,7 +626,7 @@ macro_rules! tensor_stack_ref_impl {
                     view_shape_impl(self.source_view_shape(), self.along, Self::number_of_sources())
                 }
 
-                unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T {
+                unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T { unsafe {
                     let (source, indexes) = indexing(indexes, self.along);
                     match source {
                         0 => self.sources.0.get_reference_unchecked(indexes),
@@ -638,7 +638,7 @@ macro_rules! tensor_stack_ref_impl {
                             "Invalid index should never be given to get_reference_unchecked"
                         )
                     }
-                }
+                }}
 
                 fn data_layout(&self) -> DataLayout<{ $d + 1 }> {
                     // Our stacked shapes means the view shape no longer matches up to a single
@@ -665,7 +665,7 @@ macro_rules! tensor_stack_ref_impl {
                     }
                 }
 
-                unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + 1]) -> &mut T {
+                unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + 1]) -> &mut T { unsafe {
                     let (source, indexes) = indexing(indexes, self.along);
                     match source {
                         0 => self.sources.0.get_reference_unchecked_mut(indexes),
@@ -677,7 +677,7 @@ macro_rules! tensor_stack_ref_impl {
                             "Invalid index should never be given to get_reference_unchecked"
                         )
                     }
-                }
+                }}
             }
         }
     }
@@ -1195,7 +1195,7 @@ where
         )
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
         // TODO: Can we use get_unchecked here?
         let (source, indexes) = indexing(
             indexes,
@@ -1207,7 +1207,7 @@ where
             .get(source)
             .unwrap()
             .get_reference_unchecked(indexes)
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout<D> {
         // Our chained shapes means the view shape no longer matches up to a single
@@ -1229,7 +1229,7 @@ where
         self.sources.get_mut(source)?.get_reference_mut(indexes)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T { unsafe {
         // TODO: Can we use get_unchecked here?
         let (source, indexes) = indexing(
             indexes,
@@ -1241,7 +1241,7 @@ where
             .get_mut(source)
             .unwrap()
             .get_reference_unchecked_mut(indexes)
-    }
+    }}
 }
 
 unsafe impl<T, S1, S2, const D: usize> TensorRef<T, D> for TensorChain<T, (S1, S2), D>
@@ -1270,7 +1270,7 @@ where
         )
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
         // TODO: Can we use get_unchecked here?
         let (source, indexes) = indexing(
             indexes,
@@ -1284,7 +1284,7 @@ where
             // TODO: Can we use unreachable_unchecked here?
             _ => panic!("Invalid index should never be given to get_reference_unchecked"),
         }
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout<D> {
         // Our chained shapes means the view shape no longer matches up to a single
@@ -1311,7 +1311,7 @@ where
         }
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T { unsafe {
         // TODO: Can we use get_unchecked here?
         let (source, indexes) = indexing(
             indexes,
@@ -1325,7 +1325,7 @@ where
             // TODO: Can we use unreachable_unchecked here?
             _ => panic!("Invalid index should never be given to get_reference_unchecked"),
         }
-    }
+    }}
 }
 
 unsafe impl<T, S1, S2, S3, const D: usize> TensorRef<T, D> for TensorChain<T, (S1, S2, S3), D>
@@ -1366,7 +1366,7 @@ where
         )
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
         // TODO: Can we use get_unchecked here?
         let (source, indexes) = indexing(
             indexes,
@@ -1386,7 +1386,7 @@ where
             // TODO: Can we use unreachable_unchecked here?
             _ => panic!("Invalid index should never be given to get_reference_unchecked"),
         }
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout<D> {
         // Our chained shapes means the view shape no longer matches up to a single
@@ -1420,7 +1420,7 @@ where
         }
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T { unsafe {
         // TODO: Can we use get_unchecked here?
         let (source, indexes) = indexing(
             indexes,
@@ -1440,7 +1440,7 @@ where
             // TODO: Can we use unreachable_unchecked here?
             _ => panic!("Invalid index should never be given to get_reference_unchecked"),
         }
-    }
+    }}
 }
 
 unsafe impl<T, S1, S2, S3, S4, const D: usize> TensorRef<T, D>
@@ -1486,7 +1486,7 @@ where
         )
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
         // TODO: Can we use get_unchecked here?
         let (source, indexes) = indexing(
             indexes,
@@ -1508,7 +1508,7 @@ where
             // TODO: Can we use unreachable_unchecked here?
             _ => panic!("Invalid index should never be given to get_reference_unchecked"),
         }
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout<D> {
         // Our chained shapes means the view shape no longer matches up to a single
@@ -1546,7 +1546,7 @@ where
         }
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T { unsafe {
         // TODO: Can we use get_unchecked here?
         let (source, indexes) = indexing(
             indexes,
@@ -1568,7 +1568,7 @@ where
             // TODO: Can we use unreachable_unchecked here?
             _ => panic!("Invalid index should never be given to get_reference_unchecked"),
         }
-    }
+    }}
 }
 
 #[test]

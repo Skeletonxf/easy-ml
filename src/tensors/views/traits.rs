@@ -35,9 +35,9 @@ where
         TensorRef::view_shape(*self)
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
         TensorRef::get_reference_unchecked(*self, indexes)
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout<D> {
         TensorRef::data_layout(*self)
@@ -65,9 +65,9 @@ where
         TensorRef::view_shape(*self)
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
         TensorRef::get_reference_unchecked(*self, indexes)
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout<D> {
         TensorRef::data_layout(*self)
@@ -91,9 +91,9 @@ where
         TensorMut::get_reference_mut(*self, indexes)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T { unsafe {
         TensorMut::get_reference_unchecked_mut(*self, indexes)
-    }
+    }}
 }
 
 // # Safety
@@ -116,9 +116,9 @@ where
         self.as_ref().view_shape()
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
         self.as_ref().get_reference_unchecked(indexes)
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout<D> {
         self.as_ref().data_layout()
@@ -141,9 +141,9 @@ where
         self.as_mut().get_reference_mut(indexes)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T { unsafe {
         self.as_mut().get_reference_unchecked_mut(indexes)
-    }
+    }}
 }
 
 // # Safety
@@ -163,9 +163,9 @@ unsafe impl<T, const D: usize> TensorRef<T, D> for Box<dyn TensorRef<T, D>> {
         self.as_ref().view_shape()
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
         self.as_ref().get_reference_unchecked(indexes)
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout<D> {
         self.as_ref().data_layout()
@@ -189,9 +189,9 @@ unsafe impl<T, const D: usize> TensorRef<T, D> for Box<dyn TensorMut<T, D>> {
         self.as_ref().view_shape()
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
         self.as_ref().get_reference_unchecked(indexes)
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout<D> {
         self.as_ref().data_layout()
@@ -211,7 +211,7 @@ unsafe impl<T, const D: usize> TensorMut<T, D> for Box<dyn TensorMut<T, D>> {
         self.as_mut().get_reference_mut(indexes)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T { unsafe {
         self.as_mut().get_reference_unchecked_mut(indexes)
-    }
+    }}
 }

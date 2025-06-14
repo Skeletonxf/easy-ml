@@ -67,9 +67,9 @@ unsafe impl<'a, T> MatrixRef<T> for MatrixPart<'a, T> {
         self.columns
     }
 
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T { unsafe {
         self.data.get_unchecked(row).get_unchecked(column)
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout {
         DataLayout::RowMajor
@@ -91,9 +91,9 @@ unsafe impl<'a, T> MatrixMut<T> for MatrixPart<'a, T> {
         Some(&mut self.data[row][column])
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T { unsafe {
         self.data.get_unchecked_mut(row).get_unchecked_mut(column)
-    }
+    }}
 }
 
 // # Safety

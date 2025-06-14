@@ -357,7 +357,7 @@ where
                     .iter_reference_mut()
                     .zip(calculate_incrementing_indexes(starting_index, total))
                 {
-                    let (_, ref mut old_index) = x;
+                    let (_, old_index) = x;
                     *old_index = i;
                 }
             }
@@ -608,7 +608,7 @@ where
                     .row_major_reference_mut_iter()
                     .zip(calculate_incrementing_indexes(starting_index, total))
                 {
-                    let (_, ref mut old_index) = x;
+                    let (_, old_index) = x;
                     *old_index = i;
                 }
             }
@@ -2523,9 +2523,9 @@ where
         self.numbers.source_ref().view_shape()
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &(T, Index) {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &(T, Index) { unsafe {
         self.numbers.source_ref().get_reference_unchecked(indexes)
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout<D> {
         self.numbers.source_ref().data_layout()
@@ -2550,11 +2550,11 @@ where
         self.numbers.source_ref_mut().get_reference_mut(indexes)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut (T, Index) {
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut (T, Index) { unsafe {
         self.numbers
             .source_ref_mut()
             .get_reference_unchecked_mut(indexes)
-    }
+    }}
 }
 
 // # Safety
@@ -2583,11 +2583,11 @@ where
         self.numbers.source_ref().view_columns()
     }
 
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &(T, Index) {
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &(T, Index) { unsafe {
         self.numbers
             .source_ref()
             .get_reference_unchecked(row, column)
-    }
+    }}
 
     fn data_layout(&self) -> crate::matrices::views::DataLayout {
         self.numbers.source_ref().data_layout()
@@ -2629,11 +2629,11 @@ where
             .try_get_reference_mut(row, column)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut (T, Index) {
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut (T, Index) { unsafe {
         self.numbers
             .source_ref_mut()
             .get_reference_unchecked_mut(row, column)
-    }
+    }}
 }
 
 /**

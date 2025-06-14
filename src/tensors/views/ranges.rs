@@ -676,14 +676,14 @@ where
         shape
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
         // It is the caller's responsibility to always call with indexes in range,
         // therefore the unwrap() case should never happen because on an arbitary TensorRef
         // it would be undefined behavior.
         // TODO: Can we use unwrap_unchecked here?
         self.source
             .get_reference_unchecked(map_indexes_by_range(indexes, &self.range).unwrap())
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout<D> {
         // Our range means the view shape no longer matches up to a single
@@ -710,14 +710,14 @@ where
             .get_reference_mut(map_indexes_by_range(indexes, &self.range)?)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T { unsafe {
         // It is the caller's responsibility to always call with indexes in range,
         // therefore the unwrap() case should never happen because on an arbitary TensorMut
         // it would be undefined behavior.
         // TODO: Can we use unwrap_unchecked here?
         self.source
             .get_reference_unchecked_mut(map_indexes_by_range(indexes, &self.range).unwrap())
-    }
+    }}
 }
 
 fn map_indexes_by_mask<const D: usize>(indexes: [usize; D], masks: &[IndexRange; D]) -> [usize; D] {
@@ -756,12 +756,12 @@ where
         shape
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
         // It is the caller's responsibility to always call with indexes in range,
         // therefore out of bounds lookups created by map_indexes_by_mask should never happen.
         self.source
             .get_reference_unchecked(map_indexes_by_mask(indexes, &self.mask))
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout<D> {
         // Our mask means the view shape no longer matches up to a single
@@ -787,12 +787,12 @@ where
             .get_reference_mut(map_indexes_by_mask(indexes, &self.mask))
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T { unsafe {
         // It is the caller's responsibility to always call with indexes in range,
         // therefore out of bounds lookups created by map_indexes_by_mask should never happen.
         self.source
             .get_reference_unchecked_mut(map_indexes_by_mask(indexes, &self.mask))
-    }
+    }}
 }
 
 #[test]

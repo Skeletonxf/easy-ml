@@ -153,9 +153,9 @@ where
         [(row, rows), (column, columns)]
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; 2]) -> &T {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; 2]) -> &T { unsafe {
         self.source.get_reference_unchecked(indexes[0], indexes[1])
-    }
+    }}
 
     fn data_layout(&self) -> TDataLayout<2> {
         let [rows_dimension, columns_dimension] = self.names.names();
@@ -187,10 +187,10 @@ where
         self.source.try_get_reference_mut(indexes[0], indexes[1])
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; 2]) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; 2]) -> &mut T { unsafe {
         self.source
             .get_reference_unchecked_mut(indexes[0], indexes[1])
-    }
+    }}
 }
 
 /**
@@ -256,9 +256,9 @@ where
         self.source.view_shape()[1].1
     }
 
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T { unsafe {
         self.source.get_reference_unchecked([row, column])
-    }
+    }}
 
     fn data_layout(&self) -> MDataLayout {
         let rows_dimension = self.source.view_shape()[0].0;
@@ -298,9 +298,9 @@ where
         self.source.get_reference_mut([row, column])
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T { unsafe {
         self.source.get_reference_unchecked_mut([row, column])
-    }
+    }}
 }
 
 // # Safety

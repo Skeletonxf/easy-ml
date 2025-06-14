@@ -44,9 +44,9 @@ where
         MatrixRef::view_columns(*self)
     }
 
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T { unsafe {
         MatrixRef::get_reference_unchecked(*self, row, column)
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout {
         DataLayout::RowMajor
@@ -92,9 +92,9 @@ where
         MatrixRef::view_columns(*self)
     }
 
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T { unsafe {
         MatrixRef::get_reference_unchecked(*self, row, column)
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout {
         DataLayout::RowMajor
@@ -118,9 +118,9 @@ where
         MatrixMut::try_get_reference_mut(*self, row, column)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T { unsafe {
         MatrixMut::get_reference_unchecked_mut(*self, row, column)
-    }
+    }}
 }
 
 // # Safety
@@ -157,9 +157,9 @@ unsafe impl<T> MatrixRef<T> for Matrix<T> {
         Matrix::columns(self)
     }
 
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T { unsafe {
         Matrix::_get_reference_unchecked(self, row, column)
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout {
         DataLayout::RowMajor
@@ -178,9 +178,9 @@ unsafe impl<T> MatrixMut<T> for Matrix<T> {
         Matrix::_try_get_reference_mut(self, row, column)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T { unsafe {
         Matrix::_get_reference_unchecked_mut(self, row, column)
-    }
+    }}
 }
 
 // # Safety
@@ -214,9 +214,9 @@ where
         self.as_ref().view_columns()
     }
 
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T { unsafe {
         self.as_ref().get_reference_unchecked(row, column)
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout {
         self.as_ref().data_layout()
@@ -238,9 +238,9 @@ where
         self.as_mut().try_get_reference_mut(row, column)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T { unsafe {
         self.as_mut().get_reference_unchecked_mut(row, column)
-    }
+    }}
 }
 
 // # Safety
@@ -271,9 +271,9 @@ unsafe impl<T> MatrixRef<T> for Box<dyn MatrixRef<T>> {
         self.as_ref().view_columns()
     }
 
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T { unsafe {
         self.as_ref().get_reference_unchecked(row, column)
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout {
         self.as_ref().data_layout()
@@ -300,9 +300,9 @@ unsafe impl<T> MatrixRef<T> for Box<dyn MatrixMut<T>> {
         self.as_ref().view_columns()
     }
 
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T { unsafe {
         self.as_ref().get_reference_unchecked(row, column)
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout {
         self.as_ref().data_layout()
@@ -321,9 +321,9 @@ unsafe impl<T> MatrixMut<T> for Box<dyn MatrixMut<T>> {
         self.as_mut().try_get_reference_mut(row, column)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T { unsafe {
         self.as_mut().get_reference_unchecked_mut(row, column)
-    }
+    }}
 }
 
 // # Safety

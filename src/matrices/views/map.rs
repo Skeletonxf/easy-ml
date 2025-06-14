@@ -86,9 +86,9 @@ where
         self.source.view_columns()
     }
 
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &U {
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &U { unsafe {
         (self.f)(self.source.get_reference_unchecked(row, column))
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout {
         self.source.data_layout()

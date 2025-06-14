@@ -358,9 +358,9 @@ impl<T> Matrix<T> {
      * Not public API because don't want to name clash with the method on MatrixRef
      * that calls this.
      */
-    pub(crate) unsafe fn _get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+    pub(crate) unsafe fn _get_reference_unchecked(&self, row: Row, column: Column) -> &T { unsafe {
         self.data.get_unchecked(self.get_index(row, column))
-    }
+    }}
 
     /**
      * Sets a new value to this row and column. Rows and Columns are 0 indexed.
@@ -400,11 +400,11 @@ impl<T> Matrix<T> {
         &mut self,
         row: Row,
         column: Column,
-    ) -> &mut T {
+    ) -> &mut T { unsafe {
         let index = self.get_index(row, column);
         // borrow for get_index ends
         self.data.get_unchecked_mut(index)
-    }
+    }}
 
     /**
      * Removes a row from this Matrix, shifting all other rows to the left.

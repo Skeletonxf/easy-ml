@@ -242,14 +242,14 @@ where
         self.shape
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D2]) -> &T {
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D2]) -> &T { unsafe {
         // It is the caller's responsibility to always call with indexes in range,
         // therefore out of bounds lookups created by get_index_direct_unchecked should never
         // happen.
         let one_dimensional_index = tensors::get_index_direct_unchecked(&indexes, &self.strides);
         self.source
             .get_reference_unchecked(unflatten(one_dimensional_index, &self.source_strides))
-    }
+    }}
 
     fn data_layout(&self) -> DataLayout<D2> {
         // There might be some cases where assigning a new shape maintains a linear order
@@ -273,12 +273,12 @@ where
             .get_reference_mut(unflatten(one_dimensional_index, &self.source_strides))
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D2]) -> &mut T {
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D2]) -> &mut T { unsafe {
         // It is the caller's responsibility to always call with indexes in range,
         // therefore out of bounds lookups created by get_index_direct_unchecked should never
         // happen.
         let one_dimensional_index = tensors::get_index_direct_unchecked(&indexes, &self.strides);
         self.source
             .get_reference_unchecked_mut(unflatten(one_dimensional_index, &self.source_strides))
-    }
+    }}
 }
