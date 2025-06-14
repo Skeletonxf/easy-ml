@@ -91,7 +91,7 @@ impl Iterator for EndlessRandomGenerator {
 
     fn next(&mut self) -> Option<Self::Item> {
         // always return Some, hence this iterator is infinite
-        Some(self.rng.r#gen::<f64>())
+        Some(self.rng.random::<f64>())
     }
 }
 
