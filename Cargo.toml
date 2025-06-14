@@ -2,7 +2,7 @@
 name = "easy-ml"
 version = "2.0.0-dev.1"
 authors = ["Skeletonxf <skeletonxf@gmail.com>"]
-edition = "2021"
+edition = "2024"
 repository = "https://github.com/Skeletonxf/easy-ml"
 description = "Machine learning library providing matrices, named tensors, linear algebra and automatic differentiation aimed at being easy to use"
 keywords = ["machine-learning", "tensors", "matrices", "linear-algebra"]
