@@ -111,7 +111,7 @@ struct EpsilonGreedy {
 
 impl Policy for EpsilonGreedy {
     fn choose(&mut self, choices: &[(Direction, f64); DIRECTIONS]) -> Direction {
-        let random: f64 = self.rng.gen();
+        let random: f64 = self.rng.r#gen();
         if random < self.exploration_rate {
             choices[self.rng.gen_range(0..choices.len())].0
         } else {
