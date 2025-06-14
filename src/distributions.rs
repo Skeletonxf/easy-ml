@@ -13,7 +13,7 @@ extern crate textplots;
 extern crate easy_ml;
 
 use rand::{Rng, SeedableRng};
-use rand::distributions::{DistIter, Standard};
+use rand::distr::{Iter, StandardUniform};
 use rand_chacha::ChaCha8Rng;
 use textplots::{Chart, Plot, Shape};
 use easy_ml::distributions::Gaussian;
@@ -27,8 +27,8 @@ let normal_distribution = Gaussian::new(0.0, 1.0);
 // first create random numbers between 0 and 1
 // using a fixed seed random generator from the rand crate
 let mut random_generator = ChaCha8Rng::seed_from_u64(10);
-let mut random_numbers: DistIter<Standard, &mut ChaCha8Rng, f64> =
-    (&mut random_generator).sample_iter(Standard);
+let mut random_numbers: Iter<StandardUniform, &mut ChaCha8Rng, f64> =
+    (&mut random_generator).sample_iter(StandardUniform);
 
 // draw samples from the normal distribution
 let samples: Vec<f64> = normal_distribution.draw(&mut random_numbers, SAMPLES)
@@ -61,14 +61,14 @@ to populate lists of random numbers when using these types.
 
 ```
 use rand::{Rng, SeedableRng};
-use rand::distributions::{DistIter, Standard};
+use rand::distr::{Iter, StandardUniform};
 use rand_chacha::ChaCha8Rng;
 
 // using a fixed seed random generator from the rand crate
 let mut random_generator = ChaCha8Rng::seed_from_u64(16);
 // now pass this Iterator to Gaussian functions that accept a &mut Iterator
-let mut random_numbers: DistIter<Standard, &mut ChaCha8Rng, f64> =
-    (&mut random_generator).sample_iter(Standard);
+let mut random_numbers: Iter<StandardUniform, &mut ChaCha8Rng, f64> =
+    (&mut random_generator).sample_iter(StandardUniform);
 ```
 
 # Example of creating an infinite iterator

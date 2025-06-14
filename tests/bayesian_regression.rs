@@ -7,7 +7,7 @@ extern crate easy_ml;
 
 #[cfg(test)]
 mod tests {
-    use rand::distributions::Standard;
+    use rand::distr::StandardUniform;
     use rand::{Rng, SeedableRng};
 
     use textplots::{Chart, Plot, Shape};
@@ -89,7 +89,7 @@ mod tests {
     }
 
     fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f64> {
-        random_generator.sample_iter(Standard).take(n).collect()
+        random_generator.sample_iter(StandardUniform).take(n).collect()
     }
 
     fn merge_for_plotting(x: &Matrix<f64>, fx: &Matrix<f64>) -> Vec<(f32, f32)> {

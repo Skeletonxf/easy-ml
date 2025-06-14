@@ -88,7 +88,7 @@ use easy_ml::matrices::Matrix;
 use easy_ml::distributions::MultivariateGaussian;
 
 use rand::{Rng, SeedableRng};
-use rand::distributions::{DistIter, Standard};
+use rand::distr::{Iter, StandardUniform};
 use rand_chacha::ChaCha8Rng;
 
 use textplots::{Chart, Plot, Shape};
@@ -113,8 +113,8 @@ let class2 = MultivariateGaussian::new(
 
 // Generate 200 points for each cluster
 let points = 200;
-let mut random_numbers: DistIter<Standard, &mut ChaCha8Rng, f64> =
-    (&mut random_generator).sample_iter(Standard);
+let mut random_numbers: Iter<StandardUniform, &mut ChaCha8Rng, f64> =
+    (&mut random_generator).sample_iter(StandardUniform);
 // we can unwrap here because we deliberately constructed a positive definite covariance matrix
 // and supplied enough random numbers
 let class1_points = class1.draw(&mut random_numbers, points).unwrap();
@@ -327,7 +327,7 @@ use easy_ml::tensors::Tensor;
 use easy_ml::distributions::MultivariateGaussianTensor;
 
 use rand::{Rng, SeedableRng};
-use rand::distributions::{DistIter, Standard};
+use rand::distr::{Iter, StandardUniform};
 use rand_chacha::ChaCha8Rng;
 
 use textplots::{Chart, Plot, Shape};
@@ -362,8 +362,8 @@ let class2 = MultivariateGaussianTensor::new(
 
 // Generate 200 points for each cluster
 let points = 200;
-let mut random_numbers: DistIter<Standard, &mut ChaCha8Rng, f64> =
-    (&mut random_generator).sample_iter(Standard);
+let mut random_numbers: Iter<StandardUniform, &mut ChaCha8Rng, f64> =
+    (&mut random_generator).sample_iter(StandardUniform);
 // we can unwrap here because we deliberately constructed a positive definite covariance matrix
 // and supplied enough random numbers
 let class1_points = class1.draw(&mut random_numbers, points, "data", "feature").unwrap();

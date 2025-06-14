@@ -352,7 +352,7 @@ use easy_ml::linear_algebra;
 use easy_ml::distributions::Gaussian;
 
 use rand::{Rng, SeedableRng};
-use rand::distributions::{DistIter, Standard};
+use rand::distr::{Iter, StandardUniform};
 use rand_chacha::ChaCha8Rng;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -387,8 +387,8 @@ enum AlienSex {
 
 // use a fixed seed random generator from the rand crate
 let mut random_generator = ChaCha8Rng::seed_from_u64(16);
-let mut random_numbers: DistIter<Standard, &mut ChaCha8Rng, f64> =
-    (&mut random_generator).sample_iter(Standard);
+let mut random_numbers: Iter<StandardUniform, &mut ChaCha8Rng, f64> =
+    (&mut random_generator).sample_iter(StandardUniform);
 
 /**
  * Generates height data for creating the alien dataset.
@@ -965,7 +965,7 @@ use easy_ml::linear_algebra;
 use easy_ml::distributions::Gaussian;
 
 use rand::{Rng, SeedableRng};
-use rand::distributions::{DistIter, Standard};
+use rand::distr::{Iter, StandardUniform};
 use rand_chacha::ChaCha8Rng;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -1000,8 +1000,8 @@ enum AlienSex {
 
 // use a fixed seed random generator from the rand crate
 let mut random_generator = ChaCha8Rng::seed_from_u64(16);
-let mut random_numbers: DistIter<Standard, &mut ChaCha8Rng, f64> =
-    (&mut random_generator).sample_iter(Standard);
+let mut random_numbers: Iter<StandardUniform, &mut ChaCha8Rng, f64> =
+    (&mut random_generator).sample_iter(StandardUniform);
 
 /**
  * Generates height data for creating the alien dataset.

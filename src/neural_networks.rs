@@ -27,7 +27,7 @@ use easy_ml::numeric::extra::Real;
 use easy_ml::differentiation::{Record, RecordMatrix, WengertList, Index};
 
 use rand::{Rng, SeedableRng};
-use rand::distributions::Standard;
+use rand::distr::StandardUniform;
 
 use textplots::{Chart, Plot, Shape};
 
@@ -35,7 +35,7 @@ use textplots::{Chart, Plot, Shape};
  * Utility function to create a list of random numbers.
  */
 fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f32> {
-    random_generator.sample_iter(Standard).take(n).collect()
+    random_generator.sample_iter(StandardUniform).take(n).collect()
 }
 
 /**
@@ -283,7 +283,7 @@ use easy_ml::numeric::extra::{Real, RealRef, Exp};
 use easy_ml::differentiation::{Record, RecordTensor, WengertList, Index};
 
 use rand::{Rng, SeedableRng};
-use rand::distributions::Standard;
+use rand::distr::StandardUniform;
 
 use textplots::{Chart, Plot, Shape};
 
@@ -291,7 +291,7 @@ use textplots::{Chart, Plot, Shape};
  * Utility function to create a list of random numbers.
  */
 fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f32> {
-    random_generator.sample_iter(Standard).take(n).collect()
+    random_generator.sample_iter(StandardUniform).take(n).collect()
 }
 
 /**
