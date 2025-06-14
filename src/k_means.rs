@@ -149,8 +149,8 @@ while absolute_changes == -1.0 || absolute_changes > CHANGE_THRESHOLD {
             // collect into a vector of tuples
             .collect::<Vec<(&f64, &f64)>>();
         let total = owned.len() as f64;
-        let mean_x = owned.iter().map(|(&x, _)| x).sum::<f64>() / total;
-        let mean_y = owned.iter().map(|(_, &y)| y).sum::<f64>() / total;
+        let mean_x = owned.iter().map(|&(&x, _)| x).sum::<f64>() / total;
+        let mean_y = owned.iter().map(|&(_, &y)| y).sum::<f64>() / total;
         // track the absolute difference between the new mean and the old one
         // so we know when to stop updating the clusters
         absolute_changes += (clusters.get(cluster, X) - mean_x).abs();
