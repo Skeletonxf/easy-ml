@@ -5,7 +5,7 @@ use crate::differentiation::functions::{
 use crate::differentiation::record_operations::are_same_list;
 use crate::differentiation::{Index, Primitive, WengertList};
 use crate::differentiation::{RecordContainer, RecordMatrix, RecordTensor};
-use crate::matrices::views::{MatrixMap, MatrixRef, MatrixView, NoInteriorMutability};
+use crate::matrices::views::{MatrixMap, MatrixRef, MatrixMut, MatrixView, NoInteriorMutability};
 use crate::matrices::Matrix;
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::views::{TensorMap, TensorRef, TensorMut, TensorView};
@@ -132,6 +132,26 @@ macro_rules! record_matrix_operator_impl_value_value {
     };
 }
 
+macro_rules! record_matrix_operator_impl_value_assign {
+    (impl $op:tt for RecordMatrix { fn $method:ident } $implementation:ident) => {
+        /**
+         * Assigning operation for two record matrices of the same type.
+         */
+        impl<'a, T, S1, S2> $op<RecordMatrix<'a, T, S2>> for RecordMatrix<'a, T, S1>
+        where
+            T: Numeric + Primitive,
+            for<'t> &'t T: NumericRef<T>,
+            S1: MatrixMut<(T, Index)> + NoInteriorMutability,
+            S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            #[track_caller]
+            fn $method(&mut self, rhs: RecordMatrix<'a, T, S2>) {
+                $implementation::<T, S1, S2>(self, rhs)
+            }
+        }
+    };
+}
+
 macro_rules! record_tensor_operator_impl_value_reference {
     (impl $op:tt for RecordTensor { fn $method:ident } $implementation:ident) => {
         /**
@@ -190,6 +210,26 @@ macro_rules! record_matrix_operator_impl_value_reference {
             type Output = RecordMatrix<'a, T, Matrix<(T, Index)>>;
             #[track_caller]
             fn $method(self, rhs: &RecordMatrix<'a, T, S2>) -> Self::Output {
+                $implementation::<T, S1, S2>(self, rhs)
+            }
+        }
+    };
+}
+
+macro_rules! record_matrix_operator_impl_reference_assign {
+    (impl $op:tt for RecordMatrix { fn $method:ident } $implementation:ident) => {
+        /**
+         * Assigning operation for two record matrices with the right referenced.
+         */
+        impl<'a, T, S1, S2> $op<&RecordMatrix<'a, T, S2>> for RecordMatrix<'a, T, S1>
+        where
+            T: Numeric + Primitive,
+            for<'t> &'t T: NumericRef<T>,
+            S1: MatrixMut<(T, Index)> + NoInteriorMutability,
+            S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+        {
+            #[track_caller]
+            fn $method(&mut self, rhs: &RecordMatrix<'a, T, S2>) {
                 $implementation::<T, S1, S2>(self, rhs)
             }
         }
@@ -969,6 +1009,46 @@ record_matrix_operator_impl_reference_value!(impl Add for RecordMatrix { fn add 
 record_matrix_operator_impl_reference_reference!(impl Add for RecordMatrix { fn add } record_matrix_add_allocate);
 
 #[track_caller]
+fn record_matrix_add_reference_assign<'a, T, S1, S2>(
+    lhs: &mut RecordMatrix<'a, T, S1>,
+    rhs: &RecordMatrix<'a, T, S2>,
+)
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixMut<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    assert!(
+        are_same_list(lhs.history, rhs.history),
+        "Record containers must be using the same WengertList"
+    );
+    lhs.binary_left_assign(
+        rhs,
+        Addition::<T>::function,
+        Addition::<T>::d_function_dx,
+        Addition::<T>::d_function_dy,
+    )
+}
+
+#[track_caller]
+fn record_matrix_add_value_assign<'a, T, S1, S2>(
+    lhs: &mut RecordMatrix<'a, T, S1>,
+    rhs: RecordMatrix<'a, T, S2>,
+)
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixMut<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    record_matrix_add_reference_assign::<T, S1, S2>(lhs, &rhs);
+}
+
+record_matrix_operator_impl_value_assign!(impl AddAssign for RecordMatrix { fn add_assign } record_matrix_add_value_assign);
+record_matrix_operator_impl_reference_assign!(impl AddAssign for RecordMatrix { fn add_assign } record_matrix_add_reference_assign);
+
+#[track_caller]
 fn record_tensor_sub_allocate<'a, T, S1, S2, const D: usize>(
     lhs: &RecordTensor<'a, T, S1, D>,
     rhs: &RecordTensor<'a, T, S2, D>,
@@ -1147,6 +1227,46 @@ record_matrix_operator_impl_value_value!(impl Sub for RecordMatrix { fn sub } re
 record_matrix_operator_impl_value_reference!(impl Sub for RecordMatrix { fn sub } record_matrix_sub_value_reference);
 record_matrix_operator_impl_reference_value!(impl Sub for RecordMatrix { fn sub } record_matrix_sub_reference_value);
 record_matrix_operator_impl_reference_reference!(impl Sub for RecordMatrix { fn sub } record_matrix_sub_allocate);
+
+#[track_caller]
+fn record_matrix_sub_reference_assign<'a, T, S1, S2>(
+    lhs: &mut RecordMatrix<'a, T, S1>,
+    rhs: &RecordMatrix<'a, T, S2>,
+)
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixMut<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    assert!(
+        are_same_list(lhs.history, rhs.history),
+        "Record containers must be using the same WengertList"
+    );
+    lhs.binary_left_assign(
+        rhs,
+        Subtraction::<T>::function,
+        Subtraction::<T>::d_function_dx,
+        Subtraction::<T>::d_function_dy,
+    );
+}
+
+#[track_caller]
+fn record_matrix_sub_value_assign<'a, T, S1, S2>(
+    lhs: &mut RecordMatrix<'a, T, S1>,
+    rhs: RecordMatrix<'a, T, S2>,
+)
+where
+    T: Numeric + Primitive,
+    for<'t> &'t T: NumericRef<T>,
+    S1: MatrixMut<(T, Index)> + NoInteriorMutability,
+    S2: MatrixRef<(T, Index)> + NoInteriorMutability,
+{
+    record_matrix_sub_reference_assign::<T, S1, S2>(lhs, &rhs);
+}
+
+record_matrix_operator_impl_value_assign!(impl SubAssign for RecordMatrix { fn sub_assign } record_matrix_sub_value_assign);
+record_matrix_operator_impl_reference_assign!(impl SubAssign for RecordMatrix { fn sub_assign } record_matrix_sub_reference_assign);
 
 fn record_scalar_product<'l, 'r, T, S1, S2>(
     left_iter: S1,

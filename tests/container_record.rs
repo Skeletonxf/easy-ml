@@ -2,9 +2,10 @@ extern crate easy_ml;
 
 #[cfg(test)]
 mod container_record_tests {
-    use easy_ml::differentiation::{Record, RecordTensor, WengertList};
+    use easy_ml::differentiation::{Record, RecordTensor, RecordMatrix, WengertList};
     use easy_ml::tensors::indexing::ShapeIterator;
     use easy_ml::tensors::Tensor;
+    use easy_ml::matrices::Matrix;
 
     #[test]
     fn test_subtraction_derivatives() {
@@ -355,7 +356,7 @@ mod container_record_tests {
     }
 
     #[test]
-    fn test_assign_operations_add() {
+    fn test_assign_operations_add_tensor() {
         let list = WengertList::new();
         let mut x = RecordTensor::variables(
             &list,
@@ -398,7 +399,48 @@ mod container_record_tests {
     }
 
     #[test]
-    fn test_assign_operations_sub() {
+    fn test_assign_operations_add_matrix() {
+        let list = WengertList::new();
+        let mut x = RecordMatrix::variables(
+            &list,
+            Matrix::column(vec![0.1, 0.2, 0.3, 0.4]),
+        );
+        let y = RecordMatrix::variables(
+            &list,
+            Matrix::column(vec![0.3, 0.1, 0.4, 0.2]),
+        );
+        x += &y;
+        let derivatives = x.derivatives().unwrap();
+        let dx = derivatives.map(|d| d.at_matrix(&x));
+        let dy = derivatives.map(|d| d.at_matrix(&y));
+        // Derivative of addition is 1, for pairs of records where we actually did
+        // addition.
+        assert_eq!(
+            dx,
+            Matrix::column(
+                vec![
+                    Matrix::column(vec![1.0, 0.0, 0.0, 0.0]),
+                    Matrix::column(vec![0.0, 1.0, 0.0, 0.0]),
+                    Matrix::column(vec![0.0, 0.0, 1.0, 0.0]),
+                    Matrix::column(vec![0.0, 0.0, 0.0, 1.0]),
+                ]
+            )
+        );
+        assert_eq!(
+            dy,
+            Matrix::column(
+                vec![
+                    Matrix::column(vec![1.0, 0.0, 0.0, 0.0]),
+                    Matrix::column(vec![0.0, 1.0, 0.0, 0.0]),
+                    Matrix::column(vec![0.0, 0.0, 1.0, 0.0]),
+                    Matrix::column(vec![0.0, 0.0, 0.0, 1.0]),
+                ]
+            )
+        );
+    }
+
+    #[test]
+    fn test_assign_operations_sub_tensor() {
         let list = WengertList::new();
         let mut x = RecordTensor::variables(
             &list,
@@ -413,7 +455,7 @@ mod container_record_tests {
         let dx = derivatives.map(|d| d.at_tensor(&x));
         let dy = derivatives.map(|d| d.at_tensor(&y));
         // Derivative of subtraction is also 1 for x, for pairs of records where we actually did
-        // addition.
+        // subtraction.
         assert_eq!(
             dx,
             Tensor::from(
@@ -427,7 +469,7 @@ mod container_record_tests {
             )
         );
         // Derivative of subtraction is -1 for y, for pairs of records where we actually did
-        // addition.
+        // subtraction.
         assert_eq!(
             dy,
             Tensor::from(
@@ -437,6 +479,49 @@ mod container_record_tests {
                     Tensor::from([("r", 2), ("c", 2)], vec![0.0, -1.0, 0.0, 0.0]),
                     Tensor::from([("r", 2), ("c", 2)], vec![0.0, 0.0, -1.0, 0.0]),
                     Tensor::from([("r", 2), ("c", 2)], vec![0.0, 0.0, 0.0, -1.0]),
+                ]
+            )
+        );
+    }
+
+    #[test]
+    fn test_assign_operations_sub_matrix() {
+        let list = WengertList::new();
+        let mut x = RecordMatrix::variables(
+            &list,
+            Matrix::row(vec![0.1, 0.2, 0.3, 0.4]),
+        );
+        let y = RecordMatrix::variables(
+            &list,
+            Matrix::row(vec![0.3, 0.1, 0.4, 0.2]),
+        );
+        x -= &y;
+        let derivatives = x.derivatives().unwrap();
+        let dx = derivatives.map(|d| d.at_matrix(&x));
+        let dy = derivatives.map(|d| d.at_matrix(&y));
+        // Derivative of subtraction is also 1 for x, for pairs of records where we actually did
+        // subtraction.
+        assert_eq!(
+            dx,
+            Matrix::row(
+                vec![
+                    Matrix::row(vec![1.0, 0.0, 0.0, 0.0]),
+                    Matrix::row(vec![0.0, 1.0, 0.0, 0.0]),
+                    Matrix::row(vec![0.0, 0.0, 1.0, 0.0]),
+                    Matrix::row(vec![0.0, 0.0, 0.0, 1.0]),
+                ]
+            )
+        );
+        // Derivative of subtraction is -1 for y, for pairs of records where we actually did
+        // subtraction.
+        assert_eq!(
+            dy,
+            Matrix::row(
+                vec![
+                    Matrix::row(vec![-1.0, 0.0, 0.0, 0.0]),
+                    Matrix::row(vec![0.0, -1.0, 0.0, 0.0]),
+                    Matrix::row(vec![0.0, 0.0, -1.0, 0.0]),
+                    Matrix::row(vec![0.0, 0.0, 0.0, -1.0]),
                 ]
             )
         );
