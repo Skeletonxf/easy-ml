@@ -353,4 +353,92 @@ mod container_record_tests {
             )
         );
     }
+
+    #[test]
+    fn test_assign_operations_add() {
+        let list = WengertList::new();
+        let mut x = RecordTensor::variables(
+            &list,
+            Tensor::<f64, 2>::from([("r", 2), ("c", 2)], vec![0.1, 0.2, 0.3, 0.4]),
+        );
+        let y = RecordTensor::variables(
+            &list,
+            Tensor::<f64, 2>::from([("r", 2), ("c", 2)], vec![0.3, 0.1, 0.4, 0.2]),
+        );
+        x += &y;
+        let derivatives = x.derivatives().unwrap();
+        let dx = derivatives.map(|d| d.at_tensor(&x));
+        let dy = derivatives.map(|d| d.at_tensor(&y));
+        // Derivative of addition is 1, for pairs of records where we actually did
+        // addition.
+        assert_eq!(
+            dx,
+            Tensor::from(
+                [("r", 2), ("c", 2)],
+                vec![
+                    Tensor::from([("r", 2), ("c", 2)], vec![1.0, 0.0, 0.0, 0.0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0.0, 1.0, 0.0, 0.0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0.0, 0.0, 1.0, 0.0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0.0, 0.0, 0.0, 1.0]),
+                ]
+            )
+        );
+        assert_eq!(
+            dy,
+            Tensor::from(
+                [("r", 2), ("c", 2)],
+                vec![
+                    Tensor::from([("r", 2), ("c", 2)], vec![1.0, 0.0, 0.0, 0.0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0.0, 1.0, 0.0, 0.0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0.0, 0.0, 1.0, 0.0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0.0, 0.0, 0.0, 1.0]),
+                ]
+            )
+        );
+    }
+
+    #[test]
+    fn test_assign_operations_sub() {
+        let list = WengertList::new();
+        let mut x = RecordTensor::variables(
+            &list,
+            Tensor::<f64, 2>::from([("r", 2), ("c", 2)], vec![0.1, 0.2, 0.3, 0.4]),
+        );
+        let y = RecordTensor::variables(
+            &list,
+            Tensor::<f64, 2>::from([("r", 2), ("c", 2)], vec![0.3, 0.1, 0.4, 0.2]),
+        );
+        x -= &y;
+        let derivatives = x.derivatives().unwrap();
+        let dx = derivatives.map(|d| d.at_tensor(&x));
+        let dy = derivatives.map(|d| d.at_tensor(&y));
+        // Derivative of subtraction is also 1 for x, for pairs of records where we actually did
+        // addition.
+        assert_eq!(
+            dx,
+            Tensor::from(
+                [("r", 2), ("c", 2)],
+                vec![
+                    Tensor::from([("r", 2), ("c", 2)], vec![1.0, 0.0, 0.0, 0.0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0.0, 1.0, 0.0, 0.0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0.0, 0.0, 1.0, 0.0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0.0, 0.0, 0.0, 1.0]),
+                ]
+            )
+        );
+        // Derivative of subtraction is -1 for y, for pairs of records where we actually did
+        // addition.
+        assert_eq!(
+            dy,
+            Tensor::from(
+                [("r", 2), ("c", 2)],
+                vec![
+                    Tensor::from([("r", 2), ("c", 2)], vec![-1.0, 0.0, 0.0, 0.0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0.0, -1.0, 0.0, 0.0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0.0, 0.0, -1.0, 0.0]),
+                    Tensor::from([("r", 2), ("c", 2)], vec![0.0, 0.0, 0.0, -1.0]),
+                ]
+            )
+        );
+    }
 }
