@@ -529,14 +529,16 @@ mod linear_algebra {
         ]);
         assert_eq!(q.size(), output.q.size());
         assert_eq!(r.size(), output.r.size());
-        assert!(q
-            .row_major_iter()
-            .zip(output.q.row_major_iter())
-            .all(|(expected, actual)| expected - actual < 0.001));
-        assert!(r
-            .row_major_iter()
-            .zip(output.r.row_major_iter())
-            .all(|(expected, actual)| expected - actual < 0.001));
+        assert!(
+            q.row_major_iter()
+                .zip(output.q.row_major_iter())
+                .all(|(expected, actual)| expected - actual < 0.001)
+        );
+        assert!(
+            r.row_major_iter()
+                .zip(output.r.row_major_iter())
+                .all(|(expected, actual)| expected - actual < 0.001)
+        );
         // Tensor APIs should calculate exactly the same result
         #[rustfmt::skip]
         let input = Tensor::from([("r", 3), ("c", 3)], vec![
@@ -561,14 +563,16 @@ mod linear_algebra {
         ]);
         assert_eq!(q.shape(), output.q.shape());
         assert_eq!(r.shape(), output.r.shape());
-        assert!(q
-            .iter()
-            .zip(output.q.iter())
-            .all(|(expected, actual)| expected - actual < 0.001));
-        assert!(r
-            .iter()
-            .zip(output.r.iter())
-            .all(|(expected, actual)| expected - actual < 0.001));
+        assert!(
+            q.iter()
+                .zip(output.q.iter())
+                .all(|(expected, actual)| expected - actual < 0.001)
+        );
+        assert!(
+            r.iter()
+                .zip(output.r.iter())
+                .all(|(expected, actual)| expected - actual < 0.001)
+        );
     }
 
     #[test]
@@ -608,11 +612,12 @@ mod linear_algebra {
             let a = q * r;
             println!("A:\n{}", matrix);
             println!("Reconstructed A:\n{}", a);
-            assert!(a
-                .row_major_iter()
-                .zip(matrix.row_major_iter())
-                .map(|(x, y)| x - y)
-                .all(|x| x.abs() < 0.00001));
+            assert!(
+                a.row_major_iter()
+                    .zip(matrix.row_major_iter())
+                    .map(|(x, y)| x - y)
+                    .all(|x| x.abs() < 0.00001)
+            );
             // Tensor APIs should calculate exactly the same result
             let tensor = matrix.into_tensor("r", "c").unwrap();
             let output = linear_algebra::qr_decomposition_tensor::<f64, _, _>(&tensor).unwrap();
@@ -641,11 +646,12 @@ mod linear_algebra {
             let a = q * r;
             println!("A:\n{}", tensor);
             println!("Reconstructed A:\n{}", a);
-            assert!(a
-                .iter()
-                .zip(tensor.iter())
-                .map(|(x, y)| x - y)
-                .all(|x| x.abs() < 0.00001));
+            assert!(
+                a.iter()
+                    .zip(tensor.iter())
+                    .map(|(x, y)| x - y)
+                    .all(|x| x.abs() < 0.00001)
+            );
         }
     }
 }

@@ -1,5 +1,5 @@
-use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
 use crate::tensors::Dimension;
+use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
 use std::marker::PhantomData;
 
 /**
@@ -63,11 +63,14 @@ where
         for (name, index) in &provided_indexes {
             // Every provided index must match a dimension name in the source and be a valid
             // index within the length
-            match shape.iter().enumerate().find(|(_i, (n, length))| n == name && index < length) {
+            match shape
+                .iter()
+                .enumerate()
+                .find(|(_i, (n, length))| n == name && index < length)
+            {
                 None => panic!(
                     "Provided indexes must all correspond to valid indexes into the source shape, source shape: {:?}, provided: {:?}",
-                    shape,
-                    provided_indexes,
+                    shape, provided_indexes,
                 ),
                 // Assign the provided index to the matching position of the source
                 Some((i, (_n, _length))) => provided[i] = Some(*index),
@@ -158,11 +161,13 @@ macro_rules! tensor_index_ref_impl {
                 std::array::from_fn(|_| unprovided.next().unwrap())
             }
 
-            unsafe fn get_reference_unchecked(&self, indexes: [usize; $d - $i]) -> &T { unsafe {
-                // TODO: Can we use unwrap_unchecked here?
-                self.source
-                    .get_reference_unchecked(self.$helper_name(indexes).unwrap())
-            }}
+            unsafe fn get_reference_unchecked(&self, indexes: [usize; $d - $i]) -> &T {
+                unsafe {
+                    // TODO: Can we use unwrap_unchecked here?
+                    self.source
+                        .get_reference_unchecked(self.$helper_name(indexes).unwrap())
+                }
+            }
 
             fn data_layout(&self) -> DataLayout<{ $d - $i }> {
                 // Our pre provided index means the view shape no longer matches up to a single
@@ -180,11 +185,13 @@ macro_rules! tensor_index_ref_impl {
                     .get_reference_mut(self.$helper_name(indexes).unwrap())
             }
 
-            unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d - $i]) -> &mut T { unsafe {
-                // TODO: Can we use unwrap_unchecked here?
-                self.source
-                    .get_reference_unchecked_mut(self.$helper_name(indexes).unwrap())
-            }}
+            unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d - $i]) -> &mut T {
+                unsafe {
+                    // TODO: Can we use unwrap_unchecked here?
+                    self.source
+                        .get_reference_unchecked_mut(self.$helper_name(indexes).unwrap())
+                }
+            }
         }
     };
 }
@@ -213,8 +220,8 @@ tensor_index_ref_impl!(unsafe impl TensorRef for TensorIndex 1 1 compute_select_
 
 #[test]
 fn dimensionality_reduction() {
-    use crate::tensors::views::TensorView;
     use crate::tensors::Tensor;
+    use crate::tensors::views::TensorView;
     #[rustfmt::skip]
     let tensor = Tensor::from([("batch", 2), ("row", 2), ("column", 2)], vec![
         0, 1,
@@ -327,16 +334,14 @@ where
             if d > D {
                 panic!(
                     "All extra dimensions {:?} must be inserted in the range 0 <= d <= D of the source shape {:?}",
-                    dimensions,
-                    shape
+                    dimensions, shape
                 );
             }
             for &(n, _) in &shape {
                 if name == n {
                     panic!(
                         "All extra dimension names {:?} must not be already present in the source shape {:?}",
-                        dimensions,
-                        shape
+                        dimensions, shape
                     );
                 }
             }
@@ -451,11 +456,13 @@ macro_rules! tensor_expansion_ref_impl {
                 extra_shape
             }
 
-            unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + $i]) -> &T { unsafe {
-                // TODO: Can we use unwrap_unchecked here?
-                self.source
-                    .get_reference_unchecked(self.$helper_name(indexes).unwrap())
-            }}
+            unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + $i]) -> &T {
+                unsafe {
+                    // TODO: Can we use unwrap_unchecked here?
+                    self.source
+                        .get_reference_unchecked(self.$helper_name(indexes).unwrap())
+                }
+            }
 
             fn data_layout(&self) -> DataLayout<{ $d + $i }> {
                 // Our extra dimensions means the view shape no longer matches up to a single
@@ -472,11 +479,13 @@ macro_rules! tensor_expansion_ref_impl {
                 self.source.get_reference_mut(self.$helper_name(indexes)?)
             }
 
-            unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + $i]) -> &mut T { unsafe {
-                // TODO: Can we use unwrap_unchecked here?
-                self.source
-                    .get_reference_unchecked_mut(self.$helper_name(indexes).unwrap())
-            }}
+            unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + $i]) -> &mut T {
+                unsafe {
+                    // TODO: Can we use unwrap_unchecked here?
+                    self.source
+                        .get_reference_unchecked_mut(self.$helper_name(indexes).unwrap())
+                }
+            }
         }
     };
 }
@@ -505,8 +514,8 @@ tensor_expansion_ref_impl!(unsafe impl TensorRef for TensorExpansion 5 1 compute
 
 #[test]
 fn dimensionality_expansion() {
-    use crate::tensors::views::TensorView;
     use crate::tensors::Tensor;
+    use crate::tensors::views::TensorView;
     let tensor = Tensor::from([("row", 2), ("column", 2)], (0..4).collect());
     let tensor_3 = TensorView::from(TensorExpansion::from(&tensor, [(0, "batch")]));
     assert_eq!(tensor_3.shape(), [("batch", 1), ("row", 2), ("column", 2)]);
@@ -536,8 +545,8 @@ fn dimensionality_expansion() {
     expected = "Unable to index with [2, 2, 2, 2], Tensor dimensions are [(\"a\", 2), (\"b\", 2), (\"c\", 1), (\"d\", 2)]."
 )]
 fn dimensionality_reduction_invalid_extra_index() {
-    use crate::tensors::views::TensorView;
     use crate::tensors::Tensor;
+    use crate::tensors::views::TensorView;
     let tensor = Tensor::from([("a", 2), ("b", 2), ("d", 2)], (0..8).collect());
     let tensor = TensorView::from(TensorExpansion::from(&tensor, [(2, "c")]));
     assert_eq!(tensor.shape(), [("a", 2), ("b", 2), ("c", 1), ("d", 2)]);

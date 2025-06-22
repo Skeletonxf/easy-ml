@@ -13,8 +13,8 @@ mod tests {
     use textplots::{Chart, Plot, Shape};
 
     use easy_ml::distributions::{Gaussian, MultivariateGaussian};
-    use easy_ml::matrices::slices::{Slice, Slice2D};
     use easy_ml::matrices::Matrix;
+    use easy_ml::matrices::slices::{Slice, Slice2D};
 
     // 3 steps for bayesian regression
     // 0: have data to model
@@ -89,7 +89,10 @@ mod tests {
     }
 
     fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f64> {
-        random_generator.sample_iter(StandardUniform).take(n).collect()
+        random_generator
+            .sample_iter(StandardUniform)
+            .take(n)
+            .collect()
     }
 
     fn merge_for_plotting(x: &Matrix<f64>, fx: &Matrix<f64>) -> Vec<(f32, f32)> {

@@ -1,5 +1,5 @@
-use crate::tensors::views::{DataLayout, TensorRef};
 use crate::tensors::Dimension;
+use crate::tensors::views::{DataLayout, TensorRef};
 use std::marker::PhantomData;
 
 /**
@@ -83,9 +83,9 @@ where
         self.source.view_shape()
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &U { unsafe {
-        (self.f)(self.source.get_reference_unchecked(indexes))
-    }}
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &U {
+        unsafe { (self.f)(self.source.get_reference_unchecked(indexes)) }
+    }
 
     fn data_layout(&self) -> DataLayout<D> {
         self.source.data_layout()

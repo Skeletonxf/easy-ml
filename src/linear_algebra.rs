@@ -1354,11 +1354,7 @@ where
     let a = {
         // we hardcode to wanting to zero all elements below the first
         let sign = x.first();
-        if sign > T::zero() {
-            length
-        } else {
-            -length
-        }
+        if sign > T::zero() { length } else { -length }
     };
     let u = {
         // u = x - ae, where e is [1 0 0 0 ... 0]^T, and x is the column vector so

@@ -487,14 +487,16 @@ unsafe impl<T, const D: usize> TensorRef<T, D> for Tensor<T, D> {
         Tensor::shape(self)
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
-        // The point of get_reference_unchecked is no bounds checking, and therefore
-        // it does not make any sense to just use `unwrap` here. The trait documents that
-        // it's undefind behaviour to call this method with an out of bounds index, so we
-        // can assume the None case will never happen.
-        let i = get_index_direct(&indexes, &self.strides, &self.shape).unwrap_unchecked();
-        self.data.get_unchecked(i)
-    }}
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        unsafe {
+            // The point of get_reference_unchecked is no bounds checking, and therefore
+            // it does not make any sense to just use `unwrap` here. The trait documents that
+            // it's undefind behaviour to call this method with an out of bounds index, so we
+            // can assume the None case will never happen.
+            let i = get_index_direct(&indexes, &self.strides, &self.shape).unwrap_unchecked();
+            self.data.get_unchecked(i)
+        }
+    }
 
     fn data_layout(&self) -> DataLayout<D> {
         // We always have our memory in most significant to least
@@ -511,14 +513,16 @@ unsafe impl<T, const D: usize> TensorMut<T, D> for Tensor<T, D> {
         self.data.get_mut(i)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T { unsafe {
-        // The point of get_reference_unchecked_mut is no bounds checking, and therefore
-        // it does not make any sense to just use `unwrap` here. The trait documents that
-        // it's undefind behaviour to call this method with an out of bounds index, so we
-        // can assume the None case will never happen.
-        let i = get_index_direct(&indexes, &self.strides, &self.shape).unwrap_unchecked();
-        self.data.get_unchecked_mut(i)
-    }}
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        unsafe {
+            // The point of get_reference_unchecked_mut is no bounds checking, and therefore
+            // it does not make any sense to just use `unwrap` here. The trait documents that
+            // it's undefind behaviour to call this method with an out of bounds index, so we
+            // can assume the None case will never happen.
+            let i = get_index_direct(&indexes, &self.strides, &self.shape).unwrap_unchecked();
+            self.data.get_unchecked_mut(i)
+        }
+    }
 }
 
 /**
@@ -1447,8 +1451,7 @@ where
             Ok(reordered) => reordered,
             Err(_error) => panic!(
                 "Dimension names provided {:?} must be the same set of dimension names in the tensor: {:?}",
-                dimensions,
-                &self.shape,
+                dimensions, &self.shape,
             ),
         };
         let reorderd_shape = reorderd.shape();
@@ -1481,8 +1484,7 @@ where
                 Some(dimension_mapping) => dimension_mapping,
                 None => panic!(
                     "Dimension names provided {:?} must be the same set of dimension names in the tensor: {:?}",
-                    dimensions,
-                    &self.shape,
+                    dimensions, &self.shape,
                 ),
             };
 

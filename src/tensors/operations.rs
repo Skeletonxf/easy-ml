@@ -186,8 +186,8 @@ pub trait Similar<Rhs: ?Sized = Self>: private::Sealed {
 }
 
 mod private {
-    use crate::tensors::views::{TensorRef, TensorView};
     use crate::tensors::Tensor;
+    use crate::tensors::views::{TensorRef, TensorView};
 
     pub trait Sealed<Rhs: ?Sized = Self> {}
 
@@ -433,7 +433,8 @@ where
     if left_shape[1].1 != right_shape[0].1 {
         panic!(
             "Mismatched tensors, left is {:?}, right is {:?}, * is only defined for MxN * NxL dimension lengths",
-            left.view_shape(), right.view_shape()
+            left.view_shape(),
+            right.view_shape()
         );
     }
     if left_shape[0].0 == right_shape[1].0 {

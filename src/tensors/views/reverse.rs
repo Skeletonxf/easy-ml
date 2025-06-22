@@ -1,6 +1,6 @@
+use crate::tensors::Dimension;
 use crate::tensors::dimensions;
 use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
-use crate::tensors::Dimension;
 use std::marker::PhantomData;
 
 /**
@@ -142,13 +142,15 @@ where
         self.source.view_shape()
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
-        self.source.get_reference_unchecked(reverse_indexes(
-            &indexes,
-            &self.view_shape(),
-            &self.reversed,
-        ))
-    }}
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        unsafe {
+            self.source.get_reference_unchecked(reverse_indexes(
+                &indexes,
+                &self.view_shape(),
+                &self.reversed,
+            ))
+        }
+    }
 
     fn data_layout(&self) -> DataLayout<D> {
         // There might be some specific cases where reversing maintains a linear order but
@@ -179,13 +181,15 @@ where
         ))
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T { unsafe {
-        self.source.get_reference_unchecked_mut(reverse_indexes(
-            &indexes,
-            &self.view_shape(),
-            &self.reversed,
-        ))
-    }}
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        unsafe {
+            self.source.get_reference_unchecked_mut(reverse_indexes(
+                &indexes,
+                &self.view_shape(),
+                &self.reversed,
+            ))
+        }
+    }
 }
 
 #[test]

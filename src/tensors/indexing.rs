@@ -265,10 +265,12 @@ where
     // NOTE: This aliases with TensorRef::get_reference_unchecked but the TensorRef impl
     // just calls this and the signatures match anyway, so there are no potential issues.
     #[allow(clippy::missing_safety_doc)] // it's not missing
-    pub unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
-        self.source
-            .get_reference_unchecked(self.dimension_mapping.map_dimensions_to_source(&indexes))
-    }}
+    pub unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        unsafe {
+            self.source
+                .get_reference_unchecked(self.dimension_mapping.map_dimensions_to_source(&indexes))
+        }
+    }
 
     /**
      * Returns an iterator over references to the data in this TensorAccess, in the order of
@@ -404,10 +406,13 @@ where
     // NOTE: This aliases with TensorRef::get_reference_unchecked_mut but the TensorMut impl
     // just calls this and the signatures match anyway, so there are no potential issues.
     #[allow(clippy::missing_safety_doc)] // it's not missing
-    pub unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T { unsafe {
-        self.source
-            .get_reference_unchecked_mut(self.dimension_mapping.map_dimensions_to_source(&indexes))
-    }}
+    pub unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        unsafe {
+            self.source.get_reference_unchecked_mut(
+                self.dimension_mapping.map_dimensions_to_source(&indexes),
+            )
+        }
+    }
 
     /**
      * Returns an iterator over mutable references to the data in this TensorAccess, in the order
@@ -608,9 +613,9 @@ where
         self.shape()
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
-        self.get_reference_unchecked(indexes)
-    }}
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        unsafe { self.get_reference_unchecked(indexes) }
+    }
 
     fn data_layout(&self) -> DataLayout<D> {
         match self.source.data_layout() {
@@ -640,9 +645,9 @@ where
         self.try_get_reference_mut(indexes)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T { unsafe {
-        self.get_reference_unchecked_mut(indexes)
-    }}
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        unsafe { self.get_reference_unchecked_mut(indexes) }
+    }
 }
 
 /**
@@ -1563,9 +1568,9 @@ where
         self.shape()
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T { unsafe {
-        self.access.get_reference_unchecked(indexes)
-    }}
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
+        unsafe { self.access.get_reference_unchecked(indexes) }
+    }
 
     fn data_layout(&self) -> DataLayout<D> {
         let data_layout = self.access.data_layout();
@@ -1597,9 +1602,9 @@ where
         self.access.try_get_reference_mut(indexes)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T { unsafe {
-        self.access.get_reference_unchecked_mut(indexes)
-    }}
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
+        unsafe { self.access.get_reference_unchecked_mut(indexes) }
+    }
 }
 
 /**

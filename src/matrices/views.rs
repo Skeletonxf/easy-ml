@@ -310,9 +310,9 @@ where
      * [MatrixRef]: MatrixRef
      */
     #[allow(clippy::missing_safety_doc)] // it's not missing
-    pub unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T { unsafe {
-        self.source.get_reference_unchecked(row, column)
-    }}
+    pub unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        unsafe { self.source.get_reference_unchecked(row, column) }
+    }
 
     /**
      * Returns an iterator over references to a column vector in this matrix view.
@@ -770,9 +770,9 @@ where
      * [MatrixRef]: MatrixRef
      */
     #[allow(clippy::missing_safety_doc)] // it's not missing
-    pub unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T { unsafe {
-        self.source.get_reference_unchecked_mut(row, column)
-    }}
+    pub unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+        unsafe { self.source.get_reference_unchecked_mut(row, column) }
+    }
 }
 
 /**

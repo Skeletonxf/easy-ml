@@ -5,11 +5,11 @@ use crate::differentiation::functions::{
 use crate::differentiation::record_operations::are_same_list;
 use crate::differentiation::{Index, Primitive, WengertList};
 use crate::differentiation::{RecordContainer, RecordMatrix, RecordTensor};
-use crate::matrices::views::{MatrixMap, MatrixRef, MatrixMut, MatrixView, NoInteriorMutability};
 use crate::matrices::Matrix;
+use crate::matrices::views::{MatrixMap, MatrixMut, MatrixRef, MatrixView, NoInteriorMutability};
 use crate::numeric::{Numeric, NumericRef};
-use crate::tensors::views::{TensorMap, TensorRef, TensorMut, TensorView};
 use crate::tensors::Tensor;
+use crate::tensors::views::{TensorMap, TensorMut, TensorRef, TensorView};
 
 use crate::numeric::extra::{Cos, Exp, Ln, Pow, Real, RealRef, Sin, Sqrt};
 
@@ -902,8 +902,7 @@ record_tensor_operator_impl_reference_reference!(impl Add for RecordTensor { fn 
 fn record_tensor_add_reference_assign<'a, T, S1, S2, const D: usize>(
     lhs: &mut RecordTensor<'a, T, S1, D>,
     rhs: &RecordTensor<'a, T, S2, D>,
-)
-where
+) where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
     S1: TensorMut<(T, Index), D>,
@@ -925,8 +924,7 @@ where
 fn record_tensor_add_value_assign<'a, T, S1, S2, const D: usize>(
     lhs: &mut RecordTensor<'a, T, S1, D>,
     rhs: RecordTensor<'a, T, S2, D>,
-)
-where
+) where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
     S1: TensorMut<(T, Index), D>,
@@ -1012,8 +1010,7 @@ record_matrix_operator_impl_reference_reference!(impl Add for RecordMatrix { fn 
 fn record_matrix_add_reference_assign<'a, T, S1, S2>(
     lhs: &mut RecordMatrix<'a, T, S1>,
     rhs: &RecordMatrix<'a, T, S2>,
-)
-where
+) where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
     S1: MatrixMut<(T, Index)> + NoInteriorMutability,
@@ -1035,8 +1032,7 @@ where
 fn record_matrix_add_value_assign<'a, T, S1, S2>(
     lhs: &mut RecordMatrix<'a, T, S1>,
     rhs: RecordMatrix<'a, T, S2>,
-)
-where
+) where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
     S1: MatrixMut<(T, Index)> + NoInteriorMutability,
@@ -1122,8 +1118,7 @@ record_tensor_operator_impl_reference_reference!(impl Sub for RecordTensor { fn 
 fn record_tensor_sub_reference_assign<'a, T, S1, S2, const D: usize>(
     lhs: &mut RecordTensor<'a, T, S1, D>,
     rhs: &RecordTensor<'a, T, S2, D>,
-)
-where
+) where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
     S1: TensorMut<(T, Index), D>,
@@ -1145,8 +1140,7 @@ where
 fn record_tensor_sub_value_assign<'a, T, S1, S2, const D: usize>(
     lhs: &mut RecordTensor<'a, T, S1, D>,
     rhs: RecordTensor<'a, T, S2, D>,
-)
-where
+) where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
     S1: TensorMut<(T, Index), D>,
@@ -1232,8 +1226,7 @@ record_matrix_operator_impl_reference_reference!(impl Sub for RecordMatrix { fn 
 fn record_matrix_sub_reference_assign<'a, T, S1, S2>(
     lhs: &mut RecordMatrix<'a, T, S1>,
     rhs: &RecordMatrix<'a, T, S2>,
-)
-where
+) where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
     S1: MatrixMut<(T, Index)> + NoInteriorMutability,
@@ -1255,8 +1248,7 @@ where
 fn record_matrix_sub_value_assign<'a, T, S1, S2>(
     lhs: &mut RecordMatrix<'a, T, S1>,
     rhs: RecordMatrix<'a, T, S2>,
-)
-where
+) where
     T: Numeric + Primitive,
     for<'t> &'t T: NumericRef<T>,
     S1: MatrixMut<(T, Index)> + NoInteriorMutability,
@@ -1347,7 +1339,8 @@ where
     if left_shape[1].1 != right_shape[0].1 {
         panic!(
             "Mismatched record tensors, left is {:?}, right is {:?}, * is only defined for MxN * NxL dimension lengths",
-            lhs.view_shape(), rhs.view_shape()
+            lhs.view_shape(),
+            rhs.view_shape()
         );
     }
     if left_shape[0].0 == right_shape[1].0 {

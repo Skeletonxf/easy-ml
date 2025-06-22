@@ -975,8 +975,7 @@ where
             if left_shape != right_shape {
                 panic!(
                     "Record containers must have the same shape for a binary operation: (left: {:?}, right: {:?})",
-                    left_shape,
-                    right_shape
+                    left_shape, right_shape
                 );
             }
         }
@@ -1132,14 +1131,10 @@ where
             Err(error) => match error {
                 // These first two should be 100% impossible but provide a sensible error just
                 // in case some weird things break our invariants
-                Error::Empty => panic!(
-                    "Illegal state, record tensor was empty {:?}",
-                    shape
-                ),
+                Error::Empty => panic!("Illegal state, record tensor was empty {:?}", shape),
                 Error::Shape { requested, length } => panic!(
                     "Illegal state, record tensor shape was inconsistent: requested: {:?}, length of data: {:?}",
-                    requested,
-                    length
+                    requested, length
                 ),
                 // This one is theoretically possible but in practise shouldn't happen by accident
                 // However, it can't implement Debug unless T is debug so to avoid having to
@@ -1147,7 +1142,7 @@ where
                 // the user to make sure their function isn't going to cause this case, which
                 // with some of the other variants like with_index might come up more easily
                 Error::InconsistentHistory(h) => Err(h),
-            }
+            },
         }
     }
 
@@ -1394,8 +1389,7 @@ where
             if left_shape != right_shape {
                 panic!(
                     "Record containers must have the same shape for a binary operation: (left: {:?}, right: {:?})",
-                    left_shape,
-                    right_shape
+                    left_shape, right_shape
                 );
             }
         }
@@ -1886,8 +1880,7 @@ where
             if left_shape != right_shape {
                 panic!(
                     "Record containers must have the same size for a binary operation: (left: {:?}, right: {:?})",
-                    left_shape,
-                    right_shape
+                    left_shape, right_shape
                 );
             }
             left_shape
@@ -2043,14 +2036,10 @@ where
             Err(error) => match error {
                 // These first two should be 100% impossible but provide a sensible error just
                 // in case some weird things break our invariants
-                Error::Empty => panic!(
-                    "Illegal state, record matrix was empty {:?}",
-                    size
-                ),
+                Error::Empty => panic!("Illegal state, record matrix was empty {:?}", size),
                 Error::Shape { requested, length } => panic!(
                     "Illegal state, record matrix shape was inconsistent: requested: {:?}, length of data: {:?}",
-                    requested,
-                    length
+                    requested, length
                 ),
                 // This one is theoretically possible but in practise shouldn't happen by accident
                 // However, it can't implement Debug unless T is debug so to avoid having to
@@ -2058,7 +2047,7 @@ where
                 // the user to make sure their function isn't going to cause this case, which
                 // with some of the other variants like with_index might come up more easily
                 Error::InconsistentHistory(h) => Err(h),
-            }
+            },
         }
     }
 
@@ -2229,8 +2218,7 @@ where
             if left_shape != right_shape {
                 panic!(
                     "Record containers must have the same size for a binary operation: (left: {:?}, right: {:?})",
-                    left_shape,
-                    right_shape
+                    left_shape, right_shape
                 );
             }
         }
@@ -2523,9 +2511,9 @@ where
         self.numbers.source_ref().view_shape()
     }
 
-    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &(T, Index) { unsafe {
-        self.numbers.source_ref().get_reference_unchecked(indexes)
-    }}
+    unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &(T, Index) {
+        unsafe { self.numbers.source_ref().get_reference_unchecked(indexes) }
+    }
 
     fn data_layout(&self) -> DataLayout<D> {
         self.numbers.source_ref().data_layout()
@@ -2550,11 +2538,13 @@ where
         self.numbers.source_ref_mut().get_reference_mut(indexes)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut (T, Index) { unsafe {
-        self.numbers
-            .source_ref_mut()
-            .get_reference_unchecked_mut(indexes)
-    }}
+    unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut (T, Index) {
+        unsafe {
+            self.numbers
+                .source_ref_mut()
+                .get_reference_unchecked_mut(indexes)
+        }
+    }
 }
 
 // # Safety
@@ -2583,11 +2573,13 @@ where
         self.numbers.source_ref().view_columns()
     }
 
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &(T, Index) { unsafe {
-        self.numbers
-            .source_ref()
-            .get_reference_unchecked(row, column)
-    }}
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &(T, Index) {
+        unsafe {
+            self.numbers
+                .source_ref()
+                .get_reference_unchecked(row, column)
+        }
+    }
 
     fn data_layout(&self) -> crate::matrices::views::DataLayout {
         self.numbers.source_ref().data_layout()
@@ -2629,11 +2621,13 @@ where
             .try_get_reference_mut(row, column)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut (T, Index) { unsafe {
-        self.numbers
-            .source_ref_mut()
-            .get_reference_unchecked_mut(row, column)
-    }}
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut (T, Index) {
+        unsafe {
+            self.numbers
+                .source_ref_mut()
+                .get_reference_unchecked_mut(row, column)
+        }
+    }
 }
 
 /**

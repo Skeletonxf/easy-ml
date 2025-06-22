@@ -418,9 +418,8 @@ where
             Self::InconsistentHistory(h) => write!(
                 f,
                 "First history in iterator of records was {:?} but a later history in iterator was {:?}, record container cannot support different histories for a single tensor or matrix.",
-                h.first,
-                h.later,
-            )
+                h.first, h.later,
+            ),
         }
     }
 }
@@ -431,11 +430,10 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
-           f,
-           "First history was {:?} but a later history in iterator was {:?}, record container cannot support different histories for a single tensor or matrix.",
-           self.first,
-           self.later,
-       )
+            f,
+            "First history was {:?} but a later history in iterator was {:?}, record container cannot support different histories for a single tensor or matrix.",
+            self.first, self.later,
+        )
     }
 }
 

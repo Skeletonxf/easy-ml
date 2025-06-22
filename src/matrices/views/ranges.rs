@@ -382,14 +382,16 @@ where
         self.columns.length
     }
 
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T { unsafe {
-        // It is the caller's responsibiltiy to always call with row/column indexes in range,
-        // therefore the unwrap() case should never happen because on an arbitary MatrixRef
-        // it would be undefined behavior.
-        let row = self.rows.map(row).unwrap();
-        let column = self.columns.map(column).unwrap();
-        self.source.get_reference_unchecked(row, column)
-    }}
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        unsafe {
+            // It is the caller's responsibiltiy to always call with row/column indexes in range,
+            // therefore the unwrap() case should never happen because on an arbitary MatrixRef
+            // it would be undefined behavior.
+            let row = self.rows.map(row).unwrap();
+            let column = self.columns.map(column).unwrap();
+            self.source.get_reference_unchecked(row, column)
+        }
+    }
 
     fn data_layout(&self) -> DataLayout {
         self.source.data_layout()
@@ -413,14 +415,16 @@ where
         self.source.try_get_reference_mut(row, column)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T { unsafe {
-        // It is the caller's responsibility to always call with row/column indexes in range,
-        // therefore the unwrap() case should never happen because on an arbitary MatrixRef
-        // it would be undefined behavior.
-        let row = self.rows.map(row).unwrap();
-        let column = self.columns.map(column).unwrap();
-        self.source.get_reference_unchecked_mut(row, column)
-    }}
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+        unsafe {
+            // It is the caller's responsibility to always call with row/column indexes in range,
+            // therefore the unwrap() case should never happen because on an arbitary MatrixRef
+            // it would be undefined behavior.
+            let row = self.rows.map(row).unwrap();
+            let column = self.columns.map(column).unwrap();
+            self.source.get_reference_unchecked_mut(row, column)
+        }
+    }
 }
 
 // # Safety
@@ -474,14 +478,16 @@ where
         self.source.view_columns() - self.columns.length
     }
 
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T { unsafe {
-        // It is the caller's responsibility to always call with row/column indexes in range,
-        // therefore calling get_reference_unchecked with indexes beyond the size of the matrix
-        // should never happen because on an arbitary MatrixRef it would be undefined behavior.
-        let row = self.rows.mask(row);
-        let column = self.columns.mask(column);
-        self.source.get_reference_unchecked(row, column)
-    }}
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        unsafe {
+            // It is the caller's responsibility to always call with row/column indexes in range,
+            // therefore calling get_reference_unchecked with indexes beyond the size of the matrix
+            // should never happen because on an arbitary MatrixRef it would be undefined behavior.
+            let row = self.rows.mask(row);
+            let column = self.columns.mask(column);
+            self.source.get_reference_unchecked(row, column)
+        }
+    }
 
     fn data_layout(&self) -> DataLayout {
         self.source.data_layout()
@@ -505,14 +511,16 @@ where
         self.source.try_get_reference_mut(row, column)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T { unsafe {
-        // It is the caller's responsibility to always call with row/column indexes in range,
-        // therefore calling get_reference_unchecked with indexes beyond the size of the matrix
-        // should never happen because on an arbitary MatrixRef it would be undefined behavior.
-        let row = self.rows.mask(row);
-        let column = self.columns.mask(column);
-        self.source.get_reference_unchecked_mut(row, column)
-    }}
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+        unsafe {
+            // It is the caller's responsibility to always call with row/column indexes in range,
+            // therefore calling get_reference_unchecked with indexes beyond the size of the matrix
+            // should never happen because on an arbitary MatrixRef it would be undefined behavior.
+            let row = self.rows.mask(row);
+            let column = self.columns.mask(column);
+            self.source.get_reference_unchecked_mut(row, column)
+        }
+    }
 }
 
 // # Safety

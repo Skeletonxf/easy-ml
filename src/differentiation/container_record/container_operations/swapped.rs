@@ -2,11 +2,11 @@ use crate::differentiation::functions::{Division, FunctionDerivative, Subtractio
 use crate::differentiation::record_operations::SwappedOperations;
 use crate::differentiation::{Index, Primitive};
 use crate::differentiation::{RecordMatrix, RecordTensor};
-use crate::matrices::views::{MatrixRef, NoInteriorMutability};
 use crate::matrices::Matrix;
+use crate::matrices::views::{MatrixRef, NoInteriorMutability};
 use crate::numeric::{Numeric, NumericRef};
-use crate::tensors::views::TensorRef;
 use crate::tensors::Tensor;
+use crate::tensors::views::TensorRef;
 
 impl<'a, T, S, const D: usize> SwappedOperations<T> for RecordTensor<'a, T, S, D>
 where

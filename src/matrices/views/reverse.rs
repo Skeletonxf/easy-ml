@@ -141,23 +141,25 @@ where
         self.source.view_columns()
     }
 
-    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T { unsafe {
-        // It is the caller's responsibiltiy to call this unsafe function with only valid
-        // indexes. If the source matrix is not at least 1x1, there are no valid indexes and hence
-        // the caller must not call this function.
-        // Given we can assume the matrix is at least 1x1 if we're being called, this calculation
-        // will return a new index which is also in range if the input was, so we won't
-        // introduce any out of bounds reads.
-        let [row, column] = reverse_indexes(
-            &[row, column],
-            &[
-                ("row", self.source.view_rows()),
-                ("column", self.source.view_columns()),
-            ],
-            &[self.rows, self.columns],
-        );
-        self.source.get_reference_unchecked(row, column)
-    }}
+    unsafe fn get_reference_unchecked(&self, row: Row, column: Column) -> &T {
+        unsafe {
+            // It is the caller's responsibiltiy to call this unsafe function with only valid
+            // indexes. If the source matrix is not at least 1x1, there are no valid indexes and hence
+            // the caller must not call this function.
+            // Given we can assume the matrix is at least 1x1 if we're being called, this calculation
+            // will return a new index which is also in range if the input was, so we won't
+            // introduce any out of bounds reads.
+            let [row, column] = reverse_indexes(
+                &[row, column],
+                &[
+                    ("row", self.source.view_rows()),
+                    ("column", self.source.view_columns()),
+                ],
+                &[self.rows, self.columns],
+            );
+            self.source.get_reference_unchecked(row, column)
+        }
+    }
 
     fn data_layout(&self) -> DataLayout {
         // There might be some specific cases where reversing maintains a linear order but
@@ -199,21 +201,23 @@ where
         self.source.try_get_reference_mut(row, column)
     }
 
-    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T { unsafe {
-        // It is the caller's responsibiltiy to call this unsafe function with only valid
-        // indexes. If the source matrix is not at least 1x1, there are no valid indexes and hence
-        // the caller must not call this function.
-        // Given we can assume the matrix is at least 1x1 if we're being called, this calculation
-        // will return a new index which is also in range if the input was, so we won't
-        // introduce any out of bounds reads.
-        let [row, column] = reverse_indexes(
-            &[row, column],
-            &[
-                ("row", self.source.view_rows()),
-                ("column", self.source.view_columns()),
-            ],
-            &[self.rows, self.columns],
-        );
-        self.source.get_reference_unchecked_mut(row, column)
-    }}
+    unsafe fn get_reference_unchecked_mut(&mut self, row: Row, column: Column) -> &mut T {
+        unsafe {
+            // It is the caller's responsibiltiy to call this unsafe function with only valid
+            // indexes. If the source matrix is not at least 1x1, there are no valid indexes and hence
+            // the caller must not call this function.
+            // Given we can assume the matrix is at least 1x1 if we're being called, this calculation
+            // will return a new index which is also in range if the input was, so we won't
+            // introduce any out of bounds reads.
+            let [row, column] = reverse_indexes(
+                &[row, column],
+                &[
+                    ("row", self.source.view_rows()),
+                    ("column", self.source.view_columns()),
+                ],
+                &[self.rows, self.columns],
+            );
+            self.source.get_reference_unchecked_mut(row, column)
+        }
+    }
 }

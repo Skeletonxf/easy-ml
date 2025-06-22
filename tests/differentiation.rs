@@ -149,11 +149,7 @@ mod forward_tests {
         }
         // check every epoch gave a smaller x value
         assert!(epochs.iter().enumerate().fold(true, |_, (i, &x)| {
-            if i > 0 {
-                x < epochs[i - 1]
-            } else {
-                true
-            }
+            if i > 0 { x < epochs[i - 1] } else { true }
         }));
         // check x never went negative
         assert!(x.number > 0.0);
@@ -175,11 +171,7 @@ mod forward_tests {
         }
         // check every epoch gave a smaller x value
         assert!(epochs.iter().enumerate().fold(true, |_, (i, &x)| {
-            if i > 0 {
-                x < epochs[i - 1]
-            } else {
-                true
-            }
+            if i > 0 { x < epochs[i - 1] } else { true }
         }));
     }
 
@@ -431,11 +423,7 @@ mod reverse_tests {
         }
         // check every epoch gave a smaller x value
         assert!(epochs.iter().enumerate().fold(true, |_, (i, &x)| {
-            if i > 0 {
-                x < epochs[i - 1]
-            } else {
-                true
-            }
+            if i > 0 { x < epochs[i - 1] } else { true }
         }));
         // check x never went negative
         assert!(x.number > 0.0);
@@ -460,11 +448,7 @@ mod reverse_tests {
         }
         // check every epoch gave a smaller x value
         assert!(epochs.iter().enumerate().fold(true, |_, (i, &x)| {
-            if i > 0 {
-                x < epochs[i - 1]
-            } else {
-                true
-            }
+            if i > 0 { x < epochs[i - 1] } else { true }
         }));
     }
 

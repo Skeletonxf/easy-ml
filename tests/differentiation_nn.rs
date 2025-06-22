@@ -7,11 +7,7 @@ mod neural_net_tests {
     use easy_ml::numeric::{Numeric, NumericRef};
 
     fn relu<T: Numeric + Copy>(x: T) -> T {
-        if x > T::zero() {
-            x
-        } else {
-            T::zero()
-        }
+        if x > T::zero() { x } else { T::zero() }
     }
 
     /**

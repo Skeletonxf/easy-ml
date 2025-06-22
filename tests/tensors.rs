@@ -2,8 +2,8 @@ extern crate easy_ml;
 
 #[cfg(test)]
 mod tensors {
-    use easy_ml::tensors::views::TensorView;
     use easy_ml::tensors::Tensor;
+    use easy_ml::tensors::views::TensorView;
 
     #[test]
     #[rustfmt::skip]
