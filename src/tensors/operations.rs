@@ -49,10 +49,10 @@
 
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::{TensorAccess, TensorReferenceIterator};
-use crate::tensors::views::{TensorIndex, TensorRef, TensorView, TensorMut};
+use crate::tensors::views::{TensorIndex, TensorMut, TensorRef, TensorView};
 use crate::tensors::{Dimension, Tensor};
 
-use std::ops::{Add, Div, Mul, Sub, AddAssign, SubAssign};
+use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
 // Common tensor equality definition (list of dimension names must match, and elements must match)
 #[inline]
@@ -378,8 +378,7 @@ fn tensor_view_assign_addition_iter<'l, 'r, T, S1, S2, const D: usize>(
     left_shape: [(Dimension, usize); D],
     right_iter: S2,
     right_shape: [(Dimension, usize); D],
-)
-where
+) where
     T: Numeric,
     T: 'l,
     T: 'r,
@@ -403,8 +402,7 @@ fn tensor_view_assign_subtraction_iter<'l, 'r, T, S1, S2, const D: usize>(
     left_shape: [(Dimension, usize); D],
     right_iter: S2,
     right_shape: [(Dimension, usize); D],
-)
-where
+) where
     T: Numeric,
     T: 'l,
     T: 'r,
@@ -1765,7 +1763,6 @@ fn elementwise_subtraction_assign_test_all_8_combinations() {
         assert_eq!(total.index_by(["a"]).get([0]), 0);
     }
 }
-
 
 impl<T> Tensor<T, 1>
 where
