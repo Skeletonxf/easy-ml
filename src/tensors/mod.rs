@@ -712,6 +712,12 @@ impl<T, const D: usize> Tensor<T, D> {
         self.data.iter()
     }
 
+    // Non public index order reference iterator since we don't want to expose our implementation
+    // details to public API since then we could never change them.
+    pub(crate) fn direct_iter_reference_mut(&mut self) -> std::slice::IterMut<T> {
+        self.data.iter_mut()
+    }
+
     /**
      * Renames the dimension names of the tensor without changing the lengths of the dimensions
      * in the tensor or moving any data around.
