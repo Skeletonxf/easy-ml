@@ -28,6 +28,9 @@
  * | `[("a", 3), ("b", 1)]` | `[("b", 1), ("a", 3)]` | not allowed - reshape one first |
  * | `[("a", 2), ("b", 2)]` | `[("a", 2), ("c", 2)]` | not allowed - rename the shape of one first |
  *
+ * Left hand side assigning addition (`+=`) and subtraction (`-=`) are also implemented and
+ * require both dimension names and lengths to match exactly.
+ *
  * # Implementations
  *
  * When doing numeric operations with tensors you should be careful to not consume a tensor by
@@ -35,8 +38,8 @@
  * so you should favor &x + &y style notation for tensors you intend to continue using.
  *
  * These implementations are written here but Rust docs will display them on their implemented
- * types. All 16 combinations of owned and referenced [Tensor] and [TensorView]
- * operations are implemented.
+ * types. All 16 combinations of owned and referenced [Tensor] and [TensorView] operations
+ * and all 8 combinations for assigning operations are implemented.
  *
  * Operations on tensors of the wrong sizes or mismatched dimension names will result in a panic.
  * No broadcasting is performed, ie you cannot multiply a (NxM) 'matrix' tensor by a (Nx1)
