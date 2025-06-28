@@ -46,10 +46,10 @@
 
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::indexing::{TensorAccess, TensorReferenceIterator};
-use crate::tensors::views::{TensorIndex, TensorRef, TensorView};
+use crate::tensors::views::{TensorIndex, TensorRef, TensorView, TensorMut};
 use crate::tensors::{Dimension, Tensor};
 
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, Div, Mul, Sub, AddAssign, SubAssign};
 
 // Common tensor equality definition (list of dimension names must match, and elements must match)
 #[inline]
@@ -368,6 +368,56 @@ where
     )
 }
 
+#[track_caller]
+#[inline]
+fn tensor_view_assign_addition_iter<'l, 'r, T, S1, S2, const D: usize>(
+    left_iter: S1,
+    left_shape: [(Dimension, usize); D],
+    right_iter: S2,
+    right_shape: [(Dimension, usize); D],
+)
+where
+    T: Numeric,
+    T: 'l,
+    T: 'r,
+    for<'a> &'a T: NumericRef<T>,
+    S1: Iterator<Item = &'l mut T>,
+    S2: Iterator<Item = &'r T>,
+{
+    assert_same_dimensions(left_shape, right_shape);
+    for (x, y) in left_iter.zip(right_iter) {
+        // Numeric doesn't define &mut T + &T so we have to clone the left hand side
+        // in order to add them. For all normal number types this should be exceptionally
+        // cheap since the types are all Copy anyway.
+        *x = x.clone() + y;
+    }
+}
+
+#[track_caller]
+#[inline]
+fn tensor_view_assign_subtraction_iter<'l, 'r, T, S1, S2, const D: usize>(
+    left_iter: S1,
+    left_shape: [(Dimension, usize); D],
+    right_iter: S2,
+    right_shape: [(Dimension, usize); D],
+)
+where
+    T: Numeric,
+    T: 'l,
+    T: 'r,
+    for<'a> &'a T: NumericRef<T>,
+    S1: Iterator<Item = &'l mut T>,
+    S2: Iterator<Item = &'r T>,
+{
+    assert_same_dimensions(left_shape, right_shape);
+    for (x, y) in left_iter.zip(right_iter) {
+        // Numeric doesn't define &mut T + &T so we have to clone the left hand side
+        // in order to add them. For all normal number types this should be exceptionally
+        // cheap since the types are all Copy anyway.
+        *x = x.clone() - y;
+    }
+}
+
 /**
  * Computes the dot product (also known as scalar product) on two equal length iterators,
  * yielding a scalar which is the sum of the products of each pair in the iterators.
@@ -494,7 +544,7 @@ fn test_matrix_product() {
 }
 
 // Tensor multiplication (⊗) gives another Tensor where each element [i,j,k] is the dot product of
-// the [i,j,*] vector in the left tensor and the [*,j,k] vector in the right tensor???
+// the [i,j,*] vector in the left tensor and the [*,j,k] vector in the right tensor
 
 macro_rules! tensor_view_reference_tensor_view_reference_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -547,6 +597,34 @@ tensor_view_reference_tensor_view_reference_operation_iter!(impl Add for TensorV
 tensor_view_reference_tensor_view_reference_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two referenced tensor views");
 tensor_view_reference_tensor_view_reference_operation!(impl Mul for TensorView 2 { fn mul } tensor_view_matrix_product "Matrix multiplication of two referenced 2-dimensional tensors");
 
+macro_rules! tensor_view_assign_tensor_view_reference_operation_iter {
+    (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S1, S2, const D: usize> $op<&TensorView<T, S2, D>> for TensorView<T, S1, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S1: TensorMut<T, D>,
+            S2: TensorRef<T, D>,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: &TensorView<T, S2, D>) {
+                let left_shape = self.shape();
+                $implementation::<T, _, _, D>(
+                    self.iter_reference_mut(),
+                    left_shape,
+                    rhs.iter_reference(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_view_assign_tensor_view_reference_operation_iter!(impl AddAssign for TensorView { fn add_assign } tensor_view_assign_addition_iter "Elementwise assigning addition for two referenced tensor views");
+tensor_view_assign_tensor_view_reference_operation_iter!(impl SubAssign for TensorView { fn sub_assign } tensor_view_assign_subtraction_iter "Elementwise assigning subtraction for two referenced tensor views");
+
 macro_rules! tensor_view_reference_tensor_view_value_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
@@ -597,6 +675,34 @@ macro_rules! tensor_view_reference_tensor_view_value_operation {
 tensor_view_reference_tensor_view_value_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for two tensor views with one referenced");
 tensor_view_reference_tensor_view_value_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensor views with one referenced");
 tensor_view_reference_tensor_view_value_operation!(impl Mul for TensorView 2 { fn mul } tensor_view_matrix_product "Matrix multiplication of two 2-dimensional tensors with one referenced");
+
+macro_rules! tensor_view_assign_tensor_view_value_operation_iter {
+    (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S1, S2, const D: usize> $op<TensorView<T, S2, D>> for TensorView<T, S1, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S1: TensorMut<T, D>,
+            S2: TensorRef<T, D>,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: TensorView<T, S2, D>) {
+                let left_shape = self.shape();
+                $implementation::<T, _, _, D>(
+                    self.iter_reference_mut(),
+                    left_shape,
+                    rhs.iter_reference(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_view_assign_tensor_view_value_operation_iter!(impl AddAssign for TensorView { fn add_assign } tensor_view_assign_addition_iter "Elementwise assigning addition for two tensor views with one referenced");
+tensor_view_assign_tensor_view_value_operation_iter!(impl SubAssign for TensorView { fn sub_assign } tensor_view_assign_subtraction_iter "Elementwise assigning subtraction for two tensor views with one referenced");
 
 macro_rules! tensor_view_value_tensor_view_reference_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -749,6 +855,33 @@ tensor_view_reference_tensor_reference_operation_iter!(impl Add for TensorView {
 tensor_view_reference_tensor_reference_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a referenced tensor view and a referenced tensor");
 tensor_view_reference_tensor_reference_operation!(impl Mul for TensorView 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for a 2-dimensional referenced tensor view and a referenced tensor");
 
+macro_rules! tensor_view_assign_tensor_reference_operation_iter {
+    (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S, const D: usize> $op<&Tensor<T, D>> for TensorView<T, S, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorMut<T, D>,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: &Tensor<T, D>) {
+                let left_shape = self.shape();
+                $implementation::<T, _, _, D>(
+                    self.iter_reference_mut(),
+                    left_shape,
+                    rhs.direct_iter_reference(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_view_assign_tensor_reference_operation_iter!(impl AddAssign for TensorView { fn add_assign } tensor_view_assign_addition_iter "Elementwise assigning addition for a referenced tensor view and a referenced tensor");
+tensor_view_assign_tensor_reference_operation_iter!(impl SubAssign for TensorView { fn sub_assign } tensor_view_assign_subtraction_iter "Elementwise assigning subtraction for a referenced tensor view and a referenced tensor");
+
 macro_rules! tensor_view_reference_tensor_value_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
@@ -797,6 +930,33 @@ macro_rules! tensor_view_reference_tensor_value_operation {
 tensor_view_reference_tensor_value_operation_iter!(impl Add for TensorView { fn add } tensor_view_addition_iter "Elementwise addition for a referenced tensor view and a tensor");
 tensor_view_reference_tensor_value_operation_iter!(impl Sub for TensorView { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a referenced tensor view and a tensor");
 tensor_view_reference_tensor_value_operation!(impl Mul for TensorView 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for a 2-dimensional referenced tensor view and a tensor");
+
+macro_rules! tensor_view_assign_tensor_value_operation_iter {
+    (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S, const D: usize> $op<Tensor<T, D>> for TensorView<T, S, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorMut<T, D>,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: Tensor<T, D>) {
+                let left_shape = self.shape();
+                $implementation::<T, _, _, D>(
+                    self.iter_reference_mut(),
+                    left_shape,
+                    rhs.direct_iter_reference(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_view_assign_tensor_value_operation_iter!(impl AddAssign for TensorView { fn add_assign } tensor_view_assign_addition_iter "Elementwise assigning addition for a referenced tensor view and a tensor");
+tensor_view_assign_tensor_value_operation_iter!(impl SubAssign for TensorView { fn sub_assign } tensor_view_assign_subtraction_iter "Elementwise assigning subtraction for a referenced tensor view and a tensor");
 
 macro_rules! tensor_view_value_tensor_reference_operation_iter {
     (impl $op:tt for TensorView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -945,6 +1105,33 @@ tensor_reference_tensor_view_reference_operation_iter!(impl Add for Tensor { fn 
 tensor_reference_tensor_view_reference_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a referenced tensor and a referenced tensor view");
 tensor_reference_tensor_view_reference_operation!(impl Mul for Tensor 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for a 2-dimensional referenced tensor and a referenced tensor view");
 
+macro_rules! tensor_assign_tensor_view_reference_operation_iter {
+    (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S, const D: usize> $op<&TensorView<T, S, D>> for Tensor<T, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, D>,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: &TensorView<T, S, D>) {
+                let left_shape = self.shape();
+                $implementation::<T, _, _, D>(
+                    self.direct_iter_reference_mut(),
+                    left_shape,
+                    rhs.iter_reference(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_assign_tensor_view_reference_operation_iter!(impl AddAssign for Tensor { fn add_assign } tensor_view_assign_addition_iter "Elementwise assigning addition for a referenced tensor and a referenced tensor view");
+tensor_assign_tensor_view_reference_operation_iter!(impl SubAssign for Tensor { fn sub_assign } tensor_view_assign_subtraction_iter "Elementwise assigning subtraction for a referenced tensor and a referenced tensor view");
+
 macro_rules! tensor_reference_tensor_view_value_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
@@ -993,6 +1180,33 @@ macro_rules! tensor_reference_tensor_view_value_operation {
 tensor_reference_tensor_view_value_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for a referenced tensor and a tensor view");
 tensor_reference_tensor_view_value_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for a referenced tensor and a tensor view");
 tensor_reference_tensor_view_value_operation!(impl Mul for Tensor 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for a 2-dimensional referenced tensor and a tensor view");
+
+macro_rules! tensor_assign_tensor_view_value_operation_iter {
+    (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S, const D: usize> $op<TensorView<T, S, D>> for Tensor<T, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: TensorRef<T, D>,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: TensorView<T, S, D>) {
+                let left_shape = self.shape();
+                $implementation::<T, _, _, D>(
+                    self.direct_iter_reference_mut(),
+                    left_shape,
+                    rhs.iter_reference(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_assign_tensor_view_value_operation_iter!(impl AddAssign for Tensor { fn add_assign } tensor_view_assign_addition_iter "Elementwise assigning addition for a referenced tensor and a tensor view");
+tensor_assign_tensor_view_value_operation_iter!(impl SubAssign for Tensor { fn sub_assign } tensor_view_assign_subtraction_iter "Elementwise assigning subtraction for a referenced tensor and a tensor view");
 
 macro_rules! tensor_value_tensor_view_reference_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -1139,6 +1353,32 @@ tensor_reference_tensor_reference_operation_iter!(impl Add for Tensor { fn add }
 tensor_reference_tensor_reference_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two referenced tensors");
 tensor_reference_tensor_reference_operation!(impl Mul for Tensor 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for two 2-dimensional referenced tensors");
 
+macro_rules! tensor_assign_tensor_reference_operation_iter {
+    (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, const D: usize> $op<&Tensor<T, D>> for Tensor<T, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: &Tensor<T, D>) {
+                let left_shape = self.shape();
+                $implementation::<T, _, _, D>(
+                    self.direct_iter_reference_mut(),
+                    left_shape,
+                    rhs.direct_iter_reference(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_assign_tensor_reference_operation_iter!(impl AddAssign for Tensor { fn add_assign } tensor_view_assign_addition_iter "Elementwise assigning addition for two referenced tensors");
+tensor_assign_tensor_reference_operation_iter!(impl SubAssign for Tensor { fn sub_assign } tensor_view_assign_subtraction_iter "Elementwise assigning subtraction for two referenced tensors");
+
 macro_rules! tensor_reference_tensor_value_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
@@ -1185,6 +1425,32 @@ macro_rules! tensor_reference_tensor_value_operation {
 tensor_reference_tensor_value_operation_iter!(impl Add for Tensor { fn add } tensor_view_addition_iter "Elementwise addition for two tensors with one referenced");
 tensor_reference_tensor_value_operation_iter!(impl Sub for Tensor { fn sub } tensor_view_subtraction_iter "Elementwise subtraction for two tensors with one referenced");
 tensor_reference_tensor_value_operation!(impl Mul for Tensor 2 { fn mul } tensor_view_matrix_product "Matrix multiplication for two 2-dimensional tensors with one referenced");
+
+macro_rules! tensor_assign_tensor_value_operation_iter {
+    (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, const D: usize> $op<Tensor<T, D>> for Tensor<T, D>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: Tensor<T, D>) {
+                let left_shape = self.shape();
+                $implementation::<T, _, _, D>(
+                    self.direct_iter_reference_mut(),
+                    left_shape,
+                    rhs.direct_iter_reference(),
+                    rhs.shape(),
+                )
+            }
+        }
+    };
+}
+
+tensor_assign_tensor_value_operation_iter!(impl AddAssign for Tensor { fn add_assign } tensor_view_assign_addition_iter "Elementwise assigning addition for two tensors with one referenced");
+tensor_assign_tensor_value_operation_iter!(impl SubAssign for Tensor { fn sub_assign } tensor_view_assign_subtraction_iter "Elementwise assigning subtraction for two tensors with one referenced");
 
 macro_rules! tensor_value_tensor_reference_operation_iter {
     (impl $op:tt for Tensor { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -1311,6 +1577,64 @@ fn elementwise_addition_test_all_16_combinations() {
 }
 
 #[test]
+fn elementwise_addition_assign_test_all_8_combinations() {
+    fn tensor() -> Tensor<i8, 1> {
+        Tensor::from([("a", 1)], vec![1])
+    }
+    fn tensor_view() -> TensorView<i8, Tensor<i8, 1>, 1> {
+        TensorView::from(tensor())
+    }
+    let mut results_tensors = Vec::with_capacity(16);
+    let mut results_tensor_views = Vec::with_capacity(16);
+    results_tensors.push({
+        let mut x = tensor();
+        x += tensor();
+        x
+    });
+    results_tensors.push({
+        let mut x = tensor();
+        x += &tensor();
+        x
+    });
+    results_tensor_views.push({
+        let mut x = tensor_view();
+        x += tensor();
+        x
+    });
+    results_tensor_views.push({
+        let mut x = tensor_view();
+        x += &tensor();
+        x
+    });
+    results_tensors.push({
+        let mut x = tensor();
+        x += tensor_view();
+        x
+    });
+    results_tensors.push({
+        let mut x = tensor();
+        x += &tensor_view();
+        x
+    });
+    results_tensor_views.push({
+        let mut x = tensor_view();
+        x += tensor_view();
+        x
+    });
+    results_tensor_views.push({
+        let mut x = tensor_view();
+        x += &tensor_view();
+        x
+    });
+    for total in results_tensors {
+        assert_eq!(total.index_by(["a"]).get([0]), 2);
+    }
+    for total in results_tensor_views {
+        assert_eq!(total.index_by(["a"]).get([0]), 2);
+    }
+}
+
+#[test]
 fn elementwise_addition_test() {
     let tensor_1: Tensor<i32, 2> = Tensor::from([("r", 2), ("c", 2)], vec![1, 2, 3, 4]);
     let tensor_2: Tensor<i32, 2> = Tensor::from([("r", 2), ("c", 2)], vec![3, 2, 8, 1]);
@@ -1380,6 +1704,65 @@ fn matrix_multiplication_test_all_16_combinations() {
         );
     }
 }
+
+#[test]
+fn elementwise_subtraction_assign_test_all_8_combinations() {
+    fn tensor() -> Tensor<i8, 1> {
+        Tensor::from([("a", 1)], vec![1])
+    }
+    fn tensor_view() -> TensorView<i8, Tensor<i8, 1>, 1> {
+        TensorView::from(tensor())
+    }
+    let mut results_tensors = Vec::with_capacity(16);
+    let mut results_tensor_views = Vec::with_capacity(16);
+    results_tensors.push({
+        let mut x = tensor();
+        x -= tensor();
+        x
+    });
+    results_tensors.push({
+        let mut x = tensor();
+        x -= &tensor();
+        x
+    });
+    results_tensor_views.push({
+        let mut x = tensor_view();
+        x -= tensor();
+        x
+    });
+    results_tensor_views.push({
+        let mut x = tensor_view();
+        x -= &tensor();
+        x
+    });
+    results_tensors.push({
+        let mut x = tensor();
+        x -= tensor_view();
+        x
+    });
+    results_tensors.push({
+        let mut x = tensor();
+        x -= &tensor_view();
+        x
+    });
+    results_tensor_views.push({
+        let mut x = tensor_view();
+        x -= tensor_view();
+        x
+    });
+    results_tensor_views.push({
+        let mut x = tensor_view();
+        x -= &tensor_view();
+        x
+    });
+    for total in results_tensors {
+        assert_eq!(total.index_by(["a"]).get([0]), 0);
+    }
+    for total in results_tensor_views {
+        assert_eq!(total.index_by(["a"]).get([0]), 0);
+    }
+}
+
 
 impl<T> Tensor<T, 1>
 where
