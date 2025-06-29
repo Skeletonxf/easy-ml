@@ -542,6 +542,12 @@ impl<T> Matrix<T> {
         self.data.iter()
     }
 
+    // Non public row major reference iterator since we don't want to expose our implementation
+    // details to public API since then we could never change them.
+    pub(crate) fn direct_row_major_reference_iter_mut(&mut self) -> std::slice::IterMut<T> {
+        self.data.iter_mut()
+    }
+
     /**
      * Returns a column major iterator over mutable references to all values in this matrix,
      * proceeding through each column in order.
