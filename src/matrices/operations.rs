@@ -11,7 +11,8 @@
  *
  * These implementations are written here but Rust docs will display them on their implemented
  * types. All 16 combinations of owned and referenced [Matrix] and [MatrixView] operations are
- * implemented.
+ * implemented. All 8 left hand side assigning addition (`+=`) and subtraction (`-=`) operations
+ * are also implemented.
  *
  * Matrix multiplication is such that a matrix of dimensionality (LxM) multiplied with
  * a matrix of dimensionality (MxN) yields a new matrix of dimensionality (LxN) with each element
