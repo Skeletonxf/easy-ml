@@ -24,13 +24,14 @@
  */
 
 use crate::matrices::iterators::{
-    ColumnReferenceIterator, RowMajorReferenceIterator, RowReferenceIterator,
+    ColumnReferenceIterator, RowMajorReferenceIterator, RowMajorReferenceMutIterator,
+    RowReferenceIterator,
 };
-use crate::matrices::views::{MatrixRef, MatrixView, NoInteriorMutability};
+use crate::matrices::views::{MatrixMut, MatrixRef, MatrixView, NoInteriorMutability};
 use crate::matrices::{Column, Matrix, Row};
 use crate::numeric::{Numeric, NumericRef};
 
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
 
 // TODO: Unify partial eq implementations
 
@@ -92,6 +93,72 @@ where
 
     let values = left_iter.zip(right_iter).map(|(x, y)| x - y).collect();
     Matrix::from_flat_row_major(left_size, values)
+}
+
+#[track_caller]
+#[inline]
+fn matrix_view_assign_addition_iter<'l, 'r, T, S1, S2>(
+    left_iter: S1,
+    left_size: (Row, Column),
+    right_iter: S2,
+    right_size: (Row, Column),
+) where
+    T: Numeric,
+    T: 'l,
+    T: 'r,
+    for<'a> &'a T: NumericRef<T>,
+    S1: Iterator<Item = &'l mut T>,
+    S2: Iterator<Item = &'r T>,
+{
+    // LxM + LxM -> LxM
+    assert!(
+        left_size == right_size,
+        "Mismatched matrices, left is {}x{}, right is {}x{}, += is only defined for MxN + MxN",
+        left_size.0,
+        left_size.1,
+        right_size.0,
+        right_size.1
+    );
+
+    for (x, y) in left_iter.zip(right_iter) {
+        // Numeric doesn't define &mut T + &T so we have to clone the left hand side
+        // in order to add them. For all normal number types this should be exceptionally
+        // cheap since the types are all Copy anyway.
+        *x = x.clone() + y;
+    }
+}
+
+#[track_caller]
+#[inline]
+fn matrix_view_assign_subtraction_iter<'l, 'r, T, S1, S2>(
+    left_iter: S1,
+    left_size: (Row, Column),
+    right_iter: S2,
+    right_size: (Row, Column),
+) where
+    T: Numeric,
+    T: 'l,
+    T: 'r,
+    for<'a> &'a T: NumericRef<T>,
+    S1: Iterator<Item = &'l mut T>,
+    S2: Iterator<Item = &'r T>,
+{
+    // LxM + LxM -> LxM
+    assert!(
+        left_size == right_size,
+        "Mismatched matrices, left is {}x{}, right is {}x{}, -= is only defined for MxN + MxN",
+        left_size.0,
+        left_size.1,
+        right_size.0,
+        right_size.1
+    );
+
+    for (x, y) in left_iter.zip(right_iter) {
+        // Numeric doesn't define &mut T + &T so we have to clone the left hand side
+        // in order to add them. For all normal number types this should be exceptionally
+        // cheap since the types are all Copy anyway.
+        *x = x.clone() - y;
+    }
 }
 
 #[track_caller]
@@ -178,6 +245,34 @@ matrix_view_reference_matrix_view_reference_operation_iter!(impl Add for MatrixV
 matrix_view_reference_matrix_view_reference_operation_iter!(impl Sub for MatrixView { fn sub } matrix_view_subtraction_iter "Elementwise subtraction for two referenced matrix views");
 matrix_view_reference_matrix_view_reference_operation!(impl Mul for MatrixView { fn mul } matrix_view_multiplication "Matrix multiplication for two referenced matrix views");
 
+macro_rules! matrix_view_assign_matrix_view_reference_operation_iter {
+    (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S1, S2> $op<&MatrixView<T, S2>> for MatrixView<T, S1>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S1: MatrixMut<T> + NoInteriorMutability,
+            S2: MatrixRef<T> + NoInteriorMutability,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: &MatrixView<T, S2>) {
+                let left_size = self.size();
+                $implementation::<T, _, _>(
+                    RowMajorReferenceMutIterator::from(self.source_ref_mut()),
+                    left_size,
+                    RowMajorReferenceIterator::from(rhs.source_ref()),
+                    rhs.size(),
+                )
+            }
+        }
+    };
+}
+
+matrix_view_assign_matrix_view_reference_operation_iter!(impl AddAssign for MatrixView { fn add_assign } matrix_view_assign_addition_iter "Elementwise assigning addition for two referenced matrix views");
+matrix_view_assign_matrix_view_reference_operation_iter!(impl SubAssign for MatrixView { fn sub_assign } matrix_view_assign_subtraction_iter "Elementwise assigning subtraction for two referenced matrix views");
+
 macro_rules! matrix_view_reference_matrix_view_value_operation {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
@@ -228,6 +323,34 @@ macro_rules! matrix_view_reference_matrix_view_value_operation_iter {
 matrix_view_reference_matrix_view_value_operation_iter!(impl Add for MatrixView { fn add } matrix_view_addition_iter "Elementwise addition for two matrix views with one referenced");
 matrix_view_reference_matrix_view_value_operation_iter!(impl Sub for MatrixView { fn sub } matrix_view_subtraction_iter "Elementwise subtraction for two matrix views with one referenced");
 matrix_view_reference_matrix_view_value_operation!(impl Mul for MatrixView { fn mul } matrix_view_multiplication "Matrix multiplication for two matrix views with one referenced");
+
+macro_rules! matrix_view_assign_matrix_view_value_operation_iter {
+    (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S1, S2> $op<MatrixView<T, S2>> for MatrixView<T, S1>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S1: MatrixMut<T> + NoInteriorMutability,
+            S2: MatrixRef<T> + NoInteriorMutability,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: MatrixView<T, S2>) {
+                let left_size = self.size();
+                $implementation::<T, _, _>(
+                    RowMajorReferenceMutIterator::from(self.source_ref_mut()),
+                    left_size,
+                    RowMajorReferenceIterator::from(rhs.source_ref()),
+                    rhs.size(),
+                )
+            }
+        }
+    };
+}
+
+matrix_view_assign_matrix_view_value_operation_iter!(impl AddAssign for MatrixView { fn add_assign } matrix_view_assign_addition_iter "Elementwise assigning addition for two matrix views with one referenced");
+matrix_view_assign_matrix_view_value_operation_iter!(impl SubAssign for MatrixView { fn sub_assign } matrix_view_assign_subtraction_iter "Elementwise assigning subtraction for two matrix views with one referenced");
 
 macro_rules! matrix_view_value_matrix_view_reference_operation {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -380,6 +503,33 @@ matrix_view_reference_matrix_reference_operation_iter!(impl Add for MatrixView {
 matrix_view_reference_matrix_reference_operation_iter!(impl Sub for MatrixView { fn sub } matrix_view_subtraction_iter "Elementwise subtraction for a referenced matrix view and a referenced matrix");
 matrix_view_reference_matrix_reference_operation!(impl Mul for MatrixView { fn mul } matrix_view_multiplication "Matrix multiplication for a referenced matrix view and a referenced matrix");
 
+macro_rules! matrix_view_assign_matrix_reference_operation_iter {
+    (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S> $op<&Matrix<T>> for MatrixView<T, S>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: MatrixMut<T> + NoInteriorMutability,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: &Matrix<T>) {
+                let left_size = self.size();
+                $implementation::<T, _, _>(
+                    RowMajorReferenceMutIterator::from(self.source_ref_mut()),
+                    left_size,
+                    rhs.direct_row_major_reference_iter(),
+                    rhs.size(),
+                )
+            }
+        }
+    };
+}
+
+matrix_view_assign_matrix_reference_operation_iter!(impl AddAssign for MatrixView { fn add_assign } matrix_view_assign_addition_iter "Elementwise assigning addition for a referenced matrix view and a referenced matrix");
+matrix_view_assign_matrix_reference_operation_iter!(impl SubAssign for MatrixView { fn sub_assign } matrix_view_assign_subtraction_iter "Elementwise assigning subtraction for a referenced matrix view and a referenced matrix");
+
 macro_rules! matrix_view_reference_matrix_value_operation {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
@@ -428,6 +578,33 @@ macro_rules! matrix_view_reference_matrix_value_operation_iter {
 matrix_view_reference_matrix_value_operation_iter!(impl Add for MatrixView { fn add } matrix_view_addition_iter "Elementwise addition for a referenced matrix view and a matrix");
 matrix_view_reference_matrix_value_operation_iter!(impl Sub for MatrixView { fn sub } matrix_view_subtraction_iter "Elementwise subtraction for a referenced matrix view and a matrix");
 matrix_view_reference_matrix_value_operation!(impl Mul for MatrixView { fn mul } matrix_view_multiplication "Matrix multiplication for a referenced matrix view and a matrix");
+
+macro_rules! matrix_view_assign_matrix_value_operation_iter {
+    (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S> $op<Matrix<T>> for MatrixView<T, S>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: MatrixMut<T> + NoInteriorMutability,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: Matrix<T>) {
+                let left_size = self.size();
+                $implementation::<T, _, _>(
+                    RowMajorReferenceMutIterator::from(self.source_ref_mut()),
+                    left_size,
+                    rhs.direct_row_major_reference_iter(),
+                    rhs.size(),
+                )
+            }
+        }
+    };
+}
+
+matrix_view_assign_matrix_value_operation_iter!(impl AddAssign for MatrixView { fn add_assign } matrix_view_assign_addition_iter "Elementwise assigning addition for a referenced matrix view and a matrix");
+matrix_view_assign_matrix_value_operation_iter!(impl SubAssign for MatrixView { fn sub_assign } matrix_view_assign_subtraction_iter "Elementwise assigning subtraction for a referenced matrix view and a matrix");
 
 macro_rules! matrix_view_value_matrix_reference_operation {
     (impl $op:tt for MatrixView { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -576,6 +753,33 @@ matrix_reference_matrix_view_reference_operation_iter!(impl Add for Matrix { fn 
 matrix_reference_matrix_view_reference_operation_iter!(impl Sub for Matrix { fn sub } matrix_view_subtraction_iter "Elementwise subtraction for a referenced matrix and a referenced matrix view");
 matrix_reference_matrix_view_reference_operation!(impl Mul for Matrix { fn mul } matrix_view_multiplication "Matrix multiplication for a referenced matrix and a referenced matrix view");
 
+macro_rules! matrix_assign_matrix_view_reference_operation_iter {
+    (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S> $op<&MatrixView<T, S>> for Matrix<T>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: MatrixRef<T> + NoInteriorMutability,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: &MatrixView<T, S>) {
+                let left_size = self.size();
+                $implementation::<T, _, _>(
+                    self.direct_row_major_reference_iter_mut(),
+                    left_size,
+                    RowMajorReferenceIterator::from(rhs.source_ref()),
+                    rhs.size(),
+                )
+            }
+        }
+    };
+}
+
+matrix_assign_matrix_view_reference_operation_iter!(impl AddAssign for Matrix { fn add_assign } matrix_view_assign_addition_iter "Elementwise assigning addition for a referenced matrix and a referenced matrix view");
+matrix_assign_matrix_view_reference_operation_iter!(impl SubAssign for Matrix { fn sub_assign } matrix_view_assign_subtraction_iter "Elementwise assigning subtraction for a referenced matrix and a referenced matrix view");
+
 macro_rules! matrix_reference_matrix_view_value_operation {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
@@ -624,6 +828,33 @@ macro_rules! matrix_reference_matrix_view_value_operation_iter {
 matrix_reference_matrix_view_value_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for a referenced matrix and a matrix view");
 matrix_reference_matrix_view_value_operation_iter!(impl Sub for Matrix { fn sub } matrix_view_subtraction_iter "Elementwise subtraction for a referenced matrix and a matrix view");
 matrix_reference_matrix_view_value_operation!(impl Mul for Matrix { fn mul } matrix_view_multiplication "Matrix multiplication for a referenced matrix and a matrix view");
+
+macro_rules! matrix_assign_matrix_view_value_operation_iter {
+    (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T, S> $op<MatrixView<T, S>> for Matrix<T>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+            S: MatrixRef<T> + NoInteriorMutability,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: MatrixView<T, S>) {
+                let left_size = self.size();
+                $implementation::<T, _, _>(
+                    self.direct_row_major_reference_iter_mut(),
+                    left_size,
+                    RowMajorReferenceIterator::from(rhs.source_ref()),
+                    rhs.size(),
+                )
+            }
+        }
+    };
+}
+
+matrix_assign_matrix_view_value_operation_iter!(impl AddAssign for Matrix { fn add_assign } matrix_view_assign_addition_iter "Elementwise assigning addition for a referenced matrix and a matrix view");
+matrix_assign_matrix_view_value_operation_iter!(impl SubAssign for Matrix { fn sub_assign } matrix_view_assign_subtraction_iter "Elementwise assigning subtraction for a referenced matrix and a matrix view");
 
 macro_rules! matrix_value_matrix_view_reference_operation {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -770,6 +1001,32 @@ matrix_reference_matrix_reference_operation_iter!(impl Add for Matrix { fn add }
 matrix_reference_matrix_reference_operation_iter!(impl Sub for Matrix { fn sub } matrix_view_subtraction_iter "Elementwise subtraction for two referenced matrices");
 matrix_reference_matrix_reference_operation!(impl Mul for Matrix { fn mul } matrix_view_multiplication "Matrix multiplication for two referenced matrices");
 
+macro_rules! matrix_assign_matrix_reference_operation_iter {
+    (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T> $op<&Matrix<T>> for Matrix<T>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: &Matrix<T>) {
+                let left_size = self.size();
+                $implementation::<T, _, _>(
+                    self.direct_row_major_reference_iter_mut(),
+                    left_size,
+                    rhs.direct_row_major_reference_iter(),
+                    rhs.size(),
+                )
+            }
+        }
+    };
+}
+
+matrix_assign_matrix_reference_operation_iter!(impl AddAssign for Matrix { fn add_assign } matrix_view_assign_addition_iter "Elementwise assigning addition for two referenced matrices");
+matrix_assign_matrix_reference_operation_iter!(impl SubAssign for Matrix { fn sub_assign } matrix_view_assign_subtraction_iter "Elementwise assigning subtraction for two referenced matrices");
+
 macro_rules! matrix_reference_matrix_value_operation {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
         #[doc=$doc]
@@ -816,6 +1073,32 @@ macro_rules! matrix_reference_matrix_value_operation_iter {
 matrix_reference_matrix_value_operation_iter!(impl Add for Matrix { fn add } matrix_view_addition_iter "Elementwise addition for two matrices with one referenced");
 matrix_reference_matrix_value_operation_iter!(impl Sub for Matrix { fn sub } matrix_view_subtraction_iter "Elementwise subtraction for two matrices with one referenced");
 matrix_reference_matrix_value_operation!(impl Mul for Matrix { fn mul } matrix_view_multiplication "Matrix multiplication for two matrices with one referenced");
+
+macro_rules! matrix_assign_matrix_value_operation_iter {
+    (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
+        #[doc=$doc]
+        impl<T> $op<Matrix<T>> for Matrix<T>
+        where
+            T: Numeric,
+            for<'a> &'a T: NumericRef<T>,
+        {
+            #[track_caller]
+            #[inline]
+            fn $method(&mut self, rhs: Matrix<T>) {
+                let left_size = self.size();
+                $implementation::<T, _, _>(
+                    self.direct_row_major_reference_iter_mut(),
+                    left_size,
+                    rhs.direct_row_major_reference_iter(),
+                    rhs.size(),
+                )
+            }
+        }
+    };
+}
+
+matrix_assign_matrix_value_operation_iter!(impl AddAssign for Matrix { fn add_assign } matrix_view_assign_addition_iter "Elementwise assigning addition for two matrices with one referenced");
+matrix_assign_matrix_value_operation_iter!(impl SubAssign for Matrix { fn sub_assign } matrix_view_assign_subtraction_iter "Elementwise assigning subtraction for two matrices with one referenced");
 
 macro_rules! matrix_value_matrix_reference_operation {
     (impl $op:tt for Matrix { fn $method:ident } $implementation:ident $doc:tt) => {
@@ -938,6 +1221,122 @@ fn test_all_16_combinations() {
     results.push(&matrix_view() + &matrix_view());
     for total in results {
         assert_eq!(total.scalar(), 2);
+    }
+}
+
+#[test]
+fn elementwise_addition_assign_test_all_8_combinations() {
+    fn matrix() -> Matrix<i8> {
+        Matrix::from_scalar(1)
+    }
+    fn matrix_view() -> MatrixView<i8, Matrix<i8>> {
+        MatrixView::from(Matrix::from_scalar(1))
+    }
+    let mut results_matrix = Vec::with_capacity(16);
+    let mut results_matrix_views = Vec::with_capacity(16);
+    results_matrix.push({
+        let mut x = matrix();
+        x += matrix();
+        x
+    });
+    results_matrix.push({
+        let mut x = matrix();
+        x += &matrix();
+        x
+    });
+    results_matrix_views.push({
+        let mut x = matrix_view();
+        x += matrix();
+        x
+    });
+    results_matrix_views.push({
+        let mut x = matrix_view();
+        x += &matrix();
+        x
+    });
+    results_matrix.push({
+        let mut x = matrix();
+        x += matrix_view();
+        x
+    });
+    results_matrix.push({
+        let mut x = matrix();
+        x += &matrix_view();
+        x
+    });
+    results_matrix_views.push({
+        let mut x = matrix_view();
+        x += matrix_view();
+        x
+    });
+    results_matrix_views.push({
+        let mut x = matrix_view();
+        x += &matrix_view();
+        x
+    });
+    for total in results_matrix {
+        assert_eq!(total.scalar(), 2);
+    }
+    for total in results_matrix_views {
+        assert_eq!(total.get(0, 0), 2);
+    }
+}
+
+#[test]
+fn elementwise_subtraction_assign_test_all_8_combinations() {
+    fn matrix() -> Matrix<i8> {
+        Matrix::from_scalar(1)
+    }
+    fn matrix_view() -> MatrixView<i8, Matrix<i8>> {
+        MatrixView::from(Matrix::from_scalar(1))
+    }
+    let mut results_matrix = Vec::with_capacity(16);
+    let mut results_matrix_views = Vec::with_capacity(16);
+    results_matrix.push({
+        let mut x = matrix();
+        x -= matrix();
+        x
+    });
+    results_matrix.push({
+        let mut x = matrix();
+        x -= &matrix();
+        x
+    });
+    results_matrix_views.push({
+        let mut x = matrix_view();
+        x -= matrix();
+        x
+    });
+    results_matrix_views.push({
+        let mut x = matrix_view();
+        x -= &matrix();
+        x
+    });
+    results_matrix.push({
+        let mut x = matrix();
+        x -= matrix_view();
+        x
+    });
+    results_matrix.push({
+        let mut x = matrix();
+        x -= &matrix_view();
+        x
+    });
+    results_matrix_views.push({
+        let mut x = matrix_view();
+        x -= matrix_view();
+        x
+    });
+    results_matrix_views.push({
+        let mut x = matrix_view();
+        x -= &matrix_view();
+        x
+    });
+    for total in results_matrix {
+        assert_eq!(total.scalar(), 0);
+    }
+    for total in results_matrix_views {
+        assert_eq!(total.get(0, 0), 0);
     }
 }
 
