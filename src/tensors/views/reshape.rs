@@ -7,7 +7,9 @@ use std::marker::PhantomData;
 /**
  * A new shape to override indexing an existing tensor. The dimensionality and individual
  * dimension lengths can be changed, but the total number of elements in the new shape must
- * match the existing tensor's shape. Elements are still in the same order (in memory) as
+ * match the existing tensor's shape.
+ *
+ * Elements are still in the same order (in memory) as
  * the source tensor, none of the data is moved around - though iteration might be in
  * a different order with the new shape.
  *

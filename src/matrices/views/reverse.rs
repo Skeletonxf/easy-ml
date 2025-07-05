@@ -38,6 +38,7 @@ pub struct MatrixReverse<T, S> {
 
 /**
  * Helper struct for declaring which of `rows` and `columns` should be reversed for iteration.
+ *
  * If a dimension is set to `false` it will iterate in its normal order. If a dimension is
  * set to `true` the iteration order will be reversed, so the first index 0 becomes the last
  * length-1, and the last index length-1 becomes 0
