@@ -2,41 +2,21 @@
 
 ## Version 2.0
 
-Version 2.0 will contain multiple breaking changes:
-- MatrixRef now has NoInteriorMutability as a supertrait. This will ensure
-consumers migrating from 1.x versions see compile errors where the new
-requirements will have been added. It is no longer possible to implement a
-MatrixRef type that does not conform to the no interior mutability contract.
-- Added blanket impls for & and &mut references to MatrixRef and MatrixMut. Any
-manual implementations of reference types implementing these traits need to
-be deleted as they are now longer required and conflict with the blanket impls.
-- Numeric now requires implementing types to implement Debug.
-- Real and RealByValue now inherit from the corresponding Numeric and
-NumericByValue traits. This means old code depending on a previous version of
-Easy ML that also specified the Numeric traits such as:
-```rust
-fn function_name<T: Numeric + Real>()
-where for<'a> &'a T: NumericRef<T> + RealRef<T> {}
-```
-can be updated when using Easy ML 2.0 or later to the following:
-```rust
-fn function_name<T: Real>()
-where for<'a> &'a T: RealRef<T> {}
-```
-- The public properties `mean` and `covariance` on the MultivariateGaussian
-struct were made private and methods with the same names were added to return
-references to the vector and matrix. This allows the `draw` method to not have
-to recheck invariants every time it is called, now matching the
-MultivariateGaussianTensor version.
+Version 2.0 contains multiple breaking changes, see the MIGRATION document
+to upgrade. If the code being updated does not add any Easy ML trait
+implementations it will likely be able to update with no code changes required.
 
-Further trait inheritance changes are planned as detailed at
-https://github.com/Skeletonxf/easy-ml/issues/1 but not yet implemented.
+Alongside the breaking API changes and some documentation improvements, new
+view types have been added for Tensor and Matrix: `TensorReverse`,
+`MatrixReverse`, `MatrixMask`, `TensorReshape`, and in addition `AddAssign` and
+`SubAssign` trait implementations have been added for tensors, matrices and
+record containers.
 
-As of the 2.0.0-dev.2 prerelease, the only planned additional breaking API
-changes are to the TensorRef and MatrixRef traits. If you are not writing your
-own implementations for these traits, I do not expect any further work prior
-to the 2.0.0 release to be breaking, so you may want to consider updating
-to the pre-release instead of waiting longer for the 2.0.0 release.
+Although some more API improvements are still planned for future releases, the
+core APIs for Matrix and Tensor manipulation are largely complete now. If there
+is a direction you would like to see Easy ML continue developing in, please
+consider raising an issue to discuss what functionality you feel should be
+added.
 
 ## Version 1.10
 
