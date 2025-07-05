@@ -307,9 +307,6 @@ fn sigmoid<T: Real + Copy>(x: T) -> T {
 
 /**
  * A simple three layer neural network that outputs a scalar.
- *
- * This is written for a generic type, so it can be used with records and also
- * with normal floats.
  */
 fn model<I>(
     input: &TensorView<f32, I, 2>,
@@ -363,7 +360,7 @@ fn mean_squared_loss(
             // sum up the squared loss
             sum = sum + ((correct - output) * (correct - output));
         }
-        sum / number_of_samples as f32
+        sum / (number_of_samples as f32)
     }
 }
 
@@ -395,7 +392,7 @@ fn mean_squared_loss_training<'a>(
             // sum up the squared loss
             sum = sum + ((correct - output) * (correct - output));
         }
-        sum / number_of_samples as f32
+        sum / (number_of_samples as f32)
     }
 }
 
