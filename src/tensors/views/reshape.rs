@@ -161,7 +161,7 @@ fn unflatten<const D: usize>(nth: usize, strides: &[usize; D]) -> [usize; D] {
         // Given such a stride of 20, we then need to look at what was rounded off
         // An index of 0 or 20 into such a stride would mean we're done, 1 or 21 would
         // mean we have 1 step left and so on
-        steps_remaining = steps_remaining % stride;
+        steps_remaining %= stride;
     }
     index
 }

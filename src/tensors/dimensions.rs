@@ -62,7 +62,7 @@ pub fn length_of<const D: usize>(
     shape
         .iter()
         .find(|(d, _)| *d == dimension)
-        .map(|(_, length)| length.clone())
+        .map(|(_, length)| *length)
 }
 
 /**
@@ -229,7 +229,7 @@ pub(crate) fn has_duplicates(shape: &[(Dimension, usize)]) -> bool {
 pub(crate) fn has_duplicates_names(dimensions: &[Dimension]) -> bool {
     for i in 1..dimensions.len() {
         let name = dimensions[i - 1];
-        if dimensions[i..].iter().any(|&d| d == name) {
+        if dimensions[i..].contains(&name) {
             return true;
         }
     }

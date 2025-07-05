@@ -616,10 +616,7 @@ where
      * then this computes all the derivatives δy/δx<sub>i</sub> for i = 1 to N.
      */
     pub fn try_derivatives(&self) -> Option<Derivatives<T>> {
-        let history = match self.history {
-            None => return None,
-            Some(h) => h,
-        };
+        let history = self.history?;
         let operations = history.operations.borrow();
 
         let mut derivatives = vec![T::zero(); operations.len()];

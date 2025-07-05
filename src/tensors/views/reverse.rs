@@ -49,8 +49,8 @@ where
      */
     #[track_caller]
     pub fn from(source: S, dimensions: &[Dimension]) -> TensorReverse<T, S, D> {
-        if crate::tensors::dimensions::has_duplicates_names(&dimensions) {
-            panic!("Dimension names must all be unique: {:?}", &dimensions);
+        if crate::tensors::dimensions::has_duplicates_names(dimensions) {
+            panic!("Dimension names must all be unique: {:?}", dimensions);
         }
         let shape = source.view_shape();
         if let Some(dimension) = dimensions.iter().find(|d| !dimensions::contains(&shape, d)) {

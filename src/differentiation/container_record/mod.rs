@@ -1189,10 +1189,7 @@ where
      * then this computes all the derivatives δy/δx<sub>i</sub> for i = 1 to N.
      */
     pub fn derivatives_for(&self, indexes: [usize; D]) -> Option<Derivatives<T>> {
-        let (number, index) = match self.get_reference(indexes).map(|(x, i)| (x.clone(), *i)) {
-            Some(tuple) => tuple,
-            None => return None,
-        };
+        let (number, index) = self.get_reference(indexes).map(|(x, i)| (x.clone(), *i))?;
         // The nature of reverse autodiff is that we expect to only have a few outputs from
         // which we calculate all the derivatives we care about. Therefore just call Record and
         // reuse the implementation instead of trying to do anything clever like calculate all
@@ -1271,10 +1268,7 @@ impl<T: Clone + Primitive> Derivatives<T> {
     where
         S: TensorRef<(T, Index), D>,
     {
-        let index = match input.get_reference(indexes).map(|(_, i)| *i) {
-            Some(i) => i,
-            None => return None,
-        };
+        let index = input.get_reference(indexes).map(|(_, i)| *i)?;
         Some(self.derivatives[index].clone())
     }
 
@@ -1310,10 +1304,7 @@ impl<T: Clone + Primitive> Derivatives<T> {
     where
         S: MatrixRef<(T, Index)> + NoInteriorMutability,
     {
-        let index = match input.try_get_reference(row, column).map(|(_, i)| *i) {
-            Some(i) => i,
-            None => return None,
-        };
+        let index = input.try_get_reference(row, column).map(|(_, i)| *i)?;
         Some(self.derivatives[index].clone())
     }
 
@@ -2094,13 +2085,9 @@ where
      * then this computes all the derivatives δy/δx<sub>i</sub> for i = 1 to N.
      */
     pub fn derivatives_for(&self, row: Row, column: Column) -> Option<Derivatives<T>> {
-        let (number, index) = match self
+        let (number, index) = self
             .try_get_reference(row, column)
-            .map(|(x, i)| (x.clone(), *i))
-        {
-            Some(tuple) => tuple,
-            None => return None,
-        };
+            .map(|(x, i)| (x.clone(), *i))?;
         // The nature of reverse autodiff is that we expect to only have a few outputs from
         // which we calculate all the derivatives we care about. Therefore just call Record and
         // reuse the implementation instead of trying to do anything clever like calculate all

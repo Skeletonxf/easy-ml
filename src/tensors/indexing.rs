@@ -1386,11 +1386,10 @@ where
             // mutability and we hold our tensor source by value, it can't be resized (except by
             // us - and we don't) which ensures ShapeIterator can always yield valid indexes for
             // our iteration.
-            let value = std::mem::replace(
+            std::mem::replace(
                 unsafe { self.source.get_reference_unchecked_mut(indexes) },
                 dummy,
-            );
-            value
+            )
         })
     }
 

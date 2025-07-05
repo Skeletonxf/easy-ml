@@ -1582,9 +1582,7 @@ impl<T, S: MatrixMut<T> + NoInteriorMutability> Iterator for ColumnMajorOwnedIte
             // could otherwise make our cursor read the same data twice.
             let producer = self.producer;
             let dummy = producer();
-            let value =
-                std::mem::replace(self.matrix.get_reference_unchecked_mut(row, column), dummy);
-            value
+            std::mem::replace(self.matrix.get_reference_unchecked_mut(row, column), dummy)
         })
     }
 
@@ -1753,9 +1751,7 @@ impl<T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowMajorOwnedIterat
             // could otherwise make our cursor read the same data twice.
             let producer = self.producer;
             let dummy = producer();
-            let value =
-                std::mem::replace(self.matrix.get_reference_unchecked_mut(row, column), dummy);
-            value
+            std::mem::replace(self.matrix.get_reference_unchecked_mut(row, column), dummy)
         })
     }
 

@@ -269,7 +269,7 @@ macro_rules! from_usize_integral {
         impl FromUsize for $T {
             #[inline]
             fn from_usize(n: usize) -> Option<$T> {
-                if n <= (<$T>::max_value() as usize) {
+                if n <= (<$T>::MAX as usize) {
                     Some(n as $T)
                 } else {
                     None
