@@ -2,7 +2,7 @@ extern crate easy_ml;
 
 #[cfg(test)]
 mod tensors {
-    use easy_ml::tensors::indexing::ShapeIterator;
+    use easy_ml::tensors::indexing::{ShapeIterator, DoubleEndedShapeIterator};
 
     #[test]
     fn test_shape_iterator_exact_size() {
@@ -81,5 +81,45 @@ mod tensors {
         let i = iterator.next();
         assert_eq!(i, None);
         assert_eq!(iterator.len(), 0);
+    }
+
+    #[test]
+    fn backward_iteration_double_ended_shape_iterator_test() {
+        let mut iterator = DoubleEndedShapeIterator::from(
+            [("a", 2), ("b", 3), ("c", 2)]
+        );
+        assert_eq!(iterator.next_back(), Some([1, 2, 1]));
+        assert_eq!(iterator.next_back(), Some([1, 2, 0]));
+        assert_eq!(iterator.next_back(), Some([1, 1, 1]));
+        assert_eq!(iterator.next_back(), Some([1, 1, 0]));
+        assert_eq!(iterator.next_back(), Some([1, 0, 1]));
+        assert_eq!(iterator.next_back(), Some([1, 0, 0]));
+        assert_eq!(iterator.next_back(), Some([0, 2, 1]));
+        assert_eq!(iterator.next_back(), Some([0, 2, 0]));
+        assert_eq!(iterator.next_back(), Some([0, 1, 1]));
+        assert_eq!(iterator.next_back(), Some([0, 1, 0]));
+        assert_eq!(iterator.next_back(), Some([0, 0, 1]));
+        assert_eq!(iterator.next_back(), Some([0, 0, 0]));
+        assert_eq!(iterator.next_back(), None);
+    }
+
+    #[test]
+    fn double_ended_iteration_double_ended_shape_iterator_test() {
+        let mut iterator = DoubleEndedShapeIterator::from(
+            [("a", 3), ("b", 2), ("c", 2)]
+        );
+        assert_eq!(iterator.next_back(), Some([2, 1, 1]));
+        assert_eq!(iterator.next(), Some([0, 0, 0]));
+        assert_eq!(iterator.next_back(), Some([2, 1, 0]));
+        assert_eq!(iterator.next_back(), Some([2, 0, 1]));
+        assert_eq!(iterator.next(), Some([0, 0, 1]));
+        assert_eq!(iterator.next_back(), Some([2, 0, 0]));
+        assert_eq!(iterator.next_back(), Some([1, 1, 1]));
+        assert_eq!(iterator.next(), Some([0, 1, 0]));
+        assert_eq!(iterator.next_back(), Some([1, 1, 0]));
+        assert_eq!(iterator.next_back(), Some([1, 0, 1]));
+        assert_eq!(iterator.next_back(), Some([1, 0, 0]));
+        assert_eq!(iterator.next(), Some([0, 1, 1]));
+        assert_eq!(iterator.next(), None);
     }
 }

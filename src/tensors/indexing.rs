@@ -765,6 +765,52 @@ fn iter<const D: usize>(
     value
 }
 
+/// Common index order iterator logic
+fn iter_back<const D: usize>(
+    finished: &mut bool,
+    indexes: &mut [usize; D],
+    shape: &[(Dimension, usize); D],
+) -> Option<[usize; D]> {
+    if *finished {
+        return None;
+    }
+
+    let value = Some(*indexes);
+
+    if D > 0 {
+        let mut bounds = [false; D];
+
+        // Decrement index of final dimension. In the 2D case, we iterate through a row by
+        // decrementing through every column index.
+        if indexes[D - 1] == 0 {
+            bounds[D - 1] = true;
+        } else {
+            indexes[D - 1] -= 1;
+        }
+        for d in (1..D).rev() {
+            if bounds[d] {
+                // ran to start of this dimension with our index
+                // In the 2D case, we finished indexing through every column in the row,
+                // and it's now time to move onto the next row.
+                indexes[d] = shape[d].1 - 1;
+                if indexes[d - 1] == 0 {
+                    bounds[d - 1] = true;
+                } else {
+                    indexes[d - 1] -= 1;
+                }
+            }
+        }
+        // Check if we reached the first index
+        if bounds[0] {
+            *finished = true;
+        }
+    } else {
+        *finished = true;
+    }
+
+    value
+}
+
 /// Common size hint logic
 fn size_hint<const D: usize>(
     finished: bool,
@@ -788,6 +834,89 @@ fn size_hint<const D: usize>(
 
     (remaining, Some(remaining))
 }
+
+/**
+ * An iterator over all indexes in a shape which can iterate in both directions.
+ *
+ * Going forwards, first the all 0 index is iterated, then each iteration increments the rightmost
+ * index.
+ * For a shape of `[("a", 2), ("b", 2), ("c", 2)]` this will yield indexes in order of: `[0,0,0]`,
+ * `[0,0,1]`, `[0,1,0]`, `[0,1,1]`, `[1,0,0]`, `[1,0,1]`, `[1,1,0]`, `[1,1,1]`,
+ * When iterating backwards, the indexes are yielded in reverse. Indexes do not cross,
+ * iteration is over when they indexes meet in the middle.
+ */
+#[derive(Clone, Debug)]
+pub struct DoubleEndedShapeIterator<const D: usize> {
+    shape: [(Dimension, usize); D],
+    forward_indexes: [usize; D],
+    back_indexes: [usize; D],
+    finished: bool,
+}
+
+impl<const D: usize> DoubleEndedShapeIterator<D> {
+    /**
+     * Constructs a DoubleEndedShapeIterator for a shape.
+     *
+     * If the shape has any dimensions with a length of zero, the iterator will immediately
+     * return None on [`next()`](Iterator::next) or
+     * [`next_back()`](DoubleEndedIterator::next_back()).
+     */
+    pub fn from(shape: [(Dimension, usize); D]) -> DoubleEndedShapeIterator<D> {
+        // If we're given an invalid shape (shape input is not neccessarily going to meet the no
+        // 0 lengths contract of TensorRef because that's not actually required here), return
+        // a finished iterator
+        // Since this is an iterator over an owned shape, it's not going to become invalid later
+        // when we start iterating so this is the only check we need.
+        let starting_index_valid = shape.iter().all(|(_, l)| *l > 0);
+        DoubleEndedShapeIterator {
+            shape,
+            forward_indexes: [0; D],
+            back_indexes: shape.map(|(_, l)| l - 1),
+            finished: !starting_index_valid,
+        }
+    }
+}
+
+fn overlapping_iterators<const D: usize>(
+    forward_indexes: &[usize; D],
+    back_indexes: &[usize; D]
+) -> bool {
+    forward_indexes == back_indexes
+}
+
+impl<const D: usize> Iterator for DoubleEndedShapeIterator<D> {
+    type Item = [usize; D];
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let will_finish = overlapping_iterators(&self.forward_indexes, &self.back_indexes);
+        let item = iter(&mut self.finished, &mut self.forward_indexes, &self.shape);
+        if will_finish {
+            self.finished = true;
+        }
+        item
+    }
+
+    // fn size_hint(&self) -> (usize, Option<usize>) {
+    //     size_hint(self.finished, &self.indexes, &self.shape)
+    // }
+}
+
+impl<const D: usize> DoubleEndedIterator for DoubleEndedShapeIterator<D> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let will_finish = overlapping_iterators(&self.forward_indexes, &self.back_indexes);
+        let item = iter_back(&mut self.finished, &mut self.back_indexes, &self.shape);
+        if will_finish {
+           self.finished = true;
+        }
+        item
+    }
+}
+
+// Once we hit the end we mark ourselves as finished so we're always Fused.
+impl<const D: usize> FusedIterator for DoubleEndedShapeIterator<D> {}
+// We can always calculate the exact number of steps remaining because the shape and indexes are
+// private fields that are only mutated by `next` to count up.
+//impl<const D: usize> ExactSizeIterator for ShapeIterator<D> {}
 
 /**
  * An iterator over copies of all values in a tensor.
