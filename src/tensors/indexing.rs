@@ -835,6 +835,40 @@ fn size_hint<const D: usize>(
     (remaining, Some(remaining))
 }
 
+/// Common size hint logic
+fn double_ended_size_hint<const D: usize>(
+    finished: bool,
+    forward_indexes: &[usize; D],
+    back_indexes: &[usize; D],
+    shape: &[(Dimension, usize); D],
+) -> (usize, Option<usize>) {
+    if finished {
+        return (0, Some(0));
+    }
+
+    let remaining = if D > 0 {
+        //let total = dimensions::elements(shape);
+        let strides = crate::tensors::compute_strides(shape);
+        let progress_forward = crate::tensors::get_index_direct_unchecked(forward_indexes, &strides);
+        let progress_backward = crate::tensors::get_index_direct_unchecked(back_indexes, &strides);
+        // progress_forward will range from 0 if we've not iterated forward at all yet
+        // through to the total-1 if we are on the final index at the end.
+        // likewise progress_backward starts at total-1 and finishes at 0 when on the first
+        // index.
+        // To calculate total left going forward (as in forward only case) and then
+        // subtract the total already seen backward we'd have:
+        // (total - progress_forward) - ((total - 1) - progress_backward)
+        // This cancels to
+        1 + progress_backward - progress_forward
+    } else {
+        1
+        // If D == 0 and we're not finished we've not returned the sole index yet so there's
+        // exactly 1 left
+    };
+
+    (remaining, Some(remaining))
+}
+
 /**
  * An iterator over all indexes in a shape which can iterate in both directions.
  *
@@ -896,9 +930,14 @@ impl<const D: usize> Iterator for DoubleEndedShapeIterator<D> {
         item
     }
 
-    // fn size_hint(&self) -> (usize, Option<usize>) {
-    //     size_hint(self.finished, &self.indexes, &self.shape)
-    // }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        double_ended_size_hint(
+            self.finished,
+            &self.forward_indexes,
+            &self.back_indexes,
+            &self.shape,
+        )
+    }
 }
 
 impl<const D: usize> DoubleEndedIterator for DoubleEndedShapeIterator<D> {
@@ -916,7 +955,7 @@ impl<const D: usize> DoubleEndedIterator for DoubleEndedShapeIterator<D> {
 impl<const D: usize> FusedIterator for DoubleEndedShapeIterator<D> {}
 // We can always calculate the exact number of steps remaining because the shape and indexes are
 // private fields that are only mutated by `next` to count up.
-//impl<const D: usize> ExactSizeIterator for ShapeIterator<D> {}
+impl<const D: usize> ExactSizeIterator for DoubleEndedShapeIterator<D> {}
 
 /**
  * An iterator over copies of all values in a tensor.
