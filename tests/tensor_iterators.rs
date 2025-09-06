@@ -2,7 +2,7 @@ extern crate easy_ml;
 
 #[cfg(test)]
 mod tensors {
-    use easy_ml::tensors::indexing::{ShapeIterator, DoubleEndedShapeIterator};
+    use easy_ml::tensors::indexing::{DoubleEndedShapeIterator, ShapeIterator};
 
     #[test]
     fn test_shape_iterator_exact_size() {
@@ -85,9 +85,7 @@ mod tensors {
 
     #[test]
     fn backward_iteration_double_ended_shape_iterator_test() {
-        let mut iterator = DoubleEndedShapeIterator::from(
-            [("a", 2), ("b", 3), ("c", 2)]
-        );
+        let mut iterator = DoubleEndedShapeIterator::from([("a", 2), ("b", 3), ("c", 2)]);
         assert_eq!(iterator.next_back(), Some([1, 2, 1]));
         assert_eq!(iterator.next_back(), Some([1, 2, 0]));
         assert_eq!(iterator.next_back(), Some([1, 1, 1]));
@@ -105,9 +103,7 @@ mod tensors {
 
     #[test]
     fn double_ended_iteration_double_ended_shape_iterator_test() {
-        let mut iterator = DoubleEndedShapeIterator::from(
-            [("a", 3), ("b", 2), ("c", 2)]
-        );
+        let mut iterator = DoubleEndedShapeIterator::from([("a", 3), ("b", 2), ("c", 2)]);
         assert_eq!(iterator.next_back(), Some([2, 1, 1]));
         assert_eq!(iterator.next(), Some([0, 0, 0]));
         assert_eq!(iterator.next_back(), Some([2, 1, 0]));
