@@ -418,7 +418,7 @@ where
     /**
      * Returns an iterator over references to the data in this TensorView.
      */
-    pub fn iter_reference(&self) -> TensorReferenceIterator<T, S, D> {
+    pub fn iter_reference(&self) -> TensorReferenceIterator<'_, T, S, D> {
         TensorReferenceIterator::from(&self.source)
     }
 
@@ -868,7 +868,7 @@ where
     /**
      * Returns an iterator over mutable references to the data in this TensorView.
      */
-    pub fn iter_reference_mut(&mut self) -> TensorReferenceMutIterator<T, S, D> {
+    pub fn iter_reference_mut(&mut self) -> TensorReferenceMutIterator<'_, T, S, D> {
         TensorReferenceMutIterator::from(&mut self.source)
     }
 
@@ -1014,7 +1014,7 @@ where
     /**
      * Returns an iterator over copies of the data in this TensorView.
      */
-    pub fn iter(&self) -> TensorIterator<T, S, D> {
+    pub fn iter(&self) -> TensorIterator<'_, T, S, D> {
         TensorIterator::from(&self.source)
     }
 

@@ -323,7 +323,7 @@ where
      * Panics if the column is not visible to this view.
      */
     #[track_caller]
-    pub fn column_reference_iter(&self, column: Column) -> ColumnReferenceIterator<T, S> {
+    pub fn column_reference_iter(&self, column: Column) -> ColumnReferenceIterator<'_, T, S> {
         ColumnReferenceIterator::from(&self.source, column)
     }
 
@@ -336,7 +336,7 @@ where
      * Panics if the row is not visible to this view.
      */
     #[track_caller]
-    pub fn row_reference_iter(&self, row: Row) -> RowReferenceIterator<T, S> {
+    pub fn row_reference_iter(&self, row: Row) -> RowReferenceIterator<'_, T, S> {
         RowReferenceIterator::from(&self.source, row)
     }
 
@@ -344,7 +344,7 @@ where
      * Returns a column major iterator over references to all values in this matrix view,
      * proceeding through each column in order.
      */
-    pub fn column_major_reference_iter(&self) -> ColumnMajorReferenceIterator<T, S> {
+    pub fn column_major_reference_iter(&self) -> ColumnMajorReferenceIterator<'_, T, S> {
         ColumnMajorReferenceIterator::from(&self.source)
     }
 
@@ -352,14 +352,14 @@ where
      * Returns a row major iterator over references to all values in this matrix view,
      * proceeding through each row in order.
      */
-    pub fn row_major_reference_iter(&self) -> RowMajorReferenceIterator<T, S> {
+    pub fn row_major_reference_iter(&self) -> RowMajorReferenceIterator<'_, T, S> {
         RowMajorReferenceIterator::from(&self.source)
     }
 
     /**
      * Returns an iterator over references to the main diagonal in this matrix view.
      */
-    pub fn diagonal_reference_iter(&self) -> DiagonalReferenceIterator<T, S> {
+    pub fn diagonal_reference_iter(&self) -> DiagonalReferenceIterator<'_, T, S> {
         DiagonalReferenceIterator::from(&self.source)
     }
 
@@ -558,7 +558,7 @@ where
      * Panics if the column does not exist in this matrix.
      */
     #[track_caller]
-    pub fn column_iter(&self, column: Column) -> ColumnIterator<T, S> {
+    pub fn column_iter(&self, column: Column) -> ColumnIterator<'_, T, S> {
         ColumnIterator::from(&self.source, column)
     }
 
@@ -582,7 +582,7 @@ where
      * Panics if the row does not exist in this matrix.
      */
     #[track_caller]
-    pub fn row_iter(&self, row: Row) -> RowIterator<T, S> {
+    pub fn row_iter(&self, row: Row) -> RowIterator<'_, T, S> {
         RowIterator::from(&self.source, row)
     }
 
@@ -601,7 +601,7 @@ where
      * elements use [`column_major_reference_iter`](MatrixView::column_major_reference_iter)
      * instead.
      */
-    pub fn column_major_iter(&self) -> ColumnMajorIterator<T, S> {
+    pub fn column_major_iter(&self) -> ColumnMajorIterator<'_, T, S> {
         ColumnMajorIterator::from(&self.source)
     }
 
@@ -619,7 +619,7 @@ where
      * then the iterator will yield [1, 2, 3, 4]. If you do not need to copy the
      * elements use [`row_major_reference_iter`](MatrixView::row_major_reference_iter) instead.
      */
-    pub fn row_major_iter(&self) -> RowMajorIterator<T, S> {
+    pub fn row_major_iter(&self) -> RowMajorIterator<'_, T, S> {
         RowMajorIterator::from(&self.source)
     }
 
@@ -651,7 +651,7 @@ where
      * assert_eq!(trace, 1 + 5 + 9);
      * ```
      */
-    pub fn diagonal_iter(&self) -> DiagonalIterator<T, S> {
+    pub fn diagonal_iter(&self) -> DiagonalIterator<'_, T, S> {
         DiagonalIterator::from(&self.source)
     }
 
@@ -795,7 +795,7 @@ where
     pub fn column_reference_mut_iter(
         &mut self,
         column: Column,
-    ) -> ColumnReferenceMutIterator<T, S> {
+    ) -> ColumnReferenceMutIterator<'_, T, S> {
         ColumnReferenceMutIterator::from(&mut self.source, column)
     }
 
@@ -808,7 +808,7 @@ where
      * Panics if the row is not visible to this view.
      */
     #[track_caller]
-    pub fn row_reference_mut_iter(&mut self, row: Row) -> RowReferenceMutIterator<T, S> {
+    pub fn row_reference_mut_iter(&mut self, row: Row) -> RowReferenceMutIterator<'_, T, S> {
         RowReferenceMutIterator::from(&mut self.source, row)
     }
 
@@ -816,7 +816,7 @@ where
      * Returns a column major iterator over mutable references to all values in this matrix view,
      * proceeding through each column in order.
      */
-    pub fn column_major_reference_mut_iter(&mut self) -> ColumnMajorReferenceMutIterator<T, S> {
+    pub fn column_major_reference_mut_iter(&mut self) -> ColumnMajorReferenceMutIterator<'_, T, S> {
         ColumnMajorReferenceMutIterator::from(&mut self.source)
     }
 
@@ -824,14 +824,14 @@ where
      * Returns a row major iterator over mutable references to all values in this matrix view,
      * proceeding through each row in order.
      */
-    pub fn row_major_reference_mut_iter(&mut self) -> RowMajorReferenceMutIterator<T, S> {
+    pub fn row_major_reference_mut_iter(&mut self) -> RowMajorReferenceMutIterator<'_, T, S> {
         RowMajorReferenceMutIterator::from(&mut self.source)
     }
 
     /**
      * Returns an iterator over mutable references to the main diagonal in this matrix view.
      */
-    pub fn diagonal_reference_mut_iter(&mut self) -> DiagonalReferenceMutIterator<T, S> {
+    pub fn diagonal_reference_mut_iter(&mut self) -> DiagonalReferenceMutIterator<'_, T, S> {
         DiagonalReferenceMutIterator::from(&mut self.source)
     }
 }

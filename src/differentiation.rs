@@ -677,7 +677,7 @@ impl<T: Numeric + Primitive> WengertList<T> {
      *
      * You can alternatively use the [record constructor on the Record type](Record::variable()).
      */
-    pub fn variable(&self, x: T) -> Record<T> {
+    pub fn variable(&self, x: T) -> Record<'_, T> {
         Record {
             number: x,
             history: Some(self),
@@ -796,7 +796,7 @@ impl<T: Clone + Primitive> Clone for WengertList<T> {
  * Methods for appending Operations after borrowing the Wengert list.
  */
 impl<'a, T: Numeric + Primitive> BorrowedWengertList<'a, T> {
-    fn new(operations: &mut Vec<Operation<T>>) -> BorrowedWengertList<T> {
+    fn new(operations: &mut Vec<Operation<T>>) -> BorrowedWengertList<'_, T> {
         BorrowedWengertList { operations }
     }
 
@@ -899,7 +899,7 @@ where
      * ```
      */
     #[inline]
-    pub fn unary(&self, fx: impl Fn(T) -> T, dfx_dx: impl Fn(T) -> T) -> Record<T> {
+    pub fn unary(&self, fx: impl Fn(T) -> T, dfx_dx: impl Fn(T) -> T) -> Record<'_, T> {
         match self.history {
             None => Record {
                 number: fx(self.number.clone()),
@@ -954,7 +954,7 @@ where
         fxy: impl Fn(T, T) -> T,
         dfxy_dx: impl Fn(T, T) -> T,
         dfxy_dy: impl Fn(T, T) -> T,
-    ) -> Record<T> {
+    ) -> Record<'_, T> {
         assert!(
             record_operations::same_list(self, rhs),
             "Records must be using the same WengertList"

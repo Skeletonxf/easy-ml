@@ -276,7 +276,7 @@ where
      * Returns an iterator over references to the data in this TensorAccess, in the order of
      * the TensorAccess shape.
      */
-    pub fn iter_reference(&self) -> TensorReferenceIterator<T, TensorAccess<T, S, D>, D> {
+    pub fn iter_reference(&self) -> TensorReferenceIterator<'_, T, TensorAccess<T, S, D>, D> {
         TensorReferenceIterator::from(self)
     }
 }
@@ -352,7 +352,7 @@ where
      * Returns an iterator over copies of the data in this TensorAccess, in the order of
      * the TensorAccess shape.
      */
-    pub fn iter(&self) -> TensorIterator<T, TensorAccess<T, S, D>, D> {
+    pub fn iter(&self) -> TensorIterator<'_, T, TensorAccess<T, S, D>, D> {
         TensorIterator::from(self)
     }
 }
@@ -420,7 +420,7 @@ where
      */
     pub fn iter_reference_mut(
         &mut self,
-    ) -> TensorReferenceMutIterator<T, TensorAccess<T, S, D>, D> {
+    ) -> TensorReferenceMutIterator<'_, T, TensorAccess<T, S, D>, D> {
         TensorReferenceMutIterator::from(self)
     }
 }
@@ -849,7 +849,8 @@ fn double_ended_size_hint<const D: usize>(
     let remaining = if D > 0 {
         //let total = dimensions::elements(shape);
         let strides = crate::tensors::compute_strides(shape);
-        let progress_forward = crate::tensors::get_index_direct_unchecked(forward_indexes, &strides);
+        let progress_forward =
+            crate::tensors::get_index_direct_unchecked(forward_indexes, &strides);
         let progress_backward = crate::tensors::get_index_direct_unchecked(back_indexes, &strides);
         // progress_forward will range from 0 if we've not iterated forward at all yet
         // through to the total-1 if we are on the final index at the end.
@@ -913,7 +914,7 @@ impl<const D: usize> DoubleEndedShapeIterator<D> {
 
 fn overlapping_iterators<const D: usize>(
     forward_indexes: &[usize; D],
-    back_indexes: &[usize; D]
+    back_indexes: &[usize; D],
 ) -> bool {
     forward_indexes == back_indexes
 }
@@ -945,7 +946,7 @@ impl<const D: usize> DoubleEndedIterator for DoubleEndedShapeIterator<D> {
         let will_finish = overlapping_iterators(&self.forward_indexes, &self.back_indexes);
         let item = iter_back(&mut self.finished, &mut self.back_indexes, &self.shape);
         if will_finish {
-           self.finished = true;
+            self.finished = true;
         }
         item
     }
@@ -1047,7 +1048,7 @@ where
     T: Clone,
     S: TensorRef<T, D>,
 {
-    pub fn from(source: &S) -> TensorIterator<T, S, D> {
+    pub fn from(source: &S) -> TensorIterator<'_, T, S, D> {
         TensorIterator {
             shape_iterator: ShapeIterator::from(source.view_shape()),
             source,
@@ -1231,7 +1232,7 @@ impl<'a, T, S, const D: usize> TensorReferenceIterator<'a, T, S, D>
 where
     S: TensorRef<T, D>,
 {
-    pub fn from(source: &S) -> TensorReferenceIterator<T, S, D> {
+    pub fn from(source: &S) -> TensorReferenceIterator<'_, T, S, D> {
         TensorReferenceIterator {
             shape_iterator: ShapeIterator::from(source.view_shape()),
             source,
@@ -1354,7 +1355,7 @@ impl<'a, T, S, const D: usize> TensorReferenceMutIterator<'a, T, S, D>
 where
     S: TensorMut<T, D>,
 {
-    pub fn from(source: &mut S) -> TensorReferenceMutIterator<T, S, D> {
+    pub fn from(source: &mut S) -> TensorReferenceMutIterator<'_, T, S, D> {
         TensorReferenceMutIterator {
             shape_iterator: ShapeIterator::from(source.view_shape()),
             source,

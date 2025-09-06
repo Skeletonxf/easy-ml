@@ -477,7 +477,7 @@ impl<T> Matrix<T> {
      * Panics if the column does not exist in this matrix.
      */
     #[track_caller]
-    pub fn column_reference_iter(&self, column: Column) -> ColumnReferenceIterator<T> {
+    pub fn column_reference_iter(&self, column: Column) -> ColumnReferenceIterator<'_, T> {
         ColumnReferenceIterator::new(self, column)
     }
 
@@ -490,7 +490,7 @@ impl<T> Matrix<T> {
      * Panics if the row does not exist in this matrix.
      */
     #[track_caller]
-    pub fn row_reference_iter(&self, row: Row) -> RowReferenceIterator<T> {
+    pub fn row_reference_iter(&self, row: Row) -> RowReferenceIterator<'_, T> {
         RowReferenceIterator::new(self, row)
     }
 
@@ -503,7 +503,10 @@ impl<T> Matrix<T> {
      * Panics if the column does not exist in this matrix.
      */
     #[track_caller]
-    pub fn column_reference_mut_iter(&mut self, column: Column) -> ColumnReferenceMutIterator<T> {
+    pub fn column_reference_mut_iter(
+        &mut self,
+        column: Column,
+    ) -> ColumnReferenceMutIterator<'_, T> {
         ColumnReferenceMutIterator::new(self, column)
     }
 
@@ -516,7 +519,7 @@ impl<T> Matrix<T> {
      * Panics if the row does not exist in this matrix.
      */
     #[track_caller]
-    pub fn row_reference_mut_iter(&mut self, row: Row) -> RowReferenceMutIterator<T> {
+    pub fn row_reference_mut_iter(&mut self, row: Row) -> RowReferenceMutIterator<'_, T> {
         RowReferenceMutIterator::new(self, row)
     }
 
@@ -524,7 +527,7 @@ impl<T> Matrix<T> {
      * Returns a column major iterator over references to all values in this matrix,
      * proceeding through each column in order.
      */
-    pub fn column_major_reference_iter(&self) -> ColumnMajorReferenceIterator<T> {
+    pub fn column_major_reference_iter(&self) -> ColumnMajorReferenceIterator<'_, T> {
         ColumnMajorReferenceIterator::new(self)
     }
 
@@ -532,19 +535,19 @@ impl<T> Matrix<T> {
      * Returns a row major iterator over references to all values in this matrix,
      * proceeding through each row in order.
      */
-    pub fn row_major_reference_iter(&self) -> RowMajorReferenceIterator<T> {
+    pub fn row_major_reference_iter(&self) -> RowMajorReferenceIterator<'_, T> {
         RowMajorReferenceIterator::new(self)
     }
 
     // Non public row major reference iterator since we don't want to expose our implementation
     // details to public API since then we could never change them.
-    pub(crate) fn direct_row_major_reference_iter(&self) -> std::slice::Iter<T> {
+    pub(crate) fn direct_row_major_reference_iter(&self) -> std::slice::Iter<'_, T> {
         self.data.iter()
     }
 
     // Non public row major reference iterator since we don't want to expose our implementation
     // details to public API since then we could never change them.
-    pub(crate) fn direct_row_major_reference_iter_mut(&mut self) -> std::slice::IterMut<T> {
+    pub(crate) fn direct_row_major_reference_iter_mut(&mut self) -> std::slice::IterMut<'_, T> {
         self.data.iter_mut()
     }
 
@@ -552,7 +555,7 @@ impl<T> Matrix<T> {
      * Returns a column major iterator over mutable references to all values in this matrix,
      * proceeding through each column in order.
      */
-    pub fn column_major_reference_mut_iter(&mut self) -> ColumnMajorReferenceMutIterator<T> {
+    pub fn column_major_reference_mut_iter(&mut self) -> ColumnMajorReferenceMutIterator<'_, T> {
         ColumnMajorReferenceMutIterator::new(self)
     }
 
@@ -560,7 +563,7 @@ impl<T> Matrix<T> {
      * Returns a row major iterator over mutable references to all values in this matrix,
      * proceeding through each row in order.
      */
-    pub fn row_major_reference_mut_iter(&mut self) -> RowMajorReferenceMutIterator<T> {
+    pub fn row_major_reference_mut_iter(&mut self) -> RowMajorReferenceMutIterator<'_, T> {
         RowMajorReferenceMutIterator::new(self)
     }
 
@@ -589,14 +592,14 @@ impl<T> Matrix<T> {
     /**
      * Returns an iterator over references to the main diagonal in this matrix.
      */
-    pub fn diagonal_reference_iter(&self) -> DiagonalReferenceIterator<T> {
+    pub fn diagonal_reference_iter(&self) -> DiagonalReferenceIterator<'_, T> {
         DiagonalReferenceIterator::new(self)
     }
 
     /**
      * Returns an iterator over mutable references to the main diagonal in this matrix.
      */
-    pub fn diagonal_reference_mut_iter(&mut self) -> DiagonalReferenceMutIterator<T> {
+    pub fn diagonal_reference_mut_iter(&mut self) -> DiagonalReferenceMutIterator<'_, T> {
         DiagonalReferenceMutIterator::new(self)
     }
 
@@ -736,7 +739,7 @@ impl<T> Matrix<T> {
         &mut self,
         row_partitions: &[Row],
         column_partitions: &[Column],
-    ) -> Vec<MatrixView<T, MatrixPart<T>>> {
+    ) -> Vec<MatrixView<T, MatrixPart<'_, T>>> {
         let rows = self.rows();
         let columns = self.columns();
         fn check_axis(partitions: &[usize], length: usize) {
@@ -1146,7 +1149,7 @@ impl<T: Clone> Matrix<T> {
      * Panics if the column does not exist in this matrix.
      */
     #[track_caller]
-    pub fn column_iter(&self, column: Column) -> ColumnIterator<T> {
+    pub fn column_iter(&self, column: Column) -> ColumnIterator<'_, T> {
         ColumnIterator::new(self, column)
     }
 
@@ -1170,7 +1173,7 @@ impl<T: Clone> Matrix<T> {
      * Panics if the row does not exist in this matrix.
      */
     #[track_caller]
-    pub fn row_iter(&self, row: Row) -> RowIterator<T> {
+    pub fn row_iter(&self, row: Row) -> RowIterator<'_, T> {
         RowIterator::new(self, row)
     }
 
@@ -1188,7 +1191,7 @@ impl<T: Clone> Matrix<T> {
      * then the iterator will yield [1, 3, 2, 4]. If you do not need to copy the
      * elements use [`column_major_reference_iter`](Matrix::column_major_reference_iter) instead.
      */
-    pub fn column_major_iter(&self) -> ColumnMajorIterator<T> {
+    pub fn column_major_iter(&self) -> ColumnMajorIterator<'_, T> {
         ColumnMajorIterator::new(self)
     }
 
@@ -1206,7 +1209,7 @@ impl<T: Clone> Matrix<T> {
      * then the iterator will yield [1, 2, 3, 4]. If you do not need to copy the
      * elements use [`row_major_reference_iter`](Matrix::row_major_reference_iter) instead.
      */
-    pub fn row_major_iter(&self) -> RowMajorIterator<T> {
+    pub fn row_major_iter(&self) -> RowMajorIterator<'_, T> {
         RowMajorIterator::new(self)
     }
 
@@ -1237,7 +1240,7 @@ impl<T: Clone> Matrix<T> {
      * assert_eq!(trace, 1 + 5 + 9);
      * ```
      */
-    pub fn diagonal_iter(&self) -> DiagonalIterator<T> {
+    pub fn diagonal_iter(&self) -> DiagonalIterator<'_, T> {
         DiagonalIterator::new(self)
     }
 

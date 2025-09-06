@@ -685,14 +685,14 @@ impl<T, const D: usize> Tensor<T, D> {
     /**
      * Returns an iterator over references to the data in this Tensor.
      */
-    pub fn iter_reference(&self) -> TensorReferenceIterator<T, Tensor<T, D>, D> {
+    pub fn iter_reference(&self) -> TensorReferenceIterator<'_, T, Tensor<T, D>, D> {
         TensorReferenceIterator::from(self)
     }
 
     /**
      * Returns an iterator over mutable references to the data in this Tensor.
      */
-    pub fn iter_reference_mut(&mut self) -> TensorReferenceMutIterator<T, Tensor<T, D>, D> {
+    pub fn iter_reference_mut(&mut self) -> TensorReferenceMutIterator<'_, T, Tensor<T, D>, D> {
         TensorReferenceMutIterator::from(self)
     }
 
@@ -708,13 +708,13 @@ impl<T, const D: usize> Tensor<T, D> {
 
     // Non public index order reference iterator since we don't want to expose our implementation
     // details to public API since then we could never change them.
-    pub(crate) fn direct_iter_reference(&self) -> std::slice::Iter<T> {
+    pub(crate) fn direct_iter_reference(&self) -> std::slice::Iter<'_, T> {
         self.data.iter()
     }
 
     // Non public index order reference iterator since we don't want to expose our implementation
     // details to public API since then we could never change them.
-    pub(crate) fn direct_iter_reference_mut(&mut self) -> std::slice::IterMut<T> {
+    pub(crate) fn direct_iter_reference_mut(&mut self) -> std::slice::IterMut<'_, T> {
         self.data.iter_mut()
     }
 
@@ -1530,7 +1530,7 @@ where
     /**
      * Returns an iterator over copies of the data in this Tensor.
      */
-    pub fn iter(&self) -> TensorIterator<T, Tensor<T, D>, D> {
+    pub fn iter(&self) -> TensorIterator<'_, T, Tensor<T, D>, D> {
         TensorIterator::from(self)
     }
 

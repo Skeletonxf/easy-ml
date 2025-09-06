@@ -147,7 +147,7 @@ impl<'a, T: Clone> ColumnIterator<'a, T> {
      * Panics if the column does not exist in this matrix.
      */
     #[track_caller]
-    pub fn new(matrix: &Matrix<T>, column: Column) -> ColumnIterator<T> {
+    pub fn new(matrix: &Matrix<T>, column: Column) -> ColumnIterator<'_, T> {
         ColumnIterator::from(matrix, column)
     }
 }
@@ -161,7 +161,7 @@ impl<'a, T: Clone, S: MatrixRef<T>> ColumnIterator<'a, T, S> {
      * Panics if the column does not exist in this source.
      */
     #[track_caller]
-    pub fn from(source: &S, column: Column) -> ColumnIterator<T, S> {
+    pub fn from(source: &S, column: Column) -> ColumnIterator<'_, T, S> {
         assert!(
             source.index_is_valid(0, column),
             "Expected ({},{}) to be in range",
@@ -235,7 +235,7 @@ impl<'a, T: Clone> RowIterator<'a, T> {
      * Panics if the row does not exist in this matrix.
      */
     #[track_caller]
-    pub fn new(matrix: &Matrix<T>, row: Row) -> RowIterator<T> {
+    pub fn new(matrix: &Matrix<T>, row: Row) -> RowIterator<'_, T> {
         RowIterator::from(matrix, row)
     }
 }
@@ -249,7 +249,7 @@ impl<'a, T: Clone, S: MatrixRef<T>> RowIterator<'a, T, S> {
      * Panics if the row does not exist in this source.
      */
     #[track_caller]
-    pub fn from(source: &S, row: Row) -> RowIterator<T, S> {
+    pub fn from(source: &S, row: Row) -> RowIterator<'_, T, S> {
         assert!(
             source.index_is_valid(row, 0),
             "Expected ({},{}) to be in range",
@@ -379,7 +379,7 @@ impl<'a, T: Clone> ColumnMajorIterator<'a, T> {
     /**
      * Constructs a column major iterator over this matrix.
      */
-    pub fn new(matrix: &Matrix<T>) -> ColumnMajorIterator<T> {
+    pub fn new(matrix: &Matrix<T>) -> ColumnMajorIterator<'_, T> {
         ColumnMajorIterator::from(matrix)
     }
 }
@@ -388,7 +388,7 @@ impl<'a, T: Clone, S: MatrixRef<T>> ColumnMajorIterator<'a, T, S> {
     /**
      * Constructs a column major iterator over this source.
      */
-    pub fn from(source: &S) -> ColumnMajorIterator<T, S> {
+    pub fn from(source: &S) -> ColumnMajorIterator<'_, T, S> {
         ColumnMajorIterator {
             matrix: source,
             column_counter: 0,
@@ -555,7 +555,7 @@ impl<'a, T: Clone> RowMajorIterator<'a, T> {
     /**
      * Constructs a row major iterator over this matrix.
      */
-    pub fn new(matrix: &Matrix<T>) -> RowMajorIterator<T> {
+    pub fn new(matrix: &Matrix<T>) -> RowMajorIterator<'_, T> {
         RowMajorIterator::from(matrix)
     }
 }
@@ -564,7 +564,7 @@ impl<'a, T: Clone, S: MatrixRef<T>> RowMajorIterator<'a, T, S> {
     /**
      * Constructs a row major iterator over this source.
      */
-    pub fn from(source: &S) -> RowMajorIterator<T, S> {
+    pub fn from(source: &S) -> RowMajorIterator<'_, T, S> {
         RowMajorIterator {
             matrix: source,
             column_counter: 0,
@@ -675,7 +675,7 @@ impl<'a, T> ColumnReferenceIterator<'a, T> {
      * Panics if the column does not exist in this matrix.
      */
     #[track_caller]
-    pub fn new(matrix: &Matrix<T>, column: Column) -> ColumnReferenceIterator<T> {
+    pub fn new(matrix: &Matrix<T>, column: Column) -> ColumnReferenceIterator<'_, T> {
         ColumnReferenceIterator::from(matrix, column)
     }
 }
@@ -689,7 +689,7 @@ impl<'a, T, S: MatrixRef<T>> ColumnReferenceIterator<'a, T, S> {
      * Panics if the column does not exist in this source.
      */
     #[track_caller]
-    pub fn from(source: &S, column: Column) -> ColumnReferenceIterator<T, S> {
+    pub fn from(source: &S, column: Column) -> ColumnReferenceIterator<'_, T, S> {
         assert!(
             source.index_is_valid(0, column),
             "Expected ({},{}) to be in range",
@@ -759,7 +759,7 @@ impl<'a, T> RowReferenceIterator<'a, T> {
      * Panics if the row does not exist in this matrix.
      */
     #[track_caller]
-    pub fn new(matrix: &Matrix<T>, row: Row) -> RowReferenceIterator<T> {
+    pub fn new(matrix: &Matrix<T>, row: Row) -> RowReferenceIterator<'_, T> {
         RowReferenceIterator::from(matrix, row)
     }
 }
@@ -773,7 +773,7 @@ impl<'a, T, S: MatrixRef<T>> RowReferenceIterator<'a, T, S> {
      * Panics if the row does not exist in this source.
      */
     #[track_caller]
-    pub fn from(source: &S, row: Row) -> RowReferenceIterator<T, S> {
+    pub fn from(source: &S, row: Row) -> RowReferenceIterator<'_, T, S> {
         assert!(
             source.index_is_valid(row, 0),
             "Expected ({},{}) to be in range",
@@ -840,7 +840,7 @@ impl<'a, T> ColumnMajorReferenceIterator<'a, T> {
     /**
      * Constructs a column major iterator over this matrix.
      */
-    pub fn new(matrix: &Matrix<T>) -> ColumnMajorReferenceIterator<T> {
+    pub fn new(matrix: &Matrix<T>) -> ColumnMajorReferenceIterator<'_, T> {
         ColumnMajorReferenceIterator::from(matrix)
     }
 }
@@ -849,7 +849,7 @@ impl<'a, T, S: MatrixRef<T>> ColumnMajorReferenceIterator<'a, T, S> {
     /**
      * Constructs a column major iterator over this source.
      */
-    pub fn from(source: &S) -> ColumnMajorReferenceIterator<T, S> {
+    pub fn from(source: &S) -> ColumnMajorReferenceIterator<'_, T, S> {
         ColumnMajorReferenceIterator {
             matrix: source,
             column_counter: 0,
@@ -959,7 +959,7 @@ impl<'a, T> RowMajorReferenceIterator<'a, T> {
     /**
      * Constructs a column major iterator over this matrix.
      */
-    pub fn new(matrix: &Matrix<T>) -> RowMajorReferenceIterator<T> {
+    pub fn new(matrix: &Matrix<T>) -> RowMajorReferenceIterator<'_, T> {
         RowMajorReferenceIterator::from(matrix)
     }
 }
@@ -968,7 +968,7 @@ impl<'a, T, S: MatrixRef<T>> RowMajorReferenceIterator<'a, T, S> {
     /**
      * Constructs a column major iterator over this source.
      */
-    pub fn from(source: &S) -> RowMajorReferenceIterator<T, S> {
+    pub fn from(source: &S) -> RowMajorReferenceIterator<'_, T, S> {
         RowMajorReferenceIterator {
             matrix: source,
             column_counter: 0,
@@ -1074,7 +1074,7 @@ impl<'a, T: Clone> DiagonalIterator<'a, T> {
     /**
      * Constructs a diagonal iterator over this matrix.
      */
-    pub fn new(matrix: &Matrix<T>) -> DiagonalIterator<T> {
+    pub fn new(matrix: &Matrix<T>) -> DiagonalIterator<'_, T> {
         DiagonalIterator::from(matrix)
     }
 }
@@ -1083,7 +1083,7 @@ impl<'a, T: Clone, S: MatrixRef<T>> DiagonalIterator<'a, T, S> {
     /**
      * Constructs a diagonal iterator over this source.
      */
-    pub fn from(source: &S) -> DiagonalIterator<T, S> {
+    pub fn from(source: &S) -> DiagonalIterator<'_, T, S> {
         DiagonalIterator {
             matrix: source,
             range: 0..std::cmp::min(source.view_rows(), source.view_columns()),
@@ -1140,7 +1140,7 @@ impl<'a, T> DiagonalReferenceIterator<'a, T> {
     /**
      * Constructs a diagonal iterator over this matrix.
      */
-    pub fn new(matrix: &Matrix<T>) -> DiagonalReferenceIterator<T> {
+    pub fn new(matrix: &Matrix<T>) -> DiagonalReferenceIterator<'_, T> {
         DiagonalReferenceIterator::from(matrix)
     }
 }
@@ -1149,7 +1149,7 @@ impl<'a, T, S: MatrixRef<T>> DiagonalReferenceIterator<'a, T, S> {
     /**
      * Constructs a diagonal iterator over this source.
      */
-    pub fn from(source: &S) -> DiagonalReferenceIterator<T, S> {
+    pub fn from(source: &S) -> DiagonalReferenceIterator<'_, T, S> {
         DiagonalReferenceIterator {
             matrix: source,
             range: 0..std::cmp::min(source.view_rows(), source.view_columns()),
@@ -1209,7 +1209,7 @@ impl<'a, T> ColumnMajorReferenceMutIterator<'a, T> {
     /**
      * Constructs a column major iterator over this matrix.
      */
-    pub fn new(matrix: &mut Matrix<T>) -> ColumnMajorReferenceMutIterator<T> {
+    pub fn new(matrix: &mut Matrix<T>) -> ColumnMajorReferenceMutIterator<'_, T> {
         ColumnMajorReferenceMutIterator::from(matrix)
     }
 }
@@ -1218,7 +1218,7 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ColumnMajorReferenceMutItera
     /**
      * Constructs a column major iterator over this source.
      */
-    pub fn from(source: &mut S) -> ColumnMajorReferenceMutIterator<T, S> {
+    pub fn from(source: &mut S) -> ColumnMajorReferenceMutIterator<'_, T, S> {
         ColumnMajorReferenceMutIterator {
             column_counter: 0,
             columns: source.view_columns(),
@@ -1342,7 +1342,7 @@ impl<'a, T> RowMajorReferenceMutIterator<'a, T> {
     /**
      * Constructs a row major iterator over this matrix.
      */
-    pub fn new(matrix: &mut Matrix<T>) -> RowMajorReferenceMutIterator<T> {
+    pub fn new(matrix: &mut Matrix<T>) -> RowMajorReferenceMutIterator<'_, T> {
         RowMajorReferenceMutIterator::from(matrix)
     }
 }
@@ -1351,7 +1351,7 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> RowMajorReferenceMutIterator
     /**
      * Constructs a row major iterator over this source.
      */
-    pub fn from(source: &mut S) -> RowMajorReferenceMutIterator<T, S> {
+    pub fn from(source: &mut S) -> RowMajorReferenceMutIterator<'_, T, S> {
         RowMajorReferenceMutIterator {
             column_counter: 0,
             columns: source.view_columns(),
@@ -1813,7 +1813,7 @@ impl<'a, T> DiagonalReferenceMutIterator<'a, T> {
     /**
      * Constructs a diagonal iterator over this matrix.
      */
-    pub fn new(matrix: &mut Matrix<T>) -> DiagonalReferenceMutIterator<T> {
+    pub fn new(matrix: &mut Matrix<T>) -> DiagonalReferenceMutIterator<'_, T> {
         DiagonalReferenceMutIterator::from(matrix)
     }
 }
@@ -1822,7 +1822,7 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> DiagonalReferenceMutIterator
     /**
      * Constructs a diagonal iterator over this source.
      */
-    pub fn from(source: &mut S) -> DiagonalReferenceMutIterator<T, S> {
+    pub fn from(source: &mut S) -> DiagonalReferenceMutIterator<'_, T, S> {
         DiagonalReferenceMutIterator {
             range: 0..std::cmp::min(source.view_rows(), source.view_columns()),
             matrix: source,
@@ -1895,7 +1895,7 @@ impl<'a, T> ColumnReferenceMutIterator<'a, T> {
      * Panics if the column does not exist in this matrix.
      */
     #[track_caller]
-    pub fn new(matrix: &mut Matrix<T>, column: Column) -> ColumnReferenceMutIterator<T> {
+    pub fn new(matrix: &mut Matrix<T>, column: Column) -> ColumnReferenceMutIterator<'_, T> {
         ColumnReferenceMutIterator::from(matrix, column)
     }
 }
@@ -1909,7 +1909,7 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> ColumnReferenceMutIterator<'
      * Panics if the column does not exist in this source.
      */
     #[track_caller]
-    pub fn from(source: &mut S, column: Column) -> ColumnReferenceMutIterator<T, S> {
+    pub fn from(source: &mut S, column: Column) -> ColumnReferenceMutIterator<'_, T, S> {
         assert!(
             source.index_is_valid(0, column),
             "Expected ({},{}) to be in range",
@@ -1990,7 +1990,7 @@ impl<'a, T> RowReferenceMutIterator<'a, T> {
      * Panics if the row does not exist in this matrix.
      */
     #[track_caller]
-    pub fn new(matrix: &mut Matrix<T>, row: Row) -> RowReferenceMutIterator<T> {
+    pub fn new(matrix: &mut Matrix<T>, row: Row) -> RowReferenceMutIterator<'_, T> {
         RowReferenceMutIterator::from(matrix, row)
     }
 }
@@ -2004,7 +2004,7 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> RowReferenceMutIterator<'a, 
      * Panics if the row does not exist in this source.
      */
     #[track_caller]
-    pub fn from(source: &mut S, row: Row) -> RowReferenceMutIterator<T, S> {
+    pub fn from(source: &mut S, row: Row) -> RowReferenceMutIterator<'_, T, S> {
         assert!(
             source.index_is_valid(row, 0),
             "Expected ({},{}) to be in range",
