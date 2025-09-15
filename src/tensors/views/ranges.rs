@@ -681,9 +681,9 @@ where
             // It is the caller's responsibility to always call with indexes in range,
             // therefore the unwrap() case should never happen because on an arbitary TensorRef
             // it would be undefined behavior.
-            // TODO: Can we use unwrap_unchecked here?
-            self.source
-                .get_reference_unchecked(map_indexes_by_range(indexes, &self.range).unwrap())
+            self.source.get_reference_unchecked(
+                map_indexes_by_range(indexes, &self.range).unwrap_unchecked(),
+            )
         }
     }
 
@@ -717,9 +717,9 @@ where
             // It is the caller's responsibility to always call with indexes in range,
             // therefore the unwrap() case should never happen because on an arbitary TensorMut
             // it would be undefined behavior.
-            // TODO: Can we use unwrap_unchecked here?
-            self.source
-                .get_reference_unchecked_mut(map_indexes_by_range(indexes, &self.range).unwrap())
+            self.source.get_reference_unchecked_mut(
+                map_indexes_by_range(indexes, &self.range).unwrap_unchecked(),
+            )
         }
     }
 }

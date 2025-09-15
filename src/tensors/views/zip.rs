@@ -441,8 +441,7 @@ macro_rules! tensor_stack_ref_impl {
 
                 unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + 1]) -> &T { unsafe {
                     let (source, indexes) = indexing(indexes, self.along);
-                    // TODO: Can we use get_unchecked here?
-                    self.sources.get(source).unwrap().get_reference_unchecked(indexes)
+                    self.sources.get_unchecked(source).get_reference_unchecked(indexes)
                 }}
 
                 fn data_layout(&self) -> DataLayout<{ $d + 1 }> {
@@ -463,8 +462,7 @@ macro_rules! tensor_stack_ref_impl {
 
                 unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + 1]) -> &mut T { unsafe {
                     let (source, indexes) = indexing(indexes, self.along);
-                    // TODO: Can we use get_unchecked here?
-                    self.sources.get_mut(source).unwrap().get_reference_unchecked_mut(indexes)
+                    self.sources.get_unchecked_mut(source).get_reference_unchecked_mut(indexes)
                 }}
             }
 
@@ -1197,13 +1195,14 @@ where
 
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         unsafe {
-            // TODO: Can we use get_unchecked here?
             let (source, indexes) = indexing(
                 indexes,
                 self.sources.iter().map(|s| s.view_shape()),
                 self.along,
             )
-            .unwrap();
+            // The caller is already responsible for providing valid indexes to us
+            // so `indexing` will always return Some
+            .unwrap_unchecked();
             self.sources
                 .get(source)
                 .unwrap()
@@ -1233,13 +1232,14 @@ where
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
         unsafe {
-            // TODO: Can we use get_unchecked here?
             let (source, indexes) = indexing(
                 indexes,
                 self.sources.iter().map(|s| s.view_shape()),
                 self.along,
             )
-            .unwrap();
+            // The caller is already responsible for providing valid indexes to us
+            // so `indexing` will always return Some
+            .unwrap_unchecked();
             self.sources
                 .get_mut(source)
                 .unwrap()
@@ -1276,13 +1276,14 @@ where
 
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         unsafe {
-            // TODO: Can we use get_unchecked here?
             let (source, indexes) = indexing(
                 indexes,
                 [self.sources.0.view_shape(), self.sources.1.view_shape()].into_iter(),
                 self.along,
             )
-            .unwrap();
+            // The caller is already responsible for providing valid indexes to us
+            // so `indexing` will always return Some
+            .unwrap_unchecked();
             match source {
                 0 => self.sources.0.get_reference_unchecked(indexes),
                 1 => self.sources.1.get_reference_unchecked(indexes),
@@ -1319,13 +1320,14 @@ where
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
         unsafe {
-            // TODO: Can we use get_unchecked here?
             let (source, indexes) = indexing(
                 indexes,
                 [self.sources.0.view_shape(), self.sources.1.view_shape()].into_iter(),
                 self.along,
             )
-            .unwrap();
+            // The caller is already responsible for providing valid indexes to us
+            // so `indexing` will always return Some
+            .unwrap_unchecked();
             match source {
                 0 => self.sources.0.get_reference_unchecked_mut(indexes),
                 1 => self.sources.1.get_reference_unchecked_mut(indexes),
@@ -1376,7 +1378,6 @@ where
 
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         unsafe {
-            // TODO: Can we use get_unchecked here?
             let (source, indexes) = indexing(
                 indexes,
                 [
@@ -1387,7 +1388,9 @@ where
                 .into_iter(),
                 self.along,
             )
-            .unwrap();
+            // The caller is already responsible for providing valid indexes to us
+            // so `indexing` will always return Some
+            .unwrap_unchecked();
             match source {
                 0 => self.sources.0.get_reference_unchecked(indexes),
                 1 => self.sources.1.get_reference_unchecked(indexes),
@@ -1432,7 +1435,6 @@ where
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
         unsafe {
-            // TODO: Can we use get_unchecked here?
             let (source, indexes) = indexing(
                 indexes,
                 [
@@ -1443,7 +1445,9 @@ where
                 .into_iter(),
                 self.along,
             )
-            .unwrap();
+            // The caller is already responsible for providing valid indexes to us
+            // so `indexing` will always return Some
+            .unwrap_unchecked();
             match source {
                 0 => self.sources.0.get_reference_unchecked_mut(indexes),
                 1 => self.sources.1.get_reference_unchecked_mut(indexes),
@@ -1500,7 +1504,6 @@ where
 
     unsafe fn get_reference_unchecked(&self, indexes: [usize; D]) -> &T {
         unsafe {
-            // TODO: Can we use get_unchecked here?
             let (source, indexes) = indexing(
                 indexes,
                 [
@@ -1512,7 +1515,9 @@ where
                 .into_iter(),
                 self.along,
             )
-            .unwrap();
+            // The caller is already responsible for providing valid indexes to us
+            // so `indexing` will always return Some
+            .unwrap_unchecked();
             match source {
                 0 => self.sources.0.get_reference_unchecked(indexes),
                 1 => self.sources.1.get_reference_unchecked(indexes),
@@ -1562,7 +1567,6 @@ where
 
     unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; D]) -> &mut T {
         unsafe {
-            // TODO: Can we use get_unchecked here?
             let (source, indexes) = indexing(
                 indexes,
                 [
@@ -1574,7 +1578,9 @@ where
                 .into_iter(),
                 self.along,
             )
-            .unwrap();
+            // The caller is already responsible for providing valid indexes to us
+            // so `indexing` will always return Some
+            .unwrap_unchecked();
             match source {
                 0 => self.sources.0.get_reference_unchecked_mut(indexes),
                 1 => self.sources.1.get_reference_unchecked_mut(indexes),

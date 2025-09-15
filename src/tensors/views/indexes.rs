@@ -163,9 +163,10 @@ macro_rules! tensor_index_ref_impl {
 
             unsafe fn get_reference_unchecked(&self, indexes: [usize; $d - $i]) -> &T {
                 unsafe {
-                    // TODO: Can we use unwrap_unchecked here?
+                    // The caller is responsible for providing valid indexes so our
+                    // unwrap should never happen
                     self.source
-                        .get_reference_unchecked(self.$helper_name(indexes).unwrap())
+                        .get_reference_unchecked(self.$helper_name(indexes).unwrap_unchecked())
                 }
             }
 
@@ -187,9 +188,10 @@ macro_rules! tensor_index_ref_impl {
 
             unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d - $i]) -> &mut T {
                 unsafe {
-                    // TODO: Can we use unwrap_unchecked here?
+                    // The caller is responsible for providing valid indexes so our
+                    // unwrap should never happen
                     self.source
-                        .get_reference_unchecked_mut(self.$helper_name(indexes).unwrap())
+                        .get_reference_unchecked_mut(self.$helper_name(indexes).unwrap_unchecked())
                 }
             }
         }
@@ -458,9 +460,10 @@ macro_rules! tensor_expansion_ref_impl {
 
             unsafe fn get_reference_unchecked(&self, indexes: [usize; $d + $i]) -> &T {
                 unsafe {
-                    // TODO: Can we use unwrap_unchecked here?
+                    // The caller is responsible for providing valid indexes so our
+                    // unwrap should never happen
                     self.source
-                        .get_reference_unchecked(self.$helper_name(indexes).unwrap())
+                        .get_reference_unchecked(self.$helper_name(indexes).unwrap_unchecked())
                 }
             }
 
@@ -481,9 +484,10 @@ macro_rules! tensor_expansion_ref_impl {
 
             unsafe fn get_reference_unchecked_mut(&mut self, indexes: [usize; $d + $i]) -> &mut T {
                 unsafe {
-                    // TODO: Can we use unwrap_unchecked here?
+                    // The caller is responsible for providing valid indexes so our
+                    // unwrap should never happen
                     self.source
-                        .get_reference_unchecked_mut(self.$helper_name(indexes).unwrap())
+                        .get_reference_unchecked_mut(self.$helper_name(indexes).unwrap_unchecked())
                 }
             }
         }
