@@ -439,9 +439,8 @@ fn range_exceeds_bounds<const D: usize>(
             None => continue,
             Some(range) => {
                 let range_end = range.start + range.length;
-                match range_end > end {
-                    true => return true,
-                    false => (),
+                if range_end > end {
+                    return true
                 };
             }
         }
