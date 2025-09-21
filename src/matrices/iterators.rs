@@ -1274,7 +1274,9 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
             // make illegal any edge cases where some extremely exotic matrix rotates its data
             // inside the buffer around though a shared reference while we were iterating that
             // could otherwise make our cursor read the same data twice.
-            std::mem::transmute(self.matrix.get_reference_unchecked_mut(row, column))
+            std::mem::transmute::<&mut T, &mut T>(
+                self.matrix.get_reference_unchecked_mut(row, column)
+            )
         })
     }
 
@@ -1408,7 +1410,9 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
             // make illegal any edge cases where some extremely exotic matrix rotates its data
             // inside the buffer around through a shared reference while we were iterating that
             // could otherwise make our cursor read the same data twice.
-            std::mem::transmute(self.matrix.get_reference_unchecked_mut(row, column))
+            std::mem::transmute::<&mut T, &mut T>(
+                self.matrix.get_reference_unchecked_mut(row, column)
+            )
         })
     }
 
@@ -1851,7 +1855,11 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
                 // make illegal any edge cases where some extremely exotic matrix rotates its data
                 // inside the buffer around through a shared reference while we were iterating that
                 // could otherwise make our cursor read the same data twice.
-                std::mem::transmute(self.matrix.get_reference_unchecked_mut(i, i))
+                Some(
+                    std::mem::transmute::<&mut T, &mut T>(
+                        self.matrix.get_reference_unchecked_mut(i, i)
+                    )
+                )
             },
         }
     }
@@ -1946,7 +1954,11 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator
                 // make illegal any edge cases where some extremely exotic matrix rotates its data
                 // inside the buffer around through a shared reference while we were iterating that
                 // could otherwise make our cursor read the same data twice.
-                std::mem::transmute(self.matrix.get_reference_unchecked_mut(row, self.column))
+                Some(
+                    std::mem::transmute::<&mut T, &mut T>(
+                        self.matrix.get_reference_unchecked_mut(row, self.column)
+                    )
+                )
             },
         }
     }
@@ -2039,7 +2051,11 @@ impl<'a, T, S: MatrixMut<T> + NoInteriorMutability> Iterator for RowReferenceMut
                 // make illegal any edge cases where some extremely exotic matrix rotates its data
                 // inside the buffer around through a shared reference while we were iterating that
                 // could otherwise make our cursor read the same data twice.
-                std::mem::transmute(self.matrix.get_reference_unchecked_mut(self.row, column))
+                Some(
+                    std::mem::transmute::<&mut T, &mut T>(
+                        self.matrix.get_reference_unchecked_mut(self.row, column)
+                    )
+                )
             },
         }
     }

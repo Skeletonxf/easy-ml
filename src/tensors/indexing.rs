@@ -1398,7 +1398,9 @@ where
                 // mutability and we hold an exclusive reference to our tensor source, it can't
                 // be resized (except by us - and we don't) which ensures ShapeIterator can always
                 // yield valid indexes for our iteration.
-                std::mem::transmute(self.source.get_reference_unchecked_mut(indexes))
+                std::mem::transmute::<&mut T, &mut T>(
+                    self.source.get_reference_unchecked_mut(indexes)
+                )
             }
         })
     }
