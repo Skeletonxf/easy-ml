@@ -1017,12 +1017,20 @@ impl<const D: usize> ExactSizeIterator for DoubleEndedShapeIterator<D> {}
  *     vec![1, 2, 3, 4, 5, 6]
  * );
  * assert_eq!(
+ *     tensor_access_2.iter().rev().collect::<Vec<i32>>(),
+ *     vec![6, 5, 4, 3, 2, 1]
+ * );
+ * assert_eq!(
  *     tensor_access_2_rev.iter().collect::<Vec<i32>>(),
  *     vec![1, 4, 2, 5, 3, 6]
  * );
  * assert_eq!(
  *     tensor_3.iter().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4]
+ * );
+ * assert_eq!(
+ *     tensor_3.iter().rev().collect::<Vec<i32>>(),
+ *     vec![4, 3, 2, 1]
  * );
  * assert_eq!(
  *     tensor_access_3.iter().collect::<Vec<i32>>(),
@@ -1036,7 +1044,7 @@ impl<const D: usize> ExactSizeIterator for DoubleEndedShapeIterator<D> {}
  */
 #[derive(Debug)]
 pub struct TensorIterator<'a, T, S, const D: usize> {
-    shape_iterator: ShapeIterator<D>,
+    shape_iterator: DoubleEndedShapeIterator<D>,
     source: &'a S,
     _type: PhantomData<T>,
 }
@@ -1048,7 +1056,7 @@ where
 {
     pub fn from(source: &S) -> TensorIterator<'_, T, S, D> {
         TensorIterator {
-            shape_iterator: ShapeIterator::from(source.view_shape()),
+            shape_iterator: DoubleEndedShapeIterator::from(source.view_shape()),
             source,
             _type: PhantomData,
         }
@@ -1082,10 +1090,10 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // Safety: ShapeIterator only iterates over the correct indexes into our tensor's shape as
+        // Safety: Our iterator only iterates over the correct indexes into our tensor's shape as
         // defined by TensorRef. Since TensorRef promises no interior mutability and we hold an
         // immutable reference to our tensor source, it can't be resized which ensures
-        // ShapeIterator can always yield valid indexes for our iteration.
+        // DoubleEndedShapeIterator can always yield valid indexes for our iteration.
         self.shape_iterator
             .next()
             .map(|indexes| unsafe { self.source.get_reference_unchecked(indexes) }.clone())
@@ -1093,6 +1101,22 @@ where
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.shape_iterator.size_hint()
+    }
+}
+
+impl<'a, T, S, const D: usize> DoubleEndedIterator for TensorIterator<'a, T, S, D>
+where
+    T: Clone,
+    S: TensorRef<T, D>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        // Safety: Our iterator only iterates over the correct indexes into our tensor's shape as
+        // defined by TensorRef. Since TensorRef promises no interior mutability and we hold an
+        // immutable reference to our tensor source, it can't be resized which ensures
+        // DoubleEndedShapeIterator can always yield valid indexes for our iteration.
+        self.shape_iterator
+            .next_back()
+            .map(|indexes| unsafe { self.source.get_reference_unchecked(indexes) }.clone())
     }
 }
 
@@ -1118,12 +1142,23 @@ where
     type Item = ([usize; D], T);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.iterator.shape_iterator.indexes;
+        let index = self.iterator.shape_iterator.forward_indexes;
         self.iterator.next().map(|x| (index, x))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iterator.size_hint()
+    }
+}
+
+impl<'a, T, S, const D: usize> DoubleEndedIterator for WithIndex<TensorIterator<'a, T, S, D>>
+where
+    T: Clone,
+    S: TensorRef<T, D>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let index = self.iterator.shape_iterator.back_indexes;
+        self.iterator.next_back().map(|x| (index, x))
     }
 }
 
@@ -1198,6 +1233,10 @@ where
  *     vec![1, 2, 3, 4, 5, 6]
  * );
  * assert_eq!(
+ *     tensor_2.iter_reference().rev().cloned().collect::<Vec<i32>>(),
+ *     vec![6, 5, 4, 3, 2, 1]
+ * );
+ * assert_eq!(
  *     tensor_access_2.iter_reference().cloned().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4, 5, 6]
  * );
@@ -1208,6 +1247,10 @@ where
  * assert_eq!(
  *     tensor_3.iter_reference().cloned().collect::<Vec<i32>>(),
  *     vec![1, 2, 3, 4]
+ * );
+ * assert_eq!(
+ *     tensor_3.iter_reference().rev().cloned().collect::<Vec<i32>>(),
+ *     vec![4, 3, 2, 1]
  * );
  * assert_eq!(
  *     tensor_access_3.iter_reference().cloned().collect::<Vec<i32>>(),
@@ -1221,7 +1264,7 @@ where
  */
 #[derive(Debug)]
 pub struct TensorReferenceIterator<'a, T, S, const D: usize> {
-    shape_iterator: ShapeIterator<D>,
+    shape_iterator: DoubleEndedShapeIterator<D>,
     source: &'a S,
     _type: PhantomData<&'a T>,
 }
@@ -1232,7 +1275,7 @@ where
 {
     pub fn from(source: &S) -> TensorReferenceIterator<'_, T, S, D> {
         TensorReferenceIterator {
-            shape_iterator: ShapeIterator::from(source.view_shape()),
+            shape_iterator: DoubleEndedShapeIterator::from(source.view_shape()),
             source,
             _type: PhantomData,
         }
@@ -1264,10 +1307,10 @@ where
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // Safety: ShapeIterator only iterates over the correct indexes into our tensor's shape as
+        // Safety: Our iterator only iterates over the correct indexes into our tensor's shape as
         // defined by TensorRef. Since TensorRef promises no interior mutability and we hold an
         // immutable reference to our tensor source, it can't be resized which ensures
-        // ShapeIterator can always yield valid indexes for our iteration.
+        // DoubleEndedIterator can always yield valid indexes for our iteration.
         self.shape_iterator
             .next()
             .map(|indexes| unsafe { self.source.get_reference_unchecked(indexes) })
@@ -1275,6 +1318,21 @@ where
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.shape_iterator.size_hint()
+    }
+}
+
+impl<'a, T, S, const D: usize> DoubleEndedIterator for TensorReferenceIterator<'a, T, S, D>
+where
+    S: TensorRef<T, D>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        // Safety: Our iterator only iterates over the correct indexes into our tensor's shape as
+        // defined by TensorRef. Since TensorRef promises no interior mutability and we hold an
+        // immutable reference to our tensor source, it can't be resized which ensures
+        // DoubleEndedIterator can always yield valid indexes for our iteration.
+        self.shape_iterator
+            .next_back()
+            .map(|indexes| unsafe { self.source.get_reference_unchecked(indexes) })
     }
 }
 
@@ -1295,12 +1353,22 @@ where
     type Item = ([usize; D], &'a T);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.iterator.shape_iterator.indexes;
+        let index = self.iterator.shape_iterator.forward_indexes;
         self.iterator.next().map(|x| (index, x))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iterator.size_hint()
+    }
+}
+
+impl<'a, T, S, const D: usize> DoubleEndedIterator for WithIndex<TensorReferenceIterator<'a, T, S, D>>
+where
+    S: TensorRef<T, D>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let index = self.iterator.shape_iterator.back_indexes;
+        self.iterator.next_back().map(|x| (index, x))
     }
 }
 
@@ -1344,7 +1412,7 @@ impl<'a, T, S, const D: usize> ExactSizeIterator for WithIndex<TensorReferenceIt
  */
 #[derive(Debug)]
 pub struct TensorReferenceMutIterator<'a, T, S, const D: usize> {
-    shape_iterator: ShapeIterator<D>,
+    shape_iterator: DoubleEndedShapeIterator<D>,
     source: &'a mut S,
     _type: PhantomData<&'a mut T>,
 }
@@ -1355,7 +1423,7 @@ where
 {
     pub fn from(source: &mut S) -> TensorReferenceMutIterator<'_, T, S, D> {
         TensorReferenceMutIterator {
-            shape_iterator: ShapeIterator::from(source.view_shape()),
+            shape_iterator: DoubleEndedShapeIterator::from(source.view_shape()),
             source,
             _type: PhantomData,
         }
@@ -1393,11 +1461,11 @@ where
                 // but since we will always increment the counter on every call to next()
                 // and stop when we reach the end no references will overlap.
                 // The compiler doesn't know this, so transmute the lifetime for it.
-                // Safety: ShapeIterator only iterates over the correct indexes into our
+                // Safety: DoubleEndedShapeIterator only iterates over the correct indexes into our
                 // tensor's shape as defined by TensorRef. Since TensorRef promises no interior
                 // mutability and we hold an exclusive reference to our tensor source, it can't
-                // be resized (except by us - and we don't) which ensures ShapeIterator can always
-                // yield valid indexes for our iteration.
+                // be resized (except by us - and we don't) which ensures DoubleEndedShapeIterator
+                // can always yield valid indexes for our iteration.
                 std::mem::transmute::<&mut T, &mut T>(
                     self.source.get_reference_unchecked_mut(indexes)
                 )
@@ -1407,6 +1475,30 @@ where
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.shape_iterator.size_hint()
+    }
+}
+
+impl<'a, T, S, const D: usize> DoubleEndedIterator for TensorReferenceMutIterator<'a, T, S, D>
+where
+    S: TensorMut<T, D>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.shape_iterator.next_back().map(|indexes| {
+            unsafe {
+                // Safety: We are not allowed to give out overlapping mutable references,
+                // but since we will always increment the counter on every call to next()
+                // and stop when we reach the end no references will overlap.
+                // The compiler doesn't know this, so transmute the lifetime for it.
+                // Safety: Our iterator only iterates over the correct indexes into our
+                // tensor's shape as defined by TensorRef. Since TensorRef promises no interior
+                // mutability and we hold an exclusive reference to our tensor source, it can't
+                // be resized (except by us - and we don't) which ensures DoubleEndedShapeIterator
+                // can always yield valid indexes for our iteration.
+                std::mem::transmute::<&mut T, &mut T>(
+                    self.source.get_reference_unchecked_mut(indexes)
+                )
+            }
+        })
     }
 }
 
@@ -1427,7 +1519,7 @@ where
     type Item = ([usize; D], &'a mut T);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.iterator.shape_iterator.indexes;
+        let index = self.iterator.shape_iterator.forward_indexes;
         self.iterator.next().map(|x| (index, x))
     }
 
@@ -1435,6 +1527,17 @@ where
         self.iterator.size_hint()
     }
 }
+
+impl<'a, T, S, const D: usize> DoubleEndedIterator for WithIndex<TensorReferenceMutIterator<'a, T, S, D>>
+where
+    S: TensorMut<T, D>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let index = self.iterator.shape_iterator.back_indexes;
+        self.iterator.next_back().map(|x| (index, x))
+    }
+}
+
 
 impl<'a, T, S, const D: usize> FusedIterator for WithIndex<TensorReferenceMutIterator<'a, T, S, D>> where
     S: TensorMut<T, D>
@@ -1480,7 +1583,7 @@ where
  */
 #[derive(Debug)]
 pub struct TensorOwnedIterator<T, S, const D: usize> {
-    shape_iterator: ShapeIterator<D>,
+    shape_iterator: DoubleEndedShapeIterator<D>,
     source: S,
     producer: fn() -> T,
 }
@@ -1500,7 +1603,7 @@ where
         T: Default,
     {
         TensorOwnedIterator {
-            shape_iterator: ShapeIterator::from(source.view_shape()),
+            shape_iterator: DoubleEndedShapeIterator::from(source.view_shape()),
             source,
             producer: || T::default(),
         }
@@ -1515,7 +1618,7 @@ where
         T: crate::numeric::ZeroOne,
     {
         TensorOwnedIterator {
-            shape_iterator: ShapeIterator::from(source.view_shape()),
+            shape_iterator: DoubleEndedShapeIterator::from(source.view_shape()),
             source,
             producer: || T::zero(),
         }
@@ -1550,10 +1653,10 @@ where
         self.shape_iterator.next().map(|indexes| {
             let producer = self.producer;
             let dummy = producer();
-            // Safety: ShapeIterator only iterates over the correct indexes into our
+            // Safety: DoubleEndedShapeIterator only iterates over the correct indexes into our
             // tensor's shape as defined by TensorRef. Since TensorRef promises no interior
             // mutability and we hold our tensor source by value, it can't be resized (except by
-            // us - and we don't) which ensures ShapeIterator can always yield valid indexes for
+            // us - and we don't) which ensures it can always yield valid indexes for
             // our iteration.
             std::mem::replace(
                 unsafe { self.source.get_reference_unchecked_mut(indexes) },
@@ -1564,6 +1667,27 @@ where
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.shape_iterator.size_hint()
+    }
+}
+
+impl<T, S, const D: usize> DoubleEndedIterator for TensorOwnedIterator<T, S, D>
+where
+    S: TensorMut<T, D>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.shape_iterator.next_back().map(|indexes| {
+            let producer = self.producer;
+            let dummy = producer();
+            // Safety: DoubleEndedShapeIterator only iterates over the correct indexes into our
+            // tensor's shape as defined by TensorRef. Since TensorRef promises no interior
+            // mutability and we hold our tensor source by value, it can't be resized (except by
+            // us - and we don't) which ensures it can always yield valid indexes for
+            // our iteration.
+            std::mem::replace(
+                unsafe { self.source.get_reference_unchecked_mut(indexes) },
+                dummy,
+            )
+        })
     }
 }
 
@@ -1581,12 +1705,22 @@ where
     type Item = ([usize; D], T);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.iterator.shape_iterator.indexes;
+        let index = self.iterator.shape_iterator.forward_indexes;
         self.iterator.next().map(|x| (index, x))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iterator.size_hint()
+    }
+}
+
+impl<T, S, const D: usize> DoubleEndedIterator for WithIndex<TensorOwnedIterator<T, S, D>>
+where
+    S: TensorMut<T, D>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let index = self.iterator.shape_iterator.back_indexes;
+        self.iterator.next_back().map(|x| (index, x))
     }
 }
 
