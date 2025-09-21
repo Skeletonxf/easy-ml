@@ -148,7 +148,7 @@ pub(crate) fn are_exact_same_list<T: Primitive>(
  * Addition for two records of the same type with both referenced and
  * both using the same WengertList.
  */
-impl<'a, 'l, 'r, T: Numeric + Primitive> Add<&'r Record<'a, T>> for &'l Record<'a, T>
+impl<'a, T: Numeric + Primitive> Add<&Record<'a, T>> for &Record<'a, T>
 where
     for<'t> &'t T: NumericRef<T>,
 {
@@ -341,7 +341,7 @@ record_number_operator_impl_value_reference!(impl Add for Record { fn add });
  * Multiplication for two records of the same type with both referenced and
  * both using the same WengertList.
  */
-impl<'a, 'l, 'r, T: Numeric + Primitive> Mul<&'r Record<'a, T>> for &'l Record<'a, T>
+impl<'a, T: Numeric + Primitive> Mul<&Record<'a, T>> for &Record<'a, T>
 where
     for<'t> &'t T: NumericRef<T>,
 {
@@ -417,7 +417,7 @@ record_number_operator_impl_value_reference!(impl Mul for Record { fn mul });
  * Subtraction for two records of the same type with both referenced and
  * both using the same WengertList.
  */
-impl<'a, 'l, 'r, T: Numeric + Primitive> Sub<&'r Record<'a, T>> for &'l Record<'a, T>
+impl<'a, T: Numeric + Primitive> Sub<&Record<'a, T>> for &Record<'a, T>
 where
     for<'t> &'t T: NumericRef<T>,
 {
@@ -674,7 +674,7 @@ where
  * Dvision for two records of the same type with both referenced and
  * both using the same WengertList.
  */
-impl<'a, 'l, 'r, T: Numeric + Primitive> Div<&'r Record<'a, T>> for &'l Record<'a, T>
+impl<'a, T: Numeric + Primitive> Div<&Record<'a, T>> for &Record<'a, T>
 where
     for<'t> &'t T: NumericRef<T>,
 {
@@ -1053,7 +1053,7 @@ record_real_operator_impl_value!(impl Sqrt for Record { fn sqrt });
  * Power of one Record to another, ie self^rhs for two records of
  * the same type with both referenced and both using the same WengertList.
  */
-impl<'a, 'l, 'r, T: Real + Primitive> Pow<&'r Record<'a, T>> for &'l Record<'a, T>
+impl<'a, T: Real + Primitive> Pow<&Record<'a, T>> for &Record<'a, T>
 where
     for<'t> &'t T: RealRef<T>,
 {

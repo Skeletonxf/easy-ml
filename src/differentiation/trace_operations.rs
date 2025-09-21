@@ -152,7 +152,7 @@ impl<T: Numeric + Primitive> Sum for Trace<T> {
 /**
  * Addition for two traces of the same type with both referenced.
  */
-impl<'l, 'r, T: Numeric + Primitive> Add<&'r Trace<T>> for &'l Trace<T>
+impl<T: Numeric + Primitive> Add<&Trace<T>> for &Trace<T>
 where
     for<'a> &'a T: NumericRef<T>,
 {
@@ -302,7 +302,7 @@ trace_number_operator_impl_value_reference!(impl Add for Trace { fn add });
 /**
  * Multiplication for two referenced traces of the same type.
  */
-impl<'l, 'r, T: Numeric + Primitive> Mul<&'r Trace<T>> for &'l Trace<T>
+impl<T: Numeric + Primitive> Mul<&Trace<T>> for &Trace<T>
 where
     for<'a> &'a T: NumericRef<T>,
 {
@@ -346,7 +346,7 @@ trace_number_operator_impl_value_reference!(impl Mul for Trace { fn mul });
 /**
  * Subtraction for two referenced traces of the same type.
  */
-impl<'l, 'r, T: Numeric + Primitive> Sub<&'r Trace<T>> for &'l Trace<T>
+impl<T: Numeric + Primitive> Sub<&Trace<T>> for &Trace<T>
 where
     for<'a> &'a T: NumericRef<T>,
 {
@@ -388,7 +388,7 @@ trace_number_operator_impl_value_reference!(impl Sub for Trace { fn sub });
 /**
  * Division for two referenced traces of the same type.
  */
-impl<'l, 'r, T: Numeric + Primitive> Div<&'r Trace<T>> for &'l Trace<T>
+impl<T: Numeric + Primitive> Div<&Trace<T>> for &Trace<T>
 where
     for<'a> &'a T: NumericRef<T>,
 {
@@ -586,7 +586,7 @@ trace_real_operator_impl_value!(impl Sqrt for Trace { fn sqrt });
  * Power of one Trace to another, ie self^rhs for two traces of
  * the same type with both referenced.
  */
-impl<'l, 'r, T: Real + Primitive> Pow<&'r Trace<T>> for &'l Trace<T>
+impl<T: Real + Primitive> Pow<&Trace<T>> for &Trace<T>
 where
     for<'a> &'a T: RealRef<T>,
 {

@@ -28,7 +28,7 @@ use crate::matrices::{Column, Matrix, Row};
 /**
  * If some type implements MatrixRef, then a reference to it implements MatrixRef as well
  */
-unsafe impl<'source, T, S> MatrixRef<T> for &'source S
+unsafe impl<T, S> MatrixRef<T> for &S
 where
     S: MatrixRef<T>,
 {
@@ -65,7 +65,7 @@ where
  * since this type promises not to have interior mutability, taking a shared reference can't
  * introduce any.
  */
-unsafe impl<'source, S> NoInteriorMutability for &'source S where S: NoInteriorMutability {}
+unsafe impl<S> NoInteriorMutability for &S where S: NoInteriorMutability {}
 
 // # Safety
 //
@@ -76,7 +76,7 @@ unsafe impl<'source, S> NoInteriorMutability for &'source S where S: NoInteriorM
  * If some type implements MatrixRef, then an exclusive reference to it implements MatrixRef
  * as well
  */
-unsafe impl<'source, T, S> MatrixRef<T> for &'source mut S
+unsafe impl<T, S> MatrixRef<T> for &mut S
 where
     S: MatrixRef<T>,
 {
@@ -110,7 +110,7 @@ where
  * If some type implements MatrixMut, then an exclusive reference to it implements MatrixMut
  * as well
  */
-unsafe impl<'source, T, S> MatrixMut<T> for &'source mut S
+unsafe impl<T, S> MatrixMut<T> for &mut S
 where
     S: MatrixMut<T>,
 {
@@ -135,7 +135,7 @@ where
  * since this type promises not to have interior mutability, taking an exclusive reference can't
  * introduce any.
  */
-unsafe impl<'source, S> NoInteriorMutability for &'source mut S {}
+unsafe impl<S> NoInteriorMutability for &mut S {}
 
 // # Safety
 //

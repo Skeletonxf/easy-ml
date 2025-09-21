@@ -23,7 +23,7 @@ use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
 /**
  * If some type implements TensorRef, then a reference to it implements TensorRef as well
  */
-unsafe impl<'source, T, S, const D: usize> TensorRef<T, D> for &'source S
+unsafe impl<T, S, const D: usize> TensorRef<T, D> for &S
 where
     S: TensorRef<T, D>,
 {
@@ -53,7 +53,7 @@ where
  * If some type implements TensorRef, then an exclusive reference to it implements TensorRef
  * as well
  */
-unsafe impl<'source, T, S, const D: usize> TensorRef<T, D> for &'source mut S
+unsafe impl<T, S, const D: usize> TensorRef<T, D> for &mut S
 where
     S: TensorRef<T, D>,
 {
@@ -83,7 +83,7 @@ where
  * If some type implements TensorMut, then an exclusive reference to it implements TensorMut
  * as well
  */
-unsafe impl<'source, T, S, const D: usize> TensorMut<T, D> for &'source mut S
+unsafe impl<T, S, const D: usize> TensorMut<T, D> for &mut S
 where
     S: TensorMut<T, D>,
 {
