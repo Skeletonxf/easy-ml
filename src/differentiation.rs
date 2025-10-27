@@ -45,12 +45,10 @@
  * to an input. For example, if you have a function f(x, y) = 5x<sup>3</sup> - 4x<sup>2</sup> +
  * 10x - y, then for some actual value of x and y you can compute f(x,y) and δf(x,y)/δx
  * together in one forward pass using forward differentiation. You can also make another pass
- * and compute f(x,y) and δf(x,y)/δy for some actual value of x and y. It is possible to avoid
- * redundantly calculating f(x,y) multiple times, but I am waiting on const generics to implement
- * this. Regardless, forward differentiation requires making at least N+1 passes of the
- * function to compute the derivatives of the output with respect to N inputs - and the current
- * implementation will make 2N. However, you do get the gradients for every output in a
- * single pass. This is poorly suited to neural nets as they often have a single output(loss)
+ * and compute f(x,y) and δf(x,y)/δy for some actual value of x and y. Forward differentiation
+ * in this way requires making 2N passes of the function to compute the derivatives of the output
+ * with respect to N inputs. However, you do get the gradients for every output in a single pass
+ * This is poorly suited to neural nets as they often have a single output(loss)
  * to differentiate many many inputs with respect to.
  *
  * # Reverse Mode Differentiation
@@ -144,6 +142,13 @@ pub struct Trace<T: Primitive> {
     /**
      * The first order derivative of this number.
      */
+    // If we loosen this type from T to a tensor of T of some const-generic
+    // dimensionality then we can calculate higher order derivatives with a single
+    // Trace type.
+    // However, Trace<Trace<f64>> can do such a calculation already for 2nd order
+    // (and so on) and requires far less complexity in the API so this might not
+    // be that worthwhile. Tensor<T, 1> introduces a lot of boxing that might also
+    // hurt first order performance.
     pub derivative: T,
 }
 
