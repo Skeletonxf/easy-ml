@@ -349,17 +349,9 @@ where
         ranges: [Option<IndexRange>; D],
     ) -> Result<TensorRange<T, S, D>, InvalidShapeError<D>> {
         let shape = source.view_shape();
-        let mut ranges = {
-            // TODO: A iterator enumerate call would be much cleaner here but everything
-            // except array::map is not stable yet.
-            let mut d = 0;
-            ranges.map(|option| {
-                // convert None to ranges that select the entire length of the tensor
-                let range = option.unwrap_or_else(|| IndexRange::new(0, shape[d].1));
-                d += 1;
-                range
-            })
-        };
+        let mut ranges = std::array::from_fn(|d| {
+            ranges[d].clone().unwrap_or_else(|| IndexRange::new(0, shape[d].1))
+        });
         let shape = InvalidShapeError {
             shape: clip_range_shape(&shape, &mut ranges),
         };
