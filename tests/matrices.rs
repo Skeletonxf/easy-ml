@@ -470,4 +470,12 @@ mod matrices {
         matrix.transpose_mut();
         assert_eq!(matrix, Matrix::from(vec![vec![1, 3, 5], vec![2, 4, 6]]));
     }
+
+    #[test]
+    fn test_empty_mask() {
+        use easy_ml::matrices::views::{MatrixView, MatrixMask};
+        let matrix = Matrix::diagonal(1.0, (3, 3));
+        let empty_mask = MatrixView::from(MatrixMask::from(&matrix, 1..1, 2..2));
+        assert_eq!(matrix, empty_mask);
+    }
 }

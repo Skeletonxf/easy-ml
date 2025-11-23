@@ -875,4 +875,14 @@ Data Layout = Linear(["a", "b", "c"])"#,
             )
         );
     }
+
+    #[test]
+    fn test_empty_mask() {
+        use easy_ml::tensors::views::TensorMask;
+        let tensor = Tensor::diagonal([("x", 3), ("y", 3)], 1.0);
+        let empty_mask = TensorView::from(
+            TensorMask::from_strict(&tensor, [("x", 1..1), ("y", 2..2)]).unwrap()
+        );
+        assert_eq!(tensor, empty_mask);
+    }
 }
