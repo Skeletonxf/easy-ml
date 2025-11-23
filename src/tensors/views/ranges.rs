@@ -1,7 +1,9 @@
 use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
 use crate::tensors::{Dimension, InvalidDimensionsError, InvalidShapeError};
+use crate::tensors::dimensions;
 use std::error::Error;
 use std::fmt;
+use std::num::NonZeroUsize;
 use std::marker::PhantomData;
 
 pub use crate::matrices::views::IndexRange;
@@ -238,10 +240,10 @@ impl<const D: usize, const P: usize> Error for StrictIndexRangeValidationError<D
     }
 }
 
-fn from_named_to_all<T, S, R, const D: usize, const P: usize>(
+fn from_named_to_all_specific_error<T, S, R, const D: usize, const P: usize>(
     source: &S,
     ranges: [(Dimension, R); P],
-) -> Result<[Option<IndexRange>; D], IndexRangeValidationError<D, P>>
+) -> Result<[Option<IndexRange>; D], InvalidDimensionsError<D, P>>
 where
     S: TensorRef<T, D>,
     R: Into<IndexRange>,
@@ -253,7 +255,7 @@ where
         valid: shape.map(|(d, _)| d),
     };
     if dimensions.has_duplicates() {
-        return Err(IndexRangeValidationError::InvalidDimensions(dimensions));
+        return Err(dimensions);
     }
     // Since we now know there's no duplicates, we can lookup the dimension index for each name
     // in the shape and we know we'll get different indexes on each lookup.
@@ -261,10 +263,22 @@ where
     for (name, range) in ranges.into_iter() {
         match crate::tensors::dimensions::position_of(&shape, name) {
             Some(d) => all_ranges[d] = Some(range),
-            None => return Err(IndexRangeValidationError::InvalidDimensions(dimensions)),
+            None => return Err(dimensions),
         };
     }
     Ok(all_ranges)
+}
+
+fn from_named_to_all<T, S, R, const D: usize, const P: usize>(
+    source: &S,
+    ranges: [(Dimension, R); P],
+) -> Result<[Option<IndexRange>; D], IndexRangeValidationError<D, P>>
+where
+    S: TensorRef<T, D>,
+    R: Into<IndexRange>,
+{
+    from_named_to_all_specific_error(source, ranges)
+        .map_err(|error| IndexRangeValidationError::InvalidDimensions(error))
 }
 
 impl<T, S, const D: usize> TensorRange<T, S, D>
@@ -579,6 +593,67 @@ where
                 IndexRangeValidationError::InvalidShape(invalid_shape),
             )),
         }
+    }
+
+    /**
+     * Creates a TensorMask of this source that retains only the specified
+     * number of elements at both the start and end of the dimension provided.
+     * If twice the provided number of elements for a given dimension exceeds the
+     * number of elements actually in that tensor's dimension, then the entire
+     * dimension is retained in full.
+     *
+     * ```
+     * use std::num::NonZeroUsize;
+     * use easy_ml::tensors::Tensor;
+     * use easy_ml::tensors::views::{TensorView, TensorMask};
+     * let tensor = Tensor::from([("x", 5), ("y", 5)], (0..25).collect());
+     * let start_and_end = TensorView::from(
+     *     TensorMask::start_and_end_of(
+     *         tensor, "x", NonZeroUsize::new(1).unwrap()
+     *     ).unwrap()
+     * );
+     * assert_eq!(
+     *     start_and_end,
+     *     Tensor::from([("x", 2), ("y", 5)], vec![
+     *          0,  1,  2,  3,  4,
+     *         20, 21, 22, 23, 24,
+     *     ])
+     * );
+     * ```
+     */
+    pub fn start_and_end_of(
+        source: S,
+        dimension: Dimension,
+        start_and_end: NonZeroUsize,
+    ) -> Result<TensorMask<T, S, D>, InvalidDimensionsError<D, 1>> {
+        let shape = source.view_shape();
+        let range = match dimensions::length_of(&shape, dimension) {
+            None => return Err(
+                InvalidDimensionsError::new(
+                    [dimension],
+                    dimensions::names_of(&shape)
+                )
+            ),
+            Some(length) => {
+                let x = start_and_end.get();
+                let retain_start = std::cmp::min(x, length - 1);
+                let retain_end = length.saturating_sub(x);
+                let mut range: IndexRange = (retain_start..retain_end).into();
+                range.clip(length - 1);
+                range
+            },
+        };
+        Ok(TensorMask {
+            source,
+            mask: std::array::from_fn(|d| {
+                if shape[d].0 == dimension {
+                    range.clone()
+                } else {
+                    IndexRange::new(0, 0)
+                }
+            }),
+            _type: PhantomData,
+        })
     }
 
     /**
