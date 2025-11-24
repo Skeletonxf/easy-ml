@@ -1125,6 +1125,90 @@ impl<T, const D: usize> Tensor<T, D> {
     }
 
     /**
+     * Returns a TensorView with a mask taken in the provided dimension, hiding
+     * all but the start_and_end number of values at the start and end of the
+     * dimension from view.
+     *
+     * This is a shorthand for constructing the TensorView from this Tensor.
+     *
+     * # Panics
+     *
+     * - If the start_and_end value is 0 - this is not a valid mask as it would
+     * hide all elements
+     * - If the dimension is not in the tensor's shape.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     * let samples = Tensor::from([("batch", 5), ("x", 2), ("y", 2)], (0..20).collect());
+     * let shortlist = samples.start_and_end_of("batch", 1);
+     * assert_eq!(
+     *     shortlist,
+     *     Tensor::from([("batch", 2), ("x", 2), ("y", 2)], vec![
+     *         0, 1,
+     *         2, 3,
+     *
+     *         16, 17,
+     *         18, 19,
+     *     ])
+     * )
+     * ```
+     */
+    #[track_caller]
+    pub fn start_and_end_of(
+        &self,
+        dimension: Dimension,
+        start_and_end: usize,
+    ) -> TensorView<T, TensorMask<T, &Tensor<T, D>, D>, D> {
+        TensorMask::panicking_start_and_end_of(self, dimension, start_and_end)
+    }
+
+    /**
+     * Returns a TensorView with a mask taken in the provided dimension, hiding
+     * all but the start_and_end number of values at the start and end of the
+     * dimension from view. The TensorMask mutably borrows this Tensor, and can
+     * therefore mutate it
+     *
+     * This is a shorthand for constructing the TensorView from this Tensor.
+     *
+     * # Panics
+     *
+     * - If the start_and_end value is 0 - this is not a valid mask as it would
+     * hide all elements
+     * - If the dimension is not in the tensor's shape.
+     */
+    #[track_caller]
+    pub fn start_and_end_of_mut(
+        &mut self,
+        dimension: Dimension,
+        start_and_end: usize,
+    ) -> TensorView<T, TensorMask<T, &mut Tensor<T, D>, D>, D> {
+        TensorMask::panicking_start_and_end_of(self, dimension, start_and_end)
+    }
+
+    /**
+     * Returns a TensorView with a mask taken in the provided dimension, hiding
+     * all but the start_and_end number of values at the start and end of the
+     * dimension from view. The TensorMask takes ownership of this Tensor, and
+     * can therefore mutate it
+     *
+     * This is a shorthand for constructing the TensorView from this Tensor.
+     *
+     * # Panics
+     *
+     * - If the start_and_end value is 0 - this is not a valid mask as it would
+     * hide all elements
+     * - If the dimension is not in the tensor's shape.
+     */
+    #[track_caller]
+    pub fn start_and_end_of_owned(
+        self,
+        dimension: Dimension,
+        start_and_end: usize,
+    ) -> TensorView<T, TensorMask<T, Tensor<T, D>, D>, D> {
+        TensorMask::panicking_start_and_end_of(self, dimension, start_and_end)
+    }
+
+    /**
      * Returns a TensorView with the dimension names provided of the shape reversed in iteration
      * order. The data of this tensor and the dimension lengths remain unchanged.
      *

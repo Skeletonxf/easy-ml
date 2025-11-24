@@ -1,10 +1,10 @@
-use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
-use crate::tensors::{Dimension, InvalidDimensionsError, InvalidShapeError};
 use crate::tensors::dimensions;
+use crate::tensors::views::{DataLayout, TensorMut, TensorRef, TensorView};
+use crate::tensors::{Dimension, InvalidDimensionsError, InvalidShapeError};
 use std::error::Error;
 use std::fmt;
-use std::num::NonZeroUsize;
 use std::marker::PhantomData;
+use std::num::NonZeroUsize;
 
 pub use crate::matrices::views::IndexRange;
 
@@ -364,7 +364,9 @@ where
     ) -> Result<TensorRange<T, S, D>, InvalidShapeError<D>> {
         let shape = source.view_shape();
         let mut ranges = std::array::from_fn(|d| {
-            ranges[d].clone().unwrap_or_else(|| IndexRange::new(0, shape[d].1))
+            ranges[d]
+                .clone()
+                .unwrap_or_else(|| IndexRange::new(0, shape[d].1))
         });
         let shape = InvalidShapeError {
             shape: clip_range_shape(&shape, &mut ranges),
@@ -446,7 +448,7 @@ fn range_exceeds_bounds<const D: usize>(
             Some(range) => {
                 let range_end = range.start + range.length;
                 if range_end > end {
-                    return true
+                    return true;
                 };
             }
         }
@@ -628,12 +630,12 @@ where
     ) -> Result<TensorMask<T, S, D>, InvalidDimensionsError<D, 1>> {
         let shape = source.view_shape();
         let range = match dimensions::length_of(&shape, dimension) {
-            None => return Err(
-                InvalidDimensionsError::new(
+            None => {
+                return Err(InvalidDimensionsError::new(
                     [dimension],
-                    dimensions::names_of(&shape)
-                )
-            ),
+                    dimensions::names_of(&shape),
+                ));
+            }
             Some(length) => {
                 let x = start_and_end.get();
                 let retain_start = std::cmp::min(x, length - 1);
@@ -641,7 +643,7 @@ where
                 let mut range: IndexRange = (retain_start..retain_end).into();
                 range.clip(length - 1);
                 range
-            },
+            }
         };
         Ok(TensorMask {
             source,
@@ -654,6 +656,24 @@ where
             }),
             _type: PhantomData,
         })
+    }
+
+    #[track_caller]
+    pub(crate) fn panicking_start_and_end_of(
+        source: S,
+        dimension: Dimension,
+        start_and_end: usize,
+    ) -> TensorView<T, TensorMask<T, S, D>, D> {
+        match NonZeroUsize::new(start_and_end) {
+            Some(non_zero) => match TensorMask::start_and_end_of(source, dimension, non_zero) {
+                Ok(tensor) => TensorView::from(tensor),
+                Err(error) => panic!(
+                    "Dimension name provided {:?} must be in the set of dimension names in the tensor: {:?}",
+                    dimension, error.valid,
+                ),
+            },
+            None => panic!("start_and_end must be greater than 0"),
+        }
     }
 
     /**
