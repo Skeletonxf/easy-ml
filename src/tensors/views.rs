@@ -1314,7 +1314,7 @@ macro_rules! tensor_view_select_impl {
              * Selects the provided dimension name and index pairs in this TensorView, returning a
              * TensorView which has fewer dimensions than this Tensor, with the removed dimensions
              * always indexed as the provided values. The TensorIndex mutably borrows this
-             * Tensor, and can therefore mutate it
+             * Tensor, and can therefore mutate it if it implements TensorMut.
              *
              * See [select](TensorView::select)
              */
@@ -1330,7 +1330,7 @@ macro_rules! tensor_view_select_impl {
              * Selects the provided dimension name and index pairs in this TensorView, returning a
              * TensorView which has fewer dimensions than this Tensor, with the removed dimensions
              * always indexed as the provided values. The TensorIndex takes ownership of this
-             * Tensor, and can therefore mutate it
+             * Tensor, and can therefore mutate it if it implements TensorMut.
              *
              * See [select](TensorView::select)
              */
@@ -1383,7 +1383,7 @@ macro_rules! tensor_view_expand_impl {
              * Expands the dimensionality of this tensor by adding dimensions of length 1 at
              * a particular position within the shape, returning a TensorView which has more
              * dimensions than this Tensor. The TensorIndex mutably borrows this
-             * Tensor, and can therefore mutate it
+             * Tensor, and can therefore mutate it if it implements TensorMut.
              *
              * See [expand](Tensor::expand)
              */
@@ -1402,7 +1402,7 @@ macro_rules! tensor_view_expand_impl {
              * Expands the dimensionality of this tensor by adding dimensions of length 1 at
              * a particular position within the shape, returning a TensorView which has more
              * dimensions than this Tensor. The TensorIndex takes ownership of this
-             * Tensor, and can therefore mutate it
+             * Tensor, and can therefore mutate it if it implements TensorMut.
              *
              * See [expand](Tensor::expand)
              */

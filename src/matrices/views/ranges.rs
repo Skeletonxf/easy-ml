@@ -2,6 +2,7 @@ use crate::matrices::views::{DataLayout, MatrixMut, MatrixRef, NoInteriorMutabil
 use crate::matrices::{Column, Row};
 
 use std::marker::PhantomData;
+use std::num::NonZeroUsize;
 use std::ops::Range;
 
 /**
@@ -188,6 +189,95 @@ where
             },
             _type: PhantomData,
         }
+    }
+
+    /**
+     * Creates a MatrixMask of this source that retains only the specified
+     * number of elements at both the start and end of the rows.
+     * If twice the provided number of elements for the rows exceeds the
+     * number of rows in the matrix, then all elements are retained. Similarly,
+     * passing None retains all elements.
+     *
+     * ```
+     * use std::num::NonZeroUsize;
+     * use easy_ml::matrices::Matrix;
+     * use easy_ml::matrices::views::{MatrixView, MatrixMask};
+     * let matrix = Matrix::from_flat_row_major((5, 5), (0..25).collect());
+     * let start_and_end = MatrixView::from(
+     *     MatrixMask::start_and_end_of_rows(
+     *         matrix, NonZeroUsize::new(1)
+     *     )
+     * );
+     * assert_eq!(
+     *     start_and_end,
+     *     Matrix::from_flat_row_major((2, 5), vec![
+     *          0,  1,  2,  3,  4,
+     *         20, 21, 22, 23, 24,
+     *     ])
+     * );
+     * ```
+     */
+    pub fn start_and_end_of_rows(source: S, retain: Option<NonZeroUsize>) -> MatrixMask<T, S> {
+        let rows = match retain {
+            None => IndexRange::new(0, 0),
+            Some(x) => {
+                let x = x.get();
+                let length = source.view_rows();
+                let retain_start = std::cmp::min(x, length - 1);
+                let retain_end = length.saturating_sub(x);
+                let mut range: IndexRange = (retain_start..retain_end).into();
+                range.clip(length - 1);
+                range
+            }
+        };
+        let columns = IndexRange::new(0, 0);
+        MatrixMask::from(source, rows, columns)
+    }
+
+    /**
+     * Creates a MatrixMask of this source that retains only the specified
+     * number of elements at both the start and end of the columns.
+     * If twice the provided number of elements for the columns exceeds the
+     * number of columns in the matrix, then all elements are retained. Similarly,
+     * passing None retains all elements.
+     *
+     * ```
+     * use std::num::NonZeroUsize;
+     * use easy_ml::matrices::Matrix;
+     * use easy_ml::matrices::views::{MatrixView, MatrixMask};
+     * let matrix = Matrix::from_flat_row_major((5, 5), (0..25).collect());
+     * let start_and_end = MatrixView::from(
+     *     MatrixMask::start_and_end_of_columns(
+     *         matrix, NonZeroUsize::new(1)
+     *     )
+     * );
+     * assert_eq!(
+     *     start_and_end,
+     *     Matrix::from_flat_row_major((5, 2), vec![
+     *          0,  4,
+     *          5,  9,
+     *         10, 14,
+     *         15, 19,
+     *         20, 24,
+     *     ])
+     * );
+     * ```
+     */
+    pub fn start_and_end_of_columns(source: S, retain: Option<NonZeroUsize>) -> MatrixMask<T, S> {
+        let rows = IndexRange::new(0, 0);
+        let columns = match retain {
+            None => IndexRange::new(0, 0),
+            Some(x) => {
+                let x = x.get();
+                let length = source.view_columns();
+                let retain_start = std::cmp::min(x, length - 1);
+                let retain_end = length.saturating_sub(x);
+                let mut range: IndexRange = (retain_start..retain_end).into();
+                range.clip(length - 1);
+                range
+            }
+        };
+        MatrixMask::from(source, rows, columns)
     }
 
     /**

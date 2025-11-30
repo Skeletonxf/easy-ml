@@ -16,6 +16,7 @@
  */
 
 use std::marker::PhantomData;
+use std::num::NonZeroUsize;
 
 use crate::matrices::iterators::*;
 use crate::matrices::{Column, Matrix, Row};
@@ -380,7 +381,7 @@ where
     /**
      * Returns a MatrixView giving a view of only the data within the row and column
      * [IndexRange]s. The MatrixRange mutably borrows the source, and can therefore
-     * mutate it.
+     * mutate it if it implements MatrixMut.
      *
      * This is a shorthand for constructing the MatrixView from this MatrixView. See
      * [`Matrix::range`](Matrix::range).
@@ -395,7 +396,7 @@ where
     /**
      * Returns a MatrixView giving a view of only the data within the row and column
      * [IndexRange]s. The MatrixRange takes ownership of the source, and
-     * can therefore mutate it
+     * can therefore mutate it if it implements MatrixMut.
      *
      * This is a shorthand for constructing the MatrixView from this MatrixView. See
      * [`Matrix::range`](Matrix::range).
@@ -424,7 +425,7 @@ where
     /**
      * Returns a MatrixView giving a view of only the data outside the row and column
      * [IndexRange]s. The MatrixMask mutably borrows the source, and can therefore
-     * mutate it.
+     * mutate it if it implements MatrixMut.
      *
      * This is a shorthand for constructing the MatrixView from this MatrixView. See
      * [`Matrix::mask`](Matrix::mask).
@@ -439,7 +440,7 @@ where
     /**
      * Returns a MatrixView giving a view of only the data outside the row and column
      * [IndexRange]s. The MatrixMask takes ownership of the source, and
-     * can therefore mutate it
+     * can therefore mutate it if it implements MatrixMut.
      *
      * This is a shorthand for constructing the MatrixView from this MatrixView. See
      * [`Matrix::mask`](Matrix::mask).
@@ -449,6 +450,165 @@ where
         R: Into<IndexRange>,
     {
         MatrixView::from(MatrixMask::from(self.source, rows, columns))
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data within the provided
+     * number of elements to retain at the start and end of the rows in the
+     * matrix.
+     *
+     * This is a shorthand for constructing the MatrixView from this Matrix. See
+     * [`Matrix::start_and_end_of_rows`](Matrix::start_and_end_of_rows).
+     *
+     * # Panics
+     *
+     * - If the number of elements to retain at the start and end are 0
+     */
+    #[track_caller]
+    pub fn start_and_end_of_rows(&self, retain: usize) -> MatrixView<T, MatrixMask<T, &S>> {
+        match NonZeroUsize::new(retain) {
+            None => panic!(
+                "Number of rows to retain at start and end of matrix view must be at least 1, 0 rows retained would remove all elements"
+            ),
+            Some(retain) => MatrixView::from(MatrixMask::start_and_end_of_rows(
+                &self.source,
+                Some(retain),
+            )),
+        }
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data within the provided
+     * number of elements to retain at the start and end of the rows in the
+     * matrix. The MatrixMask mutably borrows the source, and can
+     * therefore mutate it if it implements MatrixMut.
+     *
+     * This is a shorthand for constructing the MatrixView from this Matrix. See
+     * [`Matrix::start_and_end_of_rows`](Matrix::start_and_end_of_rows).
+     *
+     * # Panics
+     *
+     * - If the number of elements to retain at the start and end are 0
+     */
+    #[track_caller]
+    pub fn start_and_end_of_rows_mut(
+        &mut self,
+        retain: usize,
+    ) -> MatrixView<T, MatrixMask<T, &mut S>> {
+        match NonZeroUsize::new(retain) {
+            None => panic!(
+                "Number of rows to retain at start and end of matrix view must be at least 1, 0 rows retained would remove all elements"
+            ),
+            Some(retain) => MatrixView::from(MatrixMask::start_and_end_of_rows(
+                &mut self.source,
+                Some(retain),
+            )),
+        }
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data within the provided
+     * number of elements to retain at the start and end of the rows in the
+     * matrix. The MatrixMask takes ownership of the source, and
+     * can therefore mutate it if it implements MatrixMut.
+     *
+     * This is a shorthand for constructing the MatrixView from this Matrix. See
+     * [`Matrix::start_and_end_of_rows`](Matrix::start_and_end_of_rows).
+     *
+     * # Panics
+     *
+     * - If the number of elements to retain at the start and end are 0
+     */
+    #[track_caller]
+    pub fn start_and_end_of_rows_owned(self, retain: usize) -> MatrixView<T, MatrixMask<T, S>> {
+        match NonZeroUsize::new(retain) {
+            None => panic!(
+                "Number of rows to retain at start and end of matrix view must be at least 1, 0 rows retained would remove all elements"
+            ),
+            Some(retain) => {
+                MatrixView::from(MatrixMask::start_and_end_of_rows(self.source, Some(retain)))
+            }
+        }
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data within the provided
+     * number of elements to retain at the start and end of the columns in the
+     * matrix.
+     *
+     * This is a shorthand for constructing the MatrixView from this Matrix. See
+     * [`Matrix::start_and_end_of_columns`](Matrix::start_and_end_of_columns).
+     *
+     * # Panics
+     *
+     * - If the number of elements to retain at the start and end are 0
+     */
+    #[track_caller]
+    pub fn start_and_end_of_columns(&self, retain: usize) -> MatrixView<T, MatrixMask<T, &S>> {
+        match NonZeroUsize::new(retain) {
+            None => panic!(
+                "Number of columns to retain at start and end of matrix view must be at least 1, 0 columns retained would remove all elements"
+            ),
+            Some(retain) => MatrixView::from(MatrixMask::start_and_end_of_columns(
+                &self.source,
+                Some(retain),
+            )),
+        }
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data within the provided
+     * number of elements to retain at the start and end of the columns in the
+     * matrix. The MatrixMask mutably borrows the source, and can
+     * therefore mutate it if it implements MatrixMut.
+     *
+     * This is a shorthand for constructing the MatrixView from this Matrix. See
+     * [`Matrix::start_and_end_of_columns`](Matrix::start_and_end_of_columns).
+     *
+     * # Panics
+     *
+     * - If the number of elements to retain at the start and end are 0
+     */
+    #[track_caller]
+    pub fn start_and_end_of_columns_mut(
+        &mut self,
+        retain: usize,
+    ) -> MatrixView<T, MatrixMask<T, &mut S>> {
+        match NonZeroUsize::new(retain) {
+            None => panic!(
+                "Number of columns to retain at start and end of matrix view must be at least 1, 0 columns retained would remove all elements"
+            ),
+            Some(retain) => MatrixView::from(MatrixMask::start_and_end_of_columns(
+                &mut self.source,
+                Some(retain),
+            )),
+        }
+    }
+
+    /**
+     * Returns a MatrixView giving a view of only the data within the provided
+     * number of elements to retain at the start and end of the columns in the
+     * matrix. The MatrixMask takes ownership of the source, and
+     * can therefore mutate it if it implements MatrixMut.
+     *
+     * This is a shorthand for constructing the MatrixView from this Matrix. See
+     * [`Matrix::start_and_end_of_columns`](Matrix::start_and_end_of_columns).
+     *
+     * # Panics
+     *
+     * - If the number of elements to retain at the start and end are 0
+     */
+    #[track_caller]
+    pub fn start_and_end_of_columns_owned(self, retain: usize) -> MatrixView<T, MatrixMask<T, S>> {
+        match NonZeroUsize::new(retain) {
+            None => panic!(
+                "Number of columns to retain at start and end of matrix view must be at least 1, 0 columns retained would remove all elements"
+            ),
+            Some(retain) => MatrixView::from(MatrixMask::start_and_end_of_columns(
+                self.source,
+                Some(retain),
+            )),
+        }
     }
 
     /**
@@ -465,7 +625,7 @@ where
     /**
      * Returns a MatrixView with the rows and columns specified reversed in iteration
      * order. The data of this matrix and the dimension lengths remain unchanged. The MatrixReverse
-     * mutably borrows the source, and can therefore mutate it
+     * mutably borrows the source, and can therefore mutate it if it implements MatrixMut.
      *
      * This is a shorthand for constructing the MatrixView from this MatrixView. See
      * [`Matrix::reverse`](Matrix::reverse).
@@ -477,7 +637,7 @@ where
     /**
      * Returns a MatrixView with the rows and columns specified reversed in iteration
      * order. The data of this matrix and the dimension lengths remain unchanged. The MatrixReverse
-     * takes ownership of the source, and can therefore mutate it
+     * takes ownership of the source, and can therefore mutate it if it implements MatrixMut.
      *
      * This is a shorthand for constructing the MatrixView from this MatrixView. See
      * [`Matrix::reverse`](Matrix::reverse).
