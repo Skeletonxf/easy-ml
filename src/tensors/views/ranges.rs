@@ -604,6 +604,8 @@ where
      * number of elements actually in that tensor's dimension, then the entire
      * dimension is retained in full.
      *
+     * Returns the Err variant if the dimension is not in the source.
+     *
      * ```
      * use std::num::NonZeroUsize;
      * use easy_ml::tensors::Tensor;
