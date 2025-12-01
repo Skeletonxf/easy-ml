@@ -704,7 +704,7 @@ where
         &mut self,
         dimension: Dimension,
         start_and_end: usize,
-    ) -> TensorView<T, TensorMask<T, &S, D>, D> {
+    ) -> TensorView<T, TensorMask<T, &mut S, D>, D> {
         TensorMask::panicking_start_and_end_of(&mut self.source, dimension, start_and_end)
     }
 
