@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 2.1
+
+Version 2.1 adds doubled ended iterator implementations for several tensor
+iterators, new `start_and_end_of` APIs for matrices and tensors to create
+views of just the start and end of the data, and removes some unnecessary
+bounds checking in internal implementations of some unsafe tensor methods
+where the caller was already required to provide input within valid bounds.
+
 ## Version 2.0
 
 Version 2.0 contains multiple breaking changes, see the MIGRATION document

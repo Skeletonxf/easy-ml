@@ -4,7 +4,7 @@ A completely deterministic machine learning library providing matrices, named te
 
 ## Usage
 
-Add `easy-ml = "2.0"` to your `[dependencies]`<sup>1</sup>.
+Add `easy-ml = "2.1"` to your `[dependencies]`<sup>1</sup>.
 
 ## Overview
 This is a pure Rust library which makes heavy use of passing closures, iterators, generic types, and other rust idioms that machine learning libraries which wrap around another language backend could never provide easily. This library tries to provide adequate documentation to explain what the functions compute, what the computations mean, and examples of tasks you might want to do with this library:
@@ -34,4 +34,4 @@ Where as other machine learning libraries often create objects/structs to repres
 
 *****
 
-1 - If you need to freeze your rust compiler version you should specify a minor version with a [tilde requirement](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#tilde-requirements) such as `easy-ml = "~2.0"`. Easy ML will not introduce breaking API changes between minor versions, but does follow the latest stable version of rust, and thus may introduce dependencies on newer language features (eg const generics) in minor version updates.
+1 - If you need to freeze your rust compiler version you should specify a minor version with a [tilde requirement](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#tilde-requirements) such as `easy-ml = "~2.1"`. Easy ML will not introduce breaking API changes between minor versions, but does follow the latest stable version of rust, and thus may introduce dependencies on newer language features (eg const generics) in minor version updates.
