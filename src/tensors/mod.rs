@@ -1922,7 +1922,7 @@ mod serde_impls {
      * Deserialised data for a Tensor. Can be converted into a Tensor by providing `&'static str`
      * dimension names.
      */
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Debug)]
     #[serde(rename = "Tensor")]
     pub struct TensorDeserialize<'a, T, const D: usize> {
         data: Vec<T>,
@@ -2023,6 +2023,31 @@ shape = [["rows", 4], ["columns", 4]]
     assert!(parsed.is_ok());
     let result = parsed.unwrap().into_tensor(["rows", "columns"]);
     assert!(result.is_err());
+}
+
+#[cfg(feature = "serde")]
+#[cfg(test)]
+const TENSOR_DATA: &'static str = r#"data = [12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+shape = [["rows", 3], ["columns", 4]]
+"#;
+
+#[cfg(feature = "serde")]
+#[test]
+fn test_deserialization_static_data() {
+    #[rustfmt::skip]
+    let tensor = Tensor::from(
+        [("rows", 3), ("columns", 4)],
+        vec![
+            12, 11, 10, 9,
+            8,   7,  6,  5,
+            4,   3,  2, 1,
+        ],
+    );
+    let parsed: Result<TensorDeserialize<i32, 2>, _> = toml::from_str(TENSOR_DATA);
+    assert!(parsed.is_ok());
+    let result: Result<Tensor<i32, 2>, _> = parsed.unwrap().try_into();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), tensor);
 }
 
 macro_rules! tensor_select_impl {
