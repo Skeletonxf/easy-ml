@@ -30,7 +30,7 @@ pub mod operations;
 pub mod views;
 
 #[cfg(feature = "serde")]
-pub use serde_impls::TensorDeserialize;
+pub use serde_impls::{TensorDeserialize, TensorDeserializeOwned};
 
 /**
  * Dimension names are represented as static string references.
@@ -1919,8 +1919,16 @@ mod serde_impls {
     use std::convert::TryFrom;
 
     /**
-     * Deserialised data for a Tensor. Can be converted into a Tensor by providing `&'static str`
-     * dimension names.
+     * Deserialized data for a Tensor. Can be converted into a Tensor by
+     * providing `&'static str` dimension names.
+     *
+     * This struct borrows the string references, so will not be supported
+     * by any serde library that doesn't support deserializing to borrowed types.
+     * However, if used with a serde library that can deserialize to borrowed
+     * types, you could create a TensorDeserialize with a static lifetime by
+     * using a static input, and then it will be possible to convert to a
+     * Tensor using the [TryFrom](TryFrom) implementation without providing
+     * dimension names to use via [into_tensor](TensorDeserialize::into_tensor).
      */
     #[derive(Deserialize, Debug)]
     #[serde(rename = "Tensor")]
@@ -1931,10 +1939,50 @@ mod serde_impls {
         shape: [(&'a str, usize); D],
     }
 
+    /**
+     * Deserialized data for a Tensor. Can be converted into a Tensor by providing
+     * `&'static str` dimension names.
+     *
+     * This struct owns the string references, so can be parsed by serde
+     * libraries that don't support deserializing to borrowed types. However,
+     * we can't convert from `String` to `&'static str` without leaking, so
+     * there is no TryFrom implementation to convert to a Tensor, and
+     * instead new static dimension names must always be provided via
+     * [into_tensor](TensorDeserializeOwned::into_tensor).
+     */
+    #[derive(Deserialize, Debug)]
+    #[serde(rename = "Tensor")]
+    pub struct TensorDeserializeOwned<T, const D: usize> {
+        data: Vec<T>,
+        #[serde(with = "serde_arrays")]
+        shape: [(String, usize); D],
+    }
+
     impl<'a, T, const D: usize> TensorDeserialize<'a, T, D> {
         /**
          * Converts this deserialised Tensor data to a Tensor, using the provided `&'static str`
          * dimension names in place of what was serialised (which wouldn't necessarily live
+         * long enough).
+         */
+        pub fn into_tensor(
+            self,
+            dimensions: [Dimension; D],
+        ) -> Result<Tensor<T, D>, InvalidShapeError<D>> {
+            let shape = std::array::from_fn(|d| (dimensions[d], self.shape[d].1));
+            // Safety: Use the normal constructor that performs validation to prevent invalid
+            // serialized data being created as a Tensor, which would then break all the
+            // code that's relying on these invariants.
+            // By never serialising the strides in the first place, we reduce the possibility
+            // of creating invalid serialised represenations at the slight increase in
+            // serialisation work.
+            Tensor::try_from(shape, self.data)
+        }
+    }
+
+    impl<T, const D: usize> TensorDeserializeOwned<T, D> {
+        /**
+         * Converts this deserialised Tensor data to a Tensor, using the provided `&'static str`
+         * dimension names in place of what was serialised (which wouldn't live
          * long enough).
          */
         pub fn into_tensor(
@@ -1988,7 +2036,7 @@ fn test_deserialize() {
 
 #[cfg(feature = "serde")]
 #[test]
-fn test_serialization_deserialization_loop() {
+fn test_serialization_deserialization_loop_toml() {
     #[rustfmt::skip]
     let tensor = Tensor::from(
         [("rows", 3), ("columns", 4)],
@@ -2005,7 +2053,31 @@ fn test_serialization_deserialization_loop() {
 shape = [["rows", 3], ["columns", 4]]
 "#,
     );
-    let parsed: Result<TensorDeserialize<i32, 2>, _> = toml::from_str(&encoded);
+    let parsed: Result<TensorDeserializeOwned<i32, 2>, _> = toml::from_str(&encoded);
+    assert!(parsed.is_ok());
+    let result = parsed.unwrap().into_tensor(["rows", "columns"]);
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), tensor);
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn test_serialization_deserialization_loop_json() {
+    #[rustfmt::skip]
+    let tensor = Tensor::from(
+        [("rows", 3), ("columns", 4)],
+        vec![
+            1,  2,  3,  4,
+            5,  6,  7,  8,
+            9, 10, 11, 12
+        ],
+    );
+    let encoded = serde_json::ser::to_string(&tensor).unwrap();
+    assert_eq!(
+        encoded,
+        r#"{"data":[1,2,3,4,5,6,7,8,9,10,11,12],"shape":[["rows",3],["columns",4]]}"#,
+    );
+    let parsed: Result<TensorDeserialize<i32, 2>, _> = serde_json::de::from_str(&encoded);
     assert!(parsed.is_ok());
     let result = parsed.unwrap().into_tensor(["rows", "columns"]);
     assert!(result.is_ok());
@@ -2015,7 +2087,7 @@ shape = [["rows", 3], ["columns", 4]]
 #[cfg(feature = "serde")]
 #[test]
 fn test_deserialization_validation() {
-    let parsed: Result<TensorDeserialize<i32, 2>, _> = toml::from_str(
+    let parsed: Result<TensorDeserializeOwned<i32, 2>, _> = toml::from_str(
         r#"data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 shape = [["rows", 4], ["columns", 4]]
 "#,
@@ -2027,8 +2099,11 @@ shape = [["rows", 4], ["columns", 4]]
 
 #[cfg(feature = "serde")]
 #[cfg(test)]
-const TENSOR_DATA: &'static str = r#"data = [12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
-shape = [["rows", 3], ["columns", 4]]
+const TENSOR_DATA: &'static str = r#"
+{
+    "data": [12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+    "shape": [["rows", 3], ["columns", 4]]
+}
 "#;
 
 #[cfg(feature = "serde")]
@@ -2043,7 +2118,10 @@ fn test_deserialization_static_data() {
             4,   3,  2, 1,
         ],
     );
-    let parsed: Result<TensorDeserialize<i32, 2>, _> = toml::from_str(TENSOR_DATA);
+    // To test TensorDeserialize we can't use toml because later
+    // versions don't support parsing borrowed data, so we use
+    // serde_json instead
+    let parsed: Result<TensorDeserialize<i32, 2>, _> = serde_json::de::from_str(TENSOR_DATA);
     assert!(parsed.is_ok());
     let result: Result<Tensor<i32, 2>, _> = parsed.unwrap().try_into();
     assert!(result.is_ok());
