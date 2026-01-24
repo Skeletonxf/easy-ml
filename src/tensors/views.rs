@@ -245,7 +245,7 @@ pub unsafe trait TensorMut<T, const D: usize>: TensorRef<T, D> {
 }
 
 /**
- * A view into some or all of a tensor.
+ * A view into some or all of a tensor, closely mirroring the [Tensor] API.
  *
  * A TensorView has a similar relationship to a [`Tensor`] as a `&str` has to a `String`, or an
  * array slice to an array. A TensorView cannot resize its source, and may span only a portion

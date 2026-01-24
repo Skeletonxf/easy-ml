@@ -14,6 +14,9 @@ use std::marker::PhantomData;
  * that all the tensors are the same type so you may need to box and erase the types to
  * `Box<dyn TensorRef<T, D>>`.
  *
+ * If you want to combine two or more tensors along an *existing* dimension see
+ * [TensorChain](TensorChain).
+ *
  * ```
  * use easy_ml::tensors::Tensor;
  * use easy_ml::tensors::views::{TensorView, TensorStack, TensorRef};
@@ -801,6 +804,9 @@ fn test_stacking() {
  * than four tensors together, you can stack any number with the `[S; N]` implementation, though
  * note this requires that all the tensors are the same type so you may need to box and erase
  * the types to `Box<dyn TensorRef<T, D>>`.
+ *
+ * If you want to combine two or more tensors along an *new* dimension see
+ * [TensorStack](TensorStack).
  *
  * ```
  * use easy_ml::tensors::Tensor;
