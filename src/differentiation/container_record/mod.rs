@@ -1086,6 +1086,16 @@ where
     }
 
     /**
+     * Returns a new Tensor of the same shape as this RecordContainer by
+     * applying a function to every element from the Record to the Record's number
+     * type. For example, you could lookup the derivatives of each Record in
+     * the container with respect to some input.
+     */
+    pub fn map_to_tensor(&self, fx: impl Fn(Record<'a, T>) -> T) -> Tensor<T, D> {
+        Tensor::from(self.shape(), self.iter_as_records().map(fx).collect())
+    }
+
+    /**
      * Creates a new RecordContainer from a reference to an existing RecordContainer by applying
      * some unary function on `Record<T>` and each index of that position in the Record to
      * `Record<T>` to every element in the container. This will fail if the function would create
@@ -1977,6 +1987,19 @@ where
     ) -> Result<RecordMatrix<'a, T, Matrix<(T, Index)>>, InconsistentHistory<'a, T>> {
         let result = RecordMatrix::from_iter(self.size(), self.iter_row_major_as_records().map(fx));
         RecordMatrix::<'a, T, S>::map_collection(result, self.size())
+    }
+
+    /**
+     * Returns a new Matrix of the same shape as this RecordContainer by
+     * applying a function to every element from the Record to the Record's number
+     * type. For example, you could lookup the derivatives of each Record in
+     * the container with respect to some input.
+     */
+    pub fn map_to_matrix(&self, fx: impl Fn(Record<'a, T>) -> T) -> Matrix<T> {
+        Matrix::from_flat_row_major(
+            self.size(),
+            self.iter_row_major_as_records().map(fx).collect(),
+        )
     }
 
     /**
