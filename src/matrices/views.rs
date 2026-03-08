@@ -281,11 +281,11 @@ where
         match self.source.try_get_reference(row, column) {
             Some(reference) => reference,
             None => panic!(
-                "Index ({},{}) not in range, MatrixView range is (0,0) to ({},{}).",
+                "Index ({},{}) not in range, a valid index for MatrixView range is (0,0) to ({},{}).",
                 row,
                 column,
-                self.rows(),
-                self.columns()
+                self.rows() - 1,
+                self.columns() - 1,
             ),
         }
     }
@@ -668,11 +668,11 @@ where
         match self.source.try_get_reference(row, column) {
             Some(reference) => reference.clone(),
             None => panic!(
-                "Index ({},{}) not in range, MatrixView range is (0,0) to ({},{}).",
+                "Index ({},{}) not in range, a valid index for MatrixView range is (0,0) to ({},{}).",
                 row,
                 column,
-                self.rows(),
-                self.columns()
+                self.rows() - 1,
+                self.columns() - 1,
             ),
         }
     }
@@ -882,8 +882,11 @@ where
         match self.source.try_get_reference_mut(row, column) {
             Some(reference) => reference,
             None => panic!(
-                "Index ({},{}) not in range, MatrixView range is (0,0) to ({},{}).",
-                row, column, size.0, size.1
+                "Index ({},{}) not in range, a valid index for MatrixView range is (0,0) to ({},{}).",
+                row,
+                column,
+                size.0 - 1,
+                size.1 - 1,
             ),
         }
     }
@@ -900,11 +903,11 @@ where
         match self.source.try_get_reference_mut(row, column) {
             Some(reference) => *reference = value,
             None => panic!(
-                "Index ({},{}) not in range, MatrixView range is (0,0) to ({},{}).",
+                "Index ({},{}) not in range, a valid index for MatrixView range is (0,0) to ({},{}).",
                 row,
                 column,
-                self.rows(),
-                self.columns()
+                self.rows() - 1,
+                self.columns() - 1,
             ),
         }
     }
@@ -1073,8 +1076,8 @@ where
             let value = match view.try_get_reference(row, column) {
                 Some(x) => x,
                 None => panic!(
-                    "Expected ({},{}) to be in range of (0,0) to ({},{})",
-                    row, column, rows, columns
+                    "Expected ({},{}) to be a valid index in range of (0,0) to ({},{})",
+                    row, column, rows - 1, columns - 1
                 ),
             };
             match f.precision() {
