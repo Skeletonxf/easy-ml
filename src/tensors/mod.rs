@@ -25,6 +25,7 @@ use serde::Serialize;
 
 pub mod dimensions;
 mod display;
+pub mod einsum;
 pub mod indexing;
 pub mod operations;
 pub mod views;

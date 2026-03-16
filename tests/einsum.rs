@@ -64,7 +64,7 @@ mod einsum {
 
     #[test]
     fn dot_product() {
-        // a,a-> for x
+        // a,a-> for x, x
         let x = Tensor::from_fn([("a", 3)], |[a]| a as f32);
         let dot_product = x.scalar_product(&x);
     }
