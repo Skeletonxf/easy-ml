@@ -4,9 +4,9 @@
  * TODO docs
  */
 
- use crate::numeric::{Numeric, NumericRef};
- use crate::tensors::views::{TensorRename, TensorRef, TensorView};
- use crate::tensors::{Dimension, Tensor};
+use crate::numeric::{Numeric, NumericRef};
+use crate::tensors::views::{TensorRename, TensorRef, TensorView};
+use crate::tensors::{Dimension, Tensor};
 
 struct Einsum {
     // TODO
@@ -24,15 +24,58 @@ struct Einsum {
     // only take char for dimension names too then.
 }
 
-struct InconsistentDimensionLength {
-    // TODO
+impl Einsum {
+    /**
+     * Returns an Einsum that will naively calculate the notation
+     * without introducing any substeps.
+     */
+    fn naive() -> Self {
+        Einsum {}
+    }
+
+    /**
+     * Returns the default Einsum optimisation (currently naive).
+     */
+    fn default() -> Self {
+        Einsum {}
+    }
+
+    fn with_1<T, S, I, const D: usize>(
+        input_1: I,
+    ) -> Einsum1<T, S, D>
+    where
+        S: TensorRef<T, D>,
+        I: Into<TensorView<T, S, D>>,
+    {
+        Einsum1 { tensor_1: input_1.into() }
+    }
+
+    fn with_2<T, S1, S2, I1, I2, const D1: usize, const D2: usize>(
+        input_1: I1,
+        input_2: I2,
+    ) -> Einsum2<T, S1, S2, D1, D2>
+    where
+        S1: TensorRef<T, D1>,
+        S2: TensorRef<T, D2>,
+        I1: Into<TensorView<T, S1, D1>>,
+        I2: Into<TensorView<T, S2, D2>>,
+    {
+        Einsum2 { tensor_1: input_1.into(), tensor_2: input_2.into() }
+    }
 }
 
-// Return length of matching dimension in inputs, and error if the length of
-// this output dimension is inconsistent in the input.
+struct InconsistentDimensionLength {
+    // TODO
+    // Probably need to store array or vec of the 0 or more input lengths
+    // for this dimension name and Display impl explaining that we needed
+    // at least 1 and for them to agree
+}
+
+/// Return length of matching dimension in inputs, and error if the length of
+/// this output dimension is inconsistent in the input.
 fn length_of(
     output_dimension: Dimension,
-    inputs: &[&[(Dimension, usize)]]
+    input: &[&[(Dimension, usize)]]
 ) -> Result<usize, InconsistentDimensionLength> {
     unimplemented!()
 }
@@ -50,86 +93,99 @@ where
     TensorView::from(with_names)
 }
 
-impl Einsum {
-    fn of_1_with<T, S, I, const D: usize, const O: usize>(
-        dimensions: ([Dimension; D],),
-        output: [Dimension; O],
-        tensors: (I,),
-    ) -> Result<Tensor<T, O>, InconsistentDimensionLength>
-    where
-        T: Numeric,
-        for<'a> &'a T: NumericRef<T>,
-        I: Into<TensorView<T, S, D>>,
-        S: TensorRef<T, D>,
-    {
-        let input = (tensor_with_name(dimensions.0, tensors.0),);
-        Einsum::of_1::<T, _, _, D, O>(input, output)
+/// Return required output shape given input shape sizes and output shape
+/// dimension names. This can fail if a dimension in the requested output
+/// shape isn't present in the input, or if the input has contradictory sizes
+/// for it.
+// TODO: Can we validate the input dimension lengths are consistent sizes
+// at the point that we provide the input tensors instead of delaying to
+// here?
+fn output_shape_for<const I: usize, const O: usize>(
+    input: &[&[(Dimension, usize)]; I],
+    output: [Dimension; O],
+) -> Result<[(Dimension, usize); O], InconsistentDimensionLength> {
+    let mut output_shape = std::array::from_fn(|d| (output[d], 0));
+    for d in 0..O {
+        output_shape[d].1 = length_of(output_shape[d].0, input)?;
     }
+    Ok(output_shape)
+}
 
-    fn of_1<T, S, I, const D: usize, const O: usize>(
-        input: (I,),
-        output: [Dimension; O],
-    ) -> Result<Tensor<T, O>, InconsistentDimensionLength>
+struct Einsum1<T, S1, const D1: usize> {
+    tensor_1: TensorView<T, S1, D1>,
+}
+
+struct Einsum2<T, S1, S2, const D1: usize, const D2: usize> {
+    tensor_1: TensorView<T, S1, D1>,
+    tensor_2: TensorView<T, S2, D2>,
+}
+
+impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
+    fn named(self, input_1: [Dimension; D1]) -> Einsum1<T, TensorRename<T, S1, D1>, D1>
     where
-        T: Numeric,
-        for<'a> &'a T: NumericRef<T>,
-        I: Into<TensorView<T, S, D>>,
-        S: TensorRef<T, D>,
-    {
-        let first = input.0.into();
-        let first_shape: &[(Dimension, usize)] = &first.shape();
-        let input_shapes = &[first_shape];
-        let mut output_shape = std::array::from_fn(|d| (output[d], 0));
-        for d in 0..O {
-            output_shape[d].1 = length_of(output_shape[d].0, input_shapes)?;
-        }
-
-        Ok(Tensor::empty(output_shape, T::zero()))
-    }
-
-    // TODO: Will need to generalise into macro somehow because realistically need to go to
-    // at least 6 tensor inputs
-    // Also ideally want a way to go higher with type erasure but not sure we
-    // actually can type erase the const generics for the dimensionality?
-    fn of_2_with<T, S1, S2, I1, I2, const D1: usize, const D2: usize, const O: usize>(
-        dimensions: ([Dimension; D1], [Dimension; D2]),
-        output: [Dimension; O],
-        tensors: (I1, I2),
-    ) -> Result<Tensor<T, O>, InconsistentDimensionLength>
-    where
-        T: Numeric,
-        for<'a> &'a T: NumericRef<T>,
-        I1: Into<TensorView<T, S1, D1>>,
-        I2: Into<TensorView<T, S2, D2>>,
         S1: TensorRef<T, D1>,
-        S2: TensorRef<T, D2>,
     {
-        let input = (tensor_with_name(dimensions.0, tensors.0), tensor_with_name(dimensions.1, tensors.1));
-        Einsum::of_2::<T, _, _, _, _, D1, D2, O>(input, output)
+        Einsum1 {
+            tensor_1: tensor_with_name(input_1, self.tensor_1)
+        }
     }
 
-    fn of_2<T, S1, S2, I1, I2, const D1: usize, const D2: usize, const O: usize>(
-        input: (I1, I2),
+    fn to<const O: usize>(
+        self,
         output: [Dimension; O],
     ) -> Result<Tensor<T, O>, InconsistentDimensionLength>
     where
         T: Numeric,
         for<'a> &'a T: NumericRef<T>,
-        I1: Into<TensorView<T, S1, D1>>,
-        I2: Into<TensorView<T, S2, D2>>,
         S1: TensorRef<T, D1>,
-        S2: TensorRef<T, D2>,
     {
-        let first = input.0.into();
-        let second = input.1.into();
-        let first_shape: &[(Dimension, usize)] = &first.shape();
-        let second_shape: &[(Dimension, usize)] = &second.shape();
-        let input_shapes = &[first_shape, second_shape];
-        let mut output_shape = std::array::from_fn(|d| (output[d], 0));
-        for d in 0..O {
-            output_shape[d].1 = length_of(output_shape[d].0, input_shapes)?;
-        }
-
+        let input_1_shape: &[(Dimension, usize)] = &self.tensor_1.shape();
+        let output_shape = output_shape_for(&[input_1_shape], output)?;
         Ok(Tensor::empty(output_shape, T::zero()))
     }
 }
+
+impl<T, S1, S2, const D1: usize, const D2: usize> Einsum2<T, S1, S2, D1, D2> {
+    fn named(
+        self,
+        input_1: [Dimension; D1],
+        input_2: [Dimension; D2],
+    ) -> Einsum2<T, TensorRename<T, S1, D1>, TensorRename<T, S2, D2>, D1, D2>
+    where
+        S1: TensorRef<T, D1>,
+        S2: TensorRef<T, D2>,
+    {
+        Einsum2 {
+            tensor_1: tensor_with_name(input_1, self.tensor_1),
+            tensor_2: tensor_with_name(input_2, self.tensor_2),
+        }
+    }
+
+    fn to<const O: usize>(
+        self,
+        output: [Dimension; O],
+    ) -> Result<Tensor<T, O>, InconsistentDimensionLength>
+    where
+        T: Numeric,
+        for<'a> &'a T: NumericRef<T>,
+        S1: TensorRef<T, D1>,
+        S2: TensorRef<T, D2>,
+    {
+        let input_1_shape: &[(Dimension, usize)] = &self.tensor_1.shape();
+        let input_2_shape: &[(Dimension, usize)] = &self.tensor_2.shape();
+        let output_shape = output_shape_for(&[input_1_shape, input_2_shape], output)?;
+        Ok(Tensor::empty(output_shape, T::zero()))
+    }
+}
+
+// TODO: Will want to generalise into macro somehow because realistically need to go to
+// at least 6 tensor inputs
+
+// TODO: Once Tensor implementation is working, should be able to actually generalise
+// to work on RecordTensor inputs too, they can be passed in up to the .to() step already.
+// Final step needs to be aware of some kind of NumericLike type that knows how to lift
+// and lower from additional context to a Numeric type for addition and multiplication.
+// In some future work can introduce a generic associated type for TensorRef that
+// 'knows' what the desired container output is for tensor operations like these to collect
+// the results back into, so result type becomes Result<S1::Output<T, O>, InconsistentDimensionLength>
+// and somehow we enforce S1::Output == S2::Output????
