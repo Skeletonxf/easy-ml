@@ -65,7 +65,7 @@ impl Einsum {
 }
 
 struct InconsistentDimensionLength {
-    // TODO
+    // TODO lengths: [Option<usize>; I],
     // Probably need to store array or vec of the 0 or more input lengths
     // for this dimension name and Display impl explaining that we needed
     // at least 1 and for them to agree
@@ -73,11 +73,30 @@ struct InconsistentDimensionLength {
 
 /// Return length of matching dimension in inputs, and error if the length of
 /// this output dimension is inconsistent in the input.
-fn length_of(
+fn length_of<const I: usize>(
     output_dimension: Dimension,
-    input: &[&[(Dimension, usize)]]
+    input: &[&[(Dimension, usize)]; I],
 ) -> Result<usize, InconsistentDimensionLength> {
-    unimplemented!()
+    let lengths = input.map(|shapes| {
+        shapes
+            .iter()
+            .find(|(dimension, _length)| *dimension == output_dimension)
+            .map(|(_dimension, length)| length)
+    });
+
+    let first_length = lengths.iter().filter_map(|l| *l).next();
+    if let Some(length) = first_length {
+        // Check other lengths agree
+        if lengths.iter().any(|l| l.is_some() && *l != Some(length)) {
+            // TODO: Inconsistent lengths
+            return Err(InconsistentDimensionLength {});
+        } else {
+            return Ok(*length);
+        }
+    } else {
+        // TODO: No matching lengths
+        return Err(InconsistentDimensionLength {});
+    }
 }
 
 fn tensor_with_name<T, I, S, const D: usize>(
@@ -97,9 +116,11 @@ where
 /// dimension names. This can fail if a dimension in the requested output
 /// shape isn't present in the input, or if the input has contradictory sizes
 /// for it.
-// TODO: Can we validate the input dimension lengths are consistent sizes
-// at the point that we provide the input tensors instead of delaying to
-// here?
+// We could validate some parts of the input earlier than when we have
+// the output dimensions, but validating tensor lengths are consistent for
+// each common input dimension name would happen multiple times in the scenario
+// of a user using the `named` helper method, so it's a lot easier to use the API
+// if we defer validation till the final method call.
 fn output_shape_for<const I: usize, const O: usize>(
     input: &[&[(Dimension, usize)]; I],
     output: [Dimension; O],
