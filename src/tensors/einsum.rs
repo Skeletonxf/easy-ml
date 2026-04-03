@@ -64,38 +64,45 @@ impl Einsum {
     }
 }
 
-struct InconsistentDimensionLength {
-    // TODO lengths: [Option<usize>; I],
-    // Probably need to store array or vec of the 0 or more input lengths
-    // for this dimension name and Display impl explaining that we needed
-    // at least 1 and for them to agree
+#[derive(Debug, Clone)]
+struct InconsistentDimensionLengthError<const I: usize> {
+    pub lengths: [Option<usize>; I],
+    pub dimension: Dimension,
 }
+
+// TODO: Impl Display, and Error for InconsistentDimensionLength
 
 /// Return length of matching dimension in inputs, and error if the length of
 /// this output dimension is inconsistent in the input.
 fn length_of<const I: usize>(
     output_dimension: Dimension,
     input: &[&[(Dimension, usize)]; I],
-) -> Result<usize, InconsistentDimensionLength> {
+) -> Result<usize, InconsistentDimensionLengthError<I>> {
     let lengths = input.map(|shapes| {
         shapes
             .iter()
             .find(|(dimension, _length)| *dimension == output_dimension)
-            .map(|(_dimension, length)| length)
+            .map(|(_dimension, length)| *length)
     });
 
     let first_length = lengths.iter().filter_map(|l| *l).next();
     if let Some(length) = first_length {
         // Check other lengths agree
         if lengths.iter().any(|l| l.is_some() && *l != Some(length)) {
-            // TODO: Inconsistent lengths
-            return Err(InconsistentDimensionLength {});
+            // Different length matches
+            return Err(InconsistentDimensionLengthError {
+                lengths: lengths,
+                dimension: output_dimension,
+            });
         } else {
-            return Ok(*length);
+            return Ok(length);
         }
     } else {
-        // TODO: No matching lengths
-        return Err(InconsistentDimensionLength {});
+        // No matching lengths, we needed 1 match
+        return Err(InconsistentDimensionLengthError {
+            lengths,
+            dimension: output_dimension,
+        });
     }
 }
 
@@ -123,13 +130,30 @@ where
 // if we defer validation till the final method call.
 fn output_shape_for<const I: usize, const O: usize>(
     input: &[&[(Dimension, usize)]; I],
-    output: [Dimension; O],
-) -> Result<[(Dimension, usize); O], InconsistentDimensionLength> {
+    output: &[Dimension; O],
+) -> Result<[(Dimension, usize); O], InconsistentDimensionLengthError<I>> {
     let mut output_shape = std::array::from_fn(|d| (output[d], 0));
     for d in 0..O {
         output_shape[d].1 = length_of(output_shape[d].0, input)?;
     }
     Ok(output_shape)
+}
+
+/// We sum over every dimension included in the input and not the output
+// TODO: Need to validate that the summation indexes for each input
+// also agree on length as otherwise we'd have an invalid input.
+fn summation_dimensions<const I: usize, const O: usize>(
+    input: &[&[(Dimension, usize)]; I],
+    output: &[Dimension; O],
+) -> Result<(), InconsistentDimensionLengthError<I>> {
+    let _summation_dimensions = input.map(|shape| {
+        shape
+            .iter()
+            .filter(|(dimension, _length)| !output.contains(dimension))
+            .cloned()
+            .collect::<Vec<_>>()
+    });
+    unimplemented!()
 }
 
 struct Einsum1<T, S1, const D1: usize> {
@@ -154,15 +178,24 @@ impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
     fn to<const O: usize>(
         self,
         output: [Dimension; O],
-    ) -> Result<Tensor<T, O>, InconsistentDimensionLength>
+    ) -> Result<Tensor<T, O>, InconsistentDimensionLengthError<1>>
     where
         T: Numeric,
         for<'a> &'a T: NumericRef<T>,
         S1: TensorRef<T, D1>,
     {
         let input_1_shape: &[(Dimension, usize)] = &self.tensor_1.shape();
-        let output_shape = output_shape_for(&[input_1_shape], output)?;
-        Ok(Tensor::empty(output_shape, T::zero()))
+        let output_shape = output_shape_for(&[input_1_shape], &output)?;
+        let mut output_tensor = Tensor::empty(output_shape, T::zero());
+        for (_indexes, _element) in output_tensor.index_mut().iter_reference_mut().with_index() {
+            let mut _sum  = T::zero();
+            // TODO We should be summing the products of each fully indexed input here
+            // There will be as many inner loops as dimensions in the input not
+            // specified in the output, but even if that number is zero, we would
+            // do something here like *element += input1[i,j] * input2[j,k] once
+        }
+
+        Ok(output_tensor)
     }
 }
 
@@ -185,7 +218,7 @@ impl<T, S1, S2, const D1: usize, const D2: usize> Einsum2<T, S1, S2, D1, D2> {
     fn to<const O: usize>(
         self,
         output: [Dimension; O],
-    ) -> Result<Tensor<T, O>, InconsistentDimensionLength>
+    ) -> Result<Tensor<T, O>, InconsistentDimensionLengthError<2>>
     where
         T: Numeric,
         for<'a> &'a T: NumericRef<T>,
@@ -194,13 +227,11 @@ impl<T, S1, S2, const D1: usize, const D2: usize> Einsum2<T, S1, S2, D1, D2> {
     {
         let input_1_shape: &[(Dimension, usize)] = &self.tensor_1.shape();
         let input_2_shape: &[(Dimension, usize)] = &self.tensor_2.shape();
-        let output_shape = output_shape_for(&[input_1_shape, input_2_shape], output)?;
-        Ok(Tensor::empty(output_shape, T::zero()))
+        let output_shape = output_shape_for(&[input_1_shape, input_2_shape], &output)?;
+        let output_tensor = Tensor::empty(output_shape, T::zero());
+        Ok(output_tensor)
     }
 }
-
-// TODO: Will want to generalise into macro somehow because realistically need to go to
-// at least 6 tensor inputs
 
 // TODO: Once Tensor implementation is working, should be able to actually generalise
 // to work on RecordTensor inputs too, they can be passed in up to the .to() step already.

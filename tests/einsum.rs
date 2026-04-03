@@ -119,4 +119,6 @@ mod einsum {
         let x = randomish_matrix([("a", 3), ("b", 3)]);
         let sum: f32 = x.into_matrix().diagonal_iter().map(|x| x * x).sum();
     }
+
+    // Try 'ij,jk->ijk' for two matrices too?
 }
