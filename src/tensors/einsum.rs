@@ -140,20 +140,50 @@ fn output_shape_for<const I: usize, const O: usize>(
 }
 
 /// We sum over every dimension included in the input and not the output
-// TODO: Need to validate that the summation indexes for each input
-// also agree on length as otherwise we'd have an invalid input.
+///
+/// Returns a vec of the summation dimensions along with their validated
+/// lengths, and errors if the lengths of any summation dimensions in
+/// the input are inconsistent.
 fn summation_dimensions<const I: usize, const O: usize>(
     input: &[&[(Dimension, usize)]; I],
     output: &[Dimension; O],
-) -> Result<(), InconsistentDimensionLengthError<I>> {
-    let _summation_dimensions = input.map(|shape| {
-        shape
-            .iter()
-            .filter(|(dimension, _length)| !output.contains(dimension))
-            .cloned()
-            .collect::<Vec<_>>()
-    });
-    unimplemented!()
+) -> Result<Vec<(Dimension, usize)>, InconsistentDimensionLengthError<I>> {
+    let mut total_dimensions = 0;
+    for shape in input {
+        total_dimensions += shape.len();
+    }
+
+    // Worst case is every dimension in each input tensor
+    // has unique dimensions
+    let mut unique_dimensions = Vec::with_capacity(total_dimensions);
+
+    for shape in input {
+        for (dimension, length) in shape.iter() {
+            if output.contains(dimension) {
+                // If this dimension is requested in the output we will be checking
+                // for consistent lengths in `length_of` and this dimension won't be
+                // a summation dimension so we can ignore it here.
+                continue;
+            }
+            let existing = unique_dimensions.iter().find(|(d, _)| d == dimension);
+            match existing {
+                None => unique_dimensions.push((*dimension, *length)),
+                Some((_, l)) => {
+                    if length != l {
+                        // Inconsistent lengths
+                        return Err(InconsistentDimensionLengthError {
+                            lengths: std::array::from_fn(|i| {
+                                input[i].iter().find(|(d, _)| d == dimension).map(|(_, l)| *l)
+                            }),
+                            dimension,
+                        })
+                    }
+                }
+            }
+        }
+    }
+
+    return Ok(unique_dimensions);
 }
 
 struct Einsum1<T, S1, const D1: usize> {
@@ -185,8 +215,10 @@ impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
         S1: TensorRef<T, D1>,
     {
         let input_1_shape: &[(Dimension, usize)] = &self.tensor_1.shape();
-        let output_shape = output_shape_for(&[input_1_shape], &output)?;
+        let input = &[input_1_shape];
+        let output_shape = output_shape_for(input, &output)?;
         let mut output_tensor = Tensor::empty(output_shape, T::zero());
+        let _summation_dimensions = summation_dimensions(input, &output)?;
         for (_indexes, _element) in output_tensor.index_mut().iter_reference_mut().with_index() {
             let mut _sum  = T::zero();
             // TODO We should be summing the products of each fully indexed input here
@@ -227,8 +259,18 @@ impl<T, S1, S2, const D1: usize, const D2: usize> Einsum2<T, S1, S2, D1, D2> {
     {
         let input_1_shape: &[(Dimension, usize)] = &self.tensor_1.shape();
         let input_2_shape: &[(Dimension, usize)] = &self.tensor_2.shape();
-        let output_shape = output_shape_for(&[input_1_shape, input_2_shape], &output)?;
-        let output_tensor = Tensor::empty(output_shape, T::zero());
+        let input = &[input_1_shape, input_2_shape];
+        let output_shape = output_shape_for(input, &output)?;
+        let mut output_tensor = Tensor::empty(output_shape, T::zero());
+        let _summation_dimensions = summation_dimensions(input, &output)?;
+        for (_indexes, _element) in output_tensor.index_mut().iter_reference_mut().with_index() {
+            let mut _sum  = T::zero();
+            // TODO We should be summing the products of each fully indexed input here
+            // There will be as many inner loops as dimensions in the input not
+            // specified in the output, but even if that number is zero, we would
+            // do something here like *element += input1[i,j] * input2[j,k] once
+        }
+
         Ok(output_tensor)
     }
 }
