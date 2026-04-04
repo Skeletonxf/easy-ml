@@ -8,6 +8,9 @@ use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::views::{TensorRename, TensorRef, TensorView};
 use crate::tensors::{Dimension, Tensor};
 
+use std::error::Error;
+use std::fmt;
+
 struct Einsum {
     // TODO
     // Maybe we make this not a zero size type and have it created with
@@ -64,13 +67,36 @@ impl Einsum {
     }
 }
 
-#[derive(Debug, Clone)]
-struct InconsistentDimensionLengthError<const I: usize> {
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InconsistentDimensionLengthError<const I: usize> {
     pub lengths: [Option<usize>; I],
     pub dimension: Dimension,
 }
 
-// TODO: Impl Display, and Error for InconsistentDimensionLength
+impl<const I: usize> fmt::Display for InconsistentDimensionLengthError<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "inconsistent dimension lengths for dimension '{}': {:?}, lengths must match when repeated in different shapes as the same dimension name",
+            self.dimension,
+            self.lengths,
+        )
+    }
+}
+
+impl<const I: usize> Error for InconsistentDimensionLengthError<I> {}
+
+#[test]
+fn test_inconsistent_dimension_length_error() {
+    let error = InconsistentDimensionLengthError {
+        lengths: [Some(3), None, Some(2)],
+        dimension: "a",
+    };
+    assert_eq!(
+        error.to_string(),
+        "inconsistent dimension lengths for dimension 'a': [Some(3), None, Some(2)], lengths must match when repeated in different shapes as the same dimension name",
+    )
+}
 
 /// Return length of matching dimension in inputs, and error if the length of
 /// this output dimension is inconsistent in the input.
