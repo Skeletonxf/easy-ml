@@ -932,7 +932,6 @@ impl DynamicShapeIterator {
     }
 }
 
-
 /**
  * An iterator over all indexes in a shape which can iterate in both directions.
  *
@@ -1985,4 +1984,32 @@ where
         writeln!(f)?;
         write!(f, "Data Layout = {:?}", self.data_layout())
     }
+}
+
+// Main test suite is in tests/ but DynamicShapeIterator isn't public API
+// so can't import
+#[test]
+fn test_dynamic_shape_iterator_exact_size() {
+    let mut iterator = DynamicShapeIterator::from(&vec![("x", 3), ("y", 2)]);
+
+    let a = iterator.next().cloned();
+    assert_eq!(a, Some(vec![0, 0]));
+
+    let b = iterator.next().cloned();
+    assert_eq!(b, Some(vec![0, 1]));
+
+    let c = iterator.next().cloned();
+    assert_eq!(c, Some(vec![1, 0]));
+
+    let d = iterator.next().cloned();
+    assert_eq!(d, Some(vec![1, 1]));
+
+    let e = iterator.next().cloned();
+    assert_eq!(e, Some(vec![2, 0]));
+
+    let f = iterator.next().cloned();
+    assert_eq!(f, Some(vec![2, 1]));
+
+    let g = iterator.next().cloned();
+    assert_eq!(g, None);
 }
