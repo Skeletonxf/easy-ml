@@ -6,6 +6,7 @@
 
 use crate::numeric::{Numeric, NumericRef};
 use crate::tensors::views::{TensorRename, TensorRef, TensorView};
+use crate::tensors::indexing::DynamicShapeIterator;
 use crate::tensors::{Dimension, Tensor};
 
 use std::error::Error;
@@ -244,9 +245,27 @@ impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
         let input = &[input_1_shape];
         let output_shape = output_shape_for(input, &output)?;
         let mut output_tensor = Tensor::empty(output_shape, T::zero());
-        let _summation_dimensions = summation_dimensions(input, &output)?;
-        for (_indexes, _element) in output_tensor.index_mut().iter_reference_mut().with_index() {
-            let mut _sum  = T::zero();
+        let summation_dimensions = summation_dimensions(input, &output)?;
+        for (_indexes, element) in output_tensor.index_mut().iter_reference_mut().with_index() {
+            let sum  = T::zero();
+            // TODO: Need helper to pass lots of indexes over to a tensor and get it
+            // to ignore all the ones that aren't relevant for it
+            if summation_dimensions.is_empty() {
+                //sum = sum + self.tensor_1.index().get(indexes);
+            } else {
+                let mut summation_iterator = DynamicShapeIterator::from(&summation_dimensions);
+                loop {
+                    let next = summation_iterator.next();
+                    match next {
+                        Some(_summation_indexes) => {
+                            // sum = sum + self.tensor1.index().get(indexes, summation_indexes);
+                            // TODO: something like *element += input1[i,j] * input2[j,k] here
+                        }
+                        None => break
+                    }
+                }
+            }
+            *element = sum;
             // TODO We should be summing the products of each fully indexed input here
             // There will be as many inner loops as dimensions in the input not
             // specified in the output, but even if that number is zero, we would
@@ -288,13 +307,26 @@ impl<T, S1, S2, const D1: usize, const D2: usize> Einsum2<T, S1, S2, D1, D2> {
         let input = &[input_1_shape, input_2_shape];
         let output_shape = output_shape_for(input, &output)?;
         let mut output_tensor = Tensor::empty(output_shape, T::zero());
-        let _summation_dimensions = summation_dimensions(input, &output)?;
-        for (_indexes, _element) in output_tensor.index_mut().iter_reference_mut().with_index() {
-            let mut _sum  = T::zero();
-            // TODO We should be summing the products of each fully indexed input here
-            // There will be as many inner loops as dimensions in the input not
-            // specified in the output, but even if that number is zero, we would
-            // do something here like *element += input1[i,j] * input2[j,k] once
+        let summation_dimensions = summation_dimensions(input, &output)?;
+        for (_indexes, element) in output_tensor.index_mut().iter_reference_mut().with_index() {
+            let sum  = T::zero();
+            // TODO: Need helper to pass lots of indexes over to a tensor and get it
+            // to ignore all the ones that aren't relevant for it
+            if summation_dimensions.is_empty() {
+                //sum = sum + (self.tensor_1.index().get(indexes) * self.tensor_2.index().get(indexes));
+            } else {
+                let mut summation_iterator = DynamicShapeIterator::from(&summation_dimensions);
+                loop {
+                    let next = summation_iterator.next();
+                    match next {
+                        Some(_summation_indexes) => {
+                            // sum = sum + (self.tensor1.index().get(indexes, summation_indexes) * self.tensor_2.index().get(indexes, summation_indexes));
+                        }
+                        None => break
+                    }
+                }
+            }
+            *element = sum;
         }
 
         Ok(output_tensor)

@@ -687,6 +687,15 @@ pub struct ShapeIterator<const D: usize> {
     finished: bool,
 }
 
+/// If we're given an invalid shape (shape input is not neccessarily going to meet the no
+/// 0 lengths contract of TensorRef because that's not actually required here), we
+/// should return a finished iterator immediately and not iterate at all.
+/// Since this is an iterator over an owned shape, it's not going to become invalid later
+/// when we start iterating so this is the only constructor check we need.
+fn is_starting_index_valid(shape: &[(Dimension, usize)]) -> bool {
+    shape.iter().all(|(_, l)| *l > 0)
+}
+
 impl<const D: usize> ShapeIterator<D> {
     /**
      * Constructs a ShapeIterator for a shape.
@@ -695,12 +704,7 @@ impl<const D: usize> ShapeIterator<D> {
      * return None on [`next()`](Iterator::next).
      */
     pub fn from(shape: [(Dimension, usize); D]) -> ShapeIterator<D> {
-        // If we're given an invalid shape (shape input is not neccessarily going to meet the no
-        // 0 lengths contract of TensorRef because that's not actually required here), return
-        // a finished iterator
-        // Since this is an iterator over an owned shape, it's not going to become invalid later
-        // when we start iterating so this is the only check we need.
-        let starting_index_valid = shape.iter().all(|(_, l)| *l > 0);
+        let starting_index_valid = is_starting_index_valid(&shape);
         ShapeIterator {
             shape,
             indexes: [0; D],
@@ -868,6 +872,67 @@ fn double_ended_size_hint<const D: usize>(
     (remaining, Some(remaining))
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct DynamicShapeIterator {
+    shape: Vec<(Dimension, usize)>,
+    indexes: Vec<usize>,
+    next: Vec<usize>,
+    finished: bool,
+}
+
+impl DynamicShapeIterator {
+    pub(crate) fn from(shape: &Vec<(Dimension, usize)>) -> DynamicShapeIterator {
+        let starting_index_valid = is_starting_index_valid(&shape);
+        let number_of_dimensions = shape.len();
+        DynamicShapeIterator {
+            shape: shape.clone(),
+            indexes: vec![0; number_of_dimensions],
+            next: vec![0; number_of_dimensions],
+            finished: !starting_index_valid,
+        }
+    }
+
+    pub(crate) fn next(&mut self) -> Option<&Vec<usize>> {
+        if self.finished {
+            return None;
+        }
+
+        let dimensions = self.shape.len();
+        // We return borrows of self.next, and assign to it the
+        // contents of self.indexes so we can avoid allocating
+        // a vec on each iteration, this keeps the vecs at a constant 2
+        // for the entire iteration. Unfortunately returning a self
+        // borrow also makes implementing Iterator very tricky, so this
+        // is just a method with a similar API.
+        self.next.clone_from(&self.indexes);
+        let value = Some(&self.next);
+
+        if dimensions > 0 {
+            // Increment index of final dimension. In the 2D case, we iterate through a row by
+            // incrementing through every column index.
+            self.indexes[dimensions - 1] += 1;
+            for d in (1..dimensions).rev() {
+                if self.indexes[d] == self.shape[d].1 {
+                    // ran to end of this dimension with our index
+                    // In the 2D case, we finished indexing through every column in the row,
+                    // and it's now time to move onto the next row.
+                    self.indexes[d] = 0;
+                    self.indexes[d - 1] += 1;
+                }
+            }
+            // Check if we ran past the final index
+            if self.indexes[0] == self.shape[0].1 {
+                self.finished = true;
+            }
+        } else {
+            self.finished = true;
+        }
+
+        value
+    }
+}
+
+
 /**
  * An iterator over all indexes in a shape which can iterate in both directions.
  *
@@ -895,12 +960,7 @@ impl<const D: usize> DoubleEndedShapeIterator<D> {
      * [`next_back()`](DoubleEndedIterator::next_back()).
      */
     pub fn from(shape: [(Dimension, usize); D]) -> DoubleEndedShapeIterator<D> {
-        // If we're given an invalid shape (shape input is not neccessarily going to meet the no
-        // 0 lengths contract of TensorRef because that's not actually required here), return
-        // a finished iterator
-        // Since this is an iterator over an owned shape, it's not going to become invalid later
-        // when we start iterating so this is the only check we need.
-        let starting_index_valid = shape.iter().all(|(_, l)| *l > 0);
+        let starting_index_valid = is_starting_index_valid(&shape);
         DoubleEndedShapeIterator {
             shape,
             forward_indexes: [0; D],
