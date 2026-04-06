@@ -1799,6 +1799,9 @@ impl<T, S, const D: usize> ExactSizeIterator for WithIndex<TensorOwnedIterator<T
  * order, swapping the lengths of each named dimension to match the new order but leaving the
  * dimension name order unchanged.
  *
+ * If you need to swap not just the order of the data but also the order of the dimension
+ * names, use [TensorAccess] instead.
+ *
  * ```
  * use easy_ml::tensors::Tensor;
  * use easy_ml::tensors::indexing::TensorTranspose;
