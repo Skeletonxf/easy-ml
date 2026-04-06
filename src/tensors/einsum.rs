@@ -12,7 +12,7 @@ use crate::tensors::{Dimension, Tensor};
 use std::error::Error;
 use std::fmt;
 
-struct Einsum {
+pub struct Einsum {
     // TODO
     // Maybe we make this not a zero size type and have it created with
     // the optimise implementation then convert all the of_X_with and of_X
@@ -33,7 +33,7 @@ impl Einsum {
      * Returns an Einsum that will naively calculate the notation
      * without introducing any substeps.
      */
-    fn naive() -> Self {
+    pub fn naive() -> Self {
         Einsum {}
     }
 
@@ -44,7 +44,8 @@ impl Einsum {
         Einsum {}
     }
 
-    fn with_1<T, S, I, const D: usize>(
+    pub fn with_1<T, S, I, const D: usize>(
+        self,
         input_1: I,
     ) -> Einsum1<T, S, D>
     where
@@ -54,7 +55,8 @@ impl Einsum {
         Einsum1 { tensor_1: input_1.into() }
     }
 
-    fn with_2<T, S1, S2, I1, I2, const D1: usize, const D2: usize>(
+    pub fn with_2<T, S1, S2, I1, I2, const D1: usize, const D2: usize>(
+        self,
         input_1: I1,
         input_2: I2,
     ) -> Einsum2<T, S1, S2, D1, D2>
@@ -213,17 +215,56 @@ fn summation_dimensions<const I: usize, const O: usize>(
     return Ok(unique_dimensions);
 }
 
-struct Einsum1<T, S1, const D1: usize> {
+/// Filters to the indexes to index into a tensor in the same
+/// order as its shape, or panics if there a dimension was missing
+/// in the indexes provided. Dimension names provided in the indexes
+/// slices that are not used by the tensor are ignored and do not cause
+/// any errors.
+// TODO: Inputs having dimensions in the same list is convenient for
+// the logic here but means we have to duplicate data we already have
+// in callers. Ideally want to split out the indexes slices so we
+// receive both the dimension names and index values seperately so
+// callers don't have to bundle them together with more work.
+fn filter_indexes<const D: usize>(
+    shape: &[(Dimension, usize); D],
+    indexes: &[&[(Dimension, usize)]],
+) -> [usize; D] {
+    let mut actual_indexes = [0; D];
+    for d in 0..D {
+        let mut found = false;
+        let dimension = shape[d].0;
+        'outer: for slice in indexes.iter() {
+            for (possible_dimension, index) in slice.iter() {
+                if *possible_dimension == dimension {
+                    actual_indexes[d] = *index;
+                    found = true;
+                    break 'outer;
+                }
+            }
+        }
+        if !found {
+            panic!(
+                "Expected to find an index for dimension {:?} but was not present in {:?} while trying to index tensor of shape {:?}",
+                dimension,
+                indexes,
+                shape,
+            );
+        }
+    }
+    return actual_indexes;
+}
+
+pub struct Einsum1<T, S1, const D1: usize> {
     tensor_1: TensorView<T, S1, D1>,
 }
 
-struct Einsum2<T, S1, S2, const D1: usize, const D2: usize> {
+pub struct Einsum2<T, S1, S2, const D1: usize, const D2: usize> {
     tensor_1: TensorView<T, S1, D1>,
     tensor_2: TensorView<T, S2, D2>,
 }
 
 impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
-    fn named(self, input_1: [Dimension; D1]) -> Einsum1<T, TensorRename<T, S1, D1>, D1>
+    pub fn named(self, input_1: [Dimension; D1]) -> Einsum1<T, TensorRename<T, S1, D1>, D1>
     where
         S1: TensorRef<T, D1>,
     {
@@ -232,7 +273,7 @@ impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
         }
     }
 
-    fn to<const O: usize>(
+    pub fn to<const O: usize>(
         self,
         output: [Dimension; O],
     ) -> Result<Tensor<T, O>, InconsistentDimensionLengthError<1>>
@@ -241,35 +282,42 @@ impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
         for<'a> &'a T: NumericRef<T>,
         S1: TensorRef<T, D1>,
     {
-        let input_1_shape: &[(Dimension, usize)] = &self.tensor_1.shape();
+        let input_1_shape_const = &self.tensor_1.shape();
+        let input_1_shape: &[(Dimension, usize)] = input_1_shape_const;
         let input = &[input_1_shape];
+
         let output_shape = output_shape_for(input, &output)?;
         let mut output_tensor = Tensor::empty(output_shape, T::zero());
+
         let summation_dimensions = summation_dimensions(input, &output)?;
-        for (_indexes, element) in output_tensor.index_mut().iter_reference_mut().with_index() {
-            let sum  = T::zero();
-            // TODO: Need helper to pass lots of indexes over to a tensor and get it
-            // to ignore all the ones that aren't relevant for it
+        let tensor_1_indexing = self.tensor_1.index();
+
+        for (indexes, element) in output_tensor.index_mut().iter_reference_mut().with_index() {
+            let outer_indexes: [_; O] = std::array::from_fn(|d| (output_shape[d].0, indexes[d]));
+            let mut sum = T::zero();
+
             if summation_dimensions.is_empty() {
-                //sum = sum + self.tensor_1.index().get(indexes);
+                sum = sum + tensor_1_indexing
+                    .get_ref(filter_indexes(input_1_shape_const, &[&outer_indexes]));
             } else {
                 let mut summation_iterator = DynamicShapeIterator::from(&summation_dimensions);
                 loop {
                     let next = summation_iterator.next();
                     match next {
-                        Some(_summation_indexes) => {
-                            // sum = sum + self.tensor1.index().get(indexes, summation_indexes);
-                            // TODO: something like *element += input1[i,j] * input2[j,k] here
+                        Some(summation_indexes) => {
+                            sum = sum + tensor_1_indexing
+                                .get_ref(
+                                    filter_indexes(
+                                        input_1_shape_const,
+                                        &[&outer_indexes, &summation_indexes]
+                                    )
+                                );
                         }
                         None => break
                     }
                 }
             }
             *element = sum;
-            // TODO We should be summing the products of each fully indexed input here
-            // There will be as many inner loops as dimensions in the input not
-            // specified in the output, but even if that number is zero, we would
-            // do something here like *element += input1[i,j] * input2[j,k] once
         }
 
         Ok(output_tensor)
@@ -277,7 +325,7 @@ impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
 }
 
 impl<T, S1, S2, const D1: usize, const D2: usize> Einsum2<T, S1, S2, D1, D2> {
-    fn named(
+    pub fn named(
         self,
         input_1: [Dimension; D1],
         input_2: [Dimension; D2],
@@ -292,7 +340,7 @@ impl<T, S1, S2, const D1: usize, const D2: usize> Einsum2<T, S1, S2, D1, D2> {
         }
     }
 
-    fn to<const O: usize>(
+    pub fn to<const O: usize>(
         self,
         output: [Dimension; O],
     ) -> Result<Tensor<T, O>, InconsistentDimensionLengthError<2>>
@@ -302,30 +350,56 @@ impl<T, S1, S2, const D1: usize, const D2: usize> Einsum2<T, S1, S2, D1, D2> {
         S1: TensorRef<T, D1>,
         S2: TensorRef<T, D2>,
     {
-        let input_1_shape: &[(Dimension, usize)] = &self.tensor_1.shape();
-        let input_2_shape: &[(Dimension, usize)] = &self.tensor_2.shape();
+        let input_1_shape_const = &self.tensor_1.shape();
+        let input_1_shape: &[(Dimension, usize)] = input_1_shape_const;
+        let input_2_shape_const = &self.tensor_2.shape();
+        let input_2_shape: &[(Dimension, usize)] = input_2_shape_const;
         let input = &[input_1_shape, input_2_shape];
+
         let output_shape = output_shape_for(input, &output)?;
         let mut output_tensor = Tensor::empty(output_shape, T::zero());
+
         let summation_dimensions = summation_dimensions(input, &output)?;
-        for (_indexes, element) in output_tensor.index_mut().iter_reference_mut().with_index() {
-            let sum  = T::zero();
-            // TODO: Need helper to pass lots of indexes over to a tensor and get it
-            // to ignore all the ones that aren't relevant for it
+        let tensor_1_indexing = self.tensor_1.index();
+        let tensor_2_indexing = self.tensor_2.index();
+
+        for (indexes, element) in output_tensor.index_mut().iter_reference_mut().with_index() {
+            let outer_indexes: [_; O] = std::array::from_fn(|d| (output_shape[d].0, indexes[d]));
+            let mut sum = T::zero();
+
             if summation_dimensions.is_empty() {
-                //sum = sum + (self.tensor_1.index().get(indexes) * self.tensor_2.index().get(indexes));
+                let product_1 = tensor_1_indexing
+                    .get_ref(filter_indexes(input_1_shape_const, &[&outer_indexes]));
+                let product_2 = tensor_2_indexing
+                    .get_ref(filter_indexes(input_2_shape_const, &[&outer_indexes]));
+                sum = sum + (product_1 * product_2);
             } else {
                 let mut summation_iterator = DynamicShapeIterator::from(&summation_dimensions);
                 loop {
                     let next = summation_iterator.next();
                     match next {
-                        Some(_summation_indexes) => {
-                            // sum = sum + (self.tensor1.index().get(indexes, summation_indexes) * self.tensor_2.index().get(indexes, summation_indexes));
+                        Some(summation_indexes) => {
+                            let product_1 = tensor_1_indexing
+                                .get_ref(
+                                    filter_indexes(
+                                        input_1_shape_const,
+                                        &[&outer_indexes, &summation_indexes]
+                                    )
+                                );
+                            let product_2 = tensor_2_indexing
+                                .get_ref(
+                                    filter_indexes(
+                                        input_2_shape_const,
+                                        &[&outer_indexes, &summation_indexes]
+                                    )
+                                );
+                            sum = sum + (product_1 * product_2);
                         }
                         None => break
                     }
                 }
             }
+
             *element = sum;
         }
 
