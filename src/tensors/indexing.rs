@@ -876,7 +876,7 @@ fn double_ended_size_hint<const D: usize>(
 pub(crate) struct DynamicShapeIterator {
     shape: Vec<(Dimension, usize)>,
     indexes: Vec<usize>,
-    next: Vec<(Dimension, usize)>,
+    next: Vec<usize>,
     finished: bool,
 }
 
@@ -884,28 +884,27 @@ impl DynamicShapeIterator {
     pub(crate) fn from(shape: &Vec<(Dimension, usize)>) -> DynamicShapeIterator {
         let starting_index_valid = is_starting_index_valid(&shape);
         let number_of_dimensions = shape.len();
-        let mut next = Vec::with_capacity(number_of_dimensions);
-        for (dimension, _) in shape {
-            next.push((*dimension, 0));
-        }
         DynamicShapeIterator {
             shape: shape.clone(),
             indexes: vec![0; number_of_dimensions],
-            next,
+            next: vec![0; number_of_dimensions],
             finished: !starting_index_valid,
         }
     }
 
-    pub(crate) fn next(&mut self) -> Option<&Vec<(Dimension, usize)>> {
+    pub(crate) fn next(&mut self) -> Option<&Vec<usize>> {
         if self.finished {
             return None;
         }
 
         let dimensions = self.shape.len();
-        // Copy over values of indexes into next to return later
-        for (i, element) in self.next.iter_mut().enumerate() {
-            element.1 = self.indexes[i];
-        }
+        // We return borrows of self.next, and assign to it the
+        // contents of self.indexes so we can avoid allocating
+        // a vec on each iteration, this keeps the vecs at a constant 2
+        // for the entire iteration. Unfortunately returning a self
+        // borrow also makes implementing Iterator very tricky, so this
+        // is just a method with a similar API.
+        self.next.clone_from(&self.indexes);
         let value = Some(&self.next);
 
         if dimensions > 0 {
@@ -1997,22 +1996,22 @@ fn test_dynamic_shape_iterator_exact_size() {
     let mut iterator = DynamicShapeIterator::from(&vec![("x", 3), ("y", 2)]);
 
     let a = iterator.next().cloned();
-    assert_eq!(a, Some(vec![("x", 0), ("y", 0)]));
+    assert_eq!(a, Some(vec![0, 0]));
 
     let b = iterator.next().cloned();
-    assert_eq!(b, Some(vec![("x", 0), ("y", 1)]));
+    assert_eq!(b, Some(vec![0, 1]));
 
     let c = iterator.next().cloned();
-    assert_eq!(c, Some(vec![("x", 1), ("y", 0)]));
+    assert_eq!(c, Some(vec![1, 0]));
 
     let d = iterator.next().cloned();
-    assert_eq!(d, Some(vec![("x", 1), ("y", 1)]));
+    assert_eq!(d, Some(vec![1, 1]));
 
     let e = iterator.next().cloned();
-    assert_eq!(e, Some(vec![("x", 2), ("y", 0)]));
+    assert_eq!(e, Some(vec![2, 0]));
 
     let f = iterator.next().cloned();
-    assert_eq!(f, Some(vec![("x", 2), ("y", 1)]));
+    assert_eq!(f, Some(vec![2, 1]));
 
     let g = iterator.next().cloned();
     assert_eq!(g, None);

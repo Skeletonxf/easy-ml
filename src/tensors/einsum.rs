@@ -215,43 +215,88 @@ fn summation_dimensions<const I: usize, const O: usize>(
     return Ok(unique_dimensions);
 }
 
-/// Filters to the indexes to index into a tensor in the same
-/// order as its shape, or panics if there a dimension was missing
-/// in the indexes provided. Dimension names provided in the indexes
-/// slices that are not used by the tensor are ignored and do not cause
-/// any errors.
-// TODO: Inputs having dimensions in the same list is convenient for
-// the logic here but means we have to duplicate data we already have
-// in callers. Ideally want to split out the indexes slices so we
-// receive both the dimension names and index values seperately so
-// callers don't have to bundle them together with more work.
-fn filter_indexes<const D: usize>(
-    shape: &[(Dimension, usize); D],
-    indexes: &[&[(Dimension, usize)]],
+/// Filters outer indexes to only the matching dimensions
+/// for the input shape. Panics if any dimensions in the
+/// input shape are missing from the outer slices, but accepts
+/// more indexes and dimensions in the outer slices than
+/// actually needed for the input shape without any errors.
+fn filter_outer_indexes<const D: usize, const O: usize>(
+    outer_indexes: &[usize; O],
+    outer_shape: &[(Dimension, usize); O],
+    input_shape: &[(Dimension, usize); D],
 ) -> [usize; D] {
-    let mut actual_indexes = [0; D];
+    let mut input_indexes = [0; D];
     for d in 0..D {
         let mut found = false;
-        let dimension = shape[d].0;
-        'outer: for slice in indexes.iter() {
-            for (possible_dimension, index) in slice.iter() {
-                if *possible_dimension == dimension {
-                    actual_indexes[d] = *index;
-                    found = true;
-                    break 'outer;
-                }
+        let dimension = input_shape[d].0;
+        for o in 0..O {
+            let possible_dimension = outer_shape[o].0;
+            if possible_dimension == dimension {
+                input_indexes[d] = outer_indexes[o];
+                found = true;
+                break;
             }
         }
         if !found {
             panic!(
-                "Expected to find an index for dimension {:?} but was not present in {:?} while trying to index tensor of shape {:?}",
+                "Expected to find an index for dimension {:?} but was not present in {:?} for {:?} while trying to index tensor of shape {:?}",
                 dimension,
-                indexes,
-                shape,
+                outer_indexes,
+                outer_shape,
+                input_shape,
             );
         }
     }
-    return actual_indexes;
+    input_indexes
+}
+
+/// Filters outer indexes and summation indexes to only the
+/// matching dimensions for the input shape. Panics if any dimensions
+/// in the input shape are missing from the outer and summation slices,
+/// but accepts more indexes and dimensions in the outer and summation
+/// slices than actually needed for the input shape without any errors.
+/// Summation slices must be the same length, we just don't know their
+/// length at compile time so can't enforce it in the type system.
+fn filter_outer_and_summation_indexes<const D: usize, const O: usize>(
+    outer_indexes: &[usize; O],
+    outer_shape: &[(Dimension, usize); O],
+    summation_indexes: &[usize],
+    summation_shape: &[(Dimension, usize)],
+    input_shape: &[(Dimension, usize); D],
+) -> [usize; D] {
+    let mut input_indexes = [0; D];
+    for d in 0..D {
+        let mut found = false;
+        let dimension = input_shape[d].0;
+        for o in 0..O {
+            let possible_dimension = outer_shape[o].0;
+            if possible_dimension == dimension {
+                input_indexes[d] = outer_indexes[o];
+                found = true;
+                break;
+            }
+        }
+        let summation_iter = summation_indexes.iter().zip(summation_shape.iter());
+        for (index, (possible_dimension, _length)) in summation_iter {
+            if *possible_dimension == dimension {
+                input_indexes[d] = *index;
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            panic!(
+                "Expected to find an index for dimension {:?} but was not present in {:?} for {:?} or {:?} for {:?} while trying to index tensor of shape {:?}",
+                dimension,
+                outer_indexes,
+                outer_shape,
+                summation_indexes,
+                summation_shape,
+                input_shape,
+            );
+        }
+    }
+    input_indexes
 }
 
 pub struct Einsum1<T, S1, const D1: usize> {
@@ -293,25 +338,35 @@ impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
         let tensor_1_indexing = self.tensor_1.index();
 
         for (indexes, element) in output_tensor.index_mut().iter_reference_mut().with_index() {
-            let outer_indexes: [_; O] = std::array::from_fn(|d| (output_shape[d].0, indexes[d]));
             let mut sum = T::zero();
 
             if summation_dimensions.is_empty() {
-                sum = sum + tensor_1_indexing
-                    .get_ref(filter_indexes(input_1_shape_const, &[&outer_indexes]));
+                let product_1 = tensor_1_indexing
+                    .get_ref(
+                        filter_outer_indexes(
+                            &indexes,
+                            &output_shape,
+                            &input_1_shape_const
+                        )
+                    );
+                sum = sum + product_1;
             } else {
                 let mut summation_iterator = DynamicShapeIterator::from(&summation_dimensions);
                 loop {
                     let next = summation_iterator.next();
                     match next {
                         Some(summation_indexes) => {
-                            sum = sum + tensor_1_indexing
+                            let product_1 = tensor_1_indexing
                                 .get_ref(
-                                    filter_indexes(
-                                        input_1_shape_const,
-                                        &[&outer_indexes, &summation_indexes]
+                                    filter_outer_and_summation_indexes(
+                                        &indexes,
+                                        &output_shape,
+                                        &summation_indexes,
+                                        &summation_dimensions,
+                                        &input_1_shape_const
                                     )
                                 );
+                            sum = sum + product_1;
                         }
                         None => break
                     }
@@ -364,14 +419,25 @@ impl<T, S1, S2, const D1: usize, const D2: usize> Einsum2<T, S1, S2, D1, D2> {
         let tensor_2_indexing = self.tensor_2.index();
 
         for (indexes, element) in output_tensor.index_mut().iter_reference_mut().with_index() {
-            let outer_indexes: [_; O] = std::array::from_fn(|d| (output_shape[d].0, indexes[d]));
             let mut sum = T::zero();
 
             if summation_dimensions.is_empty() {
                 let product_1 = tensor_1_indexing
-                    .get_ref(filter_indexes(input_1_shape_const, &[&outer_indexes]));
+                    .get_ref(
+                        filter_outer_indexes(
+                            &indexes,
+                            &output_shape,
+                            &input_1_shape_const
+                        )
+                    );
                 let product_2 = tensor_2_indexing
-                    .get_ref(filter_indexes(input_2_shape_const, &[&outer_indexes]));
+                    .get_ref(
+                        filter_outer_indexes(
+                            &indexes,
+                            &output_shape,
+                            &input_2_shape_const
+                        )
+                    );
                 sum = sum + (product_1 * product_2);
             } else {
                 let mut summation_iterator = DynamicShapeIterator::from(&summation_dimensions);
@@ -381,16 +447,22 @@ impl<T, S1, S2, const D1: usize, const D2: usize> Einsum2<T, S1, S2, D1, D2> {
                         Some(summation_indexes) => {
                             let product_1 = tensor_1_indexing
                                 .get_ref(
-                                    filter_indexes(
-                                        input_1_shape_const,
-                                        &[&outer_indexes, &summation_indexes]
+                                    filter_outer_and_summation_indexes(
+                                        &indexes,
+                                        &output_shape,
+                                        &summation_indexes,
+                                        &summation_dimensions,
+                                        &input_1_shape_const
                                     )
                                 );
                             let product_2 = tensor_2_indexing
                                 .get_ref(
-                                    filter_indexes(
-                                        input_2_shape_const,
-                                        &[&outer_indexes, &summation_indexes]
+                                    filter_outer_and_summation_indexes(
+                                        &indexes,
+                                        &output_shape,
+                                        &summation_indexes,
+                                        &summation_dimensions,
+                                        &input_2_shape_const
                                     )
                                 );
                             sum = sum + (product_1 * product_2);
