@@ -174,9 +174,8 @@ mod einsum {
         let diagonal = Tensor::from([("a", 3)], x.into_matrix().diagonal_iter().map(|x| x * x).collect());
 
         let x = randomish_matrix([("a", 3), ("b", 3)]);
-        // TODO: Need to bypass validation logic in TensorRename before we can try this
-        // let einsum = Einsum::naive().with_1(&x).named(["a", "a"]).to(["a"]).unwrap();
-        // assert_eq!(diagonal, einsum);
+        // Einsum won't be supported for diagonals because tensor dimension names
+        // must be unique.
     }
 
     #[test]
@@ -186,11 +185,73 @@ mod einsum {
         let sum: f32 = x.into_matrix().diagonal_iter().map(|x| x * x).sum();
 
         let x = randomish_matrix([("a", 3), ("b", 3)]);
-        // TODO: Need to bypass validation logic in TensorRename before we can try this
-        // let einsum = Einsum::naive().with_1(&x).named(["a", "a"]).to([]).unwrap();
-        // assert_eq!(sum, einsum.first());
+        // Einsum won't be supported for diagonals because tensor dimension names
+        // must be unique.
     }
 
-    // Try 'ij,jk->ijk' for two matrices too?
-    // Try a test with unrelated indexes, something like ij,kl->il
+    #[test]
+    fn larger_output_size() {
+        // ij,jk->ijk for X, Y
+        let x = randomish_matrix([("i", 2), ("j", 3)]);
+        let y = randomish_matrix([("j", 3), ("k", 4)]);
+
+        let einsum = Einsum::naive().with_2(&x, &y).to(["i", "j", "k"]).unwrap();
+        assert_eq!(
+            Tensor::<f32, 3>::from(
+                [("i", 2), ("j", 3), ("k", 4)],
+                vec![
+                     0.0,   0.0,   0.0,   0.0,
+                    10.0, 110.0, 210.0, 310.0,
+                    40.0, 240.0, 440.0, 640.0,
+
+                     0.0,  10.0,  20.0,  30.0,
+                    11.0, 121.0, 231.0, 341.0,
+                    42.0, 252.0, 462.0, 672.0,
+                ],
+            ),
+            einsum,
+        );
+    }
+
+    #[test]
+    fn unrelated_dimension_inputs() {
+        // ij,kl->il for X, Y
+        let x = randomish_matrix([("i", 2), ("j", 3)]);
+        let y = randomish_matrix([("k", 3), ("l", 4)]);
+
+        let einsum = Einsum::naive().with_2(&x, &y).to(["i", "l"]).unwrap();
+        assert_eq!(
+            Tensor::<f32, 2>::from(
+                [("i", 2), ("l", 4)],
+                vec![
+                    90.0,  990.0, 1890.0, 2790.0,
+                    99.0, 1089.0, 2079.0, 3069.0,
+                ],
+            ),
+            einsum,
+        );
+    }
+
+    #[test]
+    fn three_matrix_multiplication() {
+        // ab,cb,bd->ac for X, Y, Z
+        let x = randomish_matrix([("a", 2), ("b", 3)]);
+        println!("{}", x);
+        let y = randomish_matrix([("c", 2), ("b", 3)]);
+        println!("{}", y);
+        let z = randomish_matrix([("b", 3), ("d", 4)]);
+        println!("{}", z);
+
+        let einsum = Einsum::naive().with_3(&x, &y, &z).to(["a", "c"]).unwrap();
+        assert_eq!(
+            Tensor::<f32, 2>::from(
+                [("a", 2), ("c", 2)],
+                vec![
+                    33600.0, 35600.0,
+                    35600.0, 37792.0,
+                ],
+            ),
+            einsum,
+        );
+    }
 }
