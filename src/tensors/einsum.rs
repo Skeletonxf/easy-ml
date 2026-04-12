@@ -13,25 +13,34 @@ use std::error::Error;
 use std::fmt;
 
 pub struct Einsum {
-    // TODO
-    // Maybe we make this not a zero size type and have it created with
-    // the optimise implementation then convert all the of_X_with and of_X
-    // methods to method calls?
-    // Then something like Einsum::default().of_1((["a", "b"],), ["b", "a"], (&x,)) or
-    // Einsum::default().of_2((["a", "b"], ["c", "b"]), ["a", "c"], (&x, &y)) for caller
-    // Any kind of builder pattern here could massively help with not getting
-    // lost in all the arrays and tuples. Final output dimensions could be easy
-    // enough to have as as `.to([...])` style method call, just potentially need
-    // 1 Einsum type per arity for prior call to take input arguments.
-    // Einsum::default().of_2(["a", "b"], ["c", "b"], &x, &y).to(["a", "c"])
-    // could be quite nice to use? Could easily add simplified helpers that
-    // only take char for dimension names too then.
+    // TODO: Include optimiser in here
 }
 
+/**
+ * Einstein summation notation
+ *
+ * A very general purpose sum of products that can represent many
+ * different tensor operations with a single notation. In Easy-ML,
+ * as tensors are already named, their dimension names are used instead
+ * of arbitary characters to refer to dimensions across inputs and
+ * the output. Whereas the typical notation used in python libraries
+ * is of the form `ab,bc->ac` or `ab->` these would be
+ * `Einsum::default().with_2(&i, &j).to(["a", "c"])` or
+ * `Einsum::default().with_1(&i).to([])` respectively. In scenarios
+ * where the existing dimension names in a tensor aren't what you
+ * need for the summation notation, there are `named` helper methods
+ * to provide an override, so you can perform `ab,bc->ac` with
+ * input tensors of different dimension names if you write
+ * `Einsum::default().with_2(&i, &j).named(["a", "b"], ["b", "c"]).to(["a", "c"])`.
+ *
+ * See also
+ * - [Einsum is All you Need - Einstein Summation in Deep Learning](https://rockt.ai/2018/04/30/einsum)
+ * - [Einsum Is All You Need (Video)](https://www.youtube.com/watch?v=pkVwUVEHmfI)
+ */
 impl Einsum {
     /**
      * Returns an Einsum that will naively calculate the notation
-     * without introducing any substeps.
+     * in a single pass without introducing any substeps.
      */
     pub fn naive() -> Self {
         Einsum {}
@@ -44,6 +53,19 @@ impl Einsum {
         Einsum {}
     }
 
+    // TODO: Allow passing in a type that picks the desired contraction order,
+    // only need to return a vec of differently sized arrays/vecs of usize
+    // Consuming code puts inputs onto a list, runs Einsum::naive on selected
+    // inputs from first entry in list, puts output onto end of inputs list
+    // and loops till finished. Maybe a vec of enums so we can iterate over
+    // each possible size of a contraction since we need to know at compile
+    // time how many inputs we're using?
+    // How do we know what the intermediate output names are though?
+    // https://numpy.org/doc/stable/reference/generated/numpy.einsum_path.html
+
+    /**
+     * An operation with a single input tensor.
+     */
     pub fn with_1<T, S, I, const D: usize>(
         self,
         input_1: I,
@@ -55,6 +77,9 @@ impl Einsum {
         Einsum1 { tensor_1: input_1.into() }
     }
 
+    /**
+     * An operation with two input tensors.
+     */
     pub fn with_2<T, S1, S2, I1, I2, const D1: usize, const D2: usize>(
         self,
         input_1: I1,
@@ -67,6 +92,30 @@ impl Einsum {
         I2: Into<TensorView<T, S2, D2>>,
     {
         Einsum2 { tensor_1: input_1.into(), tensor_2: input_2.into() }
+    }
+
+    /**
+     * An operation with three input tensors.
+     */
+    pub fn with_3<T, S1, S2, S3, I1, I2, I3, const D1: usize, const D2: usize, const D3: usize>(
+        self,
+        input_1: I1,
+        input_2: I2,
+        input_3: I3,
+    ) -> Einsum3<T, S1, S2, S3, D1, D2, D3>
+    where
+        S1: TensorRef<T, D1>,
+        S2: TensorRef<T, D2>,
+        S3: TensorRef<T, D3>,
+        I1: Into<TensorView<T, S1, D1>>,
+        I2: Into<TensorView<T, S2, D2>>,
+        I3: Into<TensorView<T, S3, D3>>,
+    {
+        Einsum3 {
+            tensor_1: input_1.into(),
+            tensor_2: input_2.into(),
+            tensor_3: input_3.into(),
+        }
     }
 }
 
@@ -135,6 +184,7 @@ fn length_of<const I: usize>(
     }
 }
 
+#[track_caller]
 fn tensor_with_name<T, I, S, const D: usize>(
     dimensions: [Dimension; D],
     tensor: I
@@ -299,16 +349,38 @@ fn filter_outer_and_summation_indexes<const D: usize, const O: usize>(
     input_indexes
 }
 
+/**
+ * Einstein summation notation operation with a single input tensor.
+ */
 pub struct Einsum1<T, S1, const D1: usize> {
     tensor_1: TensorView<T, S1, D1>,
 }
 
+/**
+ * Einstein summation notation operation with two input tensors.
+ */
 pub struct Einsum2<T, S1, S2, const D1: usize, const D2: usize> {
     tensor_1: TensorView<T, S1, D1>,
     tensor_2: TensorView<T, S2, D2>,
 }
 
+/**
+ * Einstein summation notation operation with three input tensors
+ */
+pub struct Einsum3<T, S1, S2, S3, const D1: usize, const D2: usize, const D3: usize> {
+    tensor_1: TensorView<T, S1, D1>,
+    tensor_2: TensorView<T, S2, D2>,
+    tensor_3: TensorView<T, S3, D3>,
+}
+
 impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
+    /**
+     * Renames all input tensors to the new names. Their shapes will
+     * still be in the same order with the same lengths of data, as
+     * per [TensorRename]. As per TensorRename, dimension names for
+     * each individual tensor must be unique.
+     */
+    #[track_caller]
     pub fn named(self, input_1: [Dimension; D1]) -> Einsum1<T, TensorRename<T, S1, D1>, D1>
     where
         S1: TensorRef<T, D1>,
@@ -380,6 +452,13 @@ impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
 }
 
 impl<T, S1, S2, const D1: usize, const D2: usize> Einsum2<T, S1, S2, D1, D2> {
+    /**
+     * Renames all input tensors to the new names. Their shapes will
+     * still be in the same order with the same lengths of data, as
+     * per [TensorRename]. As per TensorRename, dimension names for
+     * each individual tensor must be unique.
+     */
+    #[track_caller]
     pub fn named(
         self,
         input_1: [Dimension; D1],
@@ -466,6 +545,138 @@ impl<T, S1, S2, const D1: usize, const D2: usize> Einsum2<T, S1, S2, D1, D2> {
                                     )
                                 );
                             sum = sum + (product_1 * product_2);
+                        }
+                        None => break
+                    }
+                }
+            }
+
+            *element = sum;
+        }
+
+        Ok(output_tensor)
+    }
+}
+
+impl<T, S1, S2, S3, const D1: usize, const D2: usize, const D3: usize> Einsum3<T, S1, S2, S3, D1, D2, D3> {
+    /**
+     * Renames all input tensors to the new names. Their shapes will
+     * still be in the same order with the same lengths of data, as
+     * per [TensorRename]. As per TensorRename, dimension names for
+     * each individual tensor must be unique.
+     */
+    #[track_caller]
+    pub fn named(
+        self,
+        input_1: [Dimension; D1],
+        input_2: [Dimension; D2],
+        input_3: [Dimension; D3],
+    ) -> Einsum3<T, TensorRename<T, S1, D1>, TensorRename<T, S2, D2>, TensorRename<T, S3, D3>, D1, D2, D3>
+    where
+        S1: TensorRef<T, D1>,
+        S2: TensorRef<T, D2>,
+        S3: TensorRef<T, D3>,
+    {
+        Einsum3 {
+            tensor_1: tensor_with_name(input_1, self.tensor_1),
+            tensor_2: tensor_with_name(input_2, self.tensor_2),
+            tensor_3: tensor_with_name(input_3, self.tensor_3),
+        }
+    }
+
+    pub fn to<const O: usize>(
+        self,
+        output: [Dimension; O],
+    ) -> Result<Tensor<T, O>, InconsistentDimensionLengthError<3>>
+    where
+        T: Numeric,
+        for<'a> &'a T: NumericRef<T>,
+        S1: TensorRef<T, D1>,
+        S2: TensorRef<T, D2>,
+        S3: TensorRef<T, D3>,
+    {
+        let input_1_shape_const = &self.tensor_1.shape();
+        let input_1_shape: &[(Dimension, usize)] = input_1_shape_const;
+        let input_2_shape_const = &self.tensor_2.shape();
+        let input_2_shape: &[(Dimension, usize)] = input_2_shape_const;
+        let input_3_shape_const = &self.tensor_3.shape();
+        let input_3_shape: &[(Dimension, usize)] = input_3_shape_const;
+        let input = &[input_1_shape, input_2_shape, input_3_shape];
+
+        let output_shape = output_shape_for(input, &output)?;
+        let mut output_tensor = Tensor::empty(output_shape, T::zero());
+
+        let summation_dimensions = summation_dimensions(input, &output)?;
+        let tensor_1_indexing = self.tensor_1.index();
+        let tensor_2_indexing = self.tensor_2.index();
+        let tensor_3_indexing = self.tensor_3.index();
+
+        for (indexes, element) in output_tensor.index_mut().iter_reference_mut().with_index() {
+            let mut sum = T::zero();
+
+            if summation_dimensions.is_empty() {
+                let product_1 = tensor_1_indexing
+                    .get_ref(
+                        filter_outer_indexes(
+                            &indexes,
+                            &output_shape,
+                            &input_1_shape_const
+                        )
+                    );
+                let product_2 = tensor_2_indexing
+                    .get_ref(
+                        filter_outer_indexes(
+                            &indexes,
+                            &output_shape,
+                            &input_2_shape_const
+                        )
+                    );
+                let product_3 = tensor_3_indexing
+                    .get_ref(
+                        filter_outer_indexes(
+                            &indexes,
+                            &output_shape,
+                            &input_3_shape_const
+                        )
+                    );
+                sum = sum + (product_1 * product_2 * product_3);
+            } else {
+                let mut summation_iterator = DynamicShapeIterator::from(&summation_dimensions);
+                loop {
+                    let next = summation_iterator.next();
+                    match next {
+                        Some(summation_indexes) => {
+                            let product_1 = tensor_1_indexing
+                                .get_ref(
+                                    filter_outer_and_summation_indexes(
+                                        &indexes,
+                                        &output_shape,
+                                        &summation_indexes,
+                                        &summation_dimensions,
+                                        &input_1_shape_const
+                                    )
+                                );
+                            let product_2 = tensor_2_indexing
+                                .get_ref(
+                                    filter_outer_and_summation_indexes(
+                                        &indexes,
+                                        &output_shape,
+                                        &summation_indexes,
+                                        &summation_dimensions,
+                                        &input_2_shape_const
+                                    )
+                                );
+                            let product_3 = tensor_3_indexing
+                                .get_ref(
+                                    filter_outer_and_summation_indexes(
+                                        &indexes,
+                                        &output_shape,
+                                        &summation_indexes,
+                                        &summation_dimensions,
+                                        &input_3_shape_const
+                                    )
+                                );
+                            sum = sum + (product_1 * product_2 * product_3);
                         }
                         None => break
                     }
