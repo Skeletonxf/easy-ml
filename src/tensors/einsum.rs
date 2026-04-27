@@ -12,10 +12,6 @@ use crate::tensors::{Dimension, Tensor};
 use std::error::Error;
 use std::fmt;
 
-pub struct Einsum {
-    // TODO: Include optimiser in here
-}
-
 /**
  * Einstein summation notation
  *
@@ -37,6 +33,11 @@ pub struct Einsum {
  * - [Einsum is All you Need - Einstein Summation in Deep Learning](https://rockt.ai/2018/04/30/einsum)
  * - [Einsum Is All You Need (Video)](https://www.youtube.com/watch?v=pkVwUVEHmfI)
  */
+#[derive(Clone, Debug, Default)]
+pub struct Einsum {
+    // TODO: Include optimiser in here
+}
+
 impl Einsum {
     /**
      * Returns an Einsum that will naively calculate the notation
@@ -119,9 +120,22 @@ impl Einsum {
     }
 }
 
+/**
+ * An error indicating the lengths of dimensions with the same
+ * name were inconsistent in the `I` input tensors.
+ */
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InconsistentDimensionLengthError<const I: usize> {
+    /**
+     * The lengths of each matching dimension name in each input
+     * in the same order as they were passed to the Einsum APIs.
+     *
+     * Some inputs may not have this dimension, so will be None.
+     */
     pub lengths: [Option<usize>; I],
+    /**
+     * The dimension name with an inconsistency.
+     */
     pub dimension: Dimension,
 }
 
