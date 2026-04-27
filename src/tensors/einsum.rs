@@ -164,6 +164,89 @@ fn test_inconsistent_dimension_length_error() {
     )
 }
 
+/**
+ * A single step in the contractions of an optimised Einsum calculation.
+ *
+ * The elements in the contraction correspond to indexes for the tensors
+ * left in the overall calculation. At the first contraction, there are as many
+ * tensor inputs as the number of tensors provided by the caller. For
+ * example, a contraction could select the first and third tensors to perform einsum
+ * on first, so would be [0, 2]. These tensors are removed from the remaining
+ * inputs and we add the results of the einsum operation to the end of the list.
+ * If we started with 3 tensors and selected the first and third, we would therefore
+ * have two tensors remaining, the second input (now at index 0) and the intermediate
+ * tensor we created (now at index 1). Therefore we could have
+ * `vec![Contraction::from(vec![0, 2], Contraction::from(vec![0, 1]))]` as our
+ * contraction order to split up an einsum calculation into two smaller substeps.
+ */
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct Contraction {
+    tensor_indexes: Vec<usize>,
+}
+
+impl Contraction {
+    /**
+     * Creates a Contraction from the input indexes.
+     */
+    fn from(tensor_indexes: Vec<usize>) -> Contraction {
+        // TODO: Contractions of 0 or 1 tensor indexes don't make any sense, should
+        // we be validating here to prevent construction of them?
+        Contraction {
+            tensor_indexes,
+        }
+    }
+
+    /**
+     * Returns a reference to the indexes in this contraction.
+     */
+    fn indexes(&self) -> &[usize] {
+        &self.tensor_indexes
+    }
+}
+
+// TODO: If we can't go from these arguments and the contraction order
+// to knowing what each substep's dimensions are we can't actually do
+// the substeps as each substep needs to know the dimensions of the
+// substep output and that's not in the inputs the user provides
+// to the overall function???
+trait EinsumContractionOrder {
+    fn contraction_order_for(
+        input_shapes: &[&[(Dimension, usize)]],
+        output_shape: &[Dimension],
+    ) -> Vec<Contraction>;
+}
+
+/**
+ * An [EinsumContractionOrder] that always returns a single step consisting
+ * of all inputs in the same order as they were provided.
+ */
+#[derive(Clone, Debug, Default)]
+struct NaiveEinsumContractionOrder {}
+
+impl NaiveEinsumContractionOrder {
+    fn new() -> NaiveEinsumContractionOrder {
+        NaiveEinsumContractionOrder {}
+    }
+}
+
+impl EinsumContractionOrder for NaiveEinsumContractionOrder {
+    /**
+     * NaiveEinsumContractionOrder always returns a single step consisting
+     * of all inputs in the same order as they were provided.
+     */
+    fn contraction_order_for(
+        input_shapes: &[&[(Dimension, usize)]],
+        #[allow(unused_variables)]
+        output_shape: &[Dimension],
+    ) -> Vec<Contraction> {
+        let mut all_inputs = Vec::with_capacity(input_shapes.len());
+        for (i, x) in all_inputs.iter_mut().enumerate() {
+            *x = i;
+        }
+        vec![Contraction::from(all_inputs)]
+    }
+}
+
 /// Return length of matching dimension in inputs, and error if the length of
 /// this output dimension is inconsistent in the input.
 fn length_of<const I: usize>(
