@@ -216,6 +216,35 @@ trait EinsumContractionOrder {
     ) -> Vec<Contraction>;
 }
 
+fn step_by_step_contraction(
+    input_shapes_left: &[&[(Dimension, usize)]],
+    output_shape: &[Dimension],
+    contraction: Contraction,
+) -> Vec<(Dimension, usize)> {
+    // 1. take the (Dimension, usize) shapes out of input_shapes_left matching the Contraction
+    let contracting: Vec<&[(Dimension, usize)]> = contraction
+        .tensor_indexes
+        .iter()
+        .map(|index| input_shapes_left[*index])
+        .collect();
+    // 2. make a new list for the other ones not in this contraction (might be empty)
+    let not_contracting_yet: Vec<&[(Dimension, usize)]> = input_shapes_left
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| contraction.tensor_indexes.contains(i))
+        .map(|(_, s)| *s)
+        .collect();
+    // 3. take the union of the dimension names from 1.
+    // TODO
+    // 4. take the union of the dimension names from the output_shape and 2.
+    // TODO
+    // 5. take the dimension names that are in individually in both 4. and 3.
+    // TODO
+    // 6. add 2. and new input shape from 5., return to caller to become new input_shapes_left
+    // TODO
+    unimplemented!()
+}
+
 /**
  * An [EinsumContractionOrder] that always returns a single step consisting
  * of all inputs in the same order as they were provided.
