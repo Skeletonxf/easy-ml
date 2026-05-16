@@ -1,7 +1,8 @@
 /*!
  * Einstein summation notation
  *
- * TODO docs
+ * A very general purpose sum of products that can represent many
+ * different tensor operations with a single notation
  */
 
 use crate::numeric::{Numeric, NumericRef};
@@ -35,41 +36,13 @@ use std::fmt;
  * - [Einsum Is All You Need (Video)](https://www.youtube.com/watch?v=pkVwUVEHmfI)
  */
 #[derive(Clone, Debug, Default)]
-pub struct Einsum {
-    // TODO: Include optimiser in here
-}
+pub struct Einsum {}
 
 impl Einsum {
-    /**
-     * Returns an Einsum that will naively calculate the notation
-     * in a single pass without introducing any substeps.
-     */
-    pub fn naive() -> Self {
-        Einsum {}
-    }
-
-    /**
-     * Returns the default Einsum optimisation (currently naive).
-     */
-    fn default() -> Self {
-        Einsum {}
-    }
-
-    // TODO: Allow passing in a type that picks the desired contraction order,
-    // only need to return a vec of differently sized arrays/vecs of usize
-    // Consuming code puts inputs onto a list, runs Einsum::naive on selected
-    // inputs from first entry in list, puts output onto end of inputs list
-    // and loops till finished. Maybe a vec of enums so we can iterate over
-    // each possible size of a contraction since we need to know at compile
-    // time how many inputs we're using?
-    // How do we know what the intermediate output names are though?
-    // https://numpy.org/doc/stable/reference/generated/numpy.einsum_path.html
-
     /**
      * An operation with a single input tensor.
      */
     pub fn with_1<T, S, I, const D: usize>(
-        self,
         input_1: I,
     ) -> Einsum1<T, S, D>
     where
@@ -83,7 +56,6 @@ impl Einsum {
      * An operation with two input tensors.
      */
     pub fn with_2<T, S1, S2, I1, I2, const D1: usize, const D2: usize>(
-        self,
         input_1: I1,
         input_2: I2,
     ) -> Einsum2<T, S1, S2, D1, D2>
@@ -100,7 +72,6 @@ impl Einsum {
      * An operation with three input tensors.
      */
     pub fn with_3<T, S1, S2, S3, I1, I2, I3, const D1: usize, const D2: usize, const D3: usize>(
-        self,
         input_1: I1,
         input_2: I2,
         input_3: I3,
@@ -181,7 +152,7 @@ fn test_inconsistent_dimension_length_error() {
  * contraction order to split up an einsum calculation into two smaller substeps.
  */
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct Contraction {
+pub struct Contraction {
     tensor_indexes: Vec<usize>,
 }
 
@@ -189,9 +160,7 @@ impl Contraction {
     /**
      * Creates a Contraction from the input indexes.
      */
-    fn from(tensor_indexes: Vec<usize>) -> Contraction {
-        // TODO: Contractions of 0 or 1 tensor indexes don't make any sense, should
-        // we be validating here to prevent construction of them?
+    pub fn from(tensor_indexes: Vec<usize>) -> Contraction {
         Contraction {
             tensor_indexes,
         }
@@ -200,110 +169,142 @@ impl Contraction {
     /**
      * Returns a reference to the indexes in this contraction.
      */
-    fn indexes(&self) -> &[usize] {
+    pub fn indexes(&self) -> &[usize] {
         &self.tensor_indexes
     }
 }
 
-// TODO: If we can't go from these arguments and the contraction order
-// to knowing what each substep's dimensions are we can't actually do
-// the substeps as each substep needs to know the dimensions of the
-// substep output and that's not in the inputs the user provides
-// to the overall function???
-trait EinsumContractionOrder {
-    fn contraction_order_for(
-        input_shapes: &[&[(Dimension, usize)]],
-        output_shape: &[Dimension],
-    ) -> Vec<Contraction>;
+struct StepByStepContractionResult {
+    input_shapes_left: Vec<Vec<(Dimension, usize)>>,
+    contraction_output: Vec<(Dimension, usize)>,
 }
 
+/// Given already validated input such that each dimension name repeated over
+/// the input_shapes_left and the output_shape share a common dimension length,
+/// returns the new list of input_shapes_left and the dimension names for
+/// the output of this contraction step.
 fn step_by_step_contraction(
     input_shapes_left: &[&[(Dimension, usize)]],
     output_shape: &[(Dimension, usize)],
     contraction: Contraction,
-) -> Vec<(Dimension, usize)> {
+) -> StepByStepContractionResult {
     // 1. take the (Dimension, usize) shapes out of input_shapes_left matching the Contraction
+    // These are the shapes for the tensors we're contracting.
     let contracting: Vec<&[(Dimension, usize)]> = contraction
         .tensor_indexes
         .iter()
         .map(|index| input_shapes_left[*index])
         .collect();
+
     // 2. make a new list for the other ones not in this contraction (might be empty)
+    // These are the shapes for the tensors we'll contract later.
     let not_contracting_yet: Vec<&[(Dimension, usize)]> = input_shapes_left
         .iter()
         .enumerate()
         .filter(|(i, _)| contraction.tensor_indexes.contains(i))
         .map(|(_, s)| *s)
         .collect();
-    // 3. take the union of the dimension names from 1.
-    let contracting_dimensions: HashSet<(Dimension, usize)> = {
-        let mut set = HashSet::new();
+
+    // 3. take the union of the dimension names from 1., preserving
+    // the order they were originally in the inputs
+    // These are the dimensions our contraction will be able to remove via
+    // summation if they aren't needed after this step.
+    let contracting_dimensions: Vec<(Dimension, usize)> = {
+        let mut seen = HashSet::new();
+        let mut set = Vec::new();
         for shape in &contracting {
             for d in shape.iter() {
-                set.insert(*d);
+                let new = seen.insert(*d);
+                if new {
+                    set.push(*d);
+                }
             }
         }
         set
     };
-    // 4. take the union of the dimension names from the output_shape and 2.
-    let retained_dimensions: HashSet<(Dimension, usize)> = {
-        let mut set = HashSet::new();
+
+    // 4. take the union of the dimension names from the output_shape and 2.,
+    // preserving the order they were originally in the inputs
+    // These are the dimensions we will still have after this step, due to
+    // them being in the final output shape or just required in a later step.
+    let retained_dimensions: Vec<(Dimension, usize)> = {
+        let mut seen = HashSet::new();
+        let mut set = Vec::new();
         for shape in &not_contracting_yet {
             for d in shape.iter() {
-                set.insert(*d);
+                let new = seen.insert(*d);
+                if new {
+                    set.push(*d);
+                }
             }
         }
         for d in output_shape.iter() {
-            set.insert(*d);
+            let new = seen.insert(*d);
+            if new {
+                set.push(*d);
+            }
         }
         set
     };
+
     // 5. take the dimension names that are in individually in both 4. and 3.
-    let contraction_output: Vec<(Dimension, usize)> = contracting_dimensions
-        .intersection(&retained_dimensions)
-        .cloned()
-        .collect();
+    // These are the dimensions we retain in the contraction at this
+    // step.
+    let contraction_output: Vec<(Dimension, usize)> = {
+        let mut intersection = retained_dimensions.clone();
+        intersection.retain(|shape| contracting_dimensions.contains(shape));
+        intersection
+    };
 
     // 6. add 2. and new input shape from 5., return to caller to become new input_shapes_left
+    // These are the shapes of the tensors left to be contracted
+    // in later steps. This will eventually be a single element list
+    // matching the output shape when we complete the final step.
     let new_input_shapes_left = {
-        let mut vec = not_contracting_yet.clone();
-        vec.push(&contraction_output);
+        let mut vec = Vec::with_capacity(not_contracting_yet.len() + 1);
+        for d in not_contracting_yet.iter() {
+            vec.push(d.to_vec());
+        }
+        vec.push(contraction_output.clone());
         vec
     };
 
-    return contraction_output;
+    return StepByStepContractionResult {
+        contraction_output,
+        input_shapes_left: new_input_shapes_left,
+    };
 }
 
-/**
- * An [EinsumContractionOrder] that always returns a single step consisting
- * of all inputs in the same order as they were provided.
- */
-#[derive(Clone, Debug, Default)]
-struct NaiveEinsumContractionOrder {}
-
-impl NaiveEinsumContractionOrder {
-    fn new() -> NaiveEinsumContractionOrder {
-        NaiveEinsumContractionOrder {}
-    }
-}
-
-impl EinsumContractionOrder for NaiveEinsumContractionOrder {
-    /**
-     * NaiveEinsumContractionOrder always returns a single step consisting
-     * of all inputs in the same order as they were provided.
-     */
-    fn contraction_order_for(
-        input_shapes: &[&[(Dimension, usize)]],
-        #[allow(unused_variables)]
-        output_shape: &[Dimension],
-    ) -> Vec<Contraction> {
-        let mut all_inputs = Vec::with_capacity(input_shapes.len());
-        for (i, x) in all_inputs.iter_mut().enumerate() {
-            *x = i;
-        }
-        vec![Contraction::from(all_inputs)]
-    }
-}
+// /**
+//  * An [EinsumContractionOrder] that always returns a single step consisting
+//  * of all inputs in the same order as they were provided.
+//  */
+// #[derive(Clone, Debug, Default)]
+// struct NaiveEinsumContractionOrder {}
+//
+// impl NaiveEinsumContractionOrder {
+//     fn new() -> NaiveEinsumContractionOrder {
+//         NaiveEinsumContractionOrder {}
+//     }
+// }
+//
+// impl EinsumContractionOrder for NaiveEinsumContractionOrder {
+//     /**
+//      * NaiveEinsumContractionOrder always returns a single step consisting
+//      * of all inputs in the same order as they were provided.
+//      */
+//     fn contraction_order_for(
+//         input_shapes: &[&[(Dimension, usize)]],
+//         #[allow(unused_variables)]
+//         output_shape: &[Dimension],
+//     ) -> Vec<Contraction> {
+//         let mut all_inputs = Vec::with_capacity(input_shapes.len());
+//         for (i, x) in all_inputs.iter_mut().enumerate() {
+//             *x = i;
+//         }
+//         vec![Contraction::from(all_inputs)]
+//     }
+// }
 
 /// Return length of matching dimension in inputs, and error if the length of
 /// this output dimension is inconsistent in the input.
@@ -544,6 +545,14 @@ impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
             tensor_1: tensor_with_name(input_1, self.tensor_1)
         }
     }
+
+    /*
+    pub fn by_contraction_order<const O: usize>(
+        self,
+        output: [Dimension; O],
+        contraction_order: &[Contraction],
+    ) -> Result<Tensor<T, O>, SomeErrorEnumHereThatCanAlsoFailDueToContractions<1>>
+     */
 
     pub fn to<const O: usize>(
         self,

@@ -26,7 +26,7 @@ mod einsum {
         let x_transposed = TensorView::from(x.index_by(["b", "a"]));
         let also_x_transposed = x.transpose(["b", "a"]).rename_owned(["b", "a"]);
 
-        let einsum = Einsum::naive().with_1(&x).to(["b", "a"]).unwrap();
+        let einsum = Einsum::with_1(&x).to(["b", "a"]).unwrap();
         assert_eq!(x_transposed, also_x_transposed);
         assert_eq!(x_transposed, einsum);
     }
@@ -37,7 +37,7 @@ mod einsum {
         let x = randomish_matrix([("a", 2), ("b", 3)]);
         let sum: f32 = x.iter().sum();
 
-        let einsum = Einsum::naive().with_1(&x).to([]).unwrap();
+        let einsum = Einsum::with_1(&x).to([]).unwrap();
         assert_eq!(sum, einsum.first());
     }
 
@@ -47,7 +47,7 @@ mod einsum {
         let x = randomish_matrix([("a", 3), ("b", 2)]);
         let column_sum = Tensor::from_fn([("b", 2)], |[b]| x.select([("b", b)]).iter().sum::<f32>());
 
-        let einsum = Einsum::naive().with_1(&x).to(["b"]).unwrap();
+        let einsum = Einsum::with_1(&x).to(["b"]).unwrap();
         assert_eq!(column_sum, einsum);
     }
 
@@ -57,7 +57,7 @@ mod einsum {
         let x = randomish_matrix([("a", 3), ("b", 2)]);
         let row_sum = Tensor::from_fn([("a", 3)], |[a]| x.select([("a", a)]).iter().sum::<f32>());
 
-        let einsum = Einsum::naive().with_1(&x).to(["a"]).unwrap();
+        let einsum = Einsum::with_1(&x).to(["a"]).unwrap();
         assert_eq!(row_sum, einsum);
     }
 
@@ -68,7 +68,7 @@ mod einsum {
         let y = randomish_matrix([("c", 1), ("b", 3)]);
         let multiply = &x * y.transpose_view(["b", "c"]);
 
-        let einsum = Einsum::naive().with_2(&x, &y).to(["a", "c"]).unwrap();
+        let einsum = Einsum::with_2(&x, &y).to(["a", "c"]).unwrap();
         // The transpose methods in Easy ML deliberately don't swap dimension
         // names too because a core use case is transposing the data in a matrix
         // that was already named correctly to do a multiplication with. We can verify
@@ -84,7 +84,7 @@ mod einsum {
         let y = randomish_matrix([("c", 2), ("b", 3)]);
         let multiply = &x * y.transpose_view(["b", "c"]);
 
-        let einsum = Einsum::naive().with_2(&x, &y).to(["a", "c"]).unwrap();
+        let einsum = Einsum::with_2(&x, &y).to(["a", "c"]).unwrap();
         // Again, to make the multiply operation defined we had to swap the
         // data to make y have a shape of [("c", 3), ("b", 2)] which einsum
         // completely skips, so the output has the same data in both cases
@@ -98,7 +98,7 @@ mod einsum {
         let x = Tensor::from_fn([("a", 3)], |[a]| a as f32);
         let dot_product = x.scalar_product(&x);
 
-        let einsum = Einsum::naive().with_2(&x, &x).to([]).unwrap();
+        let einsum = Einsum::with_2(&x, &x).to([]).unwrap();
         assert_eq!(dot_product, einsum.first());
     }
 
@@ -108,7 +108,7 @@ mod einsum {
         let x = randomish_matrix([("a", 2), ("b", 3)]);
         let sum: f32 = x.elementwise(&x, |x, y| x * y).iter().sum();
 
-        let einsum = Einsum::naive().with_2(&x, &x).to([]).unwrap();
+        let einsum = Einsum::with_2(&x, &x).to([]).unwrap();
         assert_eq!(sum, einsum.first());
     }
 
@@ -118,7 +118,7 @@ mod einsum {
         let x = randomish_matrix([("a", 2), ("b", 3)]);
         let multiplied = x.elementwise(&x, |x, y| x * y);
 
-        let einsum = Einsum::naive().with_2(&x, &x).to(["a", "b"]).unwrap();
+        let einsum = Einsum::with_2(&x, &x).to(["a", "b"]).unwrap();
         assert_eq!(multiplied, einsum);
     }
 
@@ -131,7 +131,7 @@ mod einsum {
         let y_indexing = y.index();
         let dot_product = Tensor::from_fn([("a", 3), ("b", 5)], |[a, b]| x_indexing.get([a]) * y_indexing.get([b]));
 
-        let einsum = Einsum::naive().with_2(&x, &y).to(["a", "b"]).unwrap();
+        let einsum = Einsum::with_2(&x, &y).to(["a", "b"]).unwrap();
         assert_eq!(dot_product, einsum);
     }
 
@@ -151,7 +151,7 @@ mod einsum {
             matrices
         };
 
-        let einsum = Einsum::naive().with_2(&x, &y).to(["batch", "a", "c"]).unwrap();
+        let einsum = Einsum::with_2(&x, &y).to(["batch", "a", "c"]).unwrap();
         assert_eq!(batch[0], einsum.select([("batch", 0)]));
         assert_eq!(batch[1], einsum.select([("batch", 1)]));
         assert_eq!(batch[2], einsum.select([("batch", 2)]));
@@ -195,7 +195,7 @@ mod einsum {
         let x = randomish_matrix([("i", 2), ("j", 3)]);
         let y = randomish_matrix([("j", 3), ("k", 4)]);
 
-        let einsum = Einsum::naive().with_2(&x, &y).to(["i", "j", "k"]).unwrap();
+        let einsum = Einsum::with_2(&x, &y).to(["i", "j", "k"]).unwrap();
         assert_eq!(
             Tensor::<f32, 3>::from(
                 [("i", 2), ("j", 3), ("k", 4)],
@@ -219,7 +219,7 @@ mod einsum {
         let x = randomish_matrix([("i", 2), ("j", 3)]);
         let y = randomish_matrix([("k", 3), ("l", 4)]);
 
-        let einsum = Einsum::naive().with_2(&x, &y).to(["i", "l"]).unwrap();
+        let einsum = Einsum::with_2(&x, &y).to(["i", "l"]).unwrap();
         assert_eq!(
             Tensor::<f32, 2>::from(
                 [("i", 2), ("l", 4)],
@@ -242,7 +242,7 @@ mod einsum {
         let z = randomish_matrix([("b", 3), ("d", 4)]);
         println!("{}", z);
 
-        let einsum = Einsum::naive().with_3(&x, &y, &z).to(["a", "c"]).unwrap();
+        let einsum = Einsum::with_3(&x, &y, &z).to(["a", "c"]).unwrap();
         assert_eq!(
             Tensor::<f32, 2>::from(
                 [("a", 2), ("c", 2)],
