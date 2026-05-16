@@ -9,6 +9,7 @@ use crate::tensors::views::{TensorRename, TensorRef, TensorView};
 use crate::tensors::indexing::DynamicShapeIterator;
 use crate::tensors::{Dimension, Tensor};
 
+use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
 
@@ -218,7 +219,7 @@ trait EinsumContractionOrder {
 
 fn step_by_step_contraction(
     input_shapes_left: &[&[(Dimension, usize)]],
-    output_shape: &[Dimension],
+    output_shape: &[(Dimension, usize)],
     contraction: Contraction,
 ) -> Vec<(Dimension, usize)> {
     // 1. take the (Dimension, usize) shapes out of input_shapes_left matching the Contraction
@@ -235,14 +236,42 @@ fn step_by_step_contraction(
         .map(|(_, s)| *s)
         .collect();
     // 3. take the union of the dimension names from 1.
-    // TODO
+    let contracting_dimensions: HashSet<(Dimension, usize)> = {
+        let mut set = HashSet::new();
+        for shape in &contracting {
+            for d in shape.iter() {
+                set.insert(*d);
+            }
+        }
+        set
+    };
     // 4. take the union of the dimension names from the output_shape and 2.
-    // TODO
+    let retained_dimensions: HashSet<(Dimension, usize)> = {
+        let mut set = HashSet::new();
+        for shape in &not_contracting_yet {
+            for d in shape.iter() {
+                set.insert(*d);
+            }
+        }
+        for d in output_shape.iter() {
+            set.insert(*d);
+        }
+        set
+    };
     // 5. take the dimension names that are in individually in both 4. and 3.
-    // TODO
+    let contraction_output: Vec<(Dimension, usize)> = contracting_dimensions
+        .intersection(&retained_dimensions)
+        .cloned()
+        .collect();
+
     // 6. add 2. and new input shape from 5., return to caller to become new input_shapes_left
-    // TODO
-    unimplemented!()
+    let new_input_shapes_left = {
+        let mut vec = not_contracting_yet.clone();
+        vec.push(&contraction_output);
+        vec
+    };
+
+    return contraction_output;
 }
 
 /**
