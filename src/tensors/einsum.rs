@@ -152,7 +152,7 @@ fn test_inconsistent_dimension_length_error() {
  * contraction order to split up an einsum calculation into two smaller substeps.
  */
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Contraction {
+struct Contraction {
     tensor_indexes: Vec<usize>,
 }
 
@@ -160,7 +160,7 @@ impl Contraction {
     /**
      * Creates a Contraction from the input indexes.
      */
-    pub fn from(tensor_indexes: Vec<usize>) -> Contraction {
+    fn from(tensor_indexes: Vec<usize>) -> Contraction {
         Contraction {
             tensor_indexes,
         }
@@ -169,11 +169,12 @@ impl Contraction {
     /**
      * Returns a reference to the indexes in this contraction.
      */
-    pub fn indexes(&self) -> &[usize] {
+    fn indexes(&self) -> &[usize] {
         &self.tensor_indexes
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct StepByStepContractionResult {
     input_shapes_left: Vec<Vec<(Dimension, usize)>>,
     contraction_output: Vec<(Dimension, usize)>,
@@ -201,7 +202,7 @@ fn step_by_step_contraction(
     let not_contracting_yet: Vec<&[(Dimension, usize)]> = input_shapes_left
         .iter()
         .enumerate()
-        .filter(|(i, _)| contraction.tensor_indexes.contains(i))
+        .filter(|(i, _)| !contraction.tensor_indexes.contains(i))
         .map(|(_, s)| *s)
         .collect();
 
@@ -274,37 +275,6 @@ fn step_by_step_contraction(
         input_shapes_left: new_input_shapes_left,
     };
 }
-
-// /**
-//  * An [EinsumContractionOrder] that always returns a single step consisting
-//  * of all inputs in the same order as they were provided.
-//  */
-// #[derive(Clone, Debug, Default)]
-// struct NaiveEinsumContractionOrder {}
-//
-// impl NaiveEinsumContractionOrder {
-//     fn new() -> NaiveEinsumContractionOrder {
-//         NaiveEinsumContractionOrder {}
-//     }
-// }
-//
-// impl EinsumContractionOrder for NaiveEinsumContractionOrder {
-//     /**
-//      * NaiveEinsumContractionOrder always returns a single step consisting
-//      * of all inputs in the same order as they were provided.
-//      */
-//     fn contraction_order_for(
-//         input_shapes: &[&[(Dimension, usize)]],
-//         #[allow(unused_variables)]
-//         output_shape: &[Dimension],
-//     ) -> Vec<Contraction> {
-//         let mut all_inputs = Vec::with_capacity(input_shapes.len());
-//         for (i, x) in all_inputs.iter_mut().enumerate() {
-//             *x = i;
-//         }
-//         vec![Contraction::from(all_inputs)]
-//     }
-// }
 
 /// Return length of matching dimension in inputs, and error if the length of
 /// this output dimension is inconsistent in the input.
@@ -852,6 +822,83 @@ impl<T, S1, S2, S3, const D1: usize, const D2: usize, const D3: usize> Einsum3<T
 
         Ok(output_tensor)
     }
+}
+
+#[test]
+fn step_by_step_contraction_tests() {
+    // Simple case where we just contract 2 tensors and consume all the input
+    assert_eq!(
+        step_by_step_contraction(
+            &[&[("x", 2), ("y", 3)], &[("y", 3), ("z", 4)]],
+            &[("x", 2), ("z", 4)],
+            Contraction { tensor_indexes: vec![0, 1] },
+        ),
+        StepByStepContractionResult {
+            input_shapes_left: vec![vec![("x", 2), ("z", 4)]],
+            contraction_output: vec![("x", 2), ("z", 4)],
+        }
+    );
+    // Case where we contract out `b` and `d` and leave just two tensors
+    // with `a` and `c` terms to contract next.
+    assert_eq!(
+        step_by_step_contraction(
+            &[
+                &[("a", 2), ("b", 3), ("d", 5)],
+                &[("a", 2), ("c", 4)],
+                &[("b", 3), ("d", 5), ("c", 4)],
+            ],
+            &[("a", 2), ("c", 4)],
+            Contraction { tensor_indexes: vec![0, 2] },
+        ),
+        StepByStepContractionResult {
+            input_shapes_left: vec![
+                vec![("a", 2), ("c", 4)],
+                vec![("a", 2), ("c", 4)],
+            ],
+            contraction_output: vec![("a", 2), ("c", 4)],
+        }
+    );
+    // Less optimised route where we have to leave `b` and `d` terms in
+    // because the last input still needs them, and we can't contract out
+    // `a` because we requested it in the output.
+    assert_eq!(
+        step_by_step_contraction(
+            &[
+                &[("a", 2), ("b", 3), ("d", 5)],
+                &[("a", 2), ("c", 4)],
+                &[("b", 3), ("d", 5), ("c", 4)],
+            ],
+            &[("a", 2), ("c", 4)],
+            Contraction { tensor_indexes: vec![0, 1] },
+        ),
+        StepByStepContractionResult {
+            input_shapes_left: vec![
+                vec![("b", 3), ("d", 5), ("c", 4)],
+                vec![("b", 3), ("d", 5), ("c", 4), ("a", 2)],
+            ],
+            contraction_output: vec![("b", 3), ("d", 5), ("c", 4), ("a", 2)],
+        }
+    );
+    // Slightly different route where we can contract out `a` because
+    // we didn't request it in the output.
+    assert_eq!(
+        step_by_step_contraction(
+            &[
+                &[("a", 2), ("b", 3), ("d", 5)],
+                &[("a", 2), ("c", 4)],
+                &[("b", 3), ("d", 5), ("c", 4)],
+            ],
+            &[("c", 4)],
+            Contraction { tensor_indexes: vec![0, 1] },
+        ),
+        StepByStepContractionResult {
+            input_shapes_left: vec![
+                vec![("b", 3), ("d", 5), ("c", 4)],
+                vec![("b", 3), ("d", 5), ("c", 4)],
+            ],
+            contraction_output: vec![("b", 3), ("d", 5), ("c", 4)],
+        }
+    );
 }
 
 // TODO: Once Tensor implementation is working, should be able to actually generalise
