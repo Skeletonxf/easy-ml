@@ -39,7 +39,7 @@ use std::fmt;
  * unique, so diagonal summation notation like `aa->` is not supported.
  * Dimensions names can and often will be repeated across input tensors and
  * or the output tensor shape, and each dimension name must have the same length
- * among all of these inputs and output. APIs will return [InconsistentDimensionLengthError]
+ * among all of these inputs. APIs will return [InconsistentDimensionLengthError]
  * if a caller passes in inconsistent arguments.
  *
  * See also
@@ -123,9 +123,6 @@ pub struct InconsistentDimensionLengthError<const I: usize> {
      * in the same order as they were passed to the Einsum APIs.
      *
      * Some inputs may not have this dimension, so will be None.
-     *
-     * Inputs with a matching dimension also need to be consistent
-     * with the length of the dimension in the output shape requested.
      */
     pub lengths: [Option<usize>; I],
     /**
@@ -174,11 +171,14 @@ fn test_inconsistent_dimension_length_error() {
  * `vec![Contraction::from(vec![0, 2], Contraction::from(vec![0, 1]))]` as our
  * contraction order to split up an einsum calculation into two smaller substeps.
  */
+#[allow(dead_code)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Contraction {
     tensor_indexes: Vec<usize>,
 }
 
+// Will come back to using this eventually
+#[allow(dead_code)]
 impl Contraction {
     /**
      * Creates a Contraction from the input indexes.
@@ -195,6 +195,7 @@ impl Contraction {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct StepByStepContractionResult {
     input_shapes_left: Vec<Vec<(Dimension, usize)>>,
@@ -205,6 +206,7 @@ struct StepByStepContractionResult {
 /// the input_shapes_left and the output_shape share a common dimension length,
 /// returns the new list of input_shapes_left and the dimension names for
 /// the output of this contraction step.
+#[allow(dead_code)]
 fn step_by_step_contraction(
     input_shapes_left: &[&[(Dimension, usize)]],
     output_shape: &[(Dimension, usize)],
@@ -291,10 +293,10 @@ fn step_by_step_contraction(
         vec
     };
 
-    return StepByStepContractionResult {
+    StepByStepContractionResult {
         contraction_output,
         input_shapes_left: new_input_shapes_left,
-    };
+    }
 }
 
 /// Return length of matching dimension in inputs, and error if the length of
@@ -315,19 +317,19 @@ fn length_of<const I: usize>(
         // Check other lengths agree
         if lengths.iter().any(|l| l.is_some() && *l != Some(length)) {
             // Different length matches
-            return Err(InconsistentDimensionLengthError {
-                lengths: lengths,
+            Err(InconsistentDimensionLengthError {
+                lengths,
                 dimension: output_dimension,
-            });
+            })
         } else {
-            return Ok(length);
+            Ok(length)
         }
     } else {
         // No matching lengths, we needed 1 match
-        return Err(InconsistentDimensionLengthError {
+        Err(InconsistentDimensionLengthError {
             lengths,
             dimension: output_dimension,
-        });
+        })
     }
 }
 
@@ -359,8 +361,8 @@ fn output_shape_for<const I: usize, const O: usize>(
     output: &[Dimension; O],
 ) -> Result<[(Dimension, usize); O], InconsistentDimensionLengthError<I>> {
     let mut output_shape = std::array::from_fn(|d| (output[d], 0));
-    for d in 0..O {
-        output_shape[d].1 = length_of(output_shape[d].0, input)?;
+    for x in output_shape.iter_mut() {
+        x.1 = length_of(x.0, input)?;
     }
     Ok(output_shape)
 }
@@ -412,7 +414,7 @@ fn summation_dimensions<const I: usize, const O: usize>(
         }
     }
 
-    return Ok(unique_dimensions);
+    Ok(unique_dimensions)
 }
 
 /// Filters outer indexes to only the matching dimensions
@@ -566,7 +568,7 @@ impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
                 let product_1 = tensor_1_indexing.get_ref(filter_outer_indexes(
                     &indexes,
                     &output_shape,
-                    &input_1_shape_const,
+                    input_1_shape_const,
                 ));
                 sum = sum + product_1;
             } else {
@@ -579,9 +581,9 @@ impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
                                 tensor_1_indexing.get_ref(filter_outer_and_summation_indexes(
                                     &indexes,
                                     &output_shape,
-                                    &summation_indexes,
+                                    summation_indexes,
                                     &summation_dimensions,
-                                    &input_1_shape_const,
+                                    input_1_shape_const,
                                 ));
                             sum = sum + product_1;
                         }
@@ -649,12 +651,12 @@ impl<T, S1, S2, const D1: usize, const D2: usize> Einsum2<T, S1, S2, D1, D2> {
                 let product_1 = tensor_1_indexing.get_ref(filter_outer_indexes(
                     &indexes,
                     &output_shape,
-                    &input_1_shape_const,
+                    input_1_shape_const,
                 ));
                 let product_2 = tensor_2_indexing.get_ref(filter_outer_indexes(
                     &indexes,
                     &output_shape,
-                    &input_2_shape_const,
+                    input_2_shape_const,
                 ));
                 sum = sum + (product_1 * product_2);
             } else {
@@ -667,17 +669,17 @@ impl<T, S1, S2, const D1: usize, const D2: usize> Einsum2<T, S1, S2, D1, D2> {
                                 tensor_1_indexing.get_ref(filter_outer_and_summation_indexes(
                                     &indexes,
                                     &output_shape,
-                                    &summation_indexes,
+                                    summation_indexes,
                                     &summation_dimensions,
-                                    &input_1_shape_const,
+                                    input_1_shape_const,
                                 ));
                             let product_2 =
                                 tensor_2_indexing.get_ref(filter_outer_and_summation_indexes(
                                     &indexes,
                                     &output_shape,
-                                    &summation_indexes,
+                                    summation_indexes,
                                     &summation_dimensions,
-                                    &input_2_shape_const,
+                                    input_2_shape_const,
                                 ));
                             sum = sum + (product_1 * product_2);
                         }
@@ -703,6 +705,7 @@ impl<T, S1, S2, S3, const D1: usize, const D2: usize, const D3: usize>
      * each individual tensor must be unique.
      */
     #[track_caller]
+    #[allow(clippy::type_complexity)]
     pub fn named(
         self,
         input_1: [Dimension; D1],
@@ -763,17 +766,17 @@ impl<T, S1, S2, S3, const D1: usize, const D2: usize, const D3: usize>
                 let product_1 = tensor_1_indexing.get_ref(filter_outer_indexes(
                     &indexes,
                     &output_shape,
-                    &input_1_shape_const,
+                    input_1_shape_const,
                 ));
                 let product_2 = tensor_2_indexing.get_ref(filter_outer_indexes(
                     &indexes,
                     &output_shape,
-                    &input_2_shape_const,
+                    input_2_shape_const,
                 ));
                 let product_3 = tensor_3_indexing.get_ref(filter_outer_indexes(
                     &indexes,
                     &output_shape,
-                    &input_3_shape_const,
+                    input_3_shape_const,
                 ));
                 sum = sum + (product_1 * product_2 * product_3);
             } else {
@@ -786,25 +789,25 @@ impl<T, S1, S2, S3, const D1: usize, const D2: usize, const D3: usize>
                                 tensor_1_indexing.get_ref(filter_outer_and_summation_indexes(
                                     &indexes,
                                     &output_shape,
-                                    &summation_indexes,
+                                    summation_indexes,
                                     &summation_dimensions,
-                                    &input_1_shape_const,
+                                    input_1_shape_const,
                                 ));
                             let product_2 =
                                 tensor_2_indexing.get_ref(filter_outer_and_summation_indexes(
                                     &indexes,
                                     &output_shape,
-                                    &summation_indexes,
+                                    summation_indexes,
                                     &summation_dimensions,
-                                    &input_2_shape_const,
+                                    input_2_shape_const,
                                 ));
                             let product_3 =
                                 tensor_3_indexing.get_ref(filter_outer_and_summation_indexes(
                                     &indexes,
                                     &output_shape,
-                                    &summation_indexes,
+                                    summation_indexes,
                                     &summation_dimensions,
-                                    &input_3_shape_const,
+                                    input_3_shape_const,
                                 ));
                             sum = sum + (product_1 * product_2 * product_3);
                         }
