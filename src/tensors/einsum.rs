@@ -2,7 +2,9 @@
  * Einstein summation notation
  *
  * A very general purpose sum of products that can represent many
- * different tensor operations with a single notation
+ * different tensor operations with a single notation.
+ *
+ * See [Einsum].
  */
 
 use crate::numeric::{Numeric, NumericRef};
@@ -21,22 +23,37 @@ use std::fmt;
  * different tensor operations with a single notation. In Easy-ML,
  * as tensors are already named, their dimension names are used instead
  * of arbitary characters to refer to dimensions across inputs and
- * the output. Whereas the typical notation used in python libraries
+ * the output.
+ *
+ * Whereas the typical notation used in python libraries
  * is of the form `ab,bc->ac` or `ab->` these would be
- * `Einsum::default().with_2(&i, &j).to(["a", "c"])` or
- * `Einsum::default().with_1(&i).to([])` respectively. In scenarios
+ * `Einsum::with_2(&i, &j).to(["a", "c"])` or
+ * `Einsum::with_1(&i).to([])` respectively. In scenarios
  * where the existing dimension names in a tensor aren't what you
  * need for the summation notation, there are `named` helper methods
  * to provide an override, so you can perform `ab,bc->ac` with
  * input tensors of different dimension names if you write
- * `Einsum::default().with_2(&i, &j).named(["a", "b"], ["b", "c"]).to(["a", "c"])`.
+ * `Einsum::with_2(&i, &j).named(["a", "b"], ["b", "c"]).to(["a", "c"])`.
+ *
+ * As with other tensor APIs, the dimension names in a Tensor must be
+ * unique, so diagonal summation notation like `aa->` is not supported.
+ * Dimensions names can and often will be repeated across input tensors and
+ * or the output tensor shape, and each dimension name must have the same length
+ * among all of these inputs and output. APIs will return [InconsistentDimensionLengthError]
+ * if a caller passes in inconsistent arguments.
  *
  * See also
  * - [Einsum is All you Need - Einstein Summation in Deep Learning](https://rockt.ai/2018/04/30/einsum)
  * - [Einsum Is All You Need (Video)](https://www.youtube.com/watch?v=pkVwUVEHmfI)
+ *
+ * To familiarise yourself with translating the Easy-ML specific syntax for
+ * Einsum APIs to 'normal' ones, you may also want to look at the
+ * [unit tests](https://github.com/Skeletonxf/easy-ml/blob/master/tests/einsum.rs).
  */
 #[derive(Clone, Debug, Default)]
-pub struct Einsum {}
+pub struct Einsum {
+    _private: ()
+}
 
 impl Einsum {
     /**
@@ -103,6 +120,9 @@ pub struct InconsistentDimensionLengthError<const I: usize> {
      * in the same order as they were passed to the Einsum APIs.
      *
      * Some inputs may not have this dimension, so will be None.
+     *
+     * Inputs with a matching dimension also need to be consistent
+     * with the length of the dimension in the output shape requested.
      */
     pub lengths: [Option<usize>; I],
     /**
@@ -187,7 +207,7 @@ struct StepByStepContractionResult {
 fn step_by_step_contraction(
     input_shapes_left: &[&[(Dimension, usize)]],
     output_shape: &[(Dimension, usize)],
-    contraction: Contraction,
+    contraction: &Contraction,
 ) -> StepByStepContractionResult {
     // 1. take the (Dimension, usize) shapes out of input_shapes_left matching the Contraction
     // These are the shapes for the tensors we're contracting.
@@ -516,14 +536,6 @@ impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
         }
     }
 
-    /*
-    pub fn by_contraction_order<const O: usize>(
-        self,
-        output: [Dimension; O],
-        contraction_order: &[Contraction],
-    ) -> Result<Tensor<T, O>, SomeErrorEnumHereThatCanAlsoFailDueToContractions<1>>
-     */
-
     pub fn to<const O: usize>(
         self,
         output: [Dimension; O],
@@ -831,7 +843,7 @@ fn step_by_step_contraction_tests() {
         step_by_step_contraction(
             &[&[("x", 2), ("y", 3)], &[("y", 3), ("z", 4)]],
             &[("x", 2), ("z", 4)],
-            Contraction { tensor_indexes: vec![0, 1] },
+            &Contraction { tensor_indexes: vec![0, 1] },
         ),
         StepByStepContractionResult {
             input_shapes_left: vec![vec![("x", 2), ("z", 4)]],
@@ -848,7 +860,7 @@ fn step_by_step_contraction_tests() {
                 &[("b", 3), ("d", 5), ("c", 4)],
             ],
             &[("a", 2), ("c", 4)],
-            Contraction { tensor_indexes: vec![0, 2] },
+            &Contraction { tensor_indexes: vec![0, 2] },
         ),
         StepByStepContractionResult {
             input_shapes_left: vec![
@@ -869,7 +881,7 @@ fn step_by_step_contraction_tests() {
                 &[("b", 3), ("d", 5), ("c", 4)],
             ],
             &[("a", 2), ("c", 4)],
-            Contraction { tensor_indexes: vec![0, 1] },
+            &Contraction { tensor_indexes: vec![0, 1] },
         ),
         StepByStepContractionResult {
             input_shapes_left: vec![
@@ -889,7 +901,7 @@ fn step_by_step_contraction_tests() {
                 &[("b", 3), ("d", 5), ("c", 4)],
             ],
             &[("c", 4)],
-            Contraction { tensor_indexes: vec![0, 1] },
+            &Contraction { tensor_indexes: vec![0, 1] },
         ),
         StepByStepContractionResult {
             input_shapes_left: vec![
@@ -900,6 +912,61 @@ fn step_by_step_contraction_tests() {
         }
     );
 }
+
+// TODO: Letting caller pass in the desired contraction order
+// should largely build on top of naive Einsum implementation, but we
+// are going to need quite a few more APIs to generalise over different
+// dimensionalities of tensors first since we have to erase dimension length
+// and dimension arguments somehow.
+// fn by_contraction_order<const O: usize>(
+//     self,
+//     output: [Dimension; O],
+//     contraction_order: &[Contraction],
+// ) -> Result<Tensor<T, O>, InconsistentDimensionLengthError<3>>
+// where
+//     T: Numeric,
+//     for<'a> &'a T: NumericRef<T>,
+//     S1: TensorRef<T, D1>,
+//     S2: TensorRef<T, D2>,
+//     S3: TensorRef<T, D3>,
+// {
+//     let input_1_shape_const = &self.tensor_1.shape();
+//     let input_1_shape: &[(Dimension, usize)] = input_1_shape_const;
+//     let input_2_shape_const = &self.tensor_2.shape();
+//     let input_2_shape: &[(Dimension, usize)] = input_2_shape_const;
+//     let input_3_shape_const = &self.tensor_3.shape();
+//     let input_3_shape: &[(Dimension, usize)] = input_3_shape_const;
+//     let input = &[input_1_shape, input_2_shape, input_3_shape];
+//
+//     let output_shape = output_shape_for(input, &output)?;
+//     let mut output_tensor = Tensor::empty(output_shape, T::zero());
+//
+//     let summation_dimensions = summation_dimensions(input, &output)?;
+//
+//     let mut input: Vec<Vec<(Dimension, usize)>> = input.iter().map(|i| i.to_vec()).collect();
+//
+//     for contraction in contraction_order.iter() {
+//         let step = step_by_step_contraction(
+//             &input.iter().map(|i| i.as_slice()).collect::<Vec<&[(Dimension, usize)]>>(),
+//             &output_shape,
+//             &contraction,
+//         );
+//         input = step.input_shapes_left;
+//         let einsum_step = step.contraction_output;
+//         // Need to store the unprocessed inputs in a list somehow which
+//         // is going to require first erasing or at least enumerating over
+//         // their dimensionality.
+//         match einsum_step.len() {
+//             0 => unimplemented!(),
+//             1 => Einsum::with_1(...),
+//             2 => Einsum::with_2(...),
+//             3 => Einsum::with_3(...),
+//             _ => panic!("Unsupported contraction step, output was larger than supported")
+//         }
+//     }
+//
+//     unimplemented!()
+// }
 
 // TODO: Once Tensor implementation is working, should be able to actually generalise
 // to work on RecordTensor inputs too, they can be passed in up to the .to() step already.

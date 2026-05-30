@@ -4,7 +4,6 @@ extern crate easy_ml;
  * Temporarily allowing unused variables to get test cases together for
  * einsum tests, first just setting up with doing the regular way.
  */
-#[allow(unused_variables)]
 #[cfg(test)]
 mod einsum {
     use easy_ml::tensors::{Tensor, Dimension};
@@ -165,28 +164,6 @@ mod einsum {
             ),
             einsum,
         );
-    }
-
-    #[test]
-    fn diagonal() {
-        // aa->a for X
-        let x = randomish_matrix([("a", 3), ("b", 3)]);
-        let diagonal = Tensor::from([("a", 3)], x.into_matrix().diagonal_iter().map(|x| x * x).collect());
-
-        let x = randomish_matrix([("a", 3), ("b", 3)]);
-        // Einsum won't be supported for diagonals because tensor dimension names
-        // must be unique.
-    }
-
-    #[test]
-    fn sum_of_diagonal() {
-        // aa-> for X
-        let x = randomish_matrix([("a", 3), ("b", 3)]);
-        let sum: f32 = x.into_matrix().diagonal_iter().map(|x| x * x).sum();
-
-        let x = randomish_matrix([("a", 3), ("b", 3)]);
-        // Einsum won't be supported for diagonals because tensor dimension names
-        // must be unique.
     }
 
     #[test]
