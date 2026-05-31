@@ -151,6 +151,54 @@ impl Einsum {
             tensor_4: input_4.into(),
         }
     }
+
+    /**
+     * An operation with five input tensors.
+     */
+    pub fn with_5<
+        T,
+        S1,
+        S2,
+        S3,
+        S4,
+        S5,
+        I1,
+        I2,
+        I3,
+        I4,
+        I5,
+        const D1: usize,
+        const D2: usize,
+        const D3: usize,
+        const D4: usize,
+        const D5: usize,
+    >(
+        input_1: I1,
+        input_2: I2,
+        input_3: I3,
+        input_4: I4,
+        input_5: I5,
+    ) -> Einsum5<T, S1, S2, S3, S4, S5, D1, D2, D3, D4, D5>
+    where
+        S1: TensorRef<T, D1>,
+        S2: TensorRef<T, D2>,
+        S3: TensorRef<T, D3>,
+        S4: TensorRef<T, D4>,
+        S5: TensorRef<T, D5>,
+        I1: Into<TensorView<T, S1, D1>>,
+        I2: Into<TensorView<T, S2, D2>>,
+        I3: Into<TensorView<T, S3, D3>>,
+        I4: Into<TensorView<T, S4, D4>>,
+        I5: Into<TensorView<T, S5, D5>>,
+    {
+        Einsum5 {
+            tensor_1: input_1.into(),
+            tensor_2: input_2.into(),
+            tensor_3: input_3.into(),
+            tensor_4: input_4.into(),
+            tensor_5: input_5.into(),
+        }
+    }
 }
 
 /**
@@ -584,6 +632,29 @@ pub struct Einsum4<
     tensor_2: TensorView<T, S2, D2>,
     tensor_3: TensorView<T, S3, D3>,
     tensor_4: TensorView<T, S4, D4>,
+}
+
+/**
+ * Einstein summation notation operation with five input tensors
+ */
+pub struct Einsum5<
+    T,
+    S1,
+    S2,
+    S3,
+    S4,
+    S5,
+    const D1: usize,
+    const D2: usize,
+    const D3: usize,
+    const D4: usize,
+    const D5: usize,
+> {
+    tensor_1: TensorView<T, S1, D1>,
+    tensor_2: TensorView<T, S2, D2>,
+    tensor_3: TensorView<T, S3, D3>,
+    tensor_4: TensorView<T, S4, D4>,
+    tensor_5: TensorView<T, S5, D5>,
 }
 
 impl<T, S1, const D1: usize> Einsum1<T, S1, D1> {
@@ -1021,6 +1092,195 @@ impl<T, S1, S2, S3, S4, const D1: usize, const D2: usize, const D3: usize, const
                                     input_4_shape_const,
                                 ));
                             sum = sum + (product_1 * product_2 * product_3 * product_4);
+                        }
+                        None => break,
+                    }
+                }
+            }
+
+            *element = sum;
+        }
+
+        Ok(output_tensor)
+    }
+}
+
+impl<
+        T,
+        S1,
+        S2,
+        S3,
+        S4,
+        S5,
+        const D1: usize,
+        const D2: usize,
+        const D3: usize,
+        const D4: usize,
+        const D5: usize,
+    > Einsum5<T, S1, S2, S3, S4, S5, D1, D2, D3, D4, D5>
+{
+    /**
+     * Renames all input tensors to the new names. Their shapes will
+     * still be in the same order with the same lengths of data, as
+     * per [TensorRename]. As per TensorRename, dimension names for
+     * each individual tensor must be unique.
+     */
+    #[track_caller]
+    #[allow(clippy::type_complexity)]
+    pub fn named(
+        self,
+        input_1: [Dimension; D1],
+        input_2: [Dimension; D2],
+        input_3: [Dimension; D3],
+        input_4: [Dimension; D4],
+        input_5: [Dimension; D5],
+    ) -> Einsum5<
+        T,
+        TensorRename<T, S1, D1>,
+        TensorRename<T, S2, D2>,
+        TensorRename<T, S3, D3>,
+        TensorRename<T, S4, D4>,
+        TensorRename<T, S5, D5>,
+        D1,
+        D2,
+        D3,
+        D4,
+        D5,
+    >
+    where
+        S1: TensorRef<T, D1>,
+        S2: TensorRef<T, D2>,
+        S3: TensorRef<T, D3>,
+        S4: TensorRef<T, D4>,
+        S5: TensorRef<T, D5>,
+    {
+        Einsum5 {
+            tensor_1: tensor_with_name(input_1, self.tensor_1),
+            tensor_2: tensor_with_name(input_2, self.tensor_2),
+            tensor_3: tensor_with_name(input_3, self.tensor_3),
+            tensor_4: tensor_with_name(input_4, self.tensor_4),
+            tensor_5: tensor_with_name(input_5, self.tensor_5),
+        }
+    }
+
+    pub fn to<const O: usize>(
+        self,
+        output: [Dimension; O],
+    ) -> Result<Tensor<T, O>, InconsistentDimensionLengthError<5>>
+    where
+        T: Numeric,
+        for<'a> &'a T: NumericRef<T>,
+        S1: TensorRef<T, D1>,
+        S2: TensorRef<T, D2>,
+        S3: TensorRef<T, D3>,
+        S4: TensorRef<T, D4>,
+        S5: TensorRef<T, D5>,
+    {
+        let input_1_shape_const = &self.tensor_1.shape();
+        let input_1_shape: &[(Dimension, usize)] = input_1_shape_const;
+        let input_2_shape_const = &self.tensor_2.shape();
+        let input_2_shape: &[(Dimension, usize)] = input_2_shape_const;
+        let input_3_shape_const = &self.tensor_3.shape();
+        let input_3_shape: &[(Dimension, usize)] = input_3_shape_const;
+        let input_4_shape_const = &self.tensor_4.shape();
+        let input_4_shape: &[(Dimension, usize)] = input_4_shape_const;
+        let input_5_shape_const = &self.tensor_5.shape();
+        let input_5_shape: &[(Dimension, usize)] = input_5_shape_const;
+        let input = &[
+            input_1_shape,
+            input_2_shape,
+            input_3_shape,
+            input_4_shape,
+            input_5_shape,
+        ];
+
+        let output_shape = output_shape_for(input, &output)?;
+        let mut output_tensor = Tensor::empty(output_shape, T::zero());
+
+        let summation_dimensions = summation_dimensions(input, &output)?;
+        let tensor_1_indexing = self.tensor_1.index();
+        let tensor_2_indexing = self.tensor_2.index();
+        let tensor_3_indexing = self.tensor_3.index();
+        let tensor_4_indexing = self.tensor_4.index();
+        let tensor_5_indexing = self.tensor_5.index();
+
+        for (indexes, element) in output_tensor.index_mut().iter_reference_mut().with_index() {
+            let mut sum = T::zero();
+
+            if summation_dimensions.is_empty() {
+                let product_1 = tensor_1_indexing.get_ref(filter_outer_indexes(
+                    &indexes,
+                    &output_shape,
+                    input_1_shape_const,
+                ));
+                let product_2 = tensor_2_indexing.get_ref(filter_outer_indexes(
+                    &indexes,
+                    &output_shape,
+                    input_2_shape_const,
+                ));
+                let product_3 = tensor_3_indexing.get_ref(filter_outer_indexes(
+                    &indexes,
+                    &output_shape,
+                    input_3_shape_const,
+                ));
+                let product_4 = tensor_4_indexing.get_ref(filter_outer_indexes(
+                    &indexes,
+                    &output_shape,
+                    input_4_shape_const,
+                ));
+                let product_5 = tensor_5_indexing.get_ref(filter_outer_indexes(
+                    &indexes,
+                    &output_shape,
+                    input_5_shape_const,
+                ));
+                sum = sum + (product_1 * product_2 * product_3 * product_4 * product_5);
+            } else {
+                let mut summation_iterator = DynamicShapeIterator::from(&summation_dimensions);
+                loop {
+                    let next = summation_iterator.next();
+                    match next {
+                        Some(summation_indexes) => {
+                            let product_1 =
+                                tensor_1_indexing.get_ref(filter_outer_and_summation_indexes(
+                                    &indexes,
+                                    &output_shape,
+                                    summation_indexes,
+                                    &summation_dimensions,
+                                    input_1_shape_const,
+                                ));
+                            let product_2 =
+                                tensor_2_indexing.get_ref(filter_outer_and_summation_indexes(
+                                    &indexes,
+                                    &output_shape,
+                                    summation_indexes,
+                                    &summation_dimensions,
+                                    input_2_shape_const,
+                                ));
+                            let product_3 =
+                                tensor_3_indexing.get_ref(filter_outer_and_summation_indexes(
+                                    &indexes,
+                                    &output_shape,
+                                    summation_indexes,
+                                    &summation_dimensions,
+                                    input_3_shape_const,
+                                ));
+                            let product_4 =
+                                tensor_4_indexing.get_ref(filter_outer_and_summation_indexes(
+                                    &indexes,
+                                    &output_shape,
+                                    summation_indexes,
+                                    &summation_dimensions,
+                                    input_4_shape_const,
+                                ));
+                            let product_5 =
+                                tensor_5_indexing.get_ref(filter_outer_and_summation_indexes(
+                                    &indexes,
+                                    &output_shape,
+                                    summation_indexes,
+                                    &summation_dimensions,
+                                    input_5_shape_const,
+                                ));
+                            sum = sum + (product_1 * product_2 * product_3 * product_4 * product_5);
                         }
                         None => break,
                     }

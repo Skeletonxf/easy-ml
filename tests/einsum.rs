@@ -249,4 +249,31 @@ mod einsum {
             einsum,
         );
     }
+
+    #[test]
+    fn five_tensor_multiplication() {
+        // wx,xy,xyz,wz,zyx->xz for W, X, Y, Z, Y
+        let w = Tensor::from_fn([("w", 4), ("x", 2)], |[w,x]| ((w * 2) + x) as f32);
+        let x = Tensor::from_fn([("x", 2), ("y", 3)], |[x,y]| ((x * 3) + y) as f32);
+        let y = Tensor::from_fn([("x", 2), ("y", 3), ("z", 2)], |[x,y,z]| ((x * 6) + (y * 2) + z) as f32);
+        let z = Tensor::from_fn([("w", 4), ("z", 2)], |[w,z]| ((w * 2) + z) as f32);
+
+        let einsum = Einsum::with_5(&w, &x, &y, &z, &y)
+            // NB: We can swap Y from xyz to zyx because z and x have the same
+            // length. We can't do other renames like zxy because that would
+            // make the lengths of the dimension names inconsistent.
+            .named(["w", "x"], ["x", "y"], ["x", "y", "z"], ["w", "z"], ["z", "y", "x"])
+            .to(["x", "z"])
+            .unwrap();
+        assert_eq!(
+            Tensor::<f32, 2>::from(
+                [("x", 2), ("z", 2)],
+                vec![
+                    2016.0, 8432.0,
+                    24752.0, 90384.0,
+                ],
+            ),
+            einsum,
+        );
+    }
 }
