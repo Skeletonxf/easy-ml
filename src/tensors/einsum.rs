@@ -202,6 +202,17 @@ impl Einsum {
 
     /**
      * An operation with six input tensors.
+     *
+     * There are no technical limits on extending support to a greater number
+     * of input tensors, but as it's not feasible to write a generic implementation
+     * for any number of inputs at the moment we have to stop somewhere. For large
+     * numbers of inputs it may often be more efficient to break down the operation
+     * into substeps, such as detailed in
+     * <https://optimized-einsum.readthedocs.io/en/stable/index.html>
+     *
+     * Until support for using an optimiser to choose an efficient contraction order
+     * is added, the caller can still manually split larger operations into substeps
+     * by calling Einsum multiple times with a subset of the total inputs.
      */
     pub fn with_6<
         T,
@@ -350,6 +361,9 @@ struct StepByStepContractionResult {
 /// the input_shapes_left and the output_shape share a common dimension length,
 /// returns the new list of input_shapes_left and the dimension names for
 /// the output of this contraction step.
+///
+/// Many thanks to Daniel G. A. Smith for proving assistance with understanding
+/// how this step by step process is done in https://github.com/dgasmith/opt_einsum
 #[allow(dead_code)]
 fn step_by_step_contraction(
     input_shapes_left: &[&[(Dimension, usize)]],
@@ -714,6 +728,17 @@ pub struct Einsum5<
 
 /**
  * Einstein summation notation operation with six input tensors
+ *
+ * There are no technical limits on extending support to a greater number
+ * of input tensors, but as it's not feasible to write a generic implementation
+ * for any number of inputs at the moment we have to stop somewhere. For large
+ * numbers of inputs it may often be more efficient to break down the operation
+ * into substeps, such as detailed in
+ * <https://optimized-einsum.readthedocs.io/en/stable/index.html>
+ *
+ * Until support for using an optimiser to choose an efficient contraction order
+ * is added, the caller can still manually split larger operations into substeps
+ * by calling Einsum multiple times with a subset of the total inputs.
  */
 pub struct Einsum6<
     T,
