@@ -213,11 +213,8 @@ mod einsum {
     fn three_matrix_multiplication() {
         // ab,cb,bd->ac for X, Y, Z
         let x = randomish_matrix([("a", 2), ("b", 3)]);
-        println!("{}", x);
         let y = randomish_matrix([("c", 2), ("b", 3)]);
-        println!("{}", y);
         let z = randomish_matrix([("b", 3), ("d", 4)]);
-        println!("{}", z);
 
         let einsum = Einsum::with_3(&x, &y, &z).to(["a", "c"]).unwrap();
         assert_eq!(
@@ -226,6 +223,27 @@ mod einsum {
                 vec![
                     33600.0, 35600.0,
                     35600.0, 37792.0,
+                ],
+            ),
+            einsum,
+        );
+    }
+
+    #[test]
+    fn four_tensor_multiplication() {
+        // wx,xy,xyz,wz->xz for W, X, Y, Z
+        let w = Tensor::from_fn([("w", 4), ("x", 2)], |[w,x]| ((w * 2) + x) as f32);
+        let x = Tensor::from_fn([("x", 2), ("y", 3)], |[x,y]| ((x * 3) + y) as f32);
+        let y = Tensor::from_fn([("x", 2), ("y", 3), ("z", 2)], |[x,y,z]| ((x * 6) + (y * 2) + z) as f32);
+        let z = Tensor::from_fn([("w", 4), ("z", 2)], |[w,z]| ((w * 2) + z) as f32);
+
+        let einsum = Einsum::with_4(&w, &x, &y, &z).to(["x", "z"]).unwrap();
+        assert_eq!(
+            Tensor::<f32, 2>::from(
+                [("x", 2), ("z", 2)],
+                vec![
+                    560.0, 884.0,
+                    6800.0, 9408.0,
                 ],
             ),
             einsum,
