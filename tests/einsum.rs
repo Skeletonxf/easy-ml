@@ -276,4 +276,46 @@ mod einsum {
             einsum,
         );
     }
+
+    #[test]
+    fn six_tensor_multiplication() {
+        // wx,xy,xyz,wz,xyz,xy->xyz for W, X, Y, Z, Y, -X
+        let w = Tensor::from_fn([("w", 4), ("x", 2)], |[w,x]| ((w * 2) + x) as f32);
+        let x = Tensor::from_fn([("x", 2), ("y", 3)], |[x,y]| ((x * 3) + y) as f32);
+        let y = Tensor::from_fn([("x", 2), ("y", 3), ("z", 2)], |[x,y,z]| ((x * 6) + (y * 2) + z) as f32);
+        let z = Tensor::from_fn([("w", 4), ("z", 2)], |[w,z]| ((w * 2) + z) as f32);
+
+        let einsum = Einsum::with_6(&w, &x, &y, &z, &y, &x.map(|n| -n))
+            .to(["x", "y", "z"])
+            .unwrap();
+        assert_eq!(
+            Tensor::<f32, 3>::from(
+                [("x", 2), ("y", 3), ("z", 2)],
+                vec![
+                    0.0, 0.0,
+                    -224.0, -612.0,
+                    -3584.0, -6800.0,
+
+                    -22032.0,  -37044.0,
+                    -69632.0, -108864.0,
+                    -170000.0, -254100.0,
+                ],
+            ),
+            einsum,
+        );
+    }
+
+    #[test]
+    fn six_tensor_sum() {
+        // wx,xy,xyz,wz,xyz,xy-> for W, X, Y, Z, Y, -X
+        let w = Tensor::from_fn([("w", 4), ("x", 2)], |[w,x]| ((w * 2) + x) as f32);
+        let x = Tensor::from_fn([("x", 2), ("y", 3)], |[x,y]| ((x * 3) + y) as f32);
+        let y = Tensor::from_fn([("x", 2), ("y", 3), ("z", 2)], |[x,y,z]| ((x * 6) + (y * 2) + z) as f32);
+        let z = Tensor::from_fn([("w", 4), ("z", 2)], |[w,z]| ((w * 2) + z) as f32);
+
+        let einsum = Einsum::with_6(&w, &x, &y, &z, &y, &x.map(|n| -n))
+            .to([])
+            .unwrap();
+        assert_eq!(Tensor::<f32, 0>::from([], vec![-672892.0]), einsum);
+    }
 }
