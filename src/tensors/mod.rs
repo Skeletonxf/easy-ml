@@ -1974,7 +1974,7 @@ mod serde_impls {
             // serialized data being created as a Tensor, which would then break all the
             // code that's relying on these invariants.
             // By never serialising the strides in the first place, we reduce the possibility
-            // of creating invalid serialised represenations at the slight increase in
+            // of creating invalid serialised representations at the slight increase in
             // serialisation work.
             Tensor::try_from(shape, self.data)
         }
@@ -1995,7 +1995,7 @@ mod serde_impls {
             // serialized data being created as a Tensor, which would then break all the
             // code that's relying on these invariants.
             // By never serialising the strides in the first place, we reduce the possibility
-            // of creating invalid serialised represenations at the slight increase in
+            // of creating invalid serialised representations at the slight increase in
             // serialisation work.
             Tensor::try_from(shape, self.data)
         }

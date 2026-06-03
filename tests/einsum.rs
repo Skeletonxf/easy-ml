@@ -1,9 +1,5 @@
 extern crate easy_ml;
 
-/**
- * Temporarily allowing unused variables to get test cases together for
- * einsum tests, first just setting up with doing the regular way.
- */
 #[cfg(test)]
 mod einsum {
     use easy_ml::tensors::{Tensor, Dimension};
