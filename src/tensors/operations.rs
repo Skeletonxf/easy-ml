@@ -44,7 +44,8 @@
  * Operations on tensors of the wrong sizes or mismatched dimension names will result in a panic.
  * No broadcasting is performed, ie you cannot multiply a (NxM) 'matrix' tensor by a (Nx1)
  * 'column vector' tensor, you must manipulate the shapes of at least one of the arguments so
- * that the operation is valid.
+ * that the operation is valid. For some situations, although it is not broadcasting either,
+ * [Einsum](crate::tensors::einsum::Einsum) may provide more flexibility.
  */
 
 use crate::numeric::{Numeric, NumericRef};

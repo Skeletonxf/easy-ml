@@ -46,9 +46,43 @@ use std::fmt;
  * - [Einsum is All you Need - Einstein Summation in Deep Learning](https://rockt.ai/2018/04/30/einsum)
  * - [Einsum Is All You Need (Video)](https://www.youtube.com/watch?v=pkVwUVEHmfI)
  *
- * To familiarise yourself with translating the Easy-ML specific syntax for
- * Einsum APIs to 'normal' ones, you may also want to look at the
- * [unit tests](https://github.com/Skeletonxf/easy-ml/blob/master/tests/einsum.rs).
+ * # You can do everything with Einsum<sup>1</sup>
+ *
+ * ```
+ * use easy_ml::tensors::Tensor;
+ * use easy_ml::tensors::views::TensorView;
+ * use easy_ml::tensors::einsum::Einsum;
+ *
+ * // Note the length of each dimension name needs to be consistent across
+ * // inputs. We know this is the case here because these are constructed examples
+ * // so we just unwrap each Result from the Einsum APIs.
+ * let w = Tensor::from_fn([("a", 4), ("b", 2)], |[a,b]| ((a * 2) + b) as f32);
+ * let x = Tensor::from_fn([("b", 2), ("c", 3)], |[b,c]| ((b * 3) + c) as f32);
+ * let y = Tensor::from_fn([("b", 2), ("c", 3), ("d", 2)], |[b,c,d]| {
+ *     return ((b * 6) + (c * 2) + d) as f32
+ * });
+ * let z = Tensor::from_fn([("a", 4), ("c", 3)], |[a,c]| ((a * 2) + c) as f32);
+ *
+ * let w_transposed = TensorView::from(w.index_by(["b", "a"]));
+ * assert_eq!(w_transposed, Einsum::with_1(&w).to(["b", "a"]).expect(""));
+ *
+ * let x_sum: f32 = x.iter().sum();
+ * assert_eq!(x_sum, Einsum::with_1(&x).to([]).expect("").into_scalar());
+ *
+ * let multiplied = &w * &x;
+ * assert_eq!(multiplied, Einsum::with_2(&w, &x).to(["a", "c"]).expect(""));
+ *
+ * let multiplied_2 = (&w.transpose_view(["b", "a"]) * &z).rename_owned(["b", "c"]);
+ * // No need to transpose first as Einsum doesn't need the matrices ordered "b"x"a" * "a"x"c".
+ * // There is a slight difference in resulting names though, as `*` drops the "a" dimension
+ * // names so the output is "b"x"c", whereas we have specified the same calculation with
+ * // einsum as a "b"*"c" output.
+ * assert_eq!(multiplied_2, Einsum::with_2(&w, &z).to(["b", "c"]).expect(""));
+ *
+ * let batch_multiply = Einsum::with_3(&x, &w, &z).to(["b", "a"]).expect("");
+ * ```
+ *
+ * - 1 - as long as you only need sums of products
  */
 #[derive(Clone, Debug, Default)]
 pub struct Einsum {
@@ -57,7 +91,9 @@ pub struct Einsum {
 
 impl Einsum {
     /**
-     * An operation with a single input tensor.
+     * An operation with a single input tensor, taking an input that can
+     * be converted into a TensorView which includes Tensor, &Tensor,
+     * &mut Tensor as well as references to a TensorView.
      */
     pub fn with_1<T, S, I, const D: usize>(input_1: I) -> Einsum1<T, S, D>
     where
@@ -70,7 +106,9 @@ impl Einsum {
     }
 
     /**
-     * An operation with two input tensors.
+     * An operation with two input tensors, taking inputs that can
+     * be converted into a TensorView which include Tensor, &Tensor,
+     * &mut Tensor as well as references to a TensorView.
      */
     pub fn with_2<T, S1, S2, I1, I2, const D1: usize, const D2: usize>(
         input_1: I1,
@@ -89,7 +127,9 @@ impl Einsum {
     }
 
     /**
-     * An operation with three input tensors.
+     * An operation with three input tensors, taking inputs that can
+     * be converted into a TensorView which include Tensor, &Tensor,
+     * &mut Tensor as well as references to a TensorView.
      */
     pub fn with_3<T, S1, S2, S3, I1, I2, I3, const D1: usize, const D2: usize, const D3: usize>(
         input_1: I1,
@@ -112,7 +152,9 @@ impl Einsum {
     }
 
     /**
-     * An operation with four input tensors.
+     * An operation with four input tensors, taking inputs that can
+     * be converted into a TensorView which include Tensor, &Tensor,
+     * &mut Tensor as well as references to a TensorView.
      */
     pub fn with_4<
         T,
@@ -153,7 +195,9 @@ impl Einsum {
     }
 
     /**
-     * An operation with five input tensors.
+     * An operation with five input tensors, taking inputs that can
+     * be converted into a TensorView which include Tensor, &Tensor,
+     * &mut Tensor as well as references to a TensorView.
      */
     pub fn with_5<
         T,
@@ -201,7 +245,9 @@ impl Einsum {
     }
 
     /**
-     * An operation with six input tensors.
+     * An operation with six input tensors, taking inputs that can
+     * be converted into a TensorView which include Tensor, &Tensor,
+     * &mut Tensor as well as references to a TensorView.
      *
      * There are no technical limits on extending support to a greater number
      * of input tensors, but as it's not feasible to write a generic implementation
