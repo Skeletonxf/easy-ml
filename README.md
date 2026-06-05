@@ -4,7 +4,7 @@ A completely deterministic machine learning library providing named tensors, mat
 
 ## Usage
 
-Add `easy-ml = "2.1"` to your `[dependencies]`<sup>1</sup>.
+Add `easy-ml = "2.2"` to your `[dependencies]`<sup>1</sup>.
 
 ## Overview
 This is a pure Rust library which makes heavy use of passing closures, iterators, generic types, and other rust idioms that machine learning libraries which wrap around another language backend could never provide easily. The implementations of everything are more or less textbook mathematical definitions, and do not feature extensive optimisation. As well as providing lots of APIs to manipulate N dimensional data with tensors and matrices, there are APIs covering linear algebra and gradient descent. Forward and reverse automatic differentiation are both supported. Easy ML supports compilation to Web Assembly.
@@ -33,4 +33,4 @@ The tensors in this library are named (at runtime), and specify their rank (numb
 
 *****
 
-1 - If you need to freeze your rust compiler version you should specify a minor version with a [tilde requirement](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#tilde-requirements) such as `easy-ml = "~2.1"`. Easy ML will not introduce breaking API changes between minor versions, but does follow the latest stable version of rust, and thus may introduce dependencies on newer language features (eg const generics) in minor version updates.
+1 - If you need to freeze your rust compiler version you should specify a minor version with a [tilde requirement](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#tilde-requirements) such as `easy-ml = "~2.2"`. Easy ML will not introduce breaking API changes between minor versions, but does follow the latest stable version of rust, and thus may introduce dependencies on newer language features (eg const generics) in minor version updates.

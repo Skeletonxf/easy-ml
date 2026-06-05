@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 2.2
+
+Version 2.2 adds Einsum APIs to perform a huge variety of operations with
+Tensors, new deserialisation APIs for Tensors to support serde libraries that
+don't don't support deserialising to borrowed types and some convenience mapping
+functions for RecordContainer.
+
 ## Version 2.1
 
 Version 2.1 adds doubled ended iterator implementations for several tensor
