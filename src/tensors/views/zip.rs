@@ -24,8 +24,9 @@ use std::marker::PhantomData;
  * let vector2 = Tensor::from([("data", 5)], vec![2, 4, 8, 16, 32]);
  * // Because there are 4 variants of `TensorStack::from` you may need to use the turbofish
  * // to tell the Rust compiler which variant you're using, but the actual type of `S` can be
- * // left unspecified by using an underscore.
- * let matrix = TensorStack::<i32, [_; 2], 1>::from([&vector1, &vector2], (0, "sample"));
+ * // left unspecified by using an underscore. Instead of typing
+ * // `TensorStack::<i32, [_; 2], 2>::from` to disambiguate here we use the from_array method
+ * let matrix = TensorStack::from_array([&vector1, &vector2], (0, "sample"));
  * let equal_matrix = Tensor::from([("sample", 2), ("data", 5)], vec![
  *   0, 1, 2, 3, 4,
  *   2, 4, 8, 16, 32
@@ -39,7 +40,7 @@ use std::marker::PhantomData;
  * // make them the same type, which we can do by boxing and erasing.
  * let matrix_erased: Box<dyn TensorRef<i32, 2>> = Box::new(also_matrix);
  * let equal_matrix_erased: Box<dyn TensorRef<i32, 2>> = Box::new(equal_matrix);
- * let tensor = TensorStack::<i32, [_; 2], 2>::from(
+ * let tensor = TensorStack::from_array(
  *     [matrix_erased, equal_matrix_erased], (0, "experiment")
  * );
  * assert!(
@@ -123,6 +124,28 @@ where
             along,
             _type: PhantomData,
         }
+    }
+
+    /**
+     * Creates a TensorStack from an array of sources of the same type and a tuple of which
+     * dimension and name to stack the sources along in the range of 0 <= `d` <= D. The sources
+     * must all have an identical shape, and the dimension name to add must not be in the sources'
+     * shape already.
+     *
+     * # Panics
+     *
+     * If N == 0, the shapes of the sources are not identical, the dimension for stacking is out
+     * of bounds, or the name is already in the sources' shape.
+     *
+     * While N == 1 arguments may be valid [TensorExpansion](crate::tensors::views::TensorExpansion)
+     * is a more general way to add dimensions with no additional data.
+     *
+     * This convenience method is provided to avoid the need for turbofish syntax when
+     * creating a TensorStack from an array.
+     */
+    #[track_caller]
+    pub fn from_array(sources: [S; N], along: (usize, Dimension)) -> Self {
+        TensorStack::<T, [S; N], D>::from(sources, along)
     }
 
     /**
@@ -815,8 +838,9 @@ fn test_stacking() {
  * let sample2 = Tensor::from([("sample", 1), ("data", 5)], vec![2, 4, 8, 16, 32]);
  * // Because there are 4 variants of `TensorChain::from` you may need to use the turbofish
  * // to tell the Rust compiler which variant you're using, but the actual type of `S` can be
- * // left unspecified by using an underscore.
- * let matrix = TensorChain::<i32, [_; 2], 2>::from([&sample1, &sample2], "sample");
+ * // left unspecified by using an underscore. Instead of typing
+ * // `TensorChain::<i32, [_; 2], 2>::from` to disambiguate here we use the from_array method
+ * let matrix = TensorChain::from_array([&sample1, &sample2], "sample");
  * let equal_matrix = Tensor::from([("sample", 2), ("data", 5)], vec![
  *     0, 1, 2, 3, 4,
  *     2, 4, 8, 16, 32
@@ -830,7 +854,7 @@ fn test_stacking() {
  * // make them the same type, which we can do by boxing and erasing.
  * let matrix_erased: Box<dyn TensorRef<i32, 2>> = Box::new(also_matrix);
  * let equal_matrix_erased: Box<dyn TensorRef<i32, 2>> = Box::new(equal_matrix);
- * let repeated_data = TensorChain::<i32, [_; 2], 2>::from(
+ * let repeated_data = TensorChain::from_array(
  *     [matrix_erased, equal_matrix_erased], "data"
  * );
  * assert!(
@@ -916,6 +940,27 @@ where
             along,
             _type: PhantomData,
         }
+    }
+
+    /**
+     * Creates a TensorChain from an array of sources of the same type and the dimension name to
+     * chain the sources along. The sources must all have an identical shape, including the
+     * provided dimension, except for the dimension lengths of the provided dimension name which
+     * may be different.
+     *
+     * # Panics
+     *
+     * If N == 0, D == 0, the shapes of the sources are not identical*, or the dimension for
+     * chaining is not in sources' shape.
+     *
+     * *except for the lengths along the provided dimension.
+     *
+     * This convenience method is provided to avoid the need for turbofish syntax when
+     * creating a TensorChain from an array.
+     */
+    #[track_caller]
+    pub fn from_array(sources: [S; N], along: Dimension) -> Self {
+        TensorChain::<T, [S; N], D>::from(sources, along)
     }
 
     /**
