@@ -38,6 +38,15 @@ mod tensors {
         use easy_ml::tensors::views::{DataLayout, TensorRef};
         assert_eq!(xy.data_layout(), DataLayout::Linear(["x", "y"]));
         assert_eq!(yx.data_layout(), DataLayout::Linear(["x", "y"]));
+
+        assert_eq!(vec![1, 3], xy.vec_of("x", [0]));
+        assert_eq!(vec![2, 4], xy.vec_of("x", [1]));
+        assert_eq!(vec![1, 2], xy.vec_of("y", [0]));
+        assert_eq!(vec![3, 4], xy.vec_of("y", [1]));
+        assert_eq!(vec![1, 3], yx.vec_of("x", [0]));
+        assert_eq!(vec![2, 4], yx.vec_of("x", [1]));
+        assert_eq!(vec![1, 2], yx.vec_of("y", [0]));
+        assert_eq!(vec![3, 4], yx.vec_of("y", [1]));
     }
 
     #[test]
@@ -174,6 +183,10 @@ mod tensors {
         assert_eq!(cba.data_layout(), DataLayout::Linear(["a", "b", "c"]));
         assert_eq!(cab.data_layout(), DataLayout::Linear(["a", "b", "c"]));
         assert_eq!(bca.data_layout(), DataLayout::Linear(["a", "b", "c"]));
+
+        assert_eq!(vec![[0, 0, 0], [0, 0, 1], [0, 0, 2]], abc.vec_of("c", [0, 0]));
+        assert_eq!(vec![[2, 0, 0], [2, 0, 1], [2, 0, 2]], abc.vec_of("c", [2, 0]));
+        assert_eq!(vec![[1, 0, 1], [1, 1, 1], [1, 2, 1]], abc.vec_of("b", [1, 1]));
     }
 
     #[test]

@@ -353,6 +353,183 @@ where
     pub fn iter(&self) -> TensorIterator<'_, T, TensorAccess<T, S, D>, D> {
         TensorIterator::from(self)
     }
+
+    /// D2 is always D-1, we just can't express that in the function signature yet
+    #[track_caller]
+    fn vec_of_impl<const D2: usize>(
+        &self,
+        dimension: Dimension,
+        other_indexes: [usize; D2],
+    ) -> Vec<T> {
+        let shape = self.shape();
+        match (
+            dimensions::position_of(&shape, dimension),
+            dimensions::length_of(&shape, dimension),
+        ) {
+            (Some(position), Some(length)) => {
+                // If this tensor has this dimension then it is required to
+                // be of non zero length so a 0 index will be valid.
+                let mut indexes = [0; D];
+                // Populate the indexes before the dimension specified
+                for p in 0..position {
+                    indexes[p] = other_indexes[p];
+                }
+                // Populate the indexes after the dimension specified.
+                for p in position..other_indexes.len() {
+                    indexes[p + 1] = other_indexes[p];
+                }
+
+                let index_valid = self.try_get_reference(indexes).is_some();
+
+                let mut list = Vec::with_capacity(length);
+                if index_valid {
+                    for i in 0..length {
+                        indexes[position] = i;
+                        // Safety: We know our position index is in range because we range
+                        // over 0..length of this dimension. We know the other indexes are
+                        // in range because we checked them with index_valid and no implementation
+                        // is allowed to disobey the rules on valid indexes in TensorRef without
+                        // violating the safety constraints that are part of that unsafe trait
+                        // implementation.
+                        list.push(unsafe { self.get_reference_unchecked(indexes).clone() });
+                    }
+                } else {
+                    panic!(
+                        "Unable to index with {:?}, Tensor dimensions are {:?}.",
+                        indexes, shape
+                    )
+                }
+
+                list
+            }
+            _ => panic!(
+                "No dimension {:?} in tensor, Tensor dimensions are {:?}.",
+                dimension, shape
+            ),
+        }
+    }
+}
+
+impl<T, S> TensorAccess<T, S, 6>
+where
+    S: TensorRef<T, 6>,
+    T: Clone,
+{
+    /**
+     * Returns a Vec containing copies of all the values in the specified dimension
+     * and along the other dimensions with the provided indexes, panicking if any
+     * of these other indexes are out of range or if the specified dimension does not exist.
+     *
+     * The indexes provided are as per the order of this TensorAccess, excluding the
+     * index for the specified dimension, hence the array contains 1 fewer index.
+     */
+    #[track_caller]
+    pub fn vec_of(&self, dimension: Dimension, other_indexes: [usize; 5]) -> Vec<T> {
+        self.vec_of_impl(dimension, other_indexes)
+    }
+}
+
+impl<T, S> TensorAccess<T, S, 5>
+where
+    S: TensorRef<T, 5>,
+    T: Clone,
+{
+    /**
+     * Returns a Vec containing copies of all the values in the specified dimension
+     * and along the other dimensions with the provided indexes, panicking if any
+     * of these other indexes are out of range or if the specified dimension does not exist.
+     *
+     * The indexes provided are as per the order of this TensorAccess, excluding the
+     * index for the specified dimension, hence the array contains 1 fewer index.
+     */
+    #[track_caller]
+    pub fn vec_of(&self, dimension: Dimension, other_indexes: [usize; 4]) -> Vec<T> {
+        self.vec_of_impl(dimension, other_indexes)
+    }
+}
+
+impl<T, S> TensorAccess<T, S, 4>
+where
+    S: TensorRef<T, 4>,
+    T: Clone,
+{
+    /**
+     * Returns a Vec containing copies of all the values in the specified dimension
+     * and along the other dimensions with the provided indexes, panicking if any
+     * of these other indexes are out of range or if the specified dimension does not exist.
+     *
+     * The indexes provided are as per the order of this TensorAccess, excluding the
+     * index for the specified dimension, hence the array contains 1 fewer index.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     *
+     * let x = Tensor::from(
+     *     [("image", 4), ("height", 5), ("width", 5), ("color", 3)],
+     *     (0..300).collect()
+     * );
+     * let second_image_middle_pixel = x.index().vec_of("color", [1, 3, 3]);
+     * assert_eq!(vec![129, 130, 131], second_image_middle_pixel);
+     * ```
+     */
+    #[track_caller]
+    pub fn vec_of(&self, dimension: Dimension, other_indexes: [usize; 3]) -> Vec<T> {
+        self.vec_of_impl(dimension, other_indexes)
+    }
+}
+
+impl<T, S> TensorAccess<T, S, 3>
+where
+    S: TensorRef<T, 3>,
+    T: Clone,
+{
+    /**
+     * Returns a Vec containing copies of all the values in the specified dimension
+     * and along the other dimensions with the provided indexes, panicking if any
+     * of these other indexes are out of range or if the specified dimension does not exist.
+     *
+     * The indexes provided are as per the order of this TensorAccess, excluding the
+     * index for the specified dimension, hence the array contains 1 fewer index.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     *
+     * let x = Tensor::from([("height", 5), ("width", 5), ("color", 3)], (0..75).collect());
+     * let first_pixel = x.index().vec_of("color", [0, 0]);
+     * assert_eq!(vec![0, 1, 2], first_pixel);
+     * ```
+     */
+    #[track_caller]
+    pub fn vec_of(&self, dimension: Dimension, other_indexes: [usize; 2]) -> Vec<T> {
+        self.vec_of_impl(dimension, other_indexes)
+    }
+}
+
+impl<T, S> TensorAccess<T, S, 2>
+where
+    S: TensorRef<T, 2>,
+    T: Clone,
+{
+    /**
+     * Returns a Vec containing copies of all the values in the specified dimension
+     * and along the other dimensions with the provided indexes, panicking if any
+     * of these other indexes are out of range or if the specified dimension does not exist.
+     *
+     * The indexes provided are as per the order of this TensorAccess, excluding the
+     * index for the specified dimension, hence the array contains 1 fewer index.
+     *
+     * ```
+     * use easy_ml::tensors::Tensor;
+     *
+     * let x = Tensor::from([("x", 5), ("y", 5)], (0..25).collect());
+     * let third_column_vector = x.index().vec_of("x", [2]);
+     * assert_eq!(vec![2, 7, 12, 17, 22], third_column_vector);
+     * ```
+     */
+    #[track_caller]
+    pub fn vec_of(&self, dimension: Dimension, other_indexes: [usize; 1]) -> Vec<T> {
+        self.vec_of_impl(dimension, other_indexes)
+    }
 }
 
 impl<T, S, const D: usize> TensorAccess<T, S, D>
@@ -1421,7 +1598,8 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> DoubleEndedIterator for WithIndex<TensorReferenceIterator<'a, T, S, D>>
+impl<'a, T, S, const D: usize> DoubleEndedIterator
+    for WithIndex<TensorReferenceIterator<'a, T, S, D>>
 where
     S: TensorRef<T, D>,
 {
@@ -1526,7 +1704,7 @@ where
                 // be resized (except by us - and we don't) which ensures DoubleEndedShapeIterator
                 // can always yield valid indexes for our iteration.
                 std::mem::transmute::<&mut T, &mut T>(
-                    self.source.get_reference_unchecked_mut(indexes)
+                    self.source.get_reference_unchecked_mut(indexes),
                 )
             }
         })
@@ -1554,7 +1732,7 @@ where
                 // be resized (except by us - and we don't) which ensures DoubleEndedShapeIterator
                 // can always yield valid indexes for our iteration.
                 std::mem::transmute::<&mut T, &mut T>(
-                    self.source.get_reference_unchecked_mut(indexes)
+                    self.source.get_reference_unchecked_mut(indexes),
                 )
             }
         })
@@ -1587,7 +1765,8 @@ where
     }
 }
 
-impl<'a, T, S, const D: usize> DoubleEndedIterator for WithIndex<TensorReferenceMutIterator<'a, T, S, D>>
+impl<'a, T, S, const D: usize> DoubleEndedIterator
+    for WithIndex<TensorReferenceMutIterator<'a, T, S, D>>
 where
     S: TensorMut<T, D>,
 {
@@ -1596,7 +1775,6 @@ where
         self.iterator.next_back().map(|x| (index, x))
     }
 }
-
 
 impl<'a, T, S, const D: usize> FusedIterator for WithIndex<TensorReferenceMutIterator<'a, T, S, D>> where
     S: TensorMut<T, D>
