@@ -15,6 +15,7 @@ pub mod slices;
 pub mod views;
 
 pub use errors::ScalarConversionError;
+pub use crate::display::SummaryOptions;
 
 use crate::linear_algebra;
 use crate::matrices::iterators::*;
@@ -1766,7 +1767,29 @@ impl<T: Clone> Clone for Matrix<T> {
  */
 impl<T: std::fmt::Display> std::fmt::Display for Matrix<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        crate::matrices::views::format_view(self, f)
+        self.fmt_with(f, SummaryOptions::default())
+    }
+}
+
+impl<T: std::fmt::Display> Matrix<T> {
+    /**
+     * Formats the Matrix with the custom [SummaryOptions].
+     */
+    pub fn fmt_with(&self, f: &mut std::fmt::Formatter, config: SummaryOptions) -> std::fmt::Result {
+        crate::display::format_view(self, f, config)
+    }
+
+    /**
+     * Returns a type which implements [Display](std::fmt::Display) using the custom [SummaryOptions].
+     */
+    pub fn display_with(&self, config: SummaryOptions) -> impl std::fmt::Display {
+        struct MatrixDisplay<'a, T>(&'a Matrix<T>, SummaryOptions);
+        impl<'a, T: std::fmt::Display> std::fmt::Display for MatrixDisplay<'a, T> {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                self.0.fmt_with(f, self.1)
+            }
+        }
+        MatrixDisplay(self, config)
     }
 }
 

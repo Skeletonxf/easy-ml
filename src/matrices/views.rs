@@ -18,6 +18,7 @@
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
+use crate::display::SummaryOptions;
 use crate::matrices::iterators::*;
 use crate::matrices::{Column, Matrix, Row};
 
@@ -1056,45 +1057,6 @@ where
     }
 }
 
-// Common formatting logic used for Matrix and MatrixView Display implementations
-pub(crate) fn format_view<T, S>(view: &S, f: &mut std::fmt::Formatter) -> std::fmt::Result
-where
-    T: std::fmt::Display,
-    S: MatrixRef<T>,
-{
-    let rows = view.view_rows();
-    let columns = view.view_columns();
-    // It would be nice to default to some precision for f32 and f64 but I can't
-    // work out how to easily check if T matches. If we use precision for all T
-    // then strings get truncated which is even worse for debugging.
-    write!(f, "[ ")?;
-    for row in 0..rows {
-        if row > 0 {
-            write!(f, "  ")?;
-        }
-        for column in 0..columns {
-            let value = match view.try_get_reference(row, column) {
-                Some(x) => x,
-                None => panic!(
-                    "Expected ({},{}) to be a valid index in range of (0,0) to ({},{})",
-                    row, column, rows - 1, columns - 1
-                ),
-            };
-            match f.precision() {
-                Some(precision) => write!(f, "{:.*}", precision, value)?,
-                None => write!(f, "{}", value)?,
-            };
-            if column < columns - 1 {
-                write!(f, ", ")?;
-            }
-        }
-        if row < rows - 1 {
-            writeln!(f)?;
-        }
-    }
-    write!(f, " ]")
-}
-
 /**
  * Any matrix view of a Displayable type implements Display
  *
@@ -1107,7 +1069,33 @@ where
     S: MatrixRef<T>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        format_view(&self.source, f)
+        self.fmt_with(f, SummaryOptions::default())
+    }
+}
+
+impl<T, S> MatrixView<T, S>
+where
+    T: std::fmt::Display,
+    S: MatrixRef<T>,
+{
+    /**
+    * Formats the MatrixView with the custom [SummaryOptions].
+    */
+    pub fn fmt_with(&self, f: &mut std::fmt::Formatter, config: SummaryOptions) -> std::fmt::Result {
+        crate::display::format_view(&self.source, f, config)
+    }
+
+    /**
+    * Returns a type which implements [Display](std::fmt::Display) using the custom [SummaryOptions].
+    */
+    pub fn display_with(&self, config: SummaryOptions) -> impl std::fmt::Display {
+        struct MatrixViewDisplay<'a, T, S>(&'a MatrixView<T, S>, SummaryOptions);
+        impl<'a, T: std::fmt::Display, S: MatrixRef<T>> std::fmt::Display for MatrixViewDisplay<'a, T, S> {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                self.0.fmt_with(f, self.1)
+            }
+        }
+        MatrixViewDisplay(self, config)
     }
 }
 
