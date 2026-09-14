@@ -126,7 +126,7 @@ where
         for column in 0..columns {
             if summarize {
                 let start = configuration.summary_items();
-                let end = rows.saturating_sub(configuration.summary_items());
+                let end = columns.saturating_sub(configuration.summary_items());
                 let skip_column = column >= start && column < end;
                 if skip_column {
                     // Skip all the columns for the middle of the matrix not within
