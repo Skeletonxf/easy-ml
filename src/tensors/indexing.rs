@@ -39,7 +39,7 @@ use crate::numeric::Numeric;
 use crate::tensors::dimensions;
 use crate::tensors::dimensions::DimensionMappings;
 use crate::tensors::views::{DataLayout, TensorMut, TensorRef};
-use crate::tensors::{Dimension, Tensor};
+use crate::tensors::{Dimension, Tensor, SummaryOptions};
 
 use std::error::Error;
 use std::fmt;
@@ -837,9 +837,44 @@ where
     S: TensorRef<T, D>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        crate::tensors::display::format_view(&self, f)?;
+        self.fmt_with(f, SummaryOptions::default())
+    }
+}
+
+impl<T: std::fmt::Display, S, const D: usize> TensorAccess<T, S, D>
+where
+    T: std::fmt::Display,
+    S: TensorRef<T, D>,
+{
+    /**
+     * Formats the Tensor with the custom [SummaryOptions].
+     */
+    pub fn fmt_with(
+        &self,
+        f: &mut std::fmt::Formatter,
+        config: SummaryOptions,
+    ) -> std::fmt::Result {
+        crate::display::format_view_tensor(&self, f, config)?;
         writeln!(f)?;
         write!(f, "Data Layout = {:?}", self.data_layout())
+    }
+
+    /**
+     * Returns a type which implements [Display](std::fmt::Display) using the custom [SummaryOptions].
+     */
+    pub fn display_with(&self, config: SummaryOptions) -> impl std::fmt::Display {
+        struct TensorViewDisplay<'a, T, S, const D: usize>(&'a TensorAccess<T, S, D>, SummaryOptions);
+        impl<'a, T, S, const D: usize> std::fmt::Display
+            for TensorViewDisplay<'a, T, S, D>
+        where
+            T: std::fmt::Display,
+            S: TensorRef<T, D>
+        {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                self.0.fmt_with(f, self.1)
+            }
+        }
+        TensorViewDisplay(self, config)
     }
 }
 
@@ -2161,9 +2196,44 @@ where
     S: TensorRef<T, D>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        crate::tensors::display::format_view(&self, f)?;
+        self.fmt_with(f, SummaryOptions::default())
+    }
+}
+
+impl<T: std::fmt::Display, S, const D: usize> TensorTranspose<T, S, D>
+where
+    T: std::fmt::Display,
+    S: TensorRef<T, D>,
+{
+    /**
+     * Formats the Tensor with the custom [SummaryOptions].
+     */
+    pub fn fmt_with(
+        &self,
+        f: &mut std::fmt::Formatter,
+        config: SummaryOptions,
+    ) -> std::fmt::Result {
+        crate::display::format_view_tensor(&self, f, config)?;
         writeln!(f)?;
         write!(f, "Data Layout = {:?}", self.data_layout())
+    }
+
+    /**
+     * Returns a type which implements [Display](std::fmt::Display) using the custom [SummaryOptions].
+     */
+    pub fn display_with(&self, config: SummaryOptions) -> impl std::fmt::Display {
+        struct TensorViewDisplay<'a, T, S, const D: usize>(&'a TensorTranspose<T, S, D>, SummaryOptions);
+        impl<'a, T, S, const D: usize> std::fmt::Display
+            for TensorViewDisplay<'a, T, S, D>
+        where
+            T: std::fmt::Display,
+            S: TensorRef<T, D>
+        {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                self.0.fmt_with(f, self.1)
+            }
+        }
+        TensorViewDisplay(self, config)
     }
 }
 

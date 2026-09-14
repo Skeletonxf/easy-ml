@@ -24,11 +24,12 @@ use std::fmt;
 use serde::Serialize;
 
 pub mod dimensions;
-mod display;
 pub mod einsum;
 pub mod indexing;
 pub mod operations;
 pub mod views;
+
+pub use crate::display::SummaryOptions;
 
 #[cfg(feature = "serde")]
 pub use serde_impls::{TensorDeserialize, TensorDeserializeOwned};
@@ -543,7 +544,33 @@ impl<T: Clone, const D: usize> Clone for Tensor<T, D> {
  */
 impl<T: std::fmt::Display, const D: usize> std::fmt::Display for Tensor<T, D> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        crate::tensors::display::format_view(self, f)
+        self.fmt_with(f, SummaryOptions::default())
+    }
+}
+
+impl<T: std::fmt::Display, const D: usize> Tensor<T, D> {
+    /**
+     * Formats the Tensor with the custom [SummaryOptions].
+     */
+    pub fn fmt_with(
+        &self,
+        f: &mut std::fmt::Formatter,
+        config: SummaryOptions,
+    ) -> std::fmt::Result {
+        crate::display::format_view_tensor(self, f, config)
+    }
+
+    /**
+     * Returns a type which implements [Display](std::fmt::Display) using the custom [SummaryOptions].
+     */
+    pub fn display_with(&self, config: SummaryOptions) -> impl std::fmt::Display {
+        struct TensorDisplay<'a, T, const D: usize>(&'a Tensor<T, D>, SummaryOptions);
+        impl<'a, T: std::fmt::Display, const D: usize> std::fmt::Display for TensorDisplay<'a, T, D> {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                self.0.fmt_with(f, self.1)
+            }
+        }
+        TensorDisplay(self, config)
     }
 }
 

@@ -15,12 +15,12 @@ use std::marker::PhantomData;
 
 use crate::linear_algebra;
 use crate::numeric::{Numeric, NumericRef};
-use crate::tensors::dimensions;
 use crate::tensors::indexing::{
     TensorAccess, TensorIterator, TensorOwnedIterator, TensorReferenceIterator,
     TensorReferenceMutIterator, TensorTranspose,
 };
 use crate::tensors::{Dimension, Tensor};
+use crate::tensors::{SummaryOptions, dimensions};
 
 mod indexes;
 mod map;
@@ -1589,7 +1589,42 @@ where
     S: TensorRef<T, D>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        crate::tensors::display::format_view(&self.source, f)
+        self.fmt_with(f, SummaryOptions::default())
+    }
+}
+
+impl<T: std::fmt::Display, S, const D: usize> TensorView<T, S, D>
+where
+    T: std::fmt::Display,
+    S: TensorRef<T, D>,
+{
+    /**
+     * Formats the Tensor with the custom [SummaryOptions].
+     */
+    pub fn fmt_with(
+        &self,
+        f: &mut std::fmt::Formatter,
+        config: SummaryOptions,
+    ) -> std::fmt::Result {
+        crate::display::format_view_tensor(&self.source, f, config)
+    }
+
+    /**
+     * Returns a type which implements [Display](std::fmt::Display) using the custom [SummaryOptions].
+     */
+    pub fn display_with(&self, config: SummaryOptions) -> impl std::fmt::Display {
+        struct TensorViewDisplay<'a, T, S, const D: usize>(&'a TensorView<T, S, D>, SummaryOptions);
+        impl<'a, T, S, const D: usize> std::fmt::Display
+            for TensorViewDisplay<'a, T, S, D>
+        where
+            T: std::fmt::Display,
+            S: TensorRef<T, D>
+        {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                self.0.fmt_with(f, self.1)
+            }
+        }
+        TensorViewDisplay(self, config)
     }
 }
 
