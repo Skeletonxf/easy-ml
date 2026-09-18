@@ -355,9 +355,53 @@ where
             let rows = shape[1].1;
             let columns = shape[2].1;
             for block in 0..blocks {
+                if summarize {
+                    let start = configuration.summary_items();
+                    let end = blocks.saturating_sub(configuration.summary_items());
+                    let skip_block = block >= start && block < end;
+                    if skip_block {
+                        // Skip all the blocks for the middle of the tensor not within
+                        // the summary item range, but only insert the ellipsis once
+                        // at the start of the skipped blocks.
+                        // We do a double line of ellipsis here to distinguish skipped
+                        // blocks from skipped rows.
+                        if block == start {
+                            writeln!(f, "  ...\n  ...\n")?;
+                        }
+                        continue;
+                    }
+                }
                 for row in 0..rows {
+                    if summarize {
+                        let start = configuration.summary_items();
+                        let end = rows.saturating_sub(configuration.summary_items());
+                        let skip_row = row >= start && row < end;
+                        if skip_row {
+                            // Skip all the rows for the middle of the tensor not within
+                            // the summary item range, but only insert the ellipsis once
+                            // at the start of the skipped rows.
+                            if row == start {
+                                writeln!(f, "  ...,")?;
+                            }
+                            continue;
+                        }
+                    }
                     write!(f, "  ")?;
                     for column in 0..columns {
+                        if summarize {
+                            let start = configuration.summary_items();
+                            let end = columns.saturating_sub(configuration.summary_items());
+                            let skip_column = column >= start && column < end;
+                            if skip_column {
+                                // Skip all the columns for the middle of the tensor not within
+                                // the summary item range, but only insert the ellipsis once
+                                // at the start of the skipped columns.
+                                if column == start {
+                                    write!(f, "..., ")?;
+                                }
+                                continue;
+                            }
+                        }
                         let mut index = [0; D];
                         index[0] = block;
                         index[1] = row;
@@ -612,4 +656,70 @@ fn test_summary_output_tensor_2_dimensions() {
   575, 576, 577, ..., 597, 598, 599
   600, 601, 602, ..., 622, 623, 624 ]"#
     )
+}
+
+#[test]
+fn test_summary_output_tensor_3_dimensions() {
+    use crate::tensors::Tensor;
+    let tensor = Tensor::from_fn([("b", 7), ("r", 8), ("c", 9)], |[b, r, c]| (b * (8 * 9)) + (r * 9) + c);
+    let formatted = format!(
+        "{}",
+        tensor.display_with(SummaryOptions::default().with_threshold_of(Some(500)))
+    );
+    assert_eq!(
+        formatted,
+        r#"D = 3
+("b", 7), ("r", 8), ("c", 9)
+[
+  0, 1, 2, ..., 6, 7, 8
+  9, 10, 11, ..., 15, 16, 17
+  18, 19, 20, ..., 24, 25, 26
+  ...,
+  45, 46, 47, ..., 51, 52, 53
+  54, 55, 56, ..., 60, 61, 62
+  63, 64, 65, ..., 69, 70, 71
+
+  72, 73, 74, ..., 78, 79, 80
+  81, 82, 83, ..., 87, 88, 89
+  90, 91, 92, ..., 96, 97, 98
+  ...,
+  117, 118, 119, ..., 123, 124, 125
+  126, 127, 128, ..., 132, 133, 134
+  135, 136, 137, ..., 141, 142, 143
+
+  144, 145, 146, ..., 150, 151, 152
+  153, 154, 155, ..., 159, 160, 161
+  162, 163, 164, ..., 168, 169, 170
+  ...,
+  189, 190, 191, ..., 195, 196, 197
+  198, 199, 200, ..., 204, 205, 206
+  207, 208, 209, ..., 213, 214, 215
+
+  ...
+  ...
+
+  288, 289, 290, ..., 294, 295, 296
+  297, 298, 299, ..., 303, 304, 305
+  306, 307, 308, ..., 312, 313, 314
+  ...,
+  333, 334, 335, ..., 339, 340, 341
+  342, 343, 344, ..., 348, 349, 350
+  351, 352, 353, ..., 357, 358, 359
+
+  360, 361, 362, ..., 366, 367, 368
+  369, 370, 371, ..., 375, 376, 377
+  378, 379, 380, ..., 384, 385, 386
+  ...,
+  405, 406, 407, ..., 411, 412, 413
+  414, 415, 416, ..., 420, 421, 422
+  423, 424, 425, ..., 429, 430, 431
+
+  432, 433, 434, ..., 438, 439, 440
+  441, 442, 443, ..., 447, 448, 449
+  450, 451, 452, ..., 456, 457, 458
+  ...,
+  477, 478, 479, ..., 483, 484, 485
+  486, 487, 488, ..., 492, 493, 494
+  495, 496, 497, ..., 501, 502, 503
+]"#)
 }
