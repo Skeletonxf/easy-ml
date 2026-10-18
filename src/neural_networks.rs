@@ -23,6 +23,7 @@ the next one.
 use easy_ml::matrices::Matrix;
 use easy_ml::matrices::views::{MatrixRange, MatrixView, MatrixRef, NoInteriorMutability, IndexRange};
 use easy_ml::numeric::Numeric;
+use easy_ml::numeric::activation::sigmoid;
 use easy_ml::numeric::extra::Real;
 use easy_ml::differentiation::{Record, RecordMatrix, WengertList, Index};
 
@@ -36,17 +37,6 @@ use textplots::{Chart, Plot, Shape};
  */
 fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f32> {
     random_generator.sample_iter(StandardUniform).take(n).collect()
-}
-
-/**
- * The sigmoid function which will be used as a non linear activation function.
- *
- * This is written for a generic type, so it can be used with records and also
- * with normal floats.
- */
-fn sigmoid<T: Real + Copy>(x: T) -> T {
-    // 1 / (1 + e^-x)
-    T::one() / (T::one() + (-x).exp())
 }
 
 /**
@@ -279,6 +269,7 @@ println!("1 1: {:?}", model(&row_4.view().map(|(x, _)| x), &w1_final, &w2_final,
 use easy_ml::tensors::Tensor;
 use easy_ml::tensors::views::{TensorView, TensorRef};
 use easy_ml::numeric::{Numeric, NumericRef};
+use easy_ml::numeric::activation::sigmoid;
 use easy_ml::numeric::extra::{Real, RealRef, Exp};
 use easy_ml::differentiation::{Record, RecordTensor, WengertList, Index};
 
@@ -292,17 +283,6 @@ use textplots::{Chart, Plot, Shape};
  */
 fn n_random_numbers<R: Rng>(random_generator: &mut R, n: usize) -> Vec<f32> {
     random_generator.sample_iter(StandardUniform).take(n).collect()
-}
-
-/**
- * The sigmoid function which will be used as a non linear activation function.
- *
- * This is written for a generic type, so it can be used with records and also
- * with normal floats.
- */
-fn sigmoid<T: Real + Copy>(x: T) -> T {
-    // 1 / (1 + e^-x)
-    T::one() / (T::one() + (-x).exp())
 }
 
 /**

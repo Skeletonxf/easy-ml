@@ -22,6 +22,8 @@ use std::ops::Mul;
 use std::ops::Neg;
 use std::ops::Sub;
 
+pub mod activation;
+
 /**
  * A trait defining what a numeric type is in terms of by value
  * numerical operations matrices need their types to support for

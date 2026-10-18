@@ -5,10 +5,7 @@ mod neural_net_tests {
     use easy_ml::differentiation::{Record, WengertList};
     use easy_ml::matrices::Matrix;
     use easy_ml::numeric::{Numeric, NumericRef};
-
-    fn relu<T: Numeric + Copy>(x: T) -> T {
-        if x > T::zero() { x } else { T::zero() }
-    }
+    use easy_ml::numeric::activation::relu;
 
     /**
      * A simple two layer neural network that outputs a scalar.

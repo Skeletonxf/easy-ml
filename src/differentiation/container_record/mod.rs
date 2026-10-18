@@ -1057,12 +1057,9 @@ where
      *
      * ```
      * use easy_ml::numeric::extra::Real;
+     * use easy_ml::numeric::activation::sigmoid;
      * use easy_ml::tensors::Tensor;
      * use easy_ml::differentiation::{RecordTensor, WengertList};
-     *
-     * fn sigmoid<T: Real+ Copy>(x: T) -> T {
-     *     T::one() / (T::one() + (-x).exp())
-     * }
      *
      * let history = WengertList::new();
      * let layer = RecordTensor::variables(&history, Tensor::from([("x", 2)], vec![ 0.2, 0.6 ]));
@@ -1961,12 +1958,9 @@ where
      *
      * ```
      * use easy_ml::numeric::extra::Real;
+     * use easy_ml::numeric::activation::sigmoid;
      * use easy_ml::matrices::Matrix;
      * use easy_ml::differentiation::{RecordMatrix, WengertList};
-     *
-     * fn sigmoid<T: Real+ Copy>(x: T) -> T {
-     *     T::one() / (T::one() + (-x).exp())
-     * }
      *
      * let history = WengertList::new();
      * let layer = RecordMatrix::variables(&history, Matrix::from(vec![vec![ 0.2, 0.6 ]]));
