@@ -196,7 +196,7 @@ impl<const D: usize> fmt::Display for InvalidDimensionsError<D> {
         write!(
             f,
             "Requested dimension order: {:?} does not match the shape in the source: {:?}",
-            &self.actual, &self.requested
+            self.actual, self.requested
         )
     }
 }
@@ -1094,7 +1094,7 @@ pub(crate) struct DynamicShapeIterator {
 
 impl DynamicShapeIterator {
     pub(crate) fn from(shape: &Vec<(Dimension, usize)>) -> DynamicShapeIterator {
-        let starting_index_valid = is_starting_index_valid(&shape);
+        let starting_index_valid = is_starting_index_valid(shape);
         let number_of_dimensions = shape.len();
         DynamicShapeIterator {
             shape: shape.clone(),

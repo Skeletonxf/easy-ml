@@ -60,17 +60,17 @@ where
     #[track_caller]
     pub fn from(source: S, shape: [(Dimension, usize); D2]) -> TensorReshape<T, S, D, D2> {
         if dimensions::has_duplicates(&shape) {
-            panic!("Dimension names must all be unique: {:?}", &shape);
+            panic!("Dimension names must all be unique: {:?}", shape);
         }
         let existing_one_dimensional_length = dimensions::elements(&source.view_shape());
         let given_one_dimensional_length = dimensions::elements(&shape);
         if given_one_dimensional_length != existing_one_dimensional_length {
             panic!(
                 "Number of elements required by provided shape {:?} are {:?} but number of elements in source are: {:?} due to shape of {:?}",
-                &shape,
-                &given_one_dimensional_length,
-                &existing_one_dimensional_length,
-                &source.view_shape()
+                shape,
+                given_one_dimensional_length,
+                existing_one_dimensional_length,
+                source.view_shape()
             );
         }
         let source_strides = tensors::compute_strides(&source.view_shape());
@@ -133,10 +133,10 @@ where
         if given_one_dimensional_length != existing_one_dimensional_length {
             panic!(
                 "Number of elements required by provided shape {:?} are {:?} but number of elements in source are: {:?} due to shape of {:?}",
-                &shape,
-                &given_one_dimensional_length,
-                &existing_one_dimensional_length,
-                &source.view_shape()
+                shape,
+                given_one_dimensional_length,
+                existing_one_dimensional_length,
+                source.view_shape()
             );
         }
         let source_strides = tensors::compute_strides(&source.view_shape());

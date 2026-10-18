@@ -38,7 +38,7 @@ impl SummaryOptions {
      */
     pub fn with_threshold_of(self, threshold_number_of_elements: Option<usize>) -> Self {
         SummaryOptions {
-            threshold_number_of_elements: threshold_number_of_elements,
+            threshold_number_of_elements,
             summary_items_in_each_dimension: self.summary_items_in_each_dimension,
         }
     }
@@ -50,7 +50,7 @@ impl SummaryOptions {
     pub fn with_summary_items_of(self, summary_items_in_each_dimension: usize) -> Self {
         SummaryOptions {
             threshold_number_of_elements: self.threshold_number_of_elements,
-            summary_items_in_each_dimension: summary_items_in_each_dimension,
+            summary_items_in_each_dimension,
         }
     }
 
@@ -469,7 +469,7 @@ where
                                         writeln!(f, "  ...")?;
                                     }
                                     for _ in 0..(repeats - 1) {
-                                        writeln!(f, "")?;
+                                        writeln!(f)?;
                                     }
                                 }
                             }

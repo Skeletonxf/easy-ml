@@ -41,7 +41,7 @@ where
     #[track_caller]
     pub fn from(source: S, dimensions: [Dimension; D]) -> TensorRename<T, S, D> {
         if crate::tensors::dimensions::has_duplicates_names(&dimensions) {
-            panic!("Dimension names must all be unique: {:?}", &dimensions);
+            panic!("Dimension names must all be unique: {:?}", dimensions);
         }
         TensorRename {
             source,
@@ -104,7 +104,7 @@ where
     #[track_caller]
     pub fn set_names(&mut self, dimensions: [Dimension; D]) {
         if crate::tensors::dimensions::has_duplicates_names(&dimensions) {
-            panic!("Dimension names must all be unique: {:?}", &dimensions);
+            panic!("Dimension names must all be unique: {:?}", dimensions);
         }
         self.dimensions = dimensions;
     }
@@ -150,7 +150,7 @@ where
                     dimensions::position_of(&shape, name)
                         .unwrap_or_else(|| panic!(
                             "Source implementation contained dimension {} in data_layout that was not in the view_shape {:?} which breaks the contract of TensorRef",
-                            name, &shape
+                            name, shape
                         ))
                 });
                 // TensorRename doesn't move dimensions around, so now we can map from position

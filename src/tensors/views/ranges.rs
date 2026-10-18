@@ -278,7 +278,7 @@ where
     R: Into<IndexRange>,
 {
     from_named_to_all_specific_error(source, ranges)
-        .map_err(|error| IndexRangeValidationError::InvalidDimensions(error))
+        .map_err(IndexRangeValidationError::InvalidDimensions)
 }
 
 impl<T, S, const D: usize> TensorRange<T, S, D>
@@ -730,7 +730,7 @@ fn map_indexes_by_range<const D: usize>(
     ranges: &[IndexRange; D],
 ) -> Option<[usize; D]> {
     let mut mapped = [0; D];
-    for (d, (r, i)) in ranges.iter().zip(indexes.into_iter()).enumerate() {
+    for (d, (r, i)) in ranges.iter().zip(indexes).enumerate() {
         mapped[d] = r.map(i)?;
     }
     Some(mapped)
@@ -814,7 +814,7 @@ where
 
 fn map_indexes_by_mask<const D: usize>(indexes: [usize; D], masks: &[IndexRange; D]) -> [usize; D] {
     let mut mapped = [0; D];
-    for (d, (r, i)) in masks.iter().zip(indexes.into_iter()).enumerate() {
+    for (d, (r, i)) in masks.iter().zip(indexes).enumerate() {
         mapped[d] = r.mask(i);
     }
     mapped

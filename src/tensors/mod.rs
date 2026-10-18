@@ -107,10 +107,10 @@ impl<const D: usize> InvalidShapeError<D> {
             );
         }
         if crate::tensors::dimensions::has_duplicates(shape) {
-            panic!("Dimension names must all be unique: {:?}", &shape);
+            panic!("Dimension names must all be unique: {:?}", shape);
         }
         if shape.iter().any(|d| d.1 == 0) {
-            panic!("No dimension can have 0 elements: {:?}", &shape);
+            panic!("No dimension can have 0 elements: {:?}", shape);
         }
     }
 
@@ -764,7 +764,7 @@ impl<T, const D: usize> Tensor<T, D> {
     #[track_caller]
     pub fn rename(&mut self, dimensions: [Dimension; D]) {
         if crate::tensors::dimensions::has_duplicates_names(&dimensions) {
-            panic!("Dimension names must all be unique: {:?}", &dimensions);
+            panic!("Dimension names must all be unique: {:?}", dimensions);
         }
         #[allow(clippy::needless_range_loop)]
         for d in 0..D {
@@ -1569,7 +1569,7 @@ where
             Ok(reordered) => reordered,
             Err(_error) => panic!(
                 "Dimension names provided {:?} must be the same set of dimension names in the tensor: {:?}",
-                dimensions, &self.shape,
+                dimensions, self.shape,
             ),
         };
         let reorderd_shape = reorderd.shape();
@@ -1602,7 +1602,7 @@ where
                 Some(dimension_mapping) => dimension_mapping,
                 None => panic!(
                     "Dimension names provided {:?} must be the same set of dimension names in the tensor: {:?}",
-                    dimensions, &self.shape,
+                    dimensions, self.shape,
                 ),
             };
 

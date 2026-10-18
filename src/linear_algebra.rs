@@ -1112,8 +1112,8 @@ pub struct LDLTDecomposition<T> {
 
 impl<T: std::fmt::Display + Clone> std::fmt::Display for LDLTDecomposition<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "L:\n{}", &self.l)?;
-        write!(f, "D:\n{}", &self.d)
+        writeln!(f, "L:\n{}", self.l)?;
+        write!(f, "D:\n{}", self.d)
     }
 }
 
@@ -1181,8 +1181,8 @@ pub struct LDLTDecompositionTensor<T> {
 
 impl<T: std::fmt::Display + Clone> std::fmt::Display for LDLTDecompositionTensor<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "L:\n{}", &self.l)?;
-        write!(f, "D:\n{}", &self.d)
+        writeln!(f, "L:\n{}", self.l)?;
+        write!(f, "D:\n{}", self.d)
     }
 }
 
@@ -1323,8 +1323,8 @@ pub struct QRDecomposition<T> {
 
 impl<T: std::fmt::Display + Clone> std::fmt::Display for QRDecomposition<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "Q:\n{}", &self.q)?;
-        write!(f, "R:\n{}", &self.r)
+        writeln!(f, "Q:\n{}", self.q)?;
+        write!(f, "R:\n{}", self.r)
     }
 }
 
@@ -1422,8 +1422,8 @@ pub struct QRDecompositionTensor<T> {
 
 impl<T: std::fmt::Display + Clone> std::fmt::Display for QRDecompositionTensor<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "Q:\n{}", &self.q)?;
-        write!(f, "R:\n{}", &self.r)
+        writeln!(f, "Q:\n{}", self.q)?;
+        write!(f, "R:\n{}", self.r)
     }
 }
 
