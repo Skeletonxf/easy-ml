@@ -1,5 +1,16 @@
 # Changelog
 
+## Version 2.3
+
+Version 2.3 improves the default Display implementation for tensors and
+matrices to summarise large amounts of data instead of showing every element.
+This can also be configured, including to show everything as in prior versions,
+with newly added APIs. New `vec_of` methods have been added to TensorAccess
+to retrieve a Vec of all elements along one dimension at once. Some helper
+construction methods have been added to TensorStack and TensorChain, and
+generic relu and sigmoid functions are now part of the public API in
+numeric::activation instead of only documented in doctests.
+
 ## Version 2.2
 
 Version 2.2 adds Einsum APIs to perform a huge variety of operations with
