@@ -153,7 +153,7 @@ mod container_record_tests {
             )
         );
 
-        for container in vec![x_div_y] {
+        for container in [x_div_y] {
             let derivatives = container.derivatives().unwrap();
             let dx = derivatives.map(|d| d.at_tensor(&x));
             let dy = derivatives.map(|d| d.at_tensor(&y));

@@ -47,7 +47,7 @@ mod tests {
         // create data range from -1 to 1
         let x = Matrix::column((0..100).map(|x| ((x as f64 * 0.01) * 2.0) - 1.0).collect());
         // create y values without any noise
-        let y = x.map(|x| target(x));
+        let y = x.map(target);
 
         // create some random observations in the -1 to 1 range to train on
         let observations = Matrix::column(
@@ -213,7 +213,7 @@ mod tests {
             .lineplot(&Shape::Points(&split_for_plotting(&weights)))
             .display();
 
-        for training_size in vec![1, 2, 5, 20] {
+        for training_size in [1, 2, 5, 20] {
             println!("Training size: {}", training_size);
 
             // use increasing amounts of training samples to see the effect

@@ -26,7 +26,7 @@ mod linear_regression {
         // by inserting a column of 1s
         let mut X = x.clone();
         X.insert_column(0, 1.0);
-        println!("X = {}", &X);
+        println!("X = {}", X);
 
         // w is given by inverse(XT*X) * (XT * y)
         #[rustfmt::skip]

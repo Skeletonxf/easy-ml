@@ -253,7 +253,7 @@ impl GridWorld {
     /// Returns the Q value of a particular state action
     fn q(&self, position: Position, direction: Direction) -> f64 {
         let width = self.tiles.length_of("x").expect("x dimension should exist");
-        *&self.expected_rewards[index(position, direction, width, DIRECTIONS)]
+        self.expected_rewards[index(position, direction, width, DIRECTIONS)]
     }
 
     /// Returns a mutable reference to the Q value of a particular state action

@@ -81,14 +81,14 @@ mod neural_net_tests {
             .map(|x| Record::variable(x, &list));
         // define XOR inputs, with biases added to the inputs and outputs
         let inputs = vec![
-            Matrix::row(vec![0.0, 0.0, 1.0]).map(|x| Record::constant(x)),
-            Matrix::row(vec![0.0, 1.0, 1.0]).map(|x| Record::constant(x)),
-            Matrix::row(vec![1.0, 0.0, 1.0]).map(|x| Record::constant(x)),
-            Matrix::row(vec![1.0, 1.0, 1.0]).map(|x| Record::constant(x)),
+            Matrix::row(vec![0.0, 0.0, 1.0]).map(Record::constant),
+            Matrix::row(vec![0.0, 1.0, 1.0]).map(Record::constant),
+            Matrix::row(vec![1.0, 0.0, 1.0]).map(Record::constant),
+            Matrix::row(vec![1.0, 1.0, 1.0]).map(Record::constant),
         ];
         let labels = vec![0.0, 1.0, 1.0, 0.0]
             .drain(..)
-            .map(|x| Record::constant(x))
+            .map(Record::constant)
             .collect();
         let learning_rate = 0.1;
         let epochs = 300;

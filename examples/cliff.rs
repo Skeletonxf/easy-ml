@@ -240,7 +240,7 @@ impl GridWorld {
 
     /// Returns the Q value of a particular state action
     fn q(&self, position: Position, direction: Direction) -> f64 {
-        *&self.expected_rewards[index(position, direction, self.tiles.columns(), DIRECTIONS)]
+        self.expected_rewards[index(position, direction, self.tiles.columns(), DIRECTIONS)]
     }
 
     /// Returns a mutable reference to the Q value of a particular state action

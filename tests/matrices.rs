@@ -118,7 +118,7 @@ mod matrices {
 
         let row = vec![1, 2, 3];
         let iterator = matrix.row_reference_iter(0);
-        assert_eq!(row, iterator.map(|x| *x).collect::<Vec<u8>>());
+        assert_eq!(row, iterator.copied().collect::<Vec<u8>>());
         let iterator = matrix.row_reference_mut_iter(0);
         assert_eq!(row, iterator.map(|x| *x).collect::<Vec<u8>>());
         let iterator = matrix.row_iter(0);
@@ -126,7 +126,7 @@ mod matrices {
 
         let row_major = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
         let iterator = matrix.row_major_reference_iter();
-        assert_eq!(row_major, iterator.map(|x| *x).collect::<Vec<u8>>());
+        assert_eq!(row_major, iterator.copied().collect::<Vec<u8>>());
         let iterator = matrix.row_major_reference_mut_iter();
         assert_eq!(row_major, iterator.map(|x| *x).collect::<Vec<u8>>());
         let iterator = matrix.row_major_iter();
@@ -134,7 +134,7 @@ mod matrices {
 
         let column = vec![1, 4, 7];
         let iterator = matrix.column_reference_iter(0);
-        assert_eq!(column, iterator.map(|x| *x).collect::<Vec<u8>>());
+        assert_eq!(column, iterator.copied().collect::<Vec<u8>>());
         let iterator = matrix.column_reference_mut_iter(0);
         assert_eq!(column, iterator.map(|x| *x).collect::<Vec<u8>>());
         let iterator = matrix.column_iter(0);
@@ -144,7 +144,7 @@ mod matrices {
         let iterator = matrix.column_major_iter();
         assert_eq!(column_major, iterator.collect::<Vec<u8>>());
         let iterator = matrix.column_major_reference_iter();
-        assert_eq!(column_major, iterator.map(|x| *x).collect::<Vec<u8>>());
+        assert_eq!(column_major, iterator.copied().collect::<Vec<u8>>());
         let iterator = matrix.column_major_reference_mut_iter();
         assert_eq!(column_major, iterator.map(|x| *x).collect::<Vec<u8>>());
 
@@ -152,7 +152,7 @@ mod matrices {
         let iterator = matrix.diagonal_iter();
         assert_eq!(diagonal, iterator.collect::<Vec<u8>>());
         let iterator = matrix.diagonal_reference_iter();
-        assert_eq!(diagonal, iterator.map(|x| *x).collect::<Vec<u8>>());
+        assert_eq!(diagonal, iterator.copied().collect::<Vec<u8>>());
         let iterator = matrix.diagonal_reference_mut_iter();
         assert_eq!(diagonal, iterator.map(|x| *x).collect::<Vec<u8>>());
     }
