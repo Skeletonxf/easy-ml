@@ -9,6 +9,7 @@ keywords = ["machine-learning", "tensors", "matrices", "linear-algebra"]
 categories = ["science", "wasm"]
 readme = "README.md"
 license = "MPL-2.0"
+rust-version = "1.97"
 
 [features]
 default = []
