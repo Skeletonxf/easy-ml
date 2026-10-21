@@ -22,6 +22,7 @@ use crate::tensors::indexing::{
 use crate::tensors::{Dimension, Tensor};
 use crate::tensors::{SummaryOptions, dimensions};
 
+mod dynamic;
 mod indexes;
 mod map;
 mod ranges;
@@ -31,6 +32,7 @@ mod reverse;
 pub mod traits;
 mod zip;
 
+pub use dynamic::*;
 pub use indexes::*;
 pub(crate) use map::*;
 pub use ranges::*;
@@ -1614,11 +1616,10 @@ where
      */
     pub fn display_with(&self, config: SummaryOptions) -> impl std::fmt::Display {
         struct TensorViewDisplay<'a, T, S, const D: usize>(&'a TensorView<T, S, D>, SummaryOptions);
-        impl<'a, T, S, const D: usize> std::fmt::Display
-            for TensorViewDisplay<'a, T, S, D>
+        impl<'a, T, S, const D: usize> std::fmt::Display for TensorViewDisplay<'a, T, S, D>
         where
             T: std::fmt::Display,
-            S: TensorRef<T, D>
+            S: TensorRef<T, D>,
         {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 self.0.fmt_with(f, self.1)
