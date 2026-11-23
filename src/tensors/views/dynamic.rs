@@ -1,5 +1,4 @@
 use crate::tensors::views::{Dimension, TensorRef, TensorMut, TensorView};
-use std::marker::PhantomData;
 
 /**
  * A wrapper around a tensor with the const generic parameter type erased.
@@ -12,11 +11,13 @@ pub struct DynamicTensor<T> {
     rank: usize,
     // Erased pointer to the box we allocated on construction
     pointer: *mut (),
-    // Pointer to our VTable for all the methods using our pointer
-    vtable: *const VTable<T>,
-    _type: PhantomData<T>,
+    // VTable doesn't also need type erasing so we can just store
+    // a box here to put it on the heap and not deal with more
+    // pointers.
+    vtable: Box<VTable<T>>,
 }
 
+/// All the functions we need to store for a given pointer to a tensorview
 struct VTable<T> {
     // NB: We can't really track lifetimes here, so enforcing lifetimes correctly
     // is the responsibility of the wrapping code. The requirement is that
@@ -48,9 +49,7 @@ impl<T> DynamicTensor<T> {
         // Convert box into raw pointer, we are now responsible for dropping it.
         let pointer = Box::into_raw(boxed) as *mut TensorView<T, S, D> as *mut ();
 
-        // FIXME: This reference dangles, we should box the VTable so the reference
-        // stays valid. Weirdly, this is how the article did it too???
-        let vtable = &VTable::<T> {
+        let vtable = Box::new(VTable::<T> {
             get_dynamic_reference: |pointer, indexes| {
                 let tensor = unsafe { &*(pointer as *const TensorView<T, S, D>) };
                 match get_dynamic_reference(tensor, indexes) {
@@ -67,27 +66,17 @@ impl<T> DynamicTensor<T> {
             drop: |pointer| unsafe {
                 drop(Box::from_raw(pointer as *mut TensorView<T, S, D>));
             },
-        };
+        });
 
         DynamicTensor {
             rank,
             pointer,
             vtable,
-            _type: PhantomData,
         }
         // WIP: We're going to need to use some unsafe here to create
         // our own VTable and pointers
         // Should be similar to: https://lucumr.pocoo.org/2024/5/16/macro-vtable-magic/
         // except we're not using Arc
-    }
-
-    // Returns the vtable as a reference.
-    //
-    // # Safety
-    // This is safe because we always ensure the reference is constructed matching
-    // this conversion.
-    fn vtable(&self) -> &VTable<T> {
-        unsafe { &*(self.vtable as *const VTable<T>) }
     }
 
     /**
@@ -120,7 +109,7 @@ impl<T> DynamicTensor<T> {
      */
     pub fn get_dynamic_reference<'a>(&'a self, indexes: &[usize]) -> Option<&'a T>
     {
-        match (self.vtable().get_dynamic_reference)(self.pointer, indexes) {
+        match (self.vtable.get_dynamic_reference)(self.pointer, indexes) {
             // SAFETY: This is safe because the lifetime we coerce to here is
             // always exactly the same as the lifetime when we obtained the
             // reference in the non method get_dynamic_reference function implementation.
@@ -142,7 +131,7 @@ impl<T> DynamicTensor<T> {
 
 impl<T> Drop for DynamicTensor<T> {
     fn drop(&mut self) {
-        (self.vtable().drop)(self.pointer)
+        (self.vtable.drop)(self.pointer)
     }
 }
 
