@@ -1,4 +1,4 @@
-use crate::tensors::views::{Dimension, TensorRef, TensorView};
+use crate::tensors::views::{Dimension, TensorRef, TensorMut, TensorView};
 use std::marker::PhantomData;
 
 /**
@@ -18,8 +18,11 @@ pub struct DynamicTensor<T> {
 }
 
 struct VTable<T> {
-    get_dynamic_reference: fn(*const (), indexes: &[usize]) -> Option<&T>,
-    get_dynamic_reference_mut: fn(*mut (), indexes: &[usize]) -> Option<&mut T>,
+    // NB: We can't really track lifetimes here, so enforcing lifetimes correctly
+    // is the responsibility of the wrapping code. The requirement is that
+    // references borrow from self.
+    get_dynamic_reference: fn(*const (), indexes: &[usize]) -> Option<*const T>,
+    get_dynamic_reference_mut: fn(*mut (), indexes: &[usize]) -> Option<*mut T>,
     drop: fn(*mut ()),
 }
 
@@ -29,10 +32,14 @@ impl<T> DynamicTensor<T> {
      * TensorView, which includes Tensor, &Tensor, &mut Tensor and references
      * to a TensorView.
      */
+    // FIXME: If I or S are borrows here we would create DynamicTensor<T> to a reference
+    // that could be dropped while DynamicTensor<T> itself has not, causing a dangling
+    // reference. Making T and S static 'fixes' the issue but massively limits API usability.
     pub fn from<S, I, const D: usize>(tensor: I) -> Self
     where
         I: Into<TensorView<T, S, D>>,
-        S: TensorRef<T, D>,
+        S: TensorRef<T, D> + 'static,
+        T: 'static,
     {
         let view = tensor.into();
         let rank = view.shape().len();
@@ -41,15 +48,20 @@ impl<T> DynamicTensor<T> {
         // Convert box into raw pointer, we are now responsible for dropping it.
         let pointer = Box::into_raw(boxed) as *mut TensorView<T, S, D> as *mut ();
 
+        // FIXME: This reference dangles, we should box the VTable so the reference
+        // stays valid. Weirdly, this is how the article did it too???
         let vtable = &VTable::<T> {
-            get_dynamic_reference: |pointer, indexes| unsafe {
-                let reference = &*(pointer as *const TensorView<T, S, D>);
-                // TODO: Actual implementation
-                None
+            get_dynamic_reference: |pointer, indexes| {
+                let tensor = unsafe { &*(pointer as *const TensorView<T, S, D>) };
+                match get_dynamic_reference(tensor, indexes) {
+                    Some(reference) => Some(reference as *const T),
+                    None => None
+                }
             },
-            get_dynamic_reference_mut: |pointer, indexes| unsafe {
-                let reference_mut = &mut *(pointer as *mut TensorView<T, S, D>);
-                // TODO: Actual implementation
+            get_dynamic_reference_mut: |pointer, indexes| {
+                let reference_mut = unsafe { &mut *(pointer as *mut TensorView<T, S, D>) };
+                // TODO: How do we restrict this to just tensor views that implement TensorMut?
+                //get_dynamic_reference_mut(reference_mut, indexes)
                 None
             },
             drop: |pointer| unsafe {
@@ -75,7 +87,7 @@ impl<T> DynamicTensor<T> {
     // This is safe because we always ensure the reference is constructed matching
     // this conversion.
     fn vtable(&self) -> &VTable<T> {
-        unsafe { &*(self.vtable) }
+        unsafe { &*(self.vtable as *const VTable<T>) }
     }
 
     /**
@@ -95,7 +107,7 @@ impl<T> DynamicTensor<T> {
     }
 
     /**
-     * Gets a this tensor's shape if the const parameter matches the number of dimensions
+     * Gets this tensor's shape if the const parameter matches the number of dimensions
      * in this tensor. Otherwise returns None.
      */
     fn view_shape_dynamic_const<const D: usize>(&self) -> Option<[(Dimension, usize); D]> {
@@ -106,12 +118,17 @@ impl<T> DynamicTensor<T> {
      * Gets a reference to the value at the index if the index is in range and of a matching
      * length to the number of dimensions in this tensor. Otherwise returns None.
      */
-    // TODO: Is this what we want for lifetimes?
-    fn get_dynamic_reference<'a, 'b>(&'a self, indexes: &'b [usize]) -> Option<&'a T>
-    where
-        'b: 'a,
+    pub fn get_dynamic_reference<'a>(&'a self, indexes: &[usize]) -> Option<&'a T>
     {
-        (self.vtable().get_dynamic_reference)(self.pointer, indexes)
+        match (self.vtable().get_dynamic_reference)(self.pointer, indexes) {
+            // SAFETY: This is safe because the lifetime we coerce to here is
+            // always exactly the same as the lifetime when we obtained the
+            // reference in the non method get_dynamic_reference function implementation.
+            // We are essentially undoing the pointer casts required to pass it
+            // through the erased types of the VTable
+            Some(reference) => Some(unsafe { &*reference }),
+            None => None,
+        }
     }
 
     /**
@@ -127,4 +144,26 @@ impl<T> Drop for DynamicTensor<T> {
     fn drop(&mut self) {
         (self.vtable().drop)(self.pointer)
     }
+}
+
+fn get_dynamic_reference<'a, T, S, const D: usize>(
+    tensor: &'a TensorView<T, S, D>,
+    indexes: &[usize],
+) -> Option<&'a T>
+where
+    S: TensorRef<T, D>,
+{
+    let i: [usize; D] = indexes.try_into().ok()?;
+    tensor.source_ref().get_reference(i)
+}
+
+fn get_dynamic_reference_mut<'a, T, S, const D: usize>(
+    tensor: &'a mut TensorView<T, S, D>,
+    indexes: &[usize],
+) -> Option<&'a mut T>
+where
+    S: TensorMut<T, D>,
+{
+    let i: [usize; D] = indexes.try_into().ok()?;
+    tensor.source_ref_mut().get_reference_mut(i)
 }
