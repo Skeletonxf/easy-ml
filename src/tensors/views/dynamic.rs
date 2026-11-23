@@ -29,18 +29,21 @@ struct VTable<T> {
 
 impl<T> DynamicTensor<T> {
     /**
-     * Creates the DynamicTensor from any source type that can be converted to a
-     * TensorView, which includes Tensor, &Tensor, &mut Tensor and references
-     * to a TensorView.
+     * Creates the DynamicTensor from any **owned** source type that can be converted to a
+     * TensorView. These APIs ordinarily include Tensor, &Tensor, &mut Tensor and references
+     * to a TensorView. However, as DynamicTensor erases the source type, the
+     * source type must be owned (ie static) or a caller could create a DynamicTensor
+     * from a reference source type.
+     *
+     * In such a scenario, the type system couldn't enforce that the DynamicTensor must live
+     * at least as long as the reference it holds, since the reference has been erased from
+     * the DynamicTensor type but we still use it to give out references to data from the
+     * source in the methods of DynamicTensor, which would then be invalid.
      */
-    // FIXME: If I or S are borrows here we would create DynamicTensor<T> to a reference
-    // that could be dropped while DynamicTensor<T> itself has not, causing a dangling
-    // reference. Making T and S static 'fixes' the issue but massively limits API usability.
-    pub fn from<S, I, const D: usize>(tensor: I) -> Self
+    pub fn from_owned<S, I, const D: usize>(tensor: I) -> Self
     where
         I: Into<TensorView<T, S, D>>,
         S: TensorRef<T, D> + 'static,
-        T: 'static,
     {
         let view = tensor.into();
         let rank = view.shape().len();
@@ -78,6 +81,11 @@ impl<T> DynamicTensor<T> {
         // Should be similar to: https://lucumr.pocoo.org/2024/5/16/macro-vtable-magic/
         // except we're not using Arc
     }
+
+    // TODO: Consider adding an unsafe from_unowned that warns the caller they must ensure
+    // they drop the DynamicTensor before dropping any borrows in the source type?
+    // For inline manipulation where the DynamicTensors aren't getting stored in something
+    // that outlives the stack this API should be relatively safe to use correctly?
 
     /**
      * Returns the number of dimensions, also known as rank, of this tensor.
