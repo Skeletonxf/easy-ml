@@ -64,18 +64,20 @@ impl<T> DynamicTensor<T> {
         let pointer = Box::into_raw(boxed) as *mut TensorView<T, S, D> as *mut ();
 
         let vtable = Box::new(VTable::<T> {
+            // SAFETY: We're converting the pointer back to a reference here which is
+            // safe because we always constructed this reference with the box such
+            // that it's always valid, and we never invalidate the pointer.
             get_dynamic_reference: |pointer, indexes| {
                 let tensor = unsafe { &*(pointer as *const TensorView<T, S, D>) };
-                match get_dynamic_reference(tensor, indexes) {
-                    Some(reference) => Some(reference as *const T),
-                    None => None
-                }
+                get_dynamic_reference(tensor, indexes).map(|r| r as *const T)
             },
             get_dimension: |pointer, index| {
                 let tensor = unsafe { &*(pointer as *const TensorView<T, S, D>) };
                 tensor.shape().get(index).cloned()
             },
             drop: |pointer| unsafe {
+                // We can use *mut here because we only call this function from
+                // a &mut self method, so Rust will enforce exclusivity for us.
                 drop(Box::from_raw(pointer as *mut TensorView<T, S, D>));
             },
         });
@@ -91,6 +93,9 @@ impl<T> DynamicTensor<T> {
     // they drop the DynamicTensor before dropping any borrows in the source type?
     // For inline manipulation where the DynamicTensors aren't getting stored in something
     // that outlives the stack this API should be relatively safe to use correctly?
+    //
+    // TODO: Add Send and Sync impls, and enforce in all constructors TensorView<T, S, D>: Send + Sync
+    // TODO: Consider downcasting implementations?
 
     /**
      * Returns the number of dimensions, also known as rank, of this tensor.
@@ -128,17 +133,13 @@ impl<T> DynamicTensor<T> {
      * Gets a reference to the value at the index if the index is in range and of a matching
      * length to the number of dimensions in this tensor. Otherwise returns None.
      */
-    pub fn get_dynamic_reference<'a>(&'a self, indexes: &[usize]) -> Option<&'a T>
-    {
-        match (self.vtable.get_dynamic_reference)(self.pointer, indexes) {
-            // SAFETY: This is safe because the lifetime we coerce to here is
-            // always exactly the same as the lifetime when we obtained the
-            // reference in the non method get_dynamic_reference function implementation.
-            // We are essentially undoing the pointer casts required to pass it
-            // through the erased types of the VTable
-            Some(reference) => Some(unsafe { &*reference }),
-            None => None,
-        }
+    pub fn get_dynamic_reference<'a>(&'a self, indexes: &[usize]) -> Option<&'a T> {
+        // SAFETY: This is safe because the lifetime we coerce to here is
+        // always exactly the same as the lifetime when we obtained the
+        // reference in the non method get_dynamic_reference function implementation.
+        // We are essentially undoing the pointer casts required to pass it
+        // through the erased types of the VTable
+        (self.vtable.get_dynamic_reference)(self.pointer, indexes).map(|r| unsafe { &*r })
     }
 
     /**
