@@ -1,11 +1,12 @@
-use crate::tensors::views::{Dimension, TensorRef, TensorMut, TensorView};
+use crate::tensors::views::{Dimension, TensorRef, TensorView};
 
 /**
- * A wrapper around a tensor with the const generic parameter type erased.
+ * A wrapper around a tensor with the source and const generic parameter type erased.
  *
  * This is rarely useful as the API surface becomes much more difficult to use,
- * but when you need to store tensors of different ranks in the same structure
- * this can be necessary.
+ * and a lot of information about the source type is lost, but when you need to
+ * store read only tensors of different ranks in the same structure this can be
+ * necessary.
  */
 pub struct DynamicTensor<T> {
     rank: usize,
@@ -18,22 +19,32 @@ pub struct DynamicTensor<T> {
 }
 
 /// All the functions we need to store for a given pointer to a tensorview
+/// NB: In theory we could support mutation too but it would require quite
+/// a few hacks to safely restrict it to just source types that implemented
+/// TensorMut and I don't think many of the use cases for this tensor actually
+/// require mutation so for the initial version I'd just defining read access
+/// methods in the VTable to provide dynamic access to the TensorRef impl.
 struct VTable<T> {
     // NB: We can't really track lifetimes here, so enforcing lifetimes correctly
-    // is the responsibility of the wrapping code. The requirement is that
-    // references borrow from self.
+    // is the responsibility of the wrapping code. The requirement, as with TensorRef,
+    // is that references to the source data borrow from self.
     get_dynamic_reference: fn(*const (), indexes: &[usize]) -> Option<*const T>,
-    get_dynamic_reference_mut: fn(*mut (), indexes: &[usize]) -> Option<*mut T>,
+    get_dimension: fn(*const (), index: usize) -> Option<(Dimension, usize)>,
     drop: fn(*mut ()),
 }
 
 impl<T> DynamicTensor<T> {
+    // WIP: We're going to need to use some unsafe here to create
+    // our own VTable and pointers
+    // Should be similar to: https://lucumr.pocoo.org/2024/5/16/macro-vtable-magic/
+    // except we're not using Arc
+
     /**
      * Creates the DynamicTensor from any **owned** source type that can be converted to a
      * TensorView. These APIs ordinarily include Tensor, &Tensor, &mut Tensor and references
      * to a TensorView. However, as DynamicTensor erases the source type, the
      * source type must be owned (ie static) or a caller could create a DynamicTensor
-     * from a reference source type.
+     * from a reference source type and drop it too early.
      *
      * In such a scenario, the type system couldn't enforce that the DynamicTensor must live
      * at least as long as the reference it holds, since the reference has been erased from
@@ -60,11 +71,9 @@ impl<T> DynamicTensor<T> {
                     None => None
                 }
             },
-            get_dynamic_reference_mut: |pointer, indexes| {
-                let reference_mut = unsafe { &mut *(pointer as *mut TensorView<T, S, D>) };
-                // TODO: How do we restrict this to just tensor views that implement TensorMut?
-                //get_dynamic_reference_mut(reference_mut, indexes)
-                None
+            get_dimension: |pointer, index| {
+                let tensor = unsafe { &*(pointer as *const TensorView<T, S, D>) };
+                tensor.shape().get(index).cloned()
             },
             drop: |pointer| unsafe {
                 drop(Box::from_raw(pointer as *mut TensorView<T, S, D>));
@@ -76,10 +85,6 @@ impl<T> DynamicTensor<T> {
             pointer,
             vtable,
         }
-        // WIP: We're going to need to use some unsafe here to create
-        // our own VTable and pointers
-        // Should be similar to: https://lucumr.pocoo.org/2024/5/16/macro-vtable-magic/
-        // except we're not using Arc
     }
 
     // TODO: Consider adding an unsafe from_unowned that warns the caller they must ensure
@@ -99,16 +104,24 @@ impl<T> DynamicTensor<T> {
      *
      * Dimensions are indexed from 0 inclusive to the number of dimensions exclusive.
      */
-    fn get_dimension(&self, index: usize) -> Option<(Dimension, usize)> {
-        unimplemented!()
+    pub fn get_dimension(&self, index: usize) -> Option<(Dimension, usize)> {
+        (self.vtable.get_dimension)(self.pointer, index)
     }
 
     /**
      * Gets this tensor's shape if the const parameter matches the number of dimensions
      * in this tensor. Otherwise returns None.
      */
-    fn view_shape_dynamic_const<const D: usize>(&self) -> Option<[(Dimension, usize); D]> {
-        unimplemented!()
+    pub fn view_shape_dynamic_const<const D: usize>(&self) -> Option<[(Dimension, usize); D]> {
+        if self.rank == D {
+            let mut shape = [("", 0); D];
+            for (d, x) in shape.iter_mut().enumerate() {
+                *x = self.get_dimension(d)?;
+            }
+            Some(shape)
+        } else {
+            None
+        }
     }
 
     /**
@@ -132,8 +145,8 @@ impl<T> DynamicTensor<T> {
      * Gets a reference to the value at the index if the index is in range and of a matching
      * length to the number of dimensions in this tensor. Otherwise returns None.
      */
-    fn get_dynamic_const_reference<const D: usize>(&self, indexes: [usize; D]) -> Option<&T> {
-        unimplemented!()
+    pub fn get_dynamic_const_reference<const D: usize>(&self, indexes: [usize; D]) -> Option<&T> {
+        self.get_dynamic_reference(&indexes)
     }
 }
 
@@ -152,15 +165,4 @@ where
 {
     let i: [usize; D] = indexes.try_into().ok()?;
     tensor.source_ref().get_reference(i)
-}
-
-fn get_dynamic_reference_mut<'a, T, S, const D: usize>(
-    tensor: &'a mut TensorView<T, S, D>,
-    indexes: &[usize],
-) -> Option<&'a mut T>
-where
-    S: TensorMut<T, D>,
-{
-    let i: [usize; D] = indexes.try_into().ok()?;
-    tensor.source_ref_mut().get_reference_mut(i)
 }
