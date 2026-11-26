@@ -50,11 +50,21 @@ impl<T> DynamicTensor<T> {
      * at least as long as the reference it holds, since the reference has been erased from
      * the DynamicTensor type but we still use it to give out references to data from the
      * source in the methods of DynamicTensor, which would then be invalid.
+     *
+     * Additionally, to be more useful, the constructor requires T and S to both be Send+Sync.
+     * This prevents creating dynamic tensors from non Send/Sync types, but as S is fully
+     * erased in the type of DynamicTensor<T> the Send and Sync implementations for dynamic
+     * tensor can't be conditional its own source Send+Sync implementations.
      */
     pub fn from_owned<S, I, const D: usize>(tensor: I) -> Self
     where
         I: Into<TensorView<T, S, D>>,
         S: TensorRef<T, D> + 'static,
+        // I'm fairly sure TensorView<T, S, D> is always Send and Sync if
+        // T and S are, but this future proofs the implementation to be
+        // more safe by requiring the entire type we're hiding behind
+        // a pointer to be Send + Sync for sure.
+        TensorView<T, S, D>: Send + Sync,
     {
         let view = tensor.into();
         let rank = view.shape().len();
@@ -94,7 +104,6 @@ impl<T> DynamicTensor<T> {
     // For inline manipulation where the DynamicTensors aren't getting stored in something
     // that outlives the stack this API should be relatively safe to use correctly?
     //
-    // TODO: Add Send and Sync impls, and enforce in all constructors TensorView<T, S, D>: Send + Sync
     // TODO: Consider downcasting implementations?
 
     /**
@@ -167,3 +176,20 @@ where
     let i: [usize; D] = indexes.try_into().ok()?;
     tensor.source_ref().get_reference(i)
 }
+
+// SAFETY
+// We enforced at construction that the erased TensorView<T, S, D>
+// type we hold a pointer to is Send+Sync, and we exclusively manage
+// that pointer, so we can be safely moved between threads if T can.
+// (In fact we probably can't even be constructed if T is !Send but
+// that isn't particularly pertinent to the correctness of this impl)
+unsafe impl<T: Send> Send for DynamicTensor<T> {}
+
+// SAFETY
+// We enforced at construction that the erased TensorView<T, S, D>
+// type we hold a pointer to is Send+Sync, and we exclusively manage
+// that pointer using only methods following Rust's &mut and & rules,
+// so we can be safely called from multiple threads if T can.
+// (In fact we probably can't even be constructed if T is !Sync but
+// that isn't particularly pertinent to the correctness of this impl)
+unsafe impl<T: Sync> Sync for DynamicTensor<T> {}
